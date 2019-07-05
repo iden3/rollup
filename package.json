@@ -1,0 +1,35 @@
+{
+  "name": "rollup",
+  "version": "0.0.1",
+  "description": "Rollup Implementation",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iden3/rollup.git"
+  },
+  "keywords": [
+    "rollup",
+    "blockchain",
+    "scalability",
+    "ethereum",
+    "zksnarks",
+    "zero",
+    "knowledge",
+    "circom"
+  ],
+  "author": "Jordi Baylina",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/iden3/rollup/issues"
+  },
+  "homepage": "https://github.com/iden3/rollup#readme",
+  "devDependencies": {
+    "circomlib": "0.0.8"
+  }
+}
