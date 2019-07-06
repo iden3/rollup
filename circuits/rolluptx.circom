@@ -90,7 +90,7 @@ template RollupTx(nLevels) {
     component processor1 = SMTProcessor(nLevelse) ;
     component processor2 = SMTProcessor(nLevelse) ;
 
-    // Check coint
+    // Check coin
     feePlanChooser.coin === coin;
     s5.coin === s6.coin;
     s5.coin === coin;

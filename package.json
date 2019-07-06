@@ -30,6 +30,8 @@
   },
   "homepage": "https://github.com/iden3/rollup#readme",
   "devDependencies": {
-    "circomlib": "0.0.8"
+    "circom": "0.0.30",
+    "circomlib": "0.0.8",
+    "eslint-plugin-mocha": "^5.3.0"
   }
 }
