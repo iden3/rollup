@@ -122,6 +122,21 @@ template Rollup(nTx, nLevels) {
             Tx[i].feePlanFee[i] <== feePlanFee[i];
         }
 
+        for (var j=0; j<4; j++) {
+            if (i-j-1 >= 0) {
+                Tx[i].pastTxHasg[j] <== Tx[i-j-1].txHash;
+            } else {
+                Tx[i].pastTxHash[j] <== 0;
+            }
+        }
+        for (var j=0; j<3; j++) {
+            if (i+j+1 < nTx) {
+                Tx[i].futureTxHash[j] <== Tx[i+j+1].txHash;
+            } else {
+                Tx[i].futureTxHash[j] <== 0;
+            }
+        }
+
     }
 
     Tx[nTx-1].newStRoot ==> newStRoot;

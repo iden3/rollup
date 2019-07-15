@@ -1,6 +1,6 @@
-include "./node_modules/circomlib/circuits/smt/smtprocessor.circom"
-include "./node_modules/circomlib/circuits/eddsposeidon.circom"
-include "./node_modules/circomlib/circuits/gates.circom"
+include "./node_modules/circomlib/circuits/smt/smtprocessor.circom";
+include "./node_modules/circomlib/circuits/eddsposeidon.circom";
+include "./node_modules/circomlib/circuits/gates.circom";
 
 template RollupTx(nLevels) {
 
@@ -8,9 +8,14 @@ template RollupTx(nLevels) {
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
 
+    // Past and future TxHashes
+    signal input pastTxHash[4];
+    signal input futureTxHash[3];
+    signal output TxHash;
+
     //TX
     /*
-    fnc[0]  fn[1]   Function    S1  S2  S3  S4
+    fn[0]  fn[1]   Function    S1  S2  S3  S4
     0       0       NOP         0   0   0   0
     0       1       TRANSFER    0   1   0   1
     1       0       ENTRY       0   1   0   1
@@ -70,15 +75,32 @@ template RollupTx(nLevels) {
 ///////
 //  Components
 ///////
-    component MultiMux4(2) feePlanChooser;
+    component feeChooser = MultiMux4(2);
+    for (var i=0; i<16; i++) {
+        feePlanChosser.coins[i] <== feePlanCoin[i];
+        feePlanChosser.fees[i] <== feePlanFee[i];
+    }
+    feePlanChosser.coinSel <== coinSel;
+    feePlanChosser.coin <== coin;
 
-    component s5 = StateSelector() ;
+    component txHasher = TxHasher();
+
+    component s5 = StateSelector();
     component s6 = StateSelector();
 
-    component balanceSubstracter = BalanceSubstractor() ;
-    component balanceAdder = BalanceAdder() ;
+    component balanceSubstracter = BalanceUpdater();
 
     component sigVerifier = EdDSAPoseidongVerifier();
+    component requiredTxVerifier = RequiredTxVerifier();
+
+    // Check coin
+    feePlanChooser.coin === coin;
+    s5.coin === s6.coin;
+    s5.coin === coin;
+
+    // Check nonce
+    s5.nonce === nonce;
+
 
     component txHash TxHash();
 
@@ -90,13 +112,6 @@ template RollupTx(nLevels) {
     component processor1 = SMTProcessor(nLevelse) ;
     component processor2 = SMTProcessor(nLevelse) ;
 
-    // Check coin
-    feePlanChooser.coin === coin;
-    s5.coin === s6.coin;
-    s5.coin === coin;
-
-    // Check nonce
-    s5.nonce === nonce;
 
     component s1 = Mux2();
     component s2 = Mux2();
@@ -110,6 +125,5 @@ template RollupTx(nLevels) {
 
     component andInChain = And();
 
-    component requiredTxVerifier = RequiredTxVerifier();
 
 }
