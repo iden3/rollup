@@ -1,21 +1,29 @@
 
 pragma solidity ^0.5.0;
-import "../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol"; 
+
+import '../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import './lib/RollupHelpers.sol';
+
+/**
+ * @dev Define interface stakeManager contract
+ */
+contract StakeManager {
+  function blockForged(uint128 entropy, address operator) returns(address);
+}
 
 /**
  * @dev Define interface Verifier contract
  */
 contract Verifier {
   function verifyProof( uint[2] memory a, uint[2][2] memory b,
-    uint[2] memory c, uint[10] memory input) view public returns (bool r);
+    uint[2] memory c, uint[8] memory input) view public returns (bool r);
 }
 
-contract Rollup is Ownable {
+contract Rollup is Ownable, RollupHelpers {
 
   // External contracts used
   Verifier verifier;
-
-  address owner;
+  StakeManager stakeManager;
 
   // Minim collateral required to commit for a block
   uint constant MIN_COMMIT_COLLATERAL = 1 ether;
@@ -56,8 +64,10 @@ contract Rollup is Ownable {
   /**
    * @dev constructor
    */
-  constructor(address _verifier) public {
+  constructor(address _verifier, address _poseidon) RollupHelpers(_poseidon) public {
     verifier = Verifier(_verifier);
+    address _stakeManager = new StakeManager(address(this));
+    stakeManager = StakeManager(_stakeManager);
     owner = msg.sender;
   }
 
@@ -76,29 +86,28 @@ contract Rollup is Ownable {
     commitedOperator = address(0);
   }
 
-
-  /**
-   * @dev operator commits the new block along with a deposit
-   * operator has a certain amount of blocks to validate the bock commited
-   * fees and deposit are paied to operator if block is finally added succesfully
-   * otherwise, deposit is burned and new block commit would be available again 
-   * @param newRoot new sidechain root commited
-   */
-  function commitToBlock( bytes32 newRoot ) public payable {
-    // Ensure there is no current block commited
-    require( commitedOperator == address(0) );
-    require( block.number > commitBlockExpires );
-    // Ensure msg.sender has enough balance to commit a new root
-    require( msg.value >= MIN_COMMIT_COLLATERAL );
-    // Stake balance
-    balanceCommited = msg.value; 
-    // Set last block to forge the root
-    commitBlockExpires = block.number + MAX_COMMIT_BLOCKS;
-    // Save operator that commited the root
-    commitedOperator = msg.sender;
-    // Save the root
-    rootCommited = newRoot;
-  }
+  // /**
+  //  * @dev operator commits the new block along with a deposit
+  //  * operator has a certain amount of blocks to validate the bock commited
+  //  * fees and deposit are paied to operator if block is finally added succesfully
+  //  * otherwise, deposit is burned and new block commit would be available again 
+  //  * @param newRoot new sidechain root commited
+  //  */
+  // function commitToBlock( bytes32 newRoot ) public payable {
+  //   // Ensure there is no current block commited
+  //   require( commitedOperator == address(0) );
+  //   require( block.number > commitBlockExpires );
+  //   // Ensure msg.sender has enough balance to commit a new root
+  //   require( msg.value >= MIN_COMMIT_COLLATERAL );
+  //   // Stake balance
+  //   balanceCommited = msg.value; 
+  //   // Set last block to forge the root
+  //   commitBlockExpires = block.number + MAX_COMMIT_BLOCKS;
+  //   // Save operator that commited the root
+  //   commitedOperator = msg.sender;
+  //   // Save the root
+  //   rootCommited = newRoot;
+ // }
 
   /**
    * @dev Checks proof given by the operator
@@ -115,7 +124,7 @@ contract Rollup is Ownable {
    */
   function forgeBlock( uint[2] memory proofA, uint[2][2] memory proofB, uint[2] memory proofC,
     bytes32 newStateRoot, bytes32 exitRoot, uint32[2] memory feePlan, uint32 nTxPerCoin,
-    bytes memory compressedTxs, address beneficiary) public {
+    bytes memory compressedTxs) public {
     // Public Parameters of the circuit
       // [] newStateRoot,
       // [] exitRoot
@@ -123,11 +132,10 @@ contract Rollup is Ownable {
       // [] nTxPerCoin
       // [] Hash(compressedTxs)
       // [] miningOnChainTxsHash
-      // [] beneficiary
     
-      uint[] memory inputs;
+      uint[8] memory input;
 
-      
+      verifier.verifyProof(proofA, proofB, proofC, input);
 
 
     // Verify circuit
@@ -141,8 +149,8 @@ contract Rollup is Ownable {
       
     // EXpose transacction through events ?
 
-    //
-      
+    // Call Stake SmartContract to 
+      stakeManager.blockForged(hash(proof), msg.sender);
 
 
       miningOnChainTxsHash = fillingOnChainTxsHash;
@@ -155,36 +163,41 @@ contract Rollup is Ownable {
       uint token,
       uint[2] memory babyPubKey,
       uint to,                // In the TX deposit, it allows to do a send during deposit
-      uint sendAmount
+      uint sendAmount,
+      address withdrawAddress
   ) payable public {
-
+      // create leaf with nonce = 0
+      // each tx Off-Chain will increase nonce
       lastAssignedIdx++;
       // TODO: pseudo-code
       // fillingOnChainTxsHash = hash(fillingOnChainTxsHash, thisTx);
   }
 
-  // TODO: Withdraw fee?
+  // TODO:
+  // 
   function withdraw(
-      uint exitBlock,
+      uint idx,
       uint amount,
       uint coin,
-      uint[2] memory babyPubKey,
-      bytes memory merkleProof,
-      bytes memory babySignature,
-      address dest
+      bytes32 exitRoot,
+      bytes memory merkleProof // proof that leaf is on exit merkle tree, Amount & coin matches Idx & msg.sender
   ) public {
 
   }
 
-  // TODO: Withdraw fee?
-  function forceWithdraw(
+  // TODO:
+  // include fee to all on-chain transactions 
+  function forceFullWithdrawFee(
       uint idx,
-      uint amount,
-      bytes memory babySignature
+      bytes memory proofIdxHasWithdrawAddress,
+      uint blockState
   ) public {
-
-    // TODO: pseudo-code
-    // fillingOnChainTxsHash = hash(fillingOnChainTxsHash, thisTx);
+    // retrieve root from block, ensure root is the root on the proof 
+    // get leaf info
+    // fill leaf with msg.sender
+    // check proofIdxHasWithdrawAddress
+    // Event with Data
+    // Updte hash --> fillingOnChainTxsHash = hash(fillingOnChainTxsHash, thisTx);
   }
 
   function addToken(address newToken) public onlyOwner {

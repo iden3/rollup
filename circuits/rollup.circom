@@ -39,7 +39,7 @@ template Rollup(nTx, nLevels) {
     signal private input oldKey1[nTx];
     signal private input oldValue1[nTx];
 
-    / State 2
+    // State 2
     signal private input ax2[nTx];
     signal private input ay2[nTx];
     signal private input StAmount2[nTx];
@@ -145,4 +145,4 @@ template Rollup(nTx, nLevels) {
     Tx[nTx-1].newOffChainHash ==> offChainHash;
 }
 
-component main Rollup(4, 24);
+component main = Rollup(4, 24);

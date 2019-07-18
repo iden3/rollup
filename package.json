@@ -35,6 +35,7 @@
     "eslint-plugin-mocha": "^5.3.0"
   },
   "dependencies": {
-    "openzeppelin-solidity": "^2.3.0"
+    "openzeppelin-solidity": "^2.3.0",
+    "truffle": "^5.0.27"
   }
 }
