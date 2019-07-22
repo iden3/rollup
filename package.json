@@ -32,9 +32,13 @@
   "devDependencies": {
     "circom": "0.0.30",
     "circomlib": "0.0.8",
+    "eslint": "^6.1.0",
+    "eslint-config-airbnb-base": "^13.2.0",
+    "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-mocha": "^5.3.0"
   },
   "dependencies": {
+    "chai": "^4.2.0",
     "openzeppelin-solidity": "^2.3.0",
     "truffle": "^5.0.27"
   }

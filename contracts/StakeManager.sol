@@ -1,13 +1,13 @@
 pragma solidity ^0.5.0;
 
-contract Rollup {
+contract RollupInterface {
   function getRoot(uint id) public view returns (bytes32);
   function getDepth() public view returns (uint);
 } 
 
 contract StakeManager{
 
-Rollup rollup;
+RollupInterface rollup;
 
 struct  Operator{
   address controllerAddress;
@@ -35,7 +35,7 @@ uint constant BLOCKS_PER_SLOT = 100; // Time slot
 uint constant SLOTS_PER_ERA = 100;
 uint constant MIN_BLOCKS_BEFORE_REFUND = 2*SLOTS_PER_ERA*BLOCKS_PER_SLOT;
 
-struct Refud {
+struct Refund {
   uint128 amount;
   uint64 unlockBlock;
 }
@@ -63,10 +63,11 @@ mapping(uint => bool) blockForged;
   constructor(address _rollup, uint initialBlock) public {
     assert(initialBlock > block.number);
     assert(_rollup != address(0));
-    rollup = Rollup(_rollup);
+    rollup = RollupInterface(_rollup);
     ownerRollup = _rollup;
     first_block = initialBlock;
-    raffles.push(Raffle(pCurrenttRoot, totalEffectiveStake , block.hash));
+    // TODO: block.hash --> error
+    // raffles.push(Raffle(pCurrenttRoot, totalEffectiveStake , block.hash));
   }
 
 modifier isInitialized {
@@ -96,21 +97,21 @@ modifier onlyRollup {
 // Return the operator address that wins the given slot
 function getWinnerOperatorIndexBySlot(uint slot) public view returns(uint){
   uint era = slot / SLOTS_PER_ERA;
-  assert(era <= getCurrentEra());
+  assert(era <= currentEra());
   // TODO: hash keccak
-  uint256 r = (uint256)keccak256((bytes32)(uint128(raffles[era].entropy) + slot));
-  r = r % raffles[era].totalStaked;
+  // uint256 r = (uint256)keccak256((bytes32)(uint128(raffles[era].entropy) + slot));
+  // r = r % raffles[era].totalStaked;
   // From raffles[era].pRoot --> retrieve winner operator
 }
 
-function updateRaffle(uint _entropy) {
-  Raffle storage raffle = raffles[getCurrentEra()+1];
-  raffle.pRoot = pCurrenttRoot;
-  raffle.totalStaked = totalStaked;
-  raffle.entropy = (bytes16)keccak(block.hash + _entropy);
+function updateRaffle(uint _entropy) public {
+  // Raffle storage raffle = raffles[currentEra()+1];
+  // raffle.pRoot = pCurrenttRoot;
+  // raffle.totalStaked = totalStaked;
+  // raffle.entropy = (bytes16)keccak(block.hash + _entropy);
 }
 
-function createNode() {
+function createNode() public {
 
 }
 
@@ -122,29 +123,29 @@ function calcEffectiveAmount(uint amount) private pure returns (uint64) {
 /**
  * Input parameters: address beneficiary, address stakeAddress + r,s,v stakeAddress + message 
  */
-function createStake() payable isInitialized{
+function createStake() public payable isInitialized{
   assert(msg.value > MIN_STAKE);
   // require --> protection. Operator cannot be twice
   // Calculate effectiveStake depending on tree
-  uint id = operators.push(Operator(stakeAddress, beneficiary, msg.value, calcEffectiveAmount(msg.value)));
-  addToTree();
+  // uint id = operators.push(Operator(stakeAddress, beneficiary, msg.value, calcEffectiveAmount(msg.value)));
+  // addToTree();
 
 
-  updateRaffle(12);
+  // updateRaffle(12);
 }
 
 /**
  * Input parameters: address beneficiary, address stakeAddress + r,s,v stakeAddress + message 
  */
 function removeStake(uint indexOperator) public {
-  Operator storage operator = operators[indexOperator];
-  assert(msg.sender == operator.address);
-  removeFromTree(indexOperator);
-  refunds[operator.address].amount += operator.amoutStaked;
-  operator.amountStaked = 0;
-  operator.effectiveStake = 0;
-  refunds[operator.address].unlockBlock = block.number + MIN_BLOCKS_BEFORE_REFUND;
-  updateRaffle(12);
+  // Operator storage operator = operators[indexOperator];
+  // // assert(msg.sender == operator.address);
+  // removeFromTree(indexOperator);
+  // // refunds[operator.address].amount += operator.amoutStaked;
+  // operator.amountStaked = 0;
+  // operator.effectiveStake = 0;
+  // // refunds[operator.address].unlockBlock = block.number + MIN_BLOCKS_BEFORE_REFUND;
+  // updateRaffle(12);
 }
 
 function withdraw() public {
@@ -158,42 +159,42 @@ function withdraw() public {
 }
 
 function currentEra() public view returns(uint){ 
-  return (block.number - initialBlock) / (BLOCKS_PER_SLOT*SLOTS_PER_ERA);
+  return (block.number - first_block) / (BLOCKS_PER_SLOT*SLOTS_PER_ERA);
 }
 
 function currentSlot() public view returns(uint){
-  return (block.number - initialBlock) / BLOCKS_PER_SLOT;
+  return (block.number - first_block) / BLOCKS_PER_SLOT;
 }
 
 
-function slash(uint slot) {
-  assert(slot < currentSlot());
-  assert(blockForged[slot] == false);
-  slashedIndexOperator = getWinnerOperatorIndexBySlot(slot);
-  removeFromTree(slashedIndexOperator);
-  uint amoutStaked = operators[slashedIndexOperator].amoutStaked;
-  uint amountBurned = amoutStaked * 9000/10000;
-  uint amountReward = amoutStaked - amountBurned;
-  // update operator state
-  operators[slashedIndexOperator].amoutStaked = 0;
-  operators[slashedIndexOperator].effectiveStake = 0;
-  // Burn
-  address(0).transfer(amountBurned);
-  // Pay reward
-  msg.sender.transfer(amountReward);
+function slash(uint slot) public {
+  // assert(slot < currentSlot());
+  // assert(blockForged[slot] == false);
+  // uint slashedIndexOperator = getWinnerOperatorIndexBySlot(slot);
+  // removeFromTree(slashedIndexOperator);
+  // uint amoutStaked = operators[slashedIndexOperator].amoutStaked;
+  // uint amountBurned = amoutStaked * 9000/10000;
+  // uint amountReward = amoutStaked - amountBurned;
+  // // update operator state
+  // operators[slashedIndexOperator].amoutStaked = 0;
+  // operators[slashedIndexOperator].effectiveStake = 0;
+  // // Burn
+  // address(0).transfer(amountBurned);
+  // // Pay reward
+  // msg.sender.transfer(amountReward);
 }
 
-function blockForged(uint128 entropy, address operator) onlyRollup returns(address){
-  uint indexOperator = getWinnerOperatorIndexBySlot(getCurrentSlot());
+function blockForgedStaker(uint128 entropy, address operator) public onlyRollup returns(address){
+  uint indexOperator = getWinnerOperatorIndexBySlot(currentSlot());
   require(operators[indexOperator].controllerAddress == operator);
   // Snapshot Raffle
   updateRaffle(entropy);
-  blockForged[getCurrentSlot()] = true;
-  return operators[indexOperator].beneficiaryAddress
+  blockForged[currentSlot()] = true;
+  return operators[indexOperator].beneficiaryAddress;
 }
 
 // set operator that can forge during a slot
-function authForger(uint slot) public viewer returns (uint){
+function authForger(uint slot) public view returns (uint){
 
 }
 
