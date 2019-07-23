@@ -20,40 +20,35 @@ contract RollupHelpersTest is RollupHelpers{
 
   function smtVerifierTest(uint256 root, uint256[] memory siblings,
     uint256 key, uint256 value, uint256 oldKey, uint256 oldValue,
-    bool isNonExistence, bool isOld0) public view returns (bool){
-    // TODO: add enable flag ?
+    bool isNonExistence, bool isOld, uint256 maxLevels) public view returns (bool){
+    return smtVerifier(root, siblings, key, value, oldKey,
+      oldValue, isNonExistence, isOld, maxLevels);
+  }
 
-    // Step 1: check if proof is non-existence non-empty
-    uint256 newHash;
-    if (isNonExistence && !isOld0) {
-      // Check old key is final node
-      uint exist = 0;
-      uint levCounter = 0;
-      while((exist == 0) && (levCounter < 24)) {
-        exist = (uint8(oldKey >> levCounter) & 0x01) ^ (uint8(key >> levCounter) & 0x01);
-        levCounter += 1;
-      }
+  function testEcrecover(bytes32 msgHash, bytes memory rsv) public pure returns (address) {
+    return checkSig(msgHash, rsv);
+  }
 
-      if(exist == 0) {
-        return false;
-      }
-      newHash = hashFinalNode(oldKey, oldValue);
-    }
+  function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount,
+    uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    
+    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, coin,
+      Ax, Ay, withdrawAddress, sendTo, sendAmount, nonce);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
+  }
 
-    // Step 2: Calcuate root
-    uint256 nextHash = isNonExistence ? newHash : hashFinalNode(key, value);
-    uint256 siblingTmp;
-    for (uint256 i = siblings.length - 1; i >= 0; i--) {
-     siblingTmp = siblings[i];
-      bool leftRight = (uint8(key >> i) & 0x01) == 1;
-      nextHash = leftRight ? hashNode(siblingTmp, nextHash)
-                           : hashNode(nextHash, siblingTmp);
-      if(i == 0) {
-        break;
-      }
-    }
-
-    // Step 3: Check root
-    return root == nextHash;
+  function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount,
+    uint32 nonce) public view returns (uint256) {
+    
+    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, coin,
+      Ax, Ay, withdrawAddress, sendTo, sendAmount, nonce);
+    
+    return hashEntry(entry);
   }
 }

@@ -26,22 +26,22 @@ contract Rollup is Ownable, RollupHelpers {
   Verifier verifier;
   StakeManager stakeManager; 
 
-  /**
-   * @dev global variales for batch commited
-   * Function: Commit a batch
-   */
-  // Minim collateral required to commit for a batch
-  uint constant MIN_COMMIT_COLLATERAL = 1 ether;
-  // Blocks while the operator can forge
-  uint constant MAX_COMMIT_BLOCKS = 150;
-  // Operator that is commited to forge the batch
-  address commitedOperator;     
-  // Balance staked for operators at the time to commit a batch
-  uint balanceCommited;
-  // Block where the commit is not valid any more
-  uint batchBlockExpires;
-  // Root commited
-  bytes32 rootCommited;
+  // /**
+  //  * @dev global variales for batch commited
+  //  * Function: Commit a batch
+  //  */
+  // // Minim collateral required to commit for a batch
+  // uint constant MIN_COMMIT_COLLATERAL = 1 ether;
+  // // Blocks while the operator can forge
+  // uint constant MAX_COMMIT_BLOCKS = 150;
+  // // Operator that is commited to forge the batch
+  // address commitedOperator;     
+  // // Balance staked for operators at the time to commit a batch
+  // uint balanceCommited;
+  // // Block where the commit is not valid any more
+  // uint batchBlockExpires;
+  // // Root commited
+  // bytes32 rootCommited;
 
 
   /**
@@ -51,18 +51,25 @@ contract Rollup is Ownable, RollupHelpers {
   bytes32[] stateRoots;
   // Each batch forged will have a correlated 'exit tree' represented by the exit root
   bytes32[] exitRoots;
-  // List of valid ERC20 tokens that can be deposot in 'balance tree'
+  // List of valid ERC20 tokens that can be deposit in 'balance tree'
   address[] tokens;
+  mapping(address => bool) tokenList;
   // Set the leaf position for an account into the 'balance tree'
-  uint lastLeafIndex;
+  uint24 lastBalanceTreeIndex;
 
   // Hash of all on chain transmissions ( will be mined in the next batch )
   // Forces 'operator' to add all on chain transmission
-  bytes32 miningOnChainTxsHash;   
+  uint256 miningOnChainTxsHash;   
 
   // Hash of all on chain transmissions ( will be mined in two batches )
-  // Forces 'operator' to add all on chain transmission
-  bytes32 fillingOnChainTxsHash;
+  // Forces 'operator' to add all on chain transmissions
+  uint256 fillingOnChainTxsHash;
+
+  /**
+   * @dev Event called when a deposit has been made
+   */
+  event Deposit(uint idBalanceTree, uint depositAmount, uint token, uint Ax, uint Ay,
+      address withdrawAddress, uint sendTo, uint sendAmount);
 
   /**
    * @dev Rollup constructor
@@ -118,8 +125,42 @@ contract Rollup is Ownable, RollupHelpers {
    * @param newToken smart contract token address
    */
   function addToken(address newToken) public onlyOwner {
-      assert(tokens.length<0xFFFF);
-      tokens.push(newToken);
+    require(tokens.length < 0xFFFF, 'token list is full');
+    tokens.push(newToken);
+    // tokenList[newToken] = true;
+  }
+
+  /**
+   * @dev Deposit on-chain transaction to enter balance tree
+   * It allows to deposit and instantly make a off-chain transaction given 'sendTo' and 'sendAmount'
+   */
+  function deposit( 
+      uint16 depositAmount,
+      uint32 token,
+      uint256[2] memory babyPubKey,
+      address withdrawAddress,
+      uint24 sendTo, // In the on-chain tx deposit, it allows to do an off-chain tx deposit
+      uint16 sendAmount
+  ) payable public {
+
+    require(depositAmount > 0, 'Deposit amount must be greater than 0');
+    require(sendTo <= lastBalanceTreeIndex, 'Sender must exist on balance tree');
+    require(withdrawAddress != address(0), 'Must specify withdraw address');
+    require(token <= tokens.length , 'token has not been registered');
+
+    Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
+      token, babyPubKey[0], babyPubKey[1], withdrawAddress, sendTo, sendAmount, 0);
+
+    uint256 hashDeposit = hashEntry(depositEntry);
+
+    uint256[] memory inputs = new uint256[](2);
+    inputs[0] = fillingOnChainTxsHash;
+    inputs[1] = hashDeposit;
+    fillingOnChainTxsHash = hashGeneric(inputs);
+    emit Deposit(lastBalanceTreeIndex, depositAmount, token, babyPubKey[0], babyPubKey[1],
+      withdrawAddress, sendTo, sendAmount);
+    // Increase balance tree index
+    lastBalanceTreeIndex++;
   }
 
   /**
@@ -168,25 +209,6 @@ contract Rollup is Ownable, RollupHelpers {
 
       miningOnChainTxsHash = fillingOnChainTxsHash;
       fillingOnChainTxsHash = 0;
-  }
-
-  // TODO: Deposit fees?
-  function deposit(
-      uint depositAmount,
-      uint token,
-      uint[2] memory babyPubKey,
-      uint to,                // In the TX deposit, it allows to do a send during deposit
-      uint sendAmount,
-      address withdrawAddress
-  ) payable public {
-      // create new leaf with nonce = 0
-      // each tx Off-Chain will increase nonce
-      lastLeafIndex++;
-      // TODO: pseudo-code
-      // thisHash = Hash(depositAmount, token, baby[2], withdraw address, nonce,lastLeafIndex);
-      // fillingOnChainTxsHash = hash(fillingOnChainTxsHash, Hash(depositAmount, token, baby[2], withdraw address));
-    // create Event with data availability to build 'balance tree'
-      // event(index, value) or event()
   }
 
   // TODO:
