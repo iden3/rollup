@@ -16,7 +16,7 @@ Describe most used words and its meaning regarding Rollup environment
 
 ## On-chain transactions
 
-- `deposit`: Insert new leaf into the balance tree wit the following parameters: `Key = IdBalanceTree`, `Value = Hash(balance, coin, Ax, Ay, withdrawAddress, nonce)`. This action will allow to do an off-chain transaction.
+- `deposit`: Insert new leaf into the balance tree wit the following parameters: `Key = IdBalanceTree`, `Value = Hash(balance, token, Ax, Ay, withdrawAddress, nonce)`. This action will allow to do an off-chain transaction.
 
 - `transferOnTop`: increase balance of a given `IdBalanceTree`
 
@@ -32,3 +32,15 @@ Describe most used words and its meaning regarding Rollup environment
 - `withdraw`: Action required to withdraw balance. It requires two steps: 1 - Off-chain transaction, 2 - On-chain transaction
   - Off-chain: send `amount` to withdraw to `idBalanceTree` = 0
 
+## Data availability
+Data bases:
+- `Balance Tree`: Spare merkle tree where final node is as follows:
+  - Key = IdBalanceTree
+  - Value = H(balance, token, Ax, Ay, withdrawAddress, nonce)
+- `Balance Leafs`: Last sparse merkle tree step to retrieve Leaf given an `IdBalanceTree`
+  - Key = H(balance, token, Ax, Ay, withdrawAddress, nonce)
+  - Value = [balance, token, Ax, Ay, withdrawAddress, nonce]
+
+- It is assumed that we can retrieve:
+  - last state of `IdBalanceTree` through `operator`
+  - merkle tree proof to verify data received with current state (on-chain last balance tree state root)

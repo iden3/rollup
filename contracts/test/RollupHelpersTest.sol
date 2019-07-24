@@ -51,4 +51,19 @@ contract RollupHelpersTest is RollupHelpers{
     
     return hashEntry(entry);
   }
+
+  function buildEntryFeePlanTest(bytes32[2] memory feePlan)
+    public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    
+    Entry memory entry = buildEntryFeePlan(feePlan);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
+  }
+
+  function hashOffChainTxTest(bytes memory compressedTxs) public view returns (uint256) {
+    return hashOffChainTx(compressedTxs);
+  }
 }

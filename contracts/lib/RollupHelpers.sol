@@ -165,6 +165,50 @@ contract RollupHelpers {
   }
 
   /**
+   * @dev build entry for fee plan
+   * @param feePlan contains all fee plan data
+   * @return entry structure
+   */
+  function buildEntryFeePlan(bytes32[2] memory feePlan)
+    internal pure returns (Entry memory entry) {
+    // build element 1
+    entry.e1 = bytes32(feePlan[0] << 128)>>(256 - 128);
+    // build element 2
+    entry.e2 = bytes32(feePlan[0]) >> (256 - 128);
+    // build element 3
+    entry.e3 = bytes32(feePlan[1] << 128)>>(256 - 128);
+    // build element 4
+    entry.e4 = bytes32(feePlan[1]) >> (256 - 128);
+  }
+
+  /**
+   * @dev hash all off-chain transactions
+   * @param offChainTx off-chain transaction compressed format
+   * @return hash of all off-chain transactions
+   */
+  function hashOffChainTx(bytes memory offChainTx) internal view returns (uint256) {
+    Memory.Cursor memory c = Memory.read(offChainTx);
+    Entry memory entry;
+    uint256[] memory inputs = new uint256[](2);
+    uint256 hashTotal = 0;
+
+    while(!c.eof()) {
+      bytes3 from = c.readBytes3();
+      bytes3 to = c.readBytes3();
+      bytes2 amount = c.readBytes2();
+
+      entry.e1 = bytes32(amount)>>(256 - 16);
+      entry.e1 |= bytes32(to)>>(256 - 24 - 16);
+      entry.e1 |= bytes32(from)>>(256 - 24 - 24 - 16);
+
+      inputs[0] = hashTotal;
+      inputs[1] = hashEntry(entry);
+      hashTotal = hashGeneric(inputs);
+    }
+    return hashTotal;
+  }
+
+  /**
    * @dev Retrieve ethereum address from a msg plus signature
    * @param msgHash message hash
    * @param rsv signature

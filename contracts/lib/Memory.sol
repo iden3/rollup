@@ -65,6 +65,34 @@ library Memory {
     }
 
     /**
+    * @dev reads 3 bytes from cursor, no eof checks
+    * @return the value
+    */
+    function readBytes3(Cursor memory c) internal pure returns (bytes3) {
+        uint ptr = c.begin;
+        bytes32 b;
+        assembly {
+          b := mload(ptr)
+        }
+        c.begin += 3;
+        return bytes3(b);
+    }
+
+    /**
+    * @dev reads 2 bytes from cursor, no eof checks
+    * @return the value
+    */
+    function readBytes2(Cursor memory c) internal pure returns (bytes2) {
+        uint ptr = c.begin;
+        bytes32 b;
+        assembly {
+          b := mload(ptr)
+        }
+        c.begin += 2;
+        return bytes2(b);
+    }
+    
+    /**
     * @dev reads 1 bytes from cursor, no eof checks
     * @return the value
     */

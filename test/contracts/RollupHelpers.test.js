@@ -320,4 +320,45 @@ contract('RollupHelpers functions', (accounts) => {
     const resJs = hashJs([e1, e2, e3, e4, e5]);
     expect(resJs.toString()).to.be.equal(res.toString());
   });
+
+  it('Get entry from fee plan', async () => {
+    const coinPlan = '0x4000000000000000000000000000000320000000000000000000000000000001';
+    const feePlan = '0x8000000000000000000000000000000760000000000000000000000000000005';
+
+    const Entry1Hex = '0x0000000000000000000000000000000020000000000000000000000000000001';
+    const Entry2Hex = '0x0000000000000000000000000000000040000000000000000000000000000003';
+    const Entry3Hex = '0x0000000000000000000000000000000060000000000000000000000000000005';
+    const Entry4Hex = '0x0000000000000000000000000000000080000000000000000000000000000007';
+    const Entry5Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    const res = await insHelpers.buildEntryFeePlanTest([coinPlan, feePlan]);
+
+    expect(res[0]).to.be.equal(Entry1Hex);
+    expect(res[1]).to.be.equal(Entry2Hex);
+    expect(res[2]).to.be.equal(Entry3Hex);
+    expect(res[3]).to.be.equal(Entry4Hex);
+    expect(res[4]).to.be.equal(Entry5Hex);
+  });
+
+  it('Get off-chain hash transactions', async () => {
+    const hashJs = poseidonJs.createHash(6, 8, 57);
+    // create bunch of tx
+    const numTx = 10;
+    let buffTotalTx = Buffer.alloc(0);
+    let hashTotal = 0;
+    for (let i = 0; i < numTx; i++) {
+      const fromBuff = Buffer.from(`00000${i}`, 'hex');
+      const toBuff = Buffer.from(`00000${i}`, 'hex');
+      const amoutBuff = Buffer.from(`000${i}`, 'hex');
+      const txBuff = Buffer.concat([fromBuff, toBuff, amoutBuff]);
+      buffTotalTx = Buffer.concat([buffTotalTx, txBuff]);
+
+      // Caculate hash to check afterwards
+      const e1 = BigInt(`0x${txBuff.toString('hex')}`);
+      const hashTmp = hashJs([e1, 0, 0, 0, 0]);
+      hashTotal = hashJs([hashTotal, hashTmp]);
+    }
+    const bytesTx = `0x${buffTotalTx.toString('hex')}`;
+    const res = await insHelpers.hashOffChainTxTest(bytesTx);
+    expect(res.toString()).to.be.equal(hashTotal.toString());
+  });
 });
