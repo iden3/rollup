@@ -5,12 +5,14 @@ import '../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './lib/RollupHelpers.sol';
 import './StakeManager.sol';
 
-// /**
-//  * @dev Define interface stakeManager contract
-//  */
-// contract StakeManager {
-//   function blockForgedStaker(uint128 entropy, address operator) public returns(address);
-// }
+/**
+ * @dev Define interface ERC20 contract
+ */
+contract ERC20 {
+  function approve(address spender, uint tokens) public returns (bool success);
+  function transfer(address to, uint tokens) public returns (bool success);
+  function transferFrom(address from, address to, uint tokens) public returns (bool success);
+}
 
 /**
  * @dev Define interface Verifier contract
@@ -51,15 +53,32 @@ contract Rollup is Ownable, RollupHelpers {
 
   /**
    * @dev Event called when a deposit has been made
+   * contains all data required for the operator to:
+   * add leaf to balance tree
+   * off-chain transaction
    */
   event Deposit(uint idBalanceTree, uint depositAmount, uint token, uint Ax, uint Ay,
-      address withdrawAddress, uint sendTo, uint sendAmount);
+    address withdrawAddress, uint sendTo, uint sendAmount);
 
   /**
    * @dev Event called when a batch is forged
    * Contains all off-chain transaction compressed
    */
   event ForgeBatch(uint batchNumber, bytes offChainTx);
+
+  /**
+   * @dev Event called when a user makes a force withdraw
+   * contains all data required for the operator to add the transaction 
+   */
+  event ForceWithdraw(uint idBalanceTree, uint amount, uint token, uint Ax, uint Ay,
+    address withdrawAddress, uint nonce);
+
+  /**
+   * @dev Event called when a deposit on top is done
+   * Contains all data required by the operator to do:
+   * deposit on balance tree leaf
+   */
+  event DepositOnTop(uint idBalanceTree, uint amountDeposit);
 
   /**
    * @dev Rollup constructor
@@ -91,7 +110,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @dev Deposit on-chain transaction to enter balance tree
    * It allows to deposit and instantly make a off-chain transaction given 'sendTo' and 'sendAmount'
    * @param depositAmount initial balance on balance tree 
-   * @param token token type identifier
+   * @param tokenId token type identifier
    * @param babyPubKey public key babyjub represented as point (Ax, Ay)
    * @param withdrawAddress allowed address to perform withdraw on-chain transaction
    * @param sendTo id balance tree receiver (off-chain transaction parameter)
@@ -99,7 +118,7 @@ contract Rollup is Ownable, RollupHelpers {
    */
   function deposit( 
       uint16 depositAmount,
-      uint32 token,
+      uint32 tokenId,
       uint256[2] memory babyPubKey,
       address withdrawAddress,
       uint24 sendTo,
@@ -109,18 +128,23 @@ contract Rollup is Ownable, RollupHelpers {
     require(depositAmount > 0, 'Deposit amount must be greater than 0');
     require(sendTo <= lastBalanceTreeIndex, 'Sender must exist on balance tree');
     require(withdrawAddress != address(0), 'Must specify withdraw address');
-    require(tokenList[token] != address(0) , 'token has not been registered');
+    require(tokenList[tokenId] != address(0) , 'token has not been registered');
 
+    // Build entry deposit and get its hash
     Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
-      token, babyPubKey[0], babyPubKey[1], withdrawAddress, sendTo, sendAmount, 0);
-
+      tokenId, babyPubKey[0], babyPubKey[1], withdrawAddress, sendTo, sendAmount, 0);
     uint256 hashDeposit = hashEntry(depositEntry);
-
+    // Update 'fillingOnChainHash'
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = fillingOnChainTxsHash;
     inputs[1] = hashDeposit;
     fillingOnChainTxsHash = hashGeneric(inputs);
-    emit Deposit(lastBalanceTreeIndex, depositAmount, token, babyPubKey[0], babyPubKey[1],
+
+    // Get token deposit on rollup smart contract
+    require(ERC20(tokenList[tokenId]).approve(address(this), depositAmount), 'Fail approve ERC20 transaction');
+    require(depositToken(tokenId, msg.sender, depositAmount), 'Fail deposit ERC20 transaction');
+
+    emit Deposit(lastBalanceTreeIndex, depositAmount, tokenId, babyPubKey[0], babyPubKey[1],
       withdrawAddress, sendTo, sendAmount);
     lastBalanceTreeIndex++;
   }
@@ -133,12 +157,18 @@ contract Rollup is Ownable, RollupHelpers {
    * @param proofC zk-snark input
    * @param input public zk-snark inputs
    * @param feePlan fee operator plan
-   * @param nTxPerCoin number of transmission per coin in order to calculate total fees
+   * @param nTxPerToken number of transmission per token in order to calculate total fees
    * @param compressedTxs data availability to maintain 'balance tree' 
    */
-  function forgeBlock( uint[2] memory proofA, uint[2][2] memory proofB, uint[2] memory proofC,
-    uint[8] memory input, bytes32[2] memory feePlan, bytes32 nTxPerCoin,
-    bytes memory compressedTxs) public {
+  function forgeBlock(
+    uint[2] memory proofA, 
+    uint[2][2] memory proofB, 
+    uint[2] memory proofC,
+    uint[8] memory input, 
+    bytes32[2] memory feePlan, 
+    bytes32 nTxPerToken,
+    bytes memory compressedTxs
+  ) public {
     // Public parameters of the circuit
     // input[0] ==> old state root
     // input[1] ==> new state root
@@ -147,7 +177,7 @@ contract Rollup is Ownable, RollupHelpers {
     // input[4] ==> off chain hash
     // input[5] ==> fee plan[1]
     // input[6] ==> fee plan[2]
-    // input[7] ==> nTxperCoin
+    // input[7] ==> nTxperToken
 
     // Verify old state roots
     require(bytes32(input[0]) == stateRoots[stateRoots.length - 1], 'old state root does not match current state root');
@@ -159,7 +189,7 @@ contract Rollup is Ownable, RollupHelpers {
     require(uint(feePlan[1]) == input[6], 'fee plan 1 does not match its public input');
 
     // Verify number of transaction per coin is commited on the zk-snark input
-    require(uint(nTxPerCoin) == input[7], 'Number of transaction per coin does not match its public input');
+    require(uint(nTxPerToken) == input[7], 'Number of transaction per coin does not match its public input');
 
     // Verify all off-chain are commited on the public zk-snark input
     uint256 offChainTxHash = hashOffChainTx(compressedTxs);
@@ -172,23 +202,24 @@ contract Rollup is Ownable, RollupHelpers {
     bytes16 hashBlock = bytes16(blockhash(block.number));
     address beneficiary = stakeManager.blockForgedStaker(uint128(hashBlock), msg.sender);
 
-    //TODO: pay fee to beneficiary address
-    // Calculate fees
+    // Calculate fees and pay them
     for(uint i = 0; i < tokens.length; i++) {
-      uint totalCoinFee = calcCoinTotalFee(feePlan[1], nTxPerCoin, i);
+      uint totalCoinFee = calcCoinTotalFee(feePlan[1], nTxPerToken, i);
       if(totalCoinFee != 0) {
-        address tokenAddr = tokenList[i];
-        // load 'tokenAddr' smart contract
-        // transfer 'totalCoinFee' to beneficiary address
+        require(withdrawToken(i, beneficiary, totalCoinFee), 'Fail ERC20 withdraw');
       }
     }
+
     // Update state roots
     stateRoots.push(bytes32(input[1]));
+
     // Update exit roots
     exitRoots.push(bytes32(input[2]));
+
     // Clean fillingOnChainTxsHash
     miningOnChainTxsHash = fillingOnChainTxsHash;
     fillingOnChainTxsHash = 0;
+
     // event with all compressed transactions given its batch number
     emit ForgeBatch(getStateDepth() - 1, compressedTxs);
   }
@@ -201,51 +232,139 @@ contract Rollup is Ownable, RollupHelpers {
    * All leaves created on the exit are allowed to call on-chain transaction to finish the withdraw
    * @param idBalanceTree account identifier on the balance tree
    * @param amount amount to retrieve
-   * @param token token type 
+   * @param tokenId token type 
    * @param numExitRoot exit root depth. Number of batch where the withdar transaction has been done 
-   * @param siblingsProof siblings to demonstrate merkle tree proof
+   * @param siblings siblings to demonstrate merkle tree proof
    */
   function withdraw(
       uint24 idBalanceTree,
       uint16 amount,
-      uint16 token,
+      uint16 tokenId,
       uint numExitRoot,
-      uint256[] memory siblingsProof
+      uint256[] memory siblings
   ) public {
+
     // Build 'key' and 'value' for exit tree
     uint256 keyExitTree = idBalanceTree;
-    Entry memory exitEntry = buildEntryExitLeaf(idBalanceTree, amount, token, msg.sender);
+    Entry memory exitEntry = buildEntryExitLeaf(idBalanceTree, amount, tokenId, msg.sender);
     uint256 valueExitTree = hashEntry(exitEntry);
+
     // Get exit root given its index depth
     uint256 exitRoot = uint256(getExitRoot(numExitRoot));
+    
     // Check exit tree nullifier
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = exitRoot;
     inputs[1] = valueExitTree;
     uint256 nullifier = hashGeneric(inputs);
     require(exitNullifier[nullifier] == false, 'withdraw has been already done');
+    
     // Check sparse merkle tree proof
-    bool result = smtVerifier( exitRoot, siblingsProof, keyExitTree, valueExitTree, 0, 0, false, false, 24);
+    bool result = smtVerifier( exitRoot, siblings, keyExitTree, valueExitTree, 0, 0, false, false, 24);
     require(result == true, 'invalid proof');
-    // TODO: send amount to msg.sender depending on token type
-    (msg.sender).transfer(amount);
+    
+    // Withdraw token from rollup smart contract to withdraw address
+    require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
+    
     // Set nullifier
     exitNullifier[nullifier] = true;
   }
 
-  // TODO:
-  // include fee to all on-chain transactions 
-  function forceFullWithdrawFee(
-      uint idx,
-      bytes memory proofIdxHasWithdrawAddress,
-      uint blockState
+  /**
+   * @dev Withdraw all balance from balance tree
+   * this withdraw mechanism consist only in a single on-chain transaction
+   * user has to prove current state of balance tree, otherwise forceWithdraw can not be done
+   * @param idBalanceTree account identifier on the balance tree
+   * @param amount total amount
+   * @param tokenId token type
+   * @param babyPubKey public key babyjub represented as point (Ax, Ay)
+   * @param nonce current value on last state root
+   * @param siblings siblings to demonstrate merkle tree proof
+   */
+  function forceFullWithdraw(
+      uint24 idBalanceTree,
+      uint16 amount,
+      uint16 tokenId,
+      uint32 nonce,
+      uint256[2] memory babyPubKey,
+      uint256[] memory siblings
   ) public {
-    // retrieve root from block, ensure root is the root on the proof 
-    // get leaf info
-    // fill leaf with msg.sender
-    // check proofIdxHasWithdrawAddress
-    // Event with Data
-    // Updte hash --> fillingOnChainTxsHash = hash(fillingOnChainTxsHash, thisTx);
+    
+    // build 'key' and 'value' for balance tree
+    uint256 keyBalanceTree = idBalanceTree;
+    Entry memory balanceEntry = buildEntryBalanceTree(amount, tokenId, babyPubKey[0],
+      babyPubKey[1], msg.sender, nonce);
+    uint256 valueBalanceTree = hashEntry(balanceEntry);
+    
+    // get current state root
+    uint256 lastStateRoot = uint256(stateRoots[stateRoots.length - 1]);
+    
+    // Check sparse merkle tree proof
+    bool result = smtVerifier(lastStateRoot, siblings, keyBalanceTree, valueBalanceTree, 0, 0, false, false, 24);
+    require(result == true, 'invalid proof');
+    
+    // Update 'fillingOnChainHash'
+    uint256[] memory inputs = new uint256[](2);
+    inputs[0] = fillingOnChainTxsHash;
+    inputs[1] = valueBalanceTree;
+    fillingOnChainTxsHash = hashGeneric(inputs);
+    
+    // Withdraw token from rollup smart contract to withdraw address
+    require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
+    
+    // event force withdraw
+    emit ForceWithdraw(idBalanceTree, amount, tokenId, babyPubKey[0], babyPubKey[1], msg.sender, nonce);
+  }
+
+  /**
+   * @dev Deposit on an existing balance tree leaf
+   * Sender must proof the existence of that leaf at any balance tree state
+   * @param idBalanceTree account identifier on the balance tree
+   * @param amount total amount
+   * @param tokenId token type
+   * @param withdrawAddress withdraw address
+   * @param babyPubKey public key babyjub represented as point (Ax, Ay)
+   * @param nonce current value on last state root
+   * @param siblings siblings to demonstrate merkle tree proof
+   * @param numStateRoot siblings to demonstrate merkle tree proof
+   * @param amountDeposit amount to deposit on balance tree leaf
+   */
+  function depositOnTop(
+      uint24 idBalanceTree,
+      uint16 amount,
+      uint16 tokenId,
+      address withdrawAddress,
+      uint32 nonce,
+      uint256[2] memory babyPubKey,
+      uint256[] memory siblings,
+      uint256 numStateRoot,
+      uint16 amountDeposit
+  ) public {
+    // build 'key' and 'value' for balance tree
+    uint256 keyBalanceTree = uint256(idBalanceTree);
+    Entry memory balanceEntry = buildEntryBalanceTree(amount, tokenId, babyPubKey[0],
+      babyPubKey[1], withdrawAddress, nonce);
+    uint256 valueBalanceTree = hashEntry(balanceEntry);
+
+    // get state root given its depth
+    uint256 stateRoot = uint256(stateRoots[numStateRoot]);
+
+    // Check sparse merkle tree proof
+    bool result = smtVerifier(stateRoot, siblings, keyBalanceTree, valueBalanceTree, 0, 0, false, false, 24);
+    require(result == true, 'invalid proof');
+    
+    // Update 'fillingOnChainHash'
+    uint256[] memory inputs = new uint256[](2);
+    inputs[0] = fillingOnChainTxsHash;
+    inputs[1] = valueBalanceTree;
+    fillingOnChainTxsHash = hashGeneric(inputs);
+
+    // Get token deposit on rollup smart contract
+    require(ERC20(tokenList[tokenId]).approve(address(this), amountDeposit), 'Fail approve ERC20 transaction');
+    require(depositToken(tokenId, msg.sender, amountDeposit), 'Fail deposit ERC20 transaction');
+
+    // event deposit on top
+    emit DepositOnTop(idBalanceTree, amountDeposit);
   }
 
   //////////////
@@ -275,6 +394,28 @@ contract Rollup is Ownable, RollupHelpers {
   function getExitRoot(uint id) public view returns (bytes32) {
     return exitRoots[id];
   }
+
+  ///////////
+  // helper ERC20 functions
+  ///////////
+
+  /**
+   * @dev deposit token to rollup smart contract
+   * previous to deposit token, the 'sender' must approve rollup smart contract address
+   * to transfer the amount
+   */
+  function depositToken(uint tokenId, address sender, uint amount) private onlyOwner returns(bool){
+    ERC20(tokenList[tokenId]).transferFrom(sender, address(this), amount);
+  }
+
+  /**
+   * @dev withdraw token from rollup smart contract
+   * Tokens on rollup smart contract are withdrawn
+   */
+  function withdrawToken(uint tokenId, address receiver, uint amount) private onlyOwner returns(bool){
+    ERC20(tokenList[tokenId]).transfer(receiver, amount);
+  }
+
 
   // /**
   //  * @dev global variales for batch commited

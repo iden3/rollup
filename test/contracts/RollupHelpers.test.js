@@ -423,4 +423,28 @@ contract('RollupHelpers functions', (accounts) => {
     expect(res[3]).to.be.equal(Entry4Hex);
     expect(res[4]).to.be.equal(Entry5Hex);
   });
+
+  it('Get entry balance tree leaf', async () => {
+    const amount = 1;
+    const token = 2;
+    const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
+    const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
+    const withdrawAddress = '0xe0fbce58cfaa72812103f003adce3f284fe5fc7c';
+    const nonce = 3;
+
+
+    const res = await insHelpers.buildEntryBalanceTreeTest(amount, token, Ax.toString(),
+      Ay.toString(), withdrawAddress, nonce);
+    const Entry1Hex = '0x0000000000000003e0fbce58cfaa72812103f003adce3f284fe5fc7c00020001';
+    const Entry2BigInt = BigInt(res[1]);
+    const Entry3BigInt = BigInt(res[2]);
+    const Entry4Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    const Entry5Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+    expect(res[0]).to.be.equal(Entry1Hex);
+    expect(Entry2BigInt.toString()).to.be.equal(Ax.toString());
+    expect(Entry3BigInt.toString()).to.be.equal(Ay.toString());
+    expect(res[3]).to.be.equal(Entry4Hex);
+    expect(res[4]).to.be.equal(Entry5Hex);
+  });
 });

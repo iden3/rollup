@@ -199,6 +199,29 @@ contract RollupHelpers {
   }
 
   /**
+   * @dev build entry for the exit tree leaf
+   * @param amount amunt to withdraw
+   * @param token coin type
+   * @param Ax x coordinate public key babyJub
+   * @param Ay y coordinate public key babyJub
+   * @param withAddress withdraw address
+   * @param nonce nonce parameter
+   * @return entry structure
+   */
+  function buildEntryBalanceTree(uint16 amount, uint16 token, uint256 Ax, uint Ay,
+    address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
+     // build element 1
+    entry.e1 = bytes32(bytes2(amount)) >> (256 - 16);
+    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 16);
+    entry.e1 |= bytes32(bytes20(withAddress)) >> (256 - 160 - 16 - 16);
+    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 160 - 16 - 16);
+    // build element 2
+    entry.e2 = bytes32(Ax);
+    // build element 3
+    entry.e3 = bytes32(Ay);
+  }
+
+  /**
    * @dev Calculate total fee amount for the beneficiary
    * @param fees contains all fee plan data
    * @param nTxCoin number of transaction per coin

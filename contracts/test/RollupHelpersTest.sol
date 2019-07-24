@@ -81,4 +81,14 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e4,
             entry.e5);
   }
+
+  function buildEntryBalanceTreeTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
+    address withAddress, uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    Entry memory entry = buildEntryBalanceTree(amount, token, Ax, Ay, withAddress, nonce);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
+  }
 }
