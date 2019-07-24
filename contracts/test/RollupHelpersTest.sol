@@ -66,4 +66,19 @@ contract RollupHelpersTest is RollupHelpers{
   function hashOffChainTxTest(bytes memory compressedTxs) public view returns (uint256) {
     return hashOffChainTx(compressedTxs);
   }
+
+  function calcCoinTotalFeeTest(bytes32 fee, bytes32 nTxCoin, uint coinId)
+    public pure returns (uint256) {
+    return calcCoinTotalFee(fee, nTxCoin, coinId);
+  }
+
+  function buildEntryExitLeafTest(uint24 id, uint16 amount, uint16 token, address withAddress)
+    public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    Entry memory entry = buildEntryExitLeaf(id, amount, token, withAddress);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
+  }
 }

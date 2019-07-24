@@ -172,13 +172,46 @@ contract RollupHelpers {
   function buildEntryFeePlan(bytes32[2] memory feePlan)
     internal pure returns (Entry memory entry) {
     // build element 1
-    entry.e1 = bytes32(feePlan[0] << 128)>>(256 - 128);
+    entry.e1 = bytes32(feePlan[0] << 128) >> (256 - 128);
     // build element 2
     entry.e2 = bytes32(feePlan[0]) >> (256 - 128);
     // build element 3
     entry.e3 = bytes32(feePlan[1] << 128)>>(256 - 128);
     // build element 4
     entry.e4 = bytes32(feePlan[1]) >> (256 - 128);
+  }
+
+  /**
+   * @dev build entry for the exit tree leaf
+   * @param id balnce tree identifier
+   * @param amount amunt to withdraw
+   * @param token coin type
+   * @param withAddress withdraw address
+   * @return entry structure
+   */
+  function buildEntryExitLeaf(uint24 id, uint16 amount, uint16 token, address withAddress)
+    internal pure returns (Entry memory entry) {
+    // build element 1
+    entry.e1 = bytes32(bytes3(id)) >> (256 - 24);
+    entry.e1 |= bytes32(bytes2(amount)) >> (256 - 16 - 24);
+    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 16 - 24);
+    entry.e1 |= bytes32(bytes20(withAddress)) >> (256 - 160 - 16 - 16 - 24);
+  }
+
+  /**
+   * @dev Calculate total fee amount for the beneficiary
+   * @param fees contains all fee plan data
+   * @param nTxCoin number of transaction per coin
+   * @param coinId identificator coin
+   * @return total fee amount
+   */
+  function calcCoinTotalFee(bytes32 fees, bytes32 nTxCoin, uint coinId)
+    internal pure returns (uint) {
+    // get number of trasaction depending on coin
+    uint nTx = uint16(bytes2(nTxCoin << coinId*16));
+    // get fee depending on coin
+    uint fee = uint16(bytes2(fees << coinId*16));
+    return nTx*fee;
   }
 
   /**

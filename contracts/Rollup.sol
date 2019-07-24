@@ -17,7 +17,7 @@ import './StakeManager.sol';
  */
 contract Verifier {
   function verifyProof( uint[2] memory a, uint[2][2] memory b,
-    uint[2] memory c, uint[6] memory input) view public returns (bool r);
+    uint[2] memory c, uint[8] memory input) view public returns (bool r);
 }
 
 contract Rollup is Ownable, RollupHelpers {
@@ -28,11 +28,16 @@ contract Rollup is Ownable, RollupHelpers {
 
   // Each batch forged will have the root state of the 'balance tree' 
   bytes32[] stateRoots;
+
   // Each batch forged will have a correlated 'exit tree' represented by the exit root
   bytes32[] exitRoots;
+  mapping(uint256 => bool) exitNullifier;
+
   // List of valid ERC20 tokens that can be deposit in 'balance tree'
   address[] tokens;
-  mapping(address => bool) tokenList;
+  mapping(uint256 => address) tokenList;
+  uint constant MAX_TOKENS = 16;
+
   // Set the leaf position for an account into the 'balance tree'
   uint24 lastBalanceTreeIndex;
 
@@ -77,8 +82,9 @@ contract Rollup is Ownable, RollupHelpers {
    */
   function addToken(address newToken) public onlyOwner {
     // Allow 16 different types of tokens
-    require(tokens.length < 0x0F, 'token list is full');
-    tokens.push(newToken);
+    require(tokens.length <= MAX_TOKENS, 'token list is full');
+    uint tokenId = tokens.push(newToken);
+    tokenList[tokenId] = newToken;
   }
 
   /**
@@ -103,7 +109,7 @@ contract Rollup is Ownable, RollupHelpers {
     require(depositAmount > 0, 'Deposit amount must be greater than 0');
     require(sendTo <= lastBalanceTreeIndex, 'Sender must exist on balance tree');
     require(withdrawAddress != address(0), 'Must specify withdraw address');
-    require(token <= tokens.length , 'token has not been registered');
+    require(tokenList[token] != address(0) , 'token has not been registered');
 
     Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
       token, babyPubKey[0], babyPubKey[1], withdrawAddress, sendTo, sendAmount, 0);
@@ -131,7 +137,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @param compressedTxs data availability to maintain 'balance tree' 
    */
   function forgeBlock( uint[2] memory proofA, uint[2][2] memory proofB, uint[2] memory proofC,
-    uint[6] memory input, bytes32[2] memory feePlan, uint16[16] memory nTxPerCoin,
+    uint[8] memory input, bytes32[2] memory feePlan, bytes32 nTxPerCoin,
     bytes memory compressedTxs) public {
     // Public parameters of the circuit
     // input[0] ==> old state root
@@ -139,7 +145,9 @@ contract Rollup is Ownable, RollupHelpers {
     // input[2] ==> new exit root
     // input[3] ==> on chain hash
     // input[4] ==> off chain hash
-    // input[5] ==> fee plan hash
+    // input[5] ==> fee plan[1]
+    // input[6] ==> fee plan[2]
+    // input[7] ==> nTxperCoin
 
     // Verify old state roots
     require(bytes32(input[0]) == stateRoots[stateRoots.length - 1], 'old state root does not match current state root');
@@ -147,9 +155,11 @@ contract Rollup is Ownable, RollupHelpers {
     require(bytes32(input[3]) == exitRoots[exitRoots.length - 1], 'on-chain hash does not match current filling on-chain hash');
 
     // Verify fee plan is commited on the zk-snark input
-    Entry memory entryFeePlan = buildEntryFeePlan(feePlan);
-    uint256 feePlanHash = hashEntry(entryFeePlan);
-    require(feePlanHash == input[5], 'fee plan does not match its public hash');
+    require(uint(feePlan[0]) == input[5], 'fee plan 0 does not match its public input');
+    require(uint(feePlan[1]) == input[6], 'fee plan 1 does not match its public input');
+
+    // Verify number of transaction per coin is commited on the zk-snark input
+    require(uint(nTxPerCoin) == input[7], 'Number of transaction per coin does not match its public input');
 
     // Verify all off-chain are commited on the public zk-snark input
     uint256 offChainTxHash = hashOffChainTx(compressedTxs);
@@ -158,37 +168,69 @@ contract Rollup is Ownable, RollupHelpers {
     // Verify zk-snark circuit
     require(verifier.verifyProof(proofA, proofB, proofC, input) == true, 'zk-snark proof is not valid');
 
-    // Call Stake SmartContract to return de benefiacy address
+    // Call Stake SmartContract to return de beneficiary address
     bytes16 hashBlock = bytes16(blockhash(block.number));
     address beneficiary = stakeManager.blockForgedStaker(uint128(hashBlock), msg.sender);
 
-    //TODO: calculate fee and pay fee to beneficiary address
+    //TODO: pay fee to beneficiary address
     // Calculate fees
-    for(uint i = 0; i < 0x0F; i++) {
-      
+    for(uint i = 0; i < tokens.length; i++) {
+      uint totalCoinFee = calcCoinTotalFee(feePlan[1], nTxPerCoin, i);
+      if(totalCoinFee != 0) {
+        address tokenAddr = tokenList[i];
+        // load 'tokenAddr' smart contract
+        // transfer 'totalCoinFee' to beneficiary address
+      }
     }
-
     // Update state roots
     stateRoots.push(bytes32(input[1]));
     // Update exit roots
     exitRoots.push(bytes32(input[2]));
-
+    // Clean fillingOnChainTxsHash
     miningOnChainTxsHash = fillingOnChainTxsHash;
     fillingOnChainTxsHash = 0;
-
+    // event with all compressed transactions given its batch number
     emit ForgeBatch(getStateDepth() - 1, compressedTxs);
   }
 
-  // TODO:
-  // 
+  /**
+   * @dev withdraw on-chain transaction to get balance from balance tree
+   * Before this call an off-chain withdraw transaction must be done
+   * Off-chain withdraw transaction will build a leaf on exit tree
+   * each batch forged will publish its exit tree root
+   * All leaves created on the exit are allowed to call on-chain transaction to finish the withdraw
+   * @param idBalanceTree account identifier on the balance tree
+   * @param amount amount to retrieve
+   * @param token token type 
+   * @param numExitRoot exit root depth. Number of batch where the withdar transaction has been done 
+   * @param siblingsProof siblings to demonstrate merkle tree proof
+   */
   function withdraw(
-      uint idx,
-      uint amount,
-      uint coin,
-      bytes32 exitRoot,
-      bytes memory merkleProof // proof that leaf is on exit merkle tree, Amount & coin matches Idx & msg.sender
+      uint24 idBalanceTree,
+      uint16 amount,
+      uint16 token,
+      uint numExitRoot,
+      uint256[] memory siblingsProof
   ) public {
-
+    // Build 'key' and 'value' for exit tree
+    uint256 keyExitTree = idBalanceTree;
+    Entry memory exitEntry = buildEntryExitLeaf(idBalanceTree, amount, token, msg.sender);
+    uint256 valueExitTree = hashEntry(exitEntry);
+    // Get exit root given its index depth
+    uint256 exitRoot = uint256(getExitRoot(numExitRoot));
+    // Check exit tree nullifier
+    uint256[] memory inputs = new uint256[](2);
+    inputs[0] = exitRoot;
+    inputs[1] = valueExitTree;
+    uint256 nullifier = hashGeneric(inputs);
+    require(exitNullifier[nullifier] == false, 'withdraw has been already done');
+    // Check sparse merkle tree proof
+    bool result = smtVerifier( exitRoot, siblingsProof, keyExitTree, valueExitTree, 0, 0, false, false, 24);
+    require(result == true, 'invalid proof');
+    // TODO: send amount to msg.sender depending on token type
+    (msg.sender).transfer(amount);
+    // Set nullifier
+    exitNullifier[nullifier] = true;
   }
 
   // TODO:

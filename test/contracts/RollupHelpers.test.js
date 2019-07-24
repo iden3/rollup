@@ -37,6 +37,14 @@ async function fillSmtTree() {
   await tree.insert(key2, value2);
   await tree.insert(key3, value3);
 }
+
+function padZeroes(str, length) {
+  while (str.length < length) {
+    str = `0${str}`;
+  }
+  return str;
+}
+
 contract('RollupHelpers functions', (accounts) => {
   const {
     0: owner,
@@ -360,5 +368,59 @@ contract('RollupHelpers functions', (accounts) => {
     const bytesTx = `0x${buffTotalTx.toString('hex')}`;
     const res = await insHelpers.hashOffChainTxTest(bytesTx);
     expect(res.toString()).to.be.equal(hashTotal.toString());
+  });
+
+  it('Calculate total fee per coin', async () => {
+    const totalTokens = 16;
+    const arrayFee = [];
+
+    let feeBuff = Buffer.alloc(0);
+    for (let i = 0; i < totalTokens; i++) {
+      const fee = 2 * (i + 1);
+      arrayFee.push(fee);
+      const feeHex = padZeroes(fee.toString('16'), 4);
+      const tmpBuff = Buffer.from(feeHex, 'hex');
+      feeBuff = Buffer.concat([feeBuff, tmpBuff]);
+    }
+    const feeBytes = `0x${feeBuff.toString('hex')}`;
+
+    // Build number of transactions buffer
+    const arrayTx = [];
+    let nTxBuff = Buffer.alloc(0);
+    for (let i = 0; i < totalTokens; i++) {
+      const rand = Math.floor((Math.random() * 10) + 1);
+      arrayTx.push(rand);
+      const nTxHex = padZeroes(rand.toString('16'), 4);
+      const tmpBuff = Buffer.from(nTxHex, 'hex');
+      nTxBuff = Buffer.concat([nTxBuff, tmpBuff]);
+    }
+    const nTxBytes = `0x${nTxBuff.toString('hex')}`;
+
+    for (let i = 0; i < totalTokens; i++) {
+      const resJs = arrayFee[i] * arrayTx[i];
+      // eslint-disable-next-line no-await-in-loop
+      const resSm = await insHelpers.calcCoinTotalFeeTest(feeBytes, nTxBytes, i);
+      expect(resSm.toString()).to.be.equal(resJs.toString());
+    }
+  });
+
+  it('Get entry from exit leaf parameters', async () => {
+    const id = 1;
+    const amountDeposit = 2;
+    const token = 3;
+    const withdrawAddress = '0xe0fbce58cfaa72812103f003adce3f284fe5fc7c';
+
+    const res = await insHelpers.buildEntryExitLeafTest(id, amountDeposit, token, withdrawAddress);
+    const Entry1Hex = '0x0000000000e0fbce58cfaa72812103f003adce3f284fe5fc7c00030002000001';
+    const Entry2Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    const Entry3Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    const Entry4Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    const Entry5Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+    expect(res[0]).to.be.equal(Entry1Hex);
+    expect(res[1]).to.be.equal(Entry2Hex);
+    expect(res[2]).to.be.equal(Entry3Hex);
+    expect(res[3]).to.be.equal(Entry4Hex);
+    expect(res[4]).to.be.equal(Entry5Hex);
   });
 });
