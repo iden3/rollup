@@ -50,31 +50,45 @@ Data bases:
 
 We divide the blocks of the blockchain in slots and eras.  An era has 20 slots and a slot has 100 blocks.
 
-The way it works is that at the begining of each era there is a raffle that assigns one operator to each slot for the upcoming era. This is raffle is ponderated by the effective stake. The efective stake is function of the stake each operator stakes in the system.
+The way it works is that at the begining of each era there is a raffle that assigns one operator to each slot for the upcoming era. This raffle is ponderated by the effective stake. The efective stake is function of the ETH staked by eahc operator stakes in the system.
 
-efectiveStake = realState^(1.2)
+efectiveStake = ethStaked^(1.2)
 
-The 1.2 exponent is because we need incentivate concentrated operators with high state. We don't want than an operator have many virtual operators with low stake each.
+The 1.2 exponent is because we need to incentivate concentrated operators with high staked. We don't want than an operator have many virtual operators with low stake each. In that case, the operator would have the same odds to get selected but would risk much less.
 
-Rules, The operators, to stat batching they need to stake the ETH and wait for a full era to complete. So if we are in era 3, they will not start being included in the riffle until the begining of the era 5.
+For the operators to stat batching they need to first stake the ETH and wait for a full era to complete. So if we are in era 3, they will not start being included in the raffle until the begining of the era 5.
 
-The same happen for stop batching.  You notify it now and the operator will be removed form the riffle aster the finish of a full era.  So if you are leaveng at block 9, you will have to continue batching during era 9 and 10.
+The same happen for stop batching.  Once the operator notifies an exit it will not be removed form the raffle until a full era is finished.  So if you are leaveng during era 9, you will have to continue batching during the eras 9 and 10. In era 11, the operator will not be included again.
 
-Assigned Operators have the obligation to generate at least one batch during each assigned bloc.  If an operator misses to do that, all his stake will be burned except for a 10% that goues to who notifies it.
+Assigned Operators have the obligation to generate at least one batch during each assigned block.  If an operator misses to do that, all his stake will be burned except for a 10% that go to who notifies it.
 
-For the doing the riffle we construct a tree where adding, removing and checking the winner functions are O(log(n))
+For doing the raffle we construct a special tree data structure where adding, removing and checking the winner functions are O(log(n))
 
 ## How the random works.
 
-An operator, before registering for staking will calculate h(0), h(1), h(2) to h(10000) where h0 is handom and h(i) = h(h(i-1)). During the registration process, he sends h(10000)
+An operator, before registering for staking, will calculate h(0), h(1), h(2) to h(10000) where h0 is random and h(i) = h(h(i-1)). During the registration process, he sends h(10000)
 
-There is a `seed` state variable that is updated the first time a batch is generated for a given operator in a slot. The operator must reveal h(i-1) and it's hash must match with the last publishe commitment h(i).
+There is a `seed` state variable that is updated the first time a batch is generated for a given operator in a slot. The operator must reveal h(i-1) and its hash must match with the last published commit h(i).
 
 The seed state variable is updated seed = h(seed || h(i-1))
 
-For the rufle, we use a snapshot of this seed at he begining of the era to calculate a rnd for each slot.
+For the raffle, we use a snapshot of this seed at he begining of the era to calculate a random number for each slot.
 
 rnd = h(seed || slot)
 
 We use this rnd to navegate with the tree structure to find the assigned operator for that slot.
+
+The tree.
+=========
+
+The tree is composed of intermediate nodes and leafs.  Each staker is in a leaf. Each intermediate nodes has two values:
+1.- A threshold.
+2.- An increment.
+
+To do th raffle, you start from the top wit a random number.  if rnd < threshold then continue by the left. I rnd >= threshold, add the increment value to the rand and continue to the right.
+
+Do it until you arrive to a leaf that is the actual selected operator.
+
+This tree has the advantage is that is not rebalanced and is well compensated.
+The operations of adding an operator, removing it and calculating the raffle are all O(log(n)) where n is the total numbers of operators inserted in the whole history.
 
