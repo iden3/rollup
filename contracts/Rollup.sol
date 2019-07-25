@@ -91,7 +91,7 @@ contract Rollup is Ownable, RollupHelpers {
    */
   constructor(address _verifier, address _poseidon) RollupHelpers(_poseidon) public {
     verifier = Verifier(_verifier);
-    address _stakeManager = address( new StakeManager( address(this), block.number ));
+    address _stakeManager = address( new StakeManager( address(this)));
     stakeManager = StakeManager(_stakeManager);
   }
 
