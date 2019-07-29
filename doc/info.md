@@ -40,7 +40,7 @@ Describe most used words and its meaning regarding Rollup environment
 
 ## Off-chain transactions
 
-- `transaction`: Standard off-chain trasaction signed by `idBalanceTree` with `ecdsa`. Allows to send - `amount` to a `destinity` balance tree id.
+- `transaction`: Standard off-chain trasaction signed by `idBalanceTree` with `ecdsa`. Allows to send `amount` to a `destinity` balance tree id.
 
 - `withdraw`: Action required to withdraw balance. It requires two steps: 
   - 1 - Off-chain transaction: Off-chain: send `amount` to withdraw to `idBalanceTree` = 0

@@ -276,19 +276,16 @@ contract('RollupHelpers functions', (accounts) => {
   it('Get entry from deposit parameters', async () => {
     const id = 1;
     const amountDeposit = 2;
-    const coin = 3;
+    const tokenId = 3;
     const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
     const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
     const withdrawAddress = '0xe0fbce58cfaa72812103f003adce3f284fe5fc7c';
-    const sendTo = 4;
-    const sendAmount = 5;
-    const nonce = 6;
+    const nonce = 4;
 
-
-    const res = await insHelpers.buildEntryDepositTest(id, amountDeposit, coin, Ax.toString(),
-      Ay.toString(), withdrawAddress, sendTo, sendAmount, nonce);
-    const Entry1Hex = '0x000000e0fbce58cfaa72812103f003adce3f284fe5fc7c000000030002000001';
-    const Entry2Hex = '0x0000000000000000000000000000000000000000000000000000060005000004';
+    const res = await insHelpers.buildEntryDepositTest(id, amountDeposit, tokenId, Ax.toString(),
+      Ay.toString(), withdrawAddress, nonce);
+    const Entry1Hex = '0x0000000000e0fbce58cfaa72812103f003adce3f284fe5fc7c00030002000001';
+    const Entry2Hex = '0x0000000000000000000000000000000000000000000000000000000000000004';
     const Entry3BigInt = BigInt(res[2]);
     const Entry4BigInt = BigInt(res[3]);
     const Entry5Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -303,23 +300,21 @@ contract('RollupHelpers functions', (accounts) => {
   it('hash entry', async () => {
     const id = 1;
     const amountDeposit = 2;
-    const coin = 3;
+    const tokenId = 3;
     const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
     const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
     const withdrawAddress = '0xe0fbce58cfaa72812103f003adce3f284fe5fc7c';
-    const sendTo = 4;
-    const sendAmount = 5;
-    const nonce = 6;
+    const nonce = 4;
 
-    const res = await insHelpers.hashEntryTest(id, amountDeposit, coin, Ax.toString(),
-      Ay.toString(), withdrawAddress, sendTo, sendAmount, nonce);
+    const res = await insHelpers.hashEntryTest(id, amountDeposit, tokenId, Ax.toString(),
+      Ay.toString(), withdrawAddress, nonce);
 
-    const entryHash = '2daaeb4dd04c51a8ec30a55f038cad65d10fc7561c7b068758892072c1092f3';
+    const entryHash = '24ea87c296b656522777264502eda198b285590e97e16e75e9d80758cb69e83';
     expect(res.toString('hex')).to.be.equal(entryHash);
 
     // Calculate hash through poseidon implemented in js
-    const e1 = BigInt('0x000000e0fbce58cfaa72812103f003adce3f284fe5fc7c000000030002000001');
-    const e2 = BigInt('0x0000000000000000000000000000000000000000000000000000060005000004');
+    const e1 = BigInt('0x0000000000e0fbce58cfaa72812103f003adce3f284fe5fc7c00030002000001');
+    const e2 = BigInt('0x0000000000000000000000000000000000000000000000000000000000000004');
     const e3 = BigInt('0x0000000000000004ebcfdda5c7d2000000000000000000000000000000000000');
     const e4 = BigInt('0x0000000000000003289acffbb828e00000000000000000000000000000000000');
     const e5 = BigInt('0x0000000000000000000000000000000000000000000000000000000000000000');
@@ -330,7 +325,7 @@ contract('RollupHelpers functions', (accounts) => {
   });
 
   it('Get entry from fee plan', async () => {
-    const coinPlan = '0x4000000000000000000000000000000320000000000000000000000000000001';
+    const tokenPlan = '0x4000000000000000000000000000000320000000000000000000000000000001';
     const feePlan = '0x8000000000000000000000000000000760000000000000000000000000000005';
 
     const Entry1Hex = '0x0000000000000000000000000000000020000000000000000000000000000001';
@@ -338,7 +333,7 @@ contract('RollupHelpers functions', (accounts) => {
     const Entry3Hex = '0x0000000000000000000000000000000060000000000000000000000000000005';
     const Entry4Hex = '0x0000000000000000000000000000000080000000000000000000000000000007';
     const Entry5Hex = '0x0000000000000000000000000000000000000000000000000000000000000000';
-    const res = await insHelpers.buildEntryFeePlanTest([coinPlan, feePlan]);
+    const res = await insHelpers.buildEntryFeePlanTest([tokenPlan, feePlan]);
 
     expect(res[0]).to.be.equal(Entry1Hex);
     expect(res[1]).to.be.equal(Entry2Hex);
@@ -370,7 +365,7 @@ contract('RollupHelpers functions', (accounts) => {
     expect(res.toString()).to.be.equal(hashTotal.toString());
   });
 
-  it('Calculate total fee per coin', async () => {
+  it('Calculate total fee per token', async () => {
     const totalTokens = 16;
     const arrayFee = [];
 
@@ -399,7 +394,7 @@ contract('RollupHelpers functions', (accounts) => {
     for (let i = 0; i < totalTokens; i++) {
       const resJs = arrayFee[i] * arrayTx[i];
       // eslint-disable-next-line no-await-in-loop
-      const resSm = await insHelpers.calcCoinTotalFeeTest(feeBytes, nTxBytes, i);
+      const resSm = await insHelpers.calcTokenTotalFeeTest(feeBytes, nTxBytes, i);
       expect(resSm.toString()).to.be.equal(resJs.toString());
     }
   });

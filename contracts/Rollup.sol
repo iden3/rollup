@@ -37,8 +37,8 @@ contract Rollup is Ownable, RollupHelpers {
 
   // List of valid ERC20 tokens that can be deposit in 'balance tree'
   address[] tokens;
-  mapping(uint256 => address) tokenList;
-  uint constant MAX_TOKENS = 16;
+  mapping(uint => address) tokenList;
+  uint constant MAX_TOKENS = 0xFFFF;
 
   // Set the leaf position for an account into the 'balance tree'
   uint24 lastBalanceTreeIndex;
@@ -50,6 +50,14 @@ contract Rollup is Ownable, RollupHelpers {
   // Hash of all on chain transmissions ( will be forged in two batches )
   // Forces 'operator' to add all on chain transmissions
   uint256 fillingOnChainTxsHash;
+  uint256 totalOnCainTx;
+  uint256 totalOnChainFee;
+
+  // Fee for every on-chain transaction
+  uint constant FEE_ONCHAIN_TX = 0.1 ether;
+
+  // maximum on-chain transactions
+  uint constant MAX_ONCHAIN_TX = 100;
 
   /**
    * @dev Event called when a deposit has been made
@@ -58,7 +66,7 @@ contract Rollup is Ownable, RollupHelpers {
    * off-chain transaction
    */
   event Deposit(uint idBalanceTree, uint depositAmount, uint token, uint Ax, uint Ay,
-    address withdrawAddress, uint sendTo, uint sendAmount);
+    address withdrawAddress );
 
   /**
    * @dev Event called when a batch is forged
@@ -100,58 +108,59 @@ contract Rollup is Ownable, RollupHelpers {
    * @param newToken smart contract token address
    */
   function addToken(address newToken) public onlyOwner {
-    // Allow 16 different types of tokens
+    // Allow MAX_TOKENS different types of tokens
     require(tokens.length <= MAX_TOKENS, 'token list is full');
-    uint tokenId = tokens.push(newToken);
+    uint tokenId = tokens.push(newToken) - 1;
     tokenList[tokenId] = newToken;
   }
 
   /**
    * @dev Deposit on-chain transaction to enter balance tree
-   * It allows to deposit and instantly make a off-chain transaction given 'sendTo' and 'sendAmount'
    * @param depositAmount initial balance on balance tree 
    * @param tokenId token type identifier
    * @param babyPubKey public key babyjub represented as point (Ax, Ay)
    * @param withdrawAddress allowed address to perform withdraw on-chain transaction
-   * @param sendTo id balance tree receiver (off-chain transaction parameter)
-   * @param sendAmount amount to send (off-chain transaction parameter)
    */
   function deposit( 
       uint16 depositAmount,
-      uint32 tokenId,
+      uint16 tokenId,
       uint256[2] memory babyPubKey,
-      address withdrawAddress,
-      uint24 sendTo,
-      uint16 sendAmount
+      address withdrawAddress
   ) payable public {
-
+ 
+    require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
     require(depositAmount > 0, 'Deposit amount must be greater than 0');
-    require(sendTo <= lastBalanceTreeIndex, 'Sender must exist on balance tree');
     require(withdrawAddress != address(0), 'Must specify withdraw address');
     require(tokenList[tokenId] != address(0) , 'token has not been registered');
 
     // Build entry deposit and get its hash
     Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
-      tokenId, babyPubKey[0], babyPubKey[1], withdrawAddress, sendTo, sendAmount, 0);
+      tokenId, babyPubKey[0], babyPubKey[1], withdrawAddress, 0);
     uint256 hashDeposit = hashEntry(depositEntry);
+    
     // Update 'fillingOnChainHash'
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = fillingOnChainTxsHash;
     inputs[1] = hashDeposit;
     fillingOnChainTxsHash = hashGeneric(inputs);
+    totalOnCainTx += 1;
 
     // Get token deposit on rollup smart contract
     require(ERC20(tokenList[tokenId]).approve(address(this), depositAmount), 'Fail approve ERC20 transaction');
     require(depositToken(tokenId, msg.sender, depositAmount), 'Fail deposit ERC20 transaction');
 
+    // Update total on-chain fees
+    totalOnChainFee += msg.value;
+
     emit Deposit(lastBalanceTreeIndex, depositAmount, tokenId, babyPubKey[0], babyPubKey[1],
-      withdrawAddress, sendTo, sendAmount);
+      withdrawAddress);
     lastBalanceTreeIndex++;
   }
 
   /**
    * @dev Checks proof given by the operator
    * forge the block if succesfull and pay fees to beneficiary address
+   * @param previousHash operator must reveal previous hash that it was commited
    * @param proofA zk-snark input
    * @param proofB zk-snark input
    * @param proofC zk-snark input
@@ -161,6 +170,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @param compressedTxs data availability to maintain 'balance tree' 
    */
   function forgeBlock(
+    bytes32 previousHash,
     uint[2] memory proofA, 
     uint[2][2] memory proofB, 
     uint[2] memory proofC,
@@ -181,6 +191,7 @@ contract Rollup is Ownable, RollupHelpers {
 
     // Verify old state roots
     require(bytes32(input[0]) == stateRoots[stateRoots.length - 1], 'old state root does not match current state root');
+    
     // Verify on-chain hash
     require(bytes32(input[3]) == exitRoots[exitRoots.length - 1], 'on-chain hash does not match current filling on-chain hash');
 
@@ -188,8 +199,8 @@ contract Rollup is Ownable, RollupHelpers {
     require(uint(feePlan[0]) == input[5], 'fee plan 0 does not match its public input');
     require(uint(feePlan[1]) == input[6], 'fee plan 1 does not match its public input');
 
-    // Verify number of transaction per coin is commited on the zk-snark input
-    require(uint(nTxPerToken) == input[7], 'Number of transaction per coin does not match its public input');
+    // Verify number of transaction per token is commited on the zk-snark input
+    require(uint(nTxPerToken) == input[7], 'Number of transaction per token does not match its public input');
 
     // Verify all off-chain are commited on the public zk-snark input
     uint256 offChainTxHash = hashOffChainTx(compressedTxs);
@@ -200,15 +211,20 @@ contract Rollup is Ownable, RollupHelpers {
 
     // Call Stake SmartContract to return de beneficiary address
     bytes16 hashBlock = bytes16(blockhash(block.number));
-    address beneficiary = stakeManager.blockForgedStaker(uint128(hashBlock), msg.sender);
+    address beneficiary = stakeManager.blockForgedStaker(previousHash, msg.sender);
 
     // Calculate fees and pay them
     for(uint i = 0; i < tokens.length; i++) {
-      uint totalCoinFee = calcCoinTotalFee(feePlan[1], nTxPerToken, i);
-      if(totalCoinFee != 0) {
-        require(withdrawToken(i, beneficiary, totalCoinFee), 'Fail ERC20 withdraw');
+      uint totalTokenFee = calcTokenTotalFee(feePlan[1], nTxPerToken, i);
+      if(totalTokenFee != 0) {
+        require(withdrawToken(i, beneficiary, totalTokenFee), 'Fail ERC20 withdraw');
       }
     }
+
+    // Pay onChain transactions fees
+    uint payOnChainFees = totalOnChainFee;
+    address payable beneficiaryPayable = address(uint160(beneficiary));
+    beneficiaryPayable.transfer(payOnChainFees);
 
     // Update state roots
     stateRoots.push(bytes32(input[1]));
@@ -219,6 +235,8 @@ contract Rollup is Ownable, RollupHelpers {
     // Clean fillingOnChainTxsHash
     miningOnChainTxsHash = fillingOnChainTxsHash;
     fillingOnChainTxsHash = 0;
+    totalOnCainTx = 0;
+    totalOnChainFee = 0;
 
     // event with all compressed transactions given its batch number
     emit ForgeBatch(getStateDepth() - 1, compressedTxs);
@@ -288,8 +306,10 @@ contract Rollup is Ownable, RollupHelpers {
       uint32 nonce,
       uint256[2] memory babyPubKey,
       uint256[] memory siblings
-  ) public {
+  ) public payable{
     
+    require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
+
     // build 'key' and 'value' for balance tree
     uint256 keyBalanceTree = idBalanceTree;
     Entry memory balanceEntry = buildEntryBalanceTree(amount, tokenId, babyPubKey[0],
@@ -308,7 +328,11 @@ contract Rollup is Ownable, RollupHelpers {
     inputs[0] = fillingOnChainTxsHash;
     inputs[1] = valueBalanceTree;
     fillingOnChainTxsHash = hashGeneric(inputs);
-    
+    totalOnCainTx += 1;
+
+    // Update total on-chain fees
+    totalOnChainFee += msg.value;
+
     // Withdraw token from rollup smart contract to withdraw address
     require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
     
@@ -339,7 +363,10 @@ contract Rollup is Ownable, RollupHelpers {
       uint256[] memory siblings,
       uint256 numStateRoot,
       uint16 amountDeposit
-  ) public {
+  ) public payable{
+
+    require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
+
     // build 'key' and 'value' for balance tree
     uint256 keyBalanceTree = uint256(idBalanceTree);
     Entry memory balanceEntry = buildEntryBalanceTree(amount, tokenId, babyPubKey[0],
@@ -358,6 +385,10 @@ contract Rollup is Ownable, RollupHelpers {
     inputs[0] = fillingOnChainTxsHash;
     inputs[1] = valueBalanceTree;
     fillingOnChainTxsHash = hashGeneric(inputs);
+    totalOnCainTx += 1;
+
+    // Update total on-chain fees
+    totalOnChainFee += msg.value;
 
     // Get token deposit on rollup smart contract
     require(ERC20(tokenList[tokenId]).approve(address(this), amountDeposit), 'Fail approve ERC20 transaction');

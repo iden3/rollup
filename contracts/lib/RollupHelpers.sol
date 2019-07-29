@@ -136,28 +136,24 @@ contract RollupHelpers {
    * @dev Build entry for deposit on-chain transaction
    * @param idBalanceTree ethereum address
    * @param amountDeposit ethereum address
-   * @param coin ethereum address
+   * @param tokenId ethereum address
    * @param Ax ethereum address
    * @param Ay ethereum address
    * @param withdrawAddress ethereum address
-   * @param sendTo ethereum address
-   * @param sendAmount ethereum address
    * @param nonce ethereum address
    * @return entry structure
    */
-  function buildEntryDeposit(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount, uint32 nonce)
+  function buildEntryDeposit(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce)
     internal pure returns (Entry memory entry) {
 
     // build element 1
     entry.e1 = bytes32(bytes3(idBalanceTree))>>(256 - 24);
     entry.e1 |= bytes32(bytes2(amountDeposit))>>(256 - 16 - 24);
-    entry.e1 |= bytes32(bytes4(coin))>>(256 - 32 - 16 - 24);
-    entry.e1 |= bytes32(bytes20(withdrawAddress))>>(256 - 160 - 32 - 16 - 24);
+    entry.e1 |= bytes32(bytes2(tokenId))>>(256 - 16 - 16 - 24);
+    entry.e1 |= bytes32(bytes20(withdrawAddress))>>(256 - 160 - 16 - 16 - 24);
     // build element 2
-    entry.e2 = bytes32(bytes3(sendTo))>>(256 - 24);
-    entry.e2 |= bytes32(bytes2(sendAmount))>>(256 - 16 - 24);
-    entry.e2 |= bytes32(bytes4(nonce))>>(256 - 32 - 16 - 24);
+    entry.e2 |= bytes32(bytes4(nonce))>>(256 - 32);
     // build element 3
     entry.e3 = bytes32(Ax);
     // build element 4
@@ -185,7 +181,7 @@ contract RollupHelpers {
    * @dev build entry for the exit tree leaf
    * @param id balnce tree identifier
    * @param amount amunt to withdraw
-   * @param token coin type
+   * @param token token type
    * @param withAddress withdraw address
    * @return entry structure
    */
@@ -201,7 +197,7 @@ contract RollupHelpers {
   /**
    * @dev build entry for the exit tree leaf
    * @param amount amunt to withdraw
-   * @param token coin type
+   * @param token token type
    * @param Ax x coordinate public key babyJub
    * @param Ay y coordinate public key babyJub
    * @param withAddress withdraw address
@@ -224,16 +220,16 @@ contract RollupHelpers {
   /**
    * @dev Calculate total fee amount for the beneficiary
    * @param fees contains all fee plan data
-   * @param nTxCoin number of transaction per coin
-   * @param coinId identificator coin
+   * @param nTxToken number of transaction per token
+   * @param tokenId token identificator
    * @return total fee amount
    */
-  function calcCoinTotalFee(bytes32 fees, bytes32 nTxCoin, uint coinId)
+  function calcTokenTotalFee(bytes32 fees, bytes32 nTxToken, uint tokenId)
     internal pure returns (uint) {
-    // get number of trasaction depending on coin
-    uint nTx = uint16(bytes2(nTxCoin << coinId*16));
-    // get fee depending on coin
-    uint fee = uint16(bytes2(fees << coinId*16));
+    // get number of trasaction depending on token
+    uint nTx = uint16(bytes2(nTxToken << tokenId*16));
+    // get fee depending on token
+    uint fee = uint16(bytes2(fees << tokenId*16));
     return nTx*fee;
   }
 

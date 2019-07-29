@@ -29,12 +29,12 @@ contract RollupHelpersTest is RollupHelpers{
     return checkSig(msgHash, rsv);
   }
 
-  function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount,
-    uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+  function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
+  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
     
-    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, coin,
-      Ax, Ay, withdrawAddress, sendTo, sendAmount, nonce);
+    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
+      Ax, Ay, withdrawAddress, nonce);
     return (entry.e1,
             entry.e2,
             entry.e3,
@@ -42,12 +42,12 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount,
-    uint32 nonce) public view returns (uint256) {
+  function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
+  ) public view returns (uint256) {
     
-    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, coin,
-      Ax, Ay, withdrawAddress, sendTo, sendAmount, nonce);
+    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
+      Ax, Ay, withdrawAddress, nonce);
     
     return hashEntry(entry);
   }
@@ -67,9 +67,9 @@ contract RollupHelpersTest is RollupHelpers{
     return hashOffChainTx(compressedTxs);
   }
 
-  function calcCoinTotalFeeTest(bytes32 fee, bytes32 nTxCoin, uint coinId)
+  function calcTokenTotalFeeTest(bytes32 fee, bytes32 nTxToken, uint tokenId)
     public pure returns (uint256) {
-    return calcCoinTotalFee(fee, nTxCoin, coinId);
+    return calcTokenTotalFee(fee, nTxToken, tokenId);
   }
 
   function buildEntryExitLeafTest(uint24 id, uint16 amount, uint16 token, address withAddress)
