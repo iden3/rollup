@@ -61,3 +61,7 @@ typings/
 .next
 
 tmp
+
+# truffle
+
+build

@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import { StakeManagerHelpers } from "./lib/StakeManagerHelpers.sol";
+import './lib/StakeManagerHelpers.sol';
 
 /**
  * @dev Define interface Rollup smart contract
@@ -12,8 +12,10 @@ contract RollupInterface {
 
 contract StakeManager{
 
+  using StakeManagerHelpers for *;
+
   // External contracts used
-  RollupInterface rollup;
+  RollupInterface insRollup;
 
   // defines operator structure 
   struct  Operator{
@@ -106,7 +108,7 @@ contract StakeManager{
    */
   constructor(address _rollup) public {
     require(_rollup != address(0));
-    rollup = RollupInterface(_rollup);
+    insRollup = RollupInterface(_rollup);
     ownerRollup = _rollup;
   }
 

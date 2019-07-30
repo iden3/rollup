@@ -7,7 +7,7 @@ library StakeManagerHelpers {
    * @param rsv signature
    * @return Ethereum address recovered from the signature
    */
-  function checkSig(bytes32 msgHash, bytes memory rsv) public pure returns (address) {
+  function checkSig(bytes32 msgHash, bytes memory rsv) internal pure returns (address) {
     bytes32 r;
     bytes32 s;
     uint8   v;

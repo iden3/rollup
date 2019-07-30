@@ -9,9 +9,8 @@ import './StakeManager.sol';
  * @dev Define interface ERC20 contract
  */
 contract ERC20 {
-  function approve(address spender, uint tokens) public returns (bool success);
-  function transfer(address to, uint tokens) public returns (bool success);
-  function transferFrom(address from, address to, uint tokens) public returns (bool success);
+  function transfer(address recipient, uint256 amount) external returns (bool);
+  function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
 /**
@@ -26,7 +25,7 @@ contract Rollup is Ownable, RollupHelpers {
 
   // External contracts used
   Verifier verifier;
-  StakeManager stakeManager; 
+  StakeManager stakeManager;
 
   // Each batch forged will have the root state of the 'balance tree' 
   bytes32[] stateRoots;
@@ -65,7 +64,7 @@ contract Rollup is Ownable, RollupHelpers {
    * add leaf to balance tree
    * off-chain transaction
    */
-  event Deposit(uint idBalanceTree, uint depositAmount, uint token, uint Ax, uint Ay,
+  event Deposit(uint idBalanceTree, uint depositAmount, uint tokenId, uint Ax, uint Ay,
     address withdrawAddress );
 
   /**
@@ -78,7 +77,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @dev Event called when a user makes a force withdraw
    * contains all data required for the operator to add the transaction 
    */
-  event ForceWithdraw(uint idBalanceTree, uint amount, uint token, uint Ax, uint Ay,
+  event ForceWithdraw(uint idBalanceTree, uint amount, uint tokenId, uint Ax, uint Ay,
     address withdrawAddress, uint nonce);
 
   /**
@@ -87,6 +86,23 @@ contract Rollup is Ownable, RollupHelpers {
    * deposit on balance tree leaf
    */
   event DepositOnTop(uint idBalanceTree, uint amountDeposit);
+
+  /**
+   * @dev Event called when a token is added to token list
+   * Contains token address and its index inside rollup token list
+   */
+  event AddToken(address tokenAddress, uint tokenId);
+
+  // Flag to determine if the staker manager has been initialized
+  bool initialized = false;
+
+  /**
+   * @dev modifier to check if staker manager has been initialized
+   */
+  modifier isStakerLoad {
+    require(initialized == true);
+    _;
+  }
 
   /**
    * @dev Rollup constructor
@@ -99,19 +115,29 @@ contract Rollup is Ownable, RollupHelpers {
    */
   constructor(address _verifier, address _poseidon) RollupHelpers(_poseidon) public {
     verifier = Verifier(_verifier);
-    address _stakeManager = address( new StakeManager( address(this)));
-    stakeManager = StakeManager(_stakeManager);
   }
 
   /**
-   * @dev Inclusion of a new token that will be able to deposit on 'balance tree'
-   * @param newToken smart contract token address
+   * @dev Load stake manager smart contract
+   * @param stakeManagerAddress stake manager contract address
    */
-  function addToken(address newToken) public onlyOwner {
+  function loadStakeManager(address stakeManagerAddress) public onlyOwner{
+    stakeManager = StakeManager(stakeManagerAddress);
+    initialized = true;
+  }
+
+
+  /**
+   * @dev Inclusion of a new token that will be able to deposit on 'balance tree'
+   * @param tokenAddress smart contract token address
+   */
+  function addToken(address tokenAddress) public onlyOwner {
     // Allow MAX_TOKENS different types of tokens
     require(tokens.length <= MAX_TOKENS, 'token list is full');
-    uint tokenId = tokens.push(newToken) - 1;
-    tokenList[tokenId] = newToken;
+    uint tokenId = tokens.push(tokenAddress) - 1;
+    tokenList[tokenId] = tokenAddress;
+
+    emit AddToken(tokenAddress, tokenId);
   }
 
   /**
@@ -146,8 +172,7 @@ contract Rollup is Ownable, RollupHelpers {
     totalOnCainTx += 1;
 
     // Get token deposit on rollup smart contract
-    require(ERC20(tokenList[tokenId]).approve(address(this), depositAmount), 'Fail approve ERC20 transaction');
-    require(depositToken(tokenId, msg.sender, depositAmount), 'Fail deposit ERC20 transaction');
+    require(depositToken(tokenId, depositAmount), 'Fail deposit ERC20 transaction');
 
     // Update total on-chain fees
     totalOnChainFee += msg.value;
@@ -178,7 +203,7 @@ contract Rollup is Ownable, RollupHelpers {
     bytes32[2] memory feePlan, 
     bytes32 nTxPerToken,
     bytes memory compressedTxs
-  ) public {
+  ) public isStakerLoad{
     // Public parameters of the circuit
     // input[0] ==> old state root
     // input[1] ==> new state root
@@ -210,7 +235,6 @@ contract Rollup is Ownable, RollupHelpers {
     require(verifier.verifyProof(proofA, proofB, proofC, input) == true, 'zk-snark proof is not valid');
 
     // Call Stake SmartContract to return de beneficiary address
-    bytes16 hashBlock = bytes16(blockhash(block.number));
     address beneficiary = stakeManager.blockForgedStaker(previousHash, msg.sender);
 
     // Calculate fees and pay them
@@ -391,8 +415,8 @@ contract Rollup is Ownable, RollupHelpers {
     totalOnChainFee += msg.value;
 
     // Get token deposit on rollup smart contract
-    require(ERC20(tokenList[tokenId]).approve(address(this), amountDeposit), 'Fail approve ERC20 transaction');
-    require(depositToken(tokenId, msg.sender, amountDeposit), 'Fail deposit ERC20 transaction');
+    // require(ERC20(tokenList[tokenId]).approve(address(this), amountDeposit), 'Fail approve ERC20 transaction');
+    require(depositToken(tokenId, amountDeposit), 'Fail deposit ERC20 transaction');
 
     // event deposit on top
     emit DepositOnTop(idBalanceTree, amountDeposit);
@@ -426,24 +450,41 @@ contract Rollup is Ownable, RollupHelpers {
     return exitRoots[id];
   }
 
+  /**
+   * @dev Retrieve token address from its index
+   * @param tokenId token id for rollup smart contract
+   * @return token address
+   */
+  function getTokenAddress(uint tokenId) public view returns (address) {
+    require(tokens.length > 0, 'There are no tokens listed');
+    require(tokenId <= (tokens.length - 1), 'Token id does not exist');
+    return tokenList[tokenId];
+  }
+
+  function getTest() public view returns (uint256) {
+    return fillingOnChainTxsHash;
+  }
+
   ///////////
   // helper ERC20 functions
   ///////////
 
   /**
    * @dev deposit token to rollup smart contract
-   * previous to deposit token, the 'sender' must approve rollup smart contract address
-   * to transfer the amount
+   * Previously, it requires an approve erc20 transaction to allow this contract
+   * make the transaction for the msg.sender
+   * @param tokenId token id
+   * @param amount quantity of token to send
    */
-  function depositToken(uint tokenId, address sender, uint amount) private onlyOwner returns(bool){
-    ERC20(tokenList[tokenId]).transferFrom(sender, address(this), amount);
+  function depositToken(uint16 tokenId, uint16 amount) private returns(bool){
+    return ERC20(tokenList[tokenId]).transferFrom(msg.sender, address(this), amount);
   }
 
   /**
    * @dev withdraw token from rollup smart contract
    * Tokens on rollup smart contract are withdrawn
    */
-  function withdrawToken(uint tokenId, address receiver, uint amount) private onlyOwner returns(bool){
+  function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
     ERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
