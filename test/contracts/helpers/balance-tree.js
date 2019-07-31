@@ -25,6 +25,10 @@ class BalanceTree {
     return resFind;
   }
 
+  getRoot() {
+    return this.smt.root;
+  }
+
   async updateId(id, balance) {
     const resFind = await this.getIdInfo(id);
     if (!resFind.found) {

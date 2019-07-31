@@ -92,7 +92,7 @@ contract StakeManager{
 
   // Indicates if at least one batch has been forged on an slot
   // used for slashing operators
-  mapping(uint => bool) blockForged;
+  mapping(uint => bool) batchForged;
 
   /**
    * @dev Event called when an operator is added
@@ -315,7 +315,7 @@ contract StakeManager{
    */
   function slash(uint slot) public {
     require(slot < currentSlot(), 'Slot requested still does not exist');
-    require(blockForged[slot] == false, 'Batch has been forged during this slot');
+    require(batchForged[slot] == false, 'Batch has been forged during this slot');
     
     // get operator index
     uint slashedIndexOperator = getWinnerOperatorIndexBySlot(slot);
@@ -340,15 +340,16 @@ contract StakeManager{
   }
 
   /**
-   * @dev function caled by the rollup smart contract when an operator forges a block
+   * @dev function called by the rollup smart contract when an operator forges a batch
    * @param previousHash previous hash that operator commited on previous batch
    * @param operator operator controller address
+   * @return beneficiary address
    */
-  function blockForgedStaker(bytes32 previousHash, address operator) public onlyRollup returns(address){
+  function batchForgedStaker(bytes32 previousHash, address operator) public onlyRollup returns(address){
     uint indexOperator = getWinnerOperatorIndexBySlot(currentSlot());
     
     Operator storage winnerOperator = operators[indexOperator];
-    // verify that the operator that wants to forge the block is the raffle winner
+    // verify that the operator that wants to forge the batch is the raffle winner
     require(winnerOperator.controllerAddress == operator);
 
     // verify that operator send the previous hash of the current commited hash
@@ -361,8 +362,8 @@ contract StakeManager{
     // Snapshot Raffle
     updateRaffle(uint(previousHash));
     
-    // forge block is succesfull, mark that in this slot a block has been forged
-    blockForged[currentSlot()] = true;
+    // forge batch is succesfull, mark that in this slot a batch has been forged
+    batchForged[currentSlot()] = true;
     
     // return benefiacry address
     return operators[indexOperator].beneficiaryAddress;
@@ -442,7 +443,7 @@ contract StakeManager{
     raffle.totalStaked = totalEffectiveStake;
     
     // Update entropy only the first batch that is forged into the slot
-    if(!blockForged[currentSlot()]) {
+    if(!batchForged[currentSlot()]) {
       uint128 oldEntropy = uint128(raffle.entropy); 
       raffle.entropy = bytes16(keccak256(abi.encodePacked(oldEntropy, uint128(entropy))));
     }
