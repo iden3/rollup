@@ -1,11 +1,9 @@
 
 // import { describe, it } from 'mocha';
-const Web3 = require('web3');
 const ethers = require('ethers');
 const chai = require('chai');
-const { createEth, importEth, readFile, createBabyJub, importBabyJub } = require('./wallet');
+const { createEth, importEth, readFile, createBabyJub, importBabyJub, decrypt } = require('./wallet');
 
-const web3 = new Web3();
 const { expect } = chai;
 const pass = 'pass';
 
@@ -39,7 +37,7 @@ describe('Decrypt', () => {
   // Decrypt ethereum wallet
   it('decrypt eth account', async () => {
     const data = await readFile('wallet-rollup-cli.json');
-    const decAccount = web3.eth.accounts.decrypt(data.encPrivateKey, pass);
+    const decAccount = decrypt(data.encPrivateKey, pass);
     const wallet = ethers.Wallet.fromMnemonic(data.mnemonic);
     expect(decAccount.address).to.be.equal(wallet.address);
   });

@@ -43,6 +43,17 @@ async function readFile(path) {
 }
 
 /**
+ * Function to decrypt encrypted private key
+ * @param {Object} encPrivateKey - encrypted private key
+ * @param {Object} pass - passphrase
+ * @returns {Object} - decrypted private key
+ */
+function decrypt(encPrivateKey, pass) {
+  const decPrivateKey = web3.eth.accounts.decrypt(encPrivateKey, pass);
+  return decPrivateKey;
+}
+
+/**
  * Function to write a ethereum wallet into json file
  * @param {Object} wallet - Ethereum wallet
  * @param {string} pass - Passphrase
@@ -127,4 +138,5 @@ module.exports = {
   readFile,
   createBabyJub,
   importBabyJub,
+  decrypt,
 };
