@@ -4,7 +4,8 @@
   "description": "light client rollup",
   "main": "index.js",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "lint": "eslint ./src"
   },
   "bin": {
     "rollup-cli": "cli.js"
@@ -25,14 +26,20 @@
     "mocha": "^6.1.4"
   },
   "dependencies": {
+    "axios": "^0.19.0",
     "bip39": "^3.0.2",
+    "body-parser": "^1.19.0",
     "ethereumjs-util": "^6.1.0",
     "ethereumjs-wallet": "^0.6.3",
+    "ethers": "^4.0.33",
+    "express": "^4.17.1",
     "hdkey": "^1.1.1",
     "keccak": "^2.0.0",
     "nacl": "^0.1.3",
+    "secp256k1": "^3.7.1",
     "tweetnacl": "^1.0.1",
     "tweetnacl-util": "^0.15.0",
+    "web3": "^1.2.0",
     "yargs": "^13.2.4"
   }
 }
