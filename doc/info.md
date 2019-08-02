@@ -67,7 +67,7 @@ At the begining of each era there is a raffle that assigns one operator to each 
 
 effectiveStake = ethStaked^(1.2)
 
-The 1.2 exponent is because we need to incentivate concentrated operators with high stake. We don't want any operator have many virtual operators with low stake each. In that case, the operator would have the same odds to get selected but would risk much less. We also define the minimum stake as 10 ETH. We limit the maximum number of operators at 200. If all operator positions are full you can remove the first to join by creating a higher bid than them. 
+The 1.2 exponent is because we need to incentivate concentrated operators with high stake. We don't want any operator have many virtual operators with low stake each. In that case, the operator would have the same odds to get selected but would risk much less. We also define the minimum stake as 10 ETH.
 
 For the operators to start batching they need to first stake the ETH and wait for a full era to complete. So if we are in era 3, they will not start being included in the raffle until the begining of the era 5.
 
