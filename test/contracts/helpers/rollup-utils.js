@@ -29,6 +29,21 @@ function createOffChainTx(numTx) {
   return { bytesTx, hashOffChain: hashTotal };
 }
 
+function hashOffChainTx(hexOffChainTx) {
+  // remove '0x'
+  const hexOffChain = hexOffChainTx.substring(2);
+  const numTx = hexOffChain.length / 16;
+  let hashTotal = BigInt(0);
+
+  let tmpStr = '';
+  for (let i = 0; i < numTx; i++) {
+    tmpStr = hexOffChain.substring(i * 16, (i + 1) * 16);
+    const hashTmp = hash([BigInt(`0x${tmpStr.toString('hex')}`)]);
+    hashTotal = hash([hashTotal, hashTmp]);
+  }
+  return hashTotal;
+}
+
 function hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
   // Build Entry
   // element 0
@@ -54,4 +69,5 @@ function hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
 module.exports = {
   createOffChainTx,
   hashDeposit,
+  hashOffChainTx,
 };

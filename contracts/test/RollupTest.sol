@@ -35,7 +35,8 @@ contract RollupTest is Ownable, RollupHelpers {
   uint feeAddToken = 0.01 ether;
 
   // Set the leaf position for an account into the 'balance tree'
-  uint24 lastBalanceTreeIndex;
+  // '0' is reserved for off-chain withdraws
+  uint24 lastBalanceTreeIndex = 1;
 
   // Hash of all on chain transmissions ( will be forged in the next batch )
   // Forces 'operator' to add all on chain transmission
@@ -59,7 +60,7 @@ contract RollupTest is Ownable, RollupHelpers {
   event Deposit(uint idBalanceTree, uint depositAmount, uint tokenId, uint Ax, uint Ay,
     address withdrawAddress );
   event ForgeBatch(uint batchNumber, bytes offChainTx);
-  event ForceWithdraw(uint idBalanceTree, uint amount, uint tokenId, uint Ax, uint Ay,
+  event ForceFullWithdraw(uint idBalanceTree, uint amount, uint tokenId, uint Ax, uint Ay,
     address withdrawAddress, uint nonce);
   event DepositOnTop(uint idBalanceTree, uint amountDeposit);
   event AddToken(address tokenAddress, uint tokenId);
@@ -175,10 +176,14 @@ contract RollupTest is Ownable, RollupHelpers {
     // address beneficiary = stakeManager.batchForgedStaker(previousHash, msg.sender);
 
     // Calculate fees and pay them
-    for(uint i = 0; i < tokens.length; i++) {
-      uint totalTokenFee = calcTokenTotalFee(bytes32(feePlan[1]), bytes32(nTxPerToken), i);
+    for (uint i = 0; i < 16; i++) {
+      uint tokenId;
+      uint totalTokenFee;
+      (tokenId, totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
+        bytes32(nTxPerToken), i);
+
       if(totalTokenFee != 0) {
-        require(withdrawToken(i, beneficiary, totalTokenFee), 'Fail ERC20 withdraw');
+        require(withdrawToken(tokenId, beneficiary, totalTokenFee), 'Fail ERC20 withdraw');
       }
     }
 
@@ -274,7 +279,7 @@ contract RollupTest is Ownable, RollupHelpers {
     require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
     
     // event force withdraw
-    emit ForceWithdraw(idBalanceTree, amount, tokenId, babyPubKey[0], babyPubKey[1], msg.sender, nonce);
+    emit ForceFullWithdraw(idBalanceTree, amount, tokenId, babyPubKey[0], babyPubKey[1], msg.sender, nonce);
   }
 
   function depositOnTop(
@@ -346,7 +351,7 @@ contract RollupTest is Ownable, RollupHelpers {
   }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) public returns(bool){
-    ERC20(tokenList[tokenId]).transfer(receiver, amount);
+    return ERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
 }

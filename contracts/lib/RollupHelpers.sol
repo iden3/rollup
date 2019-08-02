@@ -219,18 +219,22 @@ contract RollupHelpers {
 
   /**
    * @dev Calculate total fee amount for the beneficiary
-   * @param fees contains all fee plan data
+   * @param tokenIds contains all token id (feePlan[0])
+   * @param fees contains all fee plan data (feePlan[1])
    * @param nTxToken number of transaction per token
-   * @param tokenId token identificator
+   * @param nToken token position on fee plan
    * @return total fee amount
    */
-  function calcTokenTotalFee(bytes32 fees, bytes32 nTxToken, uint tokenId)
-    internal pure returns (uint) {
-    // get number of trasaction depending on token
-    uint nTx = uint16(bytes2(nTxToken << tokenId*16));
+  function calcTokenTotalFee(bytes32 tokenIds ,bytes32 fees, bytes32 nTxToken, uint nToken)
+    internal pure returns (uint, uint) {
+    // get number of transaction depending on token
+    uint nTx = uint16(bytes2(nTxToken << nToken*16));
     // get fee depending on token
-    uint fee = uint16(bytes2(fees << tokenId*16));
-    return nTx*fee;
+    uint fee = uint16(bytes2(fees << nToken*16));
+    // get token id
+    uint tokenId = uint16(bytes2(tokenIds << nToken*16));
+    
+    return (tokenId, nTx*fee);
   }
 
   /**

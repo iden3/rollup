@@ -368,6 +368,16 @@ contract('RollupHelpers functions', (accounts) => {
   it('Calculate total fee per token', async () => {
     const totalTokens = 16;
     const arrayFee = [];
+    const arrayTokenIds = [];
+    let tokenIdsBuff = Buffer.alloc(0);
+    for (let i = 0; i < totalTokens; i++) {
+      const tokenId = Math.floor((Math.random() * 100) + 1);
+      arrayTokenIds.push(tokenId);
+      const tokenIdHex = padZeroes(tokenId.toString('16'), 4);
+      const tmpBuff = Buffer.from(tokenIdHex, 'hex');
+      tokenIdsBuff = Buffer.concat([tokenIdsBuff, tmpBuff]);
+    }
+    const tokenIdsBytes = `0x${tokenIdsBuff.toString('hex')}`;
 
     let feeBuff = Buffer.alloc(0);
     for (let i = 0; i < totalTokens; i++) {
@@ -378,7 +388,6 @@ contract('RollupHelpers functions', (accounts) => {
       feeBuff = Buffer.concat([feeBuff, tmpBuff]);
     }
     const feeBytes = `0x${feeBuff.toString('hex')}`;
-
     // Build number of transactions buffer
     const arrayTx = [];
     let nTxBuff = Buffer.alloc(0);
@@ -394,8 +403,9 @@ contract('RollupHelpers functions', (accounts) => {
     for (let i = 0; i < totalTokens; i++) {
       const resJs = arrayFee[i] * arrayTx[i];
       // eslint-disable-next-line no-await-in-loop
-      const resSm = await insHelpers.calcTokenTotalFeeTest(feeBytes, nTxBytes, i);
-      expect(resSm.toString()).to.be.equal(resJs.toString());
+      const resSm = await insHelpers.calcTokenTotalFeeTest(tokenIdsBytes, feeBytes, nTxBytes, i);
+      expect(resSm['0'].toString()).to.be.equal(arrayTokenIds[i].toString());
+      expect(resSm['1'].toString()).to.be.equal(resJs.toString());
     }
   });
 

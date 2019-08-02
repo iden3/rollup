@@ -18,6 +18,13 @@ class BalanceTree {
     return { hashValue: resDeposit.hash, proof: resInsert };
   }
 
+  async addIdExit(id, amount, tokenId, withdrawAddress) {
+    const resExit = utils.hashExitLeafValue(id, amount, tokenId, withdrawAddress);
+    this.leafDb.insert(resExit.hash, resExit.leafObj);
+    const resInsert = await this.smt.insert(id, resExit.hash);
+    return { hashValue: resExit.hash, proof: resInsert };
+  }
+
   async getIdInfo(id) {
     const resFind = await this.smt.find(id);
     if (resFind.found) {

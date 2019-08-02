@@ -18,7 +18,6 @@ const RollupTest = artifacts.require('../contracts/test/RollupTest');
 
 contract('Rollup', (accounts) => {
   let balanceTree;
-  let exitTree;
   let fillingOnChainTest;
   let minningOnChainTest;
 
@@ -186,7 +185,7 @@ contract('Rollup', (accounts) => {
     expect(BigInt(resState).toString()).to.be.equal('0');
   });
 
-  it('Forge batch', async () => {
+  it('Forge batch deposit', async () => {
     // Operator must introduce a new leaf into the balance tree which
     // comes from the first deposit on-chain transaction
     // It implies that the balance tree has now one leaf, therefore its
@@ -238,7 +237,7 @@ contract('Rollup', (accounts) => {
     // - in order to do so, we have to submit the merkle tree proof
 
     // get merkle tree proof from balance tree
-    const id = BigInt(0);
+    const id = BigInt(1);
     const proofId = await balanceTree.getIdInfo(id);
     const siblingsId = utils.arrayBigIntToArrayStr(proofId.siblings);
 
@@ -275,7 +274,7 @@ contract('Rollup', (accounts) => {
     expect(resOnTop.toString()).to.be.equal('25');
   });
 
-  it('Forge two batches', async () => {
+  it('Forge batches deposit on top', async () => {
     // Forge first batch implies not balance tree state change at all
     // it only updates fillingOnChainTx to force insert previous 'depostOnTop' Tx
     // we update second batch including deposit on top on blance tree
@@ -304,8 +303,8 @@ contract('Rollup', (accounts) => {
     minningOnChainTest = await insRollupTest.miningOnChainTxsHash();
     fillingOnChainTest = BigInt(0).toString();
 
-    // Calculate filingOnChainHash
-    let resLeafValue = await balanceTree.getIdInfo(BigInt(0));
+    // Calculate fillingOnChainHash
+    let resLeafValue = await balanceTree.getIdInfo(BigInt(1));
     resLeafValue = resLeafValue.foundValue.toString();
     // calculate filling on chain hash by the operator
     let onChainHashOp = BigInt(0);
@@ -314,12 +313,95 @@ contract('Rollup', (accounts) => {
     expect(onChainHashOp.toString()).to.be.equal(BigInt(minningOnChainTest).toString());
 
     // Update balance tree with 'deposit on top' transaction
-    await balanceTree.updateId(BigInt(0), BigInt(35));
+    await balanceTree.updateId(BigInt(1), BigInt(35));
 
     const resForge2 = await insRollupTest.forgeBatch(oldStateRoot, balanceTree.getRoot().toString(),
       newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');
     expect(resForge2.logs[0].args.batchNumber.toString()).to.be.equal('3');
+  });
+
+  it('Force full withdraw', async () => {
+    // Force full balance withdraw
+    // In order to do force withdraw, the user must prove:
+    // - a leaf exist on the balance tree given the last root
+    // - function must be called from 'withdraw address' which is included in the balance tree leaf
+
+    // get merkle tree proof from balance tree
+    const id = BigInt(1);
+    const proofId = await balanceTree.getIdInfo(id);
+    const siblingsId = utils.arrayBigIntToArrayStr(proofId.siblings);
+
+    const resForceFullWithdraw = await insRollupTest.forceFullWithdraw(
+      id.toString(),
+      proofId.foundObject.balance.toString(),
+      proofId.foundObject.tokenId.toString(),
+      proofId.foundObject.nonce.toString(),
+      [proofId.foundObject.Ax.toString(), proofId.foundObject.Ay.toString()],
+      siblingsId,
+      { from: withdrawAddress, value: web3.utils.toWei('1', 'ether') },
+    );
+
+    expect(resForceFullWithdraw.logs[0].event).to.be.equal('ForceFullWithdraw');
+
+    // Check balances tokens
+    const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+    const resId1 = await insTokenRollup.balanceOf(id1);
+    const resOnTop = await insTokenRollup.balanceOf(onAddress);
+    const resWithdraw = await insTokenRollup.balanceOf(withdrawAddress);
+
+    expect(resRollup.toString()).to.be.equal('0');
+    expect(resId1.toString()).to.be.equal('40');
+    expect(resOnTop.toString()).to.be.equal('25');
+    expect(resWithdraw.toString()).to.be.equal('35');
+  });
+
+  it('Forge batches force full withdraw', async () => {
+    // Forge first batch implies not balance tree state change at all
+    // it only updates fillingOnChainTx to force insert previous 'forceFullWithdraw' Tx
+    // we update second batch including force full withdraw on balance tree
+    let lastIndexStateRoot = await insRollupTest.getStateDepth();
+    lastIndexStateRoot = BigInt(lastIndexStateRoot) - BigInt(1);
+    const oldStateRoot = await insRollupTest.getStateRoot(lastIndexStateRoot.toString());
+    const newStateRoot = oldStateRoot;
+    const newExitRoot = BigInt(0).toString();
+    const onChainHash = BigInt(0).toString();
+    const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
+
+    const offChainTx = rollupUtils.createOffChainTx(1);
+    const offChainHash = offChainTx.hashOffChain.toString();
+    const compressedTxs = offChainTx.bytesTx;
+
+    const nTxPerToken = BigInt(0).toString();
+
+    const resForge = await insRollupTest.forgeBatch(oldStateRoot, newStateRoot, newExitRoot,
+      onChainHash, feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
+
+    expect(resForge.logs[0].event).to.be.equal('ForgeBatch');
+    expect(resForge.logs[0].args.batchNumber.toString()).to.be.equal('4');
+    expect(resForge.logs[0].args.offChainTx).to.be.equal(compressedTxs);
+
+    // Update on-chain hashes
+    minningOnChainTest = await insRollupTest.miningOnChainTxsHash();
+    fillingOnChainTest = BigInt(0).toString();
+
+    // Calculate fillingOnChainHash
+    let resLeafValue = await balanceTree.getIdInfo(BigInt(1));
+    resLeafValue = resLeafValue.foundValue.toString();
+    // calculate filling on chain hash by the operator
+    let onChainHashOp = BigInt(0);
+    onChainHashOp = utils.hash([onChainHash, resLeafValue]);
+
+    expect(onChainHashOp.toString()).to.be.equal(BigInt(minningOnChainTest).toString());
+
+    // Update balance tree with 'deposit on top' transaction
+    await balanceTree.updateId(BigInt(1), BigInt(35));
+
+    const resForge2 = await insRollupTest.forgeBatch(oldStateRoot, balanceTree.getRoot().toString(),
+      newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
+
+    expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');
+    expect(resForge2.logs[0].args.batchNumber.toString()).to.be.equal('5');
   });
 });

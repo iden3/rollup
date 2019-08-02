@@ -41,7 +41,8 @@ contract Rollup is Ownable, RollupHelpers {
   uint feeAddToken = 0.01 ether;
 
   // Set the leaf position for an account into the 'balance tree'
-  uint24 lastBalanceTreeIndex;
+  // '0' is reserved for off-chain withdraws
+  uint24 lastBalanceTreeIndex = 1;
 
   // Hash of all on chain transmissions ( will be forged in the next batch )
   // Forces 'operator' to add all on chain transmission
@@ -81,7 +82,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @dev Event called when a user makes a force withdraw
    * contains all data required for the operator to add the transaction 
    */
-  event ForceWithdraw(uint idBalanceTree, uint amount, uint tokenId, uint Ax, uint Ay,
+  event ForceFullWithdraw(uint idBalanceTree, uint amount, uint tokenId, uint Ax, uint Ay,
     address withdrawAddress, uint nonce);
 
   /**
@@ -248,10 +249,14 @@ contract Rollup is Ownable, RollupHelpers {
     address beneficiary = stakeManager.batchForgedStaker(previousHash, msg.sender);
 
     // Calculate fees and pay them
-    for(uint i = 0; i < tokens.length; i++) {
-      uint totalTokenFee = calcTokenTotalFee(feePlan[1], nTxPerToken, i);
+    for (uint i = 0; i < 16; i++) {
+      uint tokenId;
+      uint totalTokenFee;
+      (tokenId, totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
+        bytes32(nTxPerToken), i);
+
       if(totalTokenFee != 0) {
-        require(withdrawToken(i, beneficiary, totalTokenFee), 'Fail ERC20 withdraw');
+        require(withdrawToken(tokenId, beneficiary, totalTokenFee), 'Fail ERC20 withdraw');
       }
     }
 
@@ -370,7 +375,7 @@ contract Rollup is Ownable, RollupHelpers {
     require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
     
     // event force withdraw
-    emit ForceWithdraw(idBalanceTree, amount, tokenId, babyPubKey[0], babyPubKey[1], msg.sender, nonce);
+    emit ForceFullWithdraw(idBalanceTree, amount, tokenId, babyPubKey[0], babyPubKey[1], msg.sender, nonce);
   }
 
   /**
@@ -498,7 +503,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @return true if succesfull 
    */
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
-    ERC20(tokenList[tokenId]).transfer(receiver, amount);
+    return ERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
 
