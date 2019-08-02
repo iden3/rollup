@@ -2,7 +2,8 @@
 const LeafDb = require('./db');
 
 const { smt } = require('../../../node_modules/circomlib/index');
-const utils = require('./poseidon-utils');
+const utils = require('./balance-tree-utils');
+
 
 class BalanceTree {
   constructor(_leafDb, _smt) {
@@ -11,7 +12,7 @@ class BalanceTree {
   }
 
   async addId(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
-    const resDeposit = utils.hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce);
+    const resDeposit = utils.hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce);
     this.leafDb.insert(resDeposit.hash, resDeposit.leafObj);
     const resInsert = await this.smt.insert(id, resDeposit.hash);
     return { hashValue: resDeposit.hash, proof: resInsert };
@@ -36,7 +37,7 @@ class BalanceTree {
     }
     const leafValues = resFind.foundObject;
 
-    const resDeposit = utils.hashDeposit(id, balance, leafValues.tokenId,
+    const resDeposit = utils.hashLeafValue(balance, leafValues.tokenId,
       leafValues.Ax, leafValues.Ay, leafValues.withdrawAddress, leafValues.nonce + BigInt(1));
     this.leafDb.insert(resDeposit.hash, resDeposit.leafObj);
     const resUpdate = await this.smt.update(id, resDeposit.hash);

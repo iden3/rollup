@@ -6,8 +6,8 @@
 
 const chai = require('chai');
 const BalanceTree = require('./helpers/balance-tree.js');
-const utils = require('./helpers/rollup-test-utils.js');
-const { hashArray } = require('./helpers/poseidon-utils.js');
+const rollupUtils = require('./helpers/rollup-utils.js');
+const utils = require('./helpers/utils.js');
 
 const { expect } = chai;
 const poseidonUnit = require('../../node_modules/circomlib/src/poseidon_gencontract.js');
@@ -18,6 +18,7 @@ const RollupTest = artifacts.require('../contracts/test/RollupTest');
 
 contract('Rollup', (accounts) => {
   let balanceTree;
+  let exitTree;
   let fillingOnChainTest;
   let minningOnChainTest;
 
@@ -39,6 +40,7 @@ contract('Rollup', (accounts) => {
     2: withdrawAddress,
     3: tokenList,
     4: beneficiary,
+    5: onAddress,
   } = accounts;
 
   before(async () => {
@@ -66,12 +68,16 @@ contract('Rollup', (accounts) => {
     }
   });
 
+  it('Distribute token rollup', async () => {
+    await insTokenRollup.transfer(onAddress, 50, { from: id1 });
+  });
+
   it('Rollup token listing', async () => {
     // Check balances token
     const resOwner = await insTokenRollup.balanceOf(owner);
     const resId1 = await insTokenRollup.balanceOf(id1);
     expect(resOwner.toString()).to.be.equal('0');
-    expect(resId1.toString()).to.be.equal('100');
+    expect(resId1.toString()).to.be.equal('50');
 
     // Add token to rollup token list
     const resAddToken = await insRollupTest.addToken(insTokenRollup.address,
@@ -110,7 +116,7 @@ contract('Rollup', (accounts) => {
     const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
     const resId1 = await insTokenRollup.balanceOf(id1);
     expect(resRollup.toString()).to.be.equal('10');
-    expect(resId1.toString()).to.be.equal('90');
+    expect(resId1.toString()).to.be.equal('40');
 
     // Get event 'Deposit' data
     const resId = BigInt(resDeposit.logs[0].args.idBalanceTree);
@@ -122,12 +128,16 @@ contract('Rollup', (accounts) => {
 
     // create balance tree and add leaf
     balanceTree = await BalanceTree.newBalanceTree();
-    const resAddId = await balanceTree.addId(resId, resDepositAmount,
+    await balanceTree.addId(resId, resDepositAmount,
       resTokenId, resAx, resAy, resWithdrawAddress, BigInt(0));
+
+    // Calculate Deposit hash given the events triggered
+    const calcFilling = rollupUtils.hashDeposit(resId, resDepositAmount, resTokenId, resAx,
+      resAy, resWithdrawAddress, BigInt(0));
 
     // calculate filling on chain hash by the operator
     let fillingOnChainTxsHash = BigInt(0);
-    fillingOnChainTxsHash = hashArray([fillingOnChainTxsHash, resAddId.hashValue]);
+    fillingOnChainTxsHash = utils.hash([fillingOnChainTxsHash, calcFilling]);
 
     const resFillingTest = await insRollupTest.fillingOnChainTxsHash();
     expect(fillingOnChainTxsHash.toString()).to.be.equal(BigInt(resFillingTest).toString());
@@ -138,16 +148,16 @@ contract('Rollup', (accounts) => {
   });
 
   it('Forge genesis batch', async () => {
-    // Forge first batch implies not state change at all
+    // Forge first batch implies not balance tree state change at all
     // it forces the next batch to incorporate on-chain transactions
-    // i.e. transaction that has been in previous step
+    // i.e. transaction that has been done in previous step
     const oldStateRoot = BigInt(0).toString();
     const newStateRoot = BigInt(0).toString();
     const newExitRoot = BigInt(0).toString();
     const onChainHash = BigInt(0).toString();
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
 
-    const offChainTx = utils.createOffChainTx(1);
+    const offChainTx = rollupUtils.createOffChainTx(1);
     const offChainHash = offChainTx.hashOffChain.toString();
     const compressedTxs = offChainTx.bytesTx;
 
@@ -188,7 +198,7 @@ contract('Rollup', (accounts) => {
     const onChainHash = minningOnChainTest;
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
 
-    const offChainTx = utils.createOffChainTx(1);
+    const offChainTx = rollupUtils.createOffChainTx(1);
     const offChainHash = offChainTx.hashOffChain.toString();
     const compressedTxs = offChainTx.bytesTx;
 
@@ -215,5 +225,101 @@ contract('Rollup', (accounts) => {
     // Check last state root forged
     const resState = await insRollupTest.getStateRoot('1');
     expect(BigInt(resState).toString()).to.be.equal(newStateRoot);
+  });
+
+  it('Deposit on top', async () => {
+    // Deposit on top on-chain transaction is submitted
+    // It will be forged two blocks forward
+    // We will check balances of all address involved
+    // Approve rollup smart contract to spend 'onAddress' tokens
+
+    // To make a deposit on top we have to prove:
+    // - An id exist on the balance tree with a given tokenId in any batch
+    // - in order to do so, we have to submit the merkle tree proof
+
+    // get merkle tree proof from balance tree
+    const id = BigInt(0);
+    const proofId = await balanceTree.getIdInfo(id);
+    const siblingsId = utils.arrayBigIntToArrayStr(proofId.siblings);
+
+    const stateRoot = BigInt('1');
+    const amountToDeposit = BigInt('25');
+
+    const resApprove = await insTokenRollup.approve(insRollupTest.address, amountToDeposit.toString(),
+      { from: onAddress });
+    expect(resApprove.logs[0].event).to.be.equal('Approval');
+
+
+    const resDepositOnTop = await insRollupTest.depositOnTop(
+      id.toString(),
+      proofId.foundObject.balance.toString(),
+      proofId.foundObject.tokenId.toString(),
+      `0x${proofId.foundObject.withdrawAddress.toString('16')}`,
+      proofId.foundObject.nonce.toString(),
+      [proofId.foundObject.Ax.toString(), proofId.foundObject.Ay.toString()],
+      siblingsId,
+      stateRoot.toString(),
+      amountToDeposit.toString(),
+      { from: onAddress, value: web3.utils.toWei('1', 'ether') },
+    );
+
+    expect(resDepositOnTop.logs[0].event).to.be.equal('DepositOnTop');
+
+    // Check balances tokens
+    const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+    const resId1 = await insTokenRollup.balanceOf(id1);
+    const resOnTop = await insTokenRollup.balanceOf(onAddress);
+
+    expect(resRollup.toString()).to.be.equal('35');
+    expect(resId1.toString()).to.be.equal('40');
+    expect(resOnTop.toString()).to.be.equal('25');
+  });
+
+  it('Forge two batches', async () => {
+    // Forge first batch implies not balance tree state change at all
+    // it only updates fillingOnChainTx to force insert previous 'depostOnTop' Tx
+    // we update second batch including deposit on top on blance tree
+    let lastIndexStateRoot = await insRollupTest.getStateDepth();
+    lastIndexStateRoot = BigInt(lastIndexStateRoot) - BigInt(1);
+    const oldStateRoot = await insRollupTest.getStateRoot(lastIndexStateRoot.toString());
+    const newStateRoot = oldStateRoot;
+    const newExitRoot = BigInt(0).toString();
+    const onChainHash = BigInt(0).toString();
+    const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
+
+    const offChainTx = rollupUtils.createOffChainTx(1);
+    const offChainHash = offChainTx.hashOffChain.toString();
+    const compressedTxs = offChainTx.bytesTx;
+
+    const nTxPerToken = BigInt(0).toString();
+
+    const resForge = await insRollupTest.forgeBatch(oldStateRoot, newStateRoot, newExitRoot,
+      onChainHash, feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
+
+    expect(resForge.logs[0].event).to.be.equal('ForgeBatch');
+    expect(resForge.logs[0].args.batchNumber.toString()).to.be.equal('2');
+    expect(resForge.logs[0].args.offChainTx).to.be.equal(compressedTxs);
+
+    // Update on-chain hashes
+    minningOnChainTest = await insRollupTest.miningOnChainTxsHash();
+    fillingOnChainTest = BigInt(0).toString();
+
+    // Calculate filingOnChainHash
+    let resLeafValue = await balanceTree.getIdInfo(BigInt(0));
+    resLeafValue = resLeafValue.foundValue.toString();
+    // calculate filling on chain hash by the operator
+    let onChainHashOp = BigInt(0);
+    onChainHashOp = utils.hash([onChainHash, resLeafValue]);
+
+    expect(onChainHashOp.toString()).to.be.equal(BigInt(minningOnChainTest).toString());
+
+    // Update balance tree with 'deposit on top' transaction
+    await balanceTree.updateId(BigInt(0), BigInt(35));
+
+    const resForge2 = await insRollupTest.forgeBatch(oldStateRoot, balanceTree.getRoot().toString(),
+      newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
+
+    expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');
+    expect(resForge2.logs[0].args.batchNumber.toString()).to.be.equal('3');
   });
 });

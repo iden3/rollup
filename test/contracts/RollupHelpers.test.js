@@ -309,7 +309,7 @@ contract('RollupHelpers functions', (accounts) => {
     const res = await insHelpers.hashEntryTest(id, amountDeposit, tokenId, Ax.toString(),
       Ay.toString(), withdrawAddress, nonce);
 
-    const entryHash = '24ea87c296b656522777264502eda198b285590e97e16e75e9d80758cb69e83';
+    const entryHash = '5802a85619c58a1826c079f172016d1df4bdd9544f5a237ef0fac0b5cc551b5';
     expect(res.toString('hex')).to.be.equal(entryHash);
 
     // Calculate hash through poseidon implemented in js

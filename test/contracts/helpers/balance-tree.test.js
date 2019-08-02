@@ -20,9 +20,8 @@ describe('Balance tree', () => {
     balanceTree = await BalanceTree.newBalanceTree();
     const resAddId = await balanceTree.addId(id, amountDeposit, tokenId, Ax, Ay, withdrawAddress, nonce);
 
-    const hexRollupHelpers = '24ea87c296b656522777264502eda198b285590e97e16e75e9d80758cb69e83';
-
-    expect(resAddId.hashValue.toString('16')).to.be.equal(hexRollupHelpers);
+    const hashValue = '16416ff969572d7677f049afa00440b5b422d01d1775cb93a65cc346873f0c3e';
+    expect(resAddId.hashValue.toString('16')).to.be.equal(hashValue);
   });
 
   it('Find key exist', async () => {
@@ -30,7 +29,6 @@ describe('Balance tree', () => {
     const resFind = await balanceTree.getIdInfo(idToFind);
     const leafValue = resFind.foundObject;
 
-    expect(leafValue.id.toString()).to.be.equal(id.toString());
     expect(leafValue.balance.toString()).to.be.equal(amountDeposit.toString());
     expect(leafValue.tokenId.toString()).to.be.equal(tokenId.toString());
     expect(leafValue.Ax.toString()).to.be.equal(Ax.toString());
@@ -57,7 +55,6 @@ describe('Balance tree', () => {
     const resFind = await balanceTree.getIdInfo(idToFind);
     const leafValue = resFind.foundObject;
 
-    expect(leafValue.id.toString()).to.be.equal(id.toString());
     expect(leafValue.balance.toString()).to.be.equal(newBalance.toString());
     expect(leafValue.nonce.toString()).to.be.equal((nonce + BigInt(1)).toString());
   });
