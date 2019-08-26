@@ -61,3 +61,8 @@ typings/
 .next
 
 tmp
+
+# truffle
+
+build
+rollup-cli/src/wallet-rollup-cli.json

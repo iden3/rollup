@@ -136,28 +136,24 @@ contract RollupHelpers {
    * @dev Build entry for deposit on-chain transaction
    * @param idBalanceTree ethereum address
    * @param amountDeposit ethereum address
-   * @param coin ethereum address
+   * @param tokenId ethereum address
    * @param Ax ethereum address
    * @param Ay ethereum address
    * @param withdrawAddress ethereum address
-   * @param sendTo ethereum address
-   * @param sendAmount ethereum address
    * @param nonce ethereum address
    * @return entry structure
    */
-  function buildEntryDeposit(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount, uint32 nonce)
+  function buildEntryDeposit(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce)
     internal pure returns (Entry memory entry) {
 
     // build element 1
     entry.e1 = bytes32(bytes3(idBalanceTree))>>(256 - 24);
     entry.e1 |= bytes32(bytes2(amountDeposit))>>(256 - 16 - 24);
-    entry.e1 |= bytes32(bytes4(coin))>>(256 - 32 - 16 - 24);
-    entry.e1 |= bytes32(bytes20(withdrawAddress))>>(256 - 160 - 32 - 16 - 24);
+    entry.e1 |= bytes32(bytes2(tokenId))>>(256 - 16 - 16 - 24);
+    entry.e1 |= bytes32(bytes20(withdrawAddress))>>(256 - 160 - 16 - 16 - 24);
     // build element 2
-    entry.e2 = bytes32(bytes3(sendTo))>>(256 - 24);
-    entry.e2 |= bytes32(bytes2(sendAmount))>>(256 - 16 - 24);
-    entry.e2 |= bytes32(bytes4(nonce))>>(256 - 32 - 16 - 24);
+    entry.e2 |= bytes32(bytes4(nonce))>>(256 - 32);
     // build element 3
     entry.e3 = bytes32(Ax);
     // build element 4
@@ -172,13 +168,73 @@ contract RollupHelpers {
   function buildEntryFeePlan(bytes32[2] memory feePlan)
     internal pure returns (Entry memory entry) {
     // build element 1
-    entry.e1 = bytes32(feePlan[0] << 128)>>(256 - 128);
+    entry.e1 = bytes32(feePlan[0] << 128) >> (256 - 128);
     // build element 2
     entry.e2 = bytes32(feePlan[0]) >> (256 - 128);
     // build element 3
     entry.e3 = bytes32(feePlan[1] << 128)>>(256 - 128);
     // build element 4
     entry.e4 = bytes32(feePlan[1]) >> (256 - 128);
+  }
+
+  /**
+   * @dev build entry for the exit tree leaf
+   * @param id balnce tree identifier
+   * @param amount amunt to withdraw
+   * @param token token type
+   * @param withAddress withdraw address
+   * @return entry structure
+   */
+  function buildEntryExitLeaf(uint24 id, uint16 amount, uint16 token, address withAddress)
+    internal pure returns (Entry memory entry) {
+    // build element 1
+    entry.e1 = bytes32(bytes3(id)) >> (256 - 24);
+    entry.e1 |= bytes32(bytes2(amount)) >> (256 - 16 - 24);
+    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 16 - 24);
+    entry.e1 |= bytes32(bytes20(withAddress)) >> (256 - 160 - 16 - 16 - 24);
+  }
+
+  /**
+   * @dev build entry for the exit tree leaf
+   * @param amount amunt to withdraw
+   * @param token token type
+   * @param Ax x coordinate public key babyJub
+   * @param Ay y coordinate public key babyJub
+   * @param withAddress withdraw address
+   * @param nonce nonce parameter
+   * @return entry structure
+   */
+  function buildEntryBalanceTree(uint16 amount, uint16 token, uint256 Ax, uint Ay,
+    address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
+     // build element 1
+    entry.e1 = bytes32(bytes2(amount)) >> (256 - 16);
+    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 16);
+    entry.e1 |= bytes32(bytes20(withAddress)) >> (256 - 160 - 16 - 16);
+    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 160 - 16 - 16);
+    // build element 2
+    entry.e2 = bytes32(Ax);
+    // build element 3
+    entry.e3 = bytes32(Ay);
+  }
+
+  /**
+   * @dev Calculate total fee amount for the beneficiary
+   * @param tokenIds contains all token id (feePlan[0])
+   * @param fees contains all fee plan data (feePlan[1])
+   * @param nTxToken number of transaction per token
+   * @param nToken token position on fee plan
+   * @return total fee amount
+   */
+  function calcTokenTotalFee(bytes32 tokenIds ,bytes32 fees, bytes32 nTxToken, uint nToken)
+    internal pure returns (uint, uint) {
+    // get number of transaction depending on token
+    uint nTx = uint16(bytes2(nTxToken << nToken*16));
+    // get fee depending on token
+    uint fee = uint16(bytes2(fees << nToken*16));
+    // get token id
+    uint tokenId = uint16(bytes2(tokenIds << nToken*16));
+    
+    return (tokenId, nTx*fee);
   }
 
   /**

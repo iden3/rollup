@@ -29,12 +29,12 @@ contract RollupHelpersTest is RollupHelpers{
     return checkSig(msgHash, rsv);
   }
 
-  function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount,
-    uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+  function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
+  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
     
-    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, coin,
-      Ax, Ay, withdrawAddress, sendTo, sendAmount, nonce);
+    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
+      Ax, Ay, withdrawAddress, nonce);
     return (entry.e1,
             entry.e2,
             entry.e3,
@@ -42,12 +42,12 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint32 coin,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint24 sendTo, uint16 sendAmount,
-    uint32 nonce) public view returns (uint256) {
+  function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
+    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
+  ) public view returns (uint256) {
     
-    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, coin,
-      Ax, Ay, withdrawAddress, sendTo, sendAmount, nonce);
+    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
+      Ax, Ay, withdrawAddress, nonce);
     
     return hashEntry(entry);
   }
@@ -65,5 +65,30 @@ contract RollupHelpersTest is RollupHelpers{
 
   function hashOffChainTxTest(bytes memory compressedTxs) public view returns (uint256) {
     return hashOffChainTx(compressedTxs);
+  }
+
+  function calcTokenTotalFeeTest(bytes32 tokenIds, bytes32 fee, bytes32 nTxToken, uint nToken)
+    public pure returns (uint, uint) {
+    return calcTokenTotalFee(tokenIds, fee, nTxToken, nToken);
+  }
+
+  function buildEntryExitLeafTest(uint24 id, uint16 amount, uint16 token, address withAddress)
+    public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    Entry memory entry = buildEntryExitLeaf(id, amount, token, withAddress);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
+  }
+
+  function buildEntryBalanceTreeTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
+    address withAddress, uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    Entry memory entry = buildEntryBalanceTree(amount, token, Ax, Ay, withAddress, nonce);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
   }
 }

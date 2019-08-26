@@ -3,16 +3,27 @@ Describe most used words and its meaning regarding Rollup environment
 
 ## Vocabulary
 `rollup`: a method of aggregating multiple signatures and/or Merkle tree updates inside a SNARK
+
 `operator`: a party who aggregates many signatures into a single SNARK proof
+
 `circuit`: the code that defines what the SNARK allows
+
 `balance tree`: the Merkle tree that stores a mapping between accounts and balances
+
 `balance tree depth (24)`: the number of layers in the balance tree
-`exit tree`: The tree if the exit balances of a given batch.
+
+`exit tree`: The tree if the exit balances of a given batch
+
 `block`: Ethereum block
+
 `batch`: state transition of the balance tree ( a collection of off-chain rollup transactions forged on-chain. It can be viewed as an off-chain block )
+
 `forge batch`: operator action to commit a new batch on-chain
+
 `proof`: a single SNARK proof of a state transition which proves a batch
+
 `(Ax, Ay)`: public key babyJub
+
 `withdraw address`: Allowed address to perform `withdraw` on-chain transaction
 
 ## On-chain transactions
@@ -21,17 +32,19 @@ Describe most used words and its meaning regarding Rollup environment
 
 - `transferOnTop`: increase balance of a given `IdBalanceTree`
 
-- `withdraw`: Action required to withdraw balance. It requires two steps: 1 - Off-chain transaction, 2 - On-chain transaction
-  - On-chain: requires merkle tree proof to make the withdraw
+- `withdraw`: Action required to withdraw balance. It requires two steps: 
+  - 1 - Off-chain transaction
+  - 2 - On-chain transaction: requires merkle tree proof to make the withdraw
 
 - `forceWithdrawFull`: Force exit to balance tree. All the amount will be refunded.
 
 ## Off-chain transactions
 
-- `transaction`: Standard off-chain trasaction signed by `idBalanceTree` with `ecdsa`. Allows to send - `amount` to a `destinity` balance tree id.
+- `transaction`: Standard off-chain trasaction signed by `idBalanceTree` with `ecdsa`. Allows to send `amount` to a `destinity` balance tree id.
 
-- `withdraw`: Action required to withdraw balance. It requires two steps: 1 - Off-chain transaction, 2 - On-chain transaction
-  - Off-chain: send `amount` to withdraw to `idBalanceTree` = 0
+- `withdraw`: Action required to withdraw balance. It requires two steps: 
+  - 1 - Off-chain transaction: Off-chain: send `amount` to withdraw to `idBalanceTree` = 0
+  - 2 - On-chain transaction
 
 ## Data availability
 Data bases:
@@ -48,19 +61,19 @@ Data bases:
 
 ## Operator selector.
 
-We divide the blocks of the blockchain in slots and eras.  An era has 20 slots and a slot has 100 blocks.
+Each block is an etherum block which is every 15 seconds. We then have an era which is 20 slots and a slot has 100 blocks. That means that an Era lasts 8.3 hours. Each slot has a single operator. 
 
-The way it works is that at the begining of each era there is a raffle that assigns one operator to each slot for the upcoming era. This raffle is ponderated by the effective stake. The efective stake is function of the ETH staked by eahc operator stakes in the system.
+At the begining of each era there is a raffle that assigns one operator to each slot for the upcoming era. This raffle is weighted by the effective stake. The effective stake is function of the ETH staked by each operator stakes in the system.
 
-efectiveStake = ethStaked^(1.2)
+effectiveStake = ethStaked^(1.2)
 
-The 1.2 exponent is because we need to incentivate concentrated operators with high staked. We don't want than an operator have many virtual operators with low stake each. In that case, the operator would have the same odds to get selected but would risk much less.
+The 1.2 exponent is because we need to incentivate concentrated operators with high stake. We don't want any operator have many virtual operators with low stake each. In that case, the operator would have the same odds to get selected but would risk much less. We also define the minimum stake as 10 ETH.
 
-For the operators to stat batching they need to first stake the ETH and wait for a full era to complete. So if we are in era 3, they will not start being included in the raffle until the begining of the era 5.
+For the operators to start batching they need to first stake the ETH and wait for a full era to complete. So if we are in era 3, they will not start being included in the raffle until the begining of the era 5.
 
-The same happen for stop batching.  Once the operator notifies an exit it will not be removed form the raffle until a full era is finished.  So if you are leaveng during era 9, you will have to continue batching during the eras 9 and 10. In era 11, the operator will not be included again.
+The same happen for stop batching.  Once the operator notifies an exit it will not be removed form the raffle until a full era is finished.  So if you are leaving during era 9, you will have to continue batching during the eras 9 and 10. In era 11, the operator will not be included again.
 
-Assigned Operators have the obligation to generate at least one batch during each assigned block.  If an operator misses to do that, all his stake will be burned except for a 10% that go to who notifies it.
+Assigned Operators have the obligation to generate at least one batch during each assigned block.  If an operator fails to do that, all his stake will be burned except for a 10% that go to who calls the `burn` function.
 
 For doing the raffle we construct a special tree data structure where adding, removing and checking the winner functions are O(log(n))
 
