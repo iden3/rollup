@@ -8,7 +8,7 @@ import './lib/StakeManagerHelpers.sol';
 contract RollupInterface {
   function getRoot(uint id) public view returns (bytes32);
   function getDepth() public view returns (uint);
-} 
+}
 
 contract StakeManager{
 
@@ -17,7 +17,7 @@ contract StakeManager{
   // External contracts used
   RollupInterface insRollup;
 
-  // defines operator structure 
+  // defines operator structure
   struct  Operator{
     address controllerAddress;
     address beneficiaryAddress;
@@ -57,7 +57,7 @@ contract StakeManager{
 
   // First block where the first era begins
   uint firstBlock;
-  
+
   // constants determining era and slot block duration
   uint constant BLOCKS_PER_SLOT = 100;
   uint constant SLOTS_PER_ERA = 20;
@@ -76,7 +76,7 @@ contract StakeManager{
   // Each era will have a raffle
   // At the begining of each era, all slots winners are determined by:
   // entropy --> which will select an operator that will be able to forge at each slot
-  // pRoot --> pointer of the initial stake root leaf 
+  // pRoot --> pointer of the initial stake root leaf
   struct Raffle {
     uint32 pRoot;
     uint totalStaked;
@@ -85,10 +85,10 @@ contract StakeManager{
 
   // list of raffles depending on era index
   mapping(uint => Raffle) raffles;
-  
+
   // Total effective stake for a given raffle
   // Sum all the operators effective stake
-  uint totalEffectiveStake; 
+  uint totalEffectiveStake;
 
   // Indicates if at least one batch has been forged on an slot
   // used for slashing operators
@@ -107,7 +107,7 @@ contract StakeManager{
    * @param _rollup rollup address
    */
   constructor(address _rollup) public {
-    require(_rollup != address(0));
+    require(_rollup != address(0),'Address 0 inserted');
     insRollup = RollupInterface(_rollup);
     ownerRollup = _rollup;
   }
@@ -116,7 +116,7 @@ contract StakeManager{
    * @dev modifier to check if staker manager has been initialized
    */
   modifier isInitialized {
-    require(initialized == true);
+    require(initialized == true, 'Not initialized');
     _;
   }
 
@@ -124,7 +124,7 @@ contract StakeManager{
    * @dev modifier only allow rollup function call
    */
   modifier onlyRollup {
-    require(ownerRollup == msg.sender);
+    require(ownerRollup == msg.sender,'Not rollup address');
     _;
   }
 
@@ -143,19 +143,19 @@ contract StakeManager{
     require(initialized == false, 'Staker manager has been already initialized');
     require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
     require(initialBlock > block.number, 'initial block before current block');
-    
-    // Calculate effective amount and initialize 'totalEffectiveStake' 
+
+    // Calculate effective amount and initialize 'totalEffectiveStake'
     uint effStake = calcEffectiveAmount(msg.value);
     totalEffectiveStake = effStake;
-    
+
     // Add operator
     uint64 unlockBlock = uint64(block.number + MIN_BLOCKS_BEFORE_STAKING);
     operators.push(Operator(msg.sender, beneficiaryAddress, lastHashCommit, unlockBlock,
       msg.value, effStake));
     operatorsWaiting[msg.sender] = true;
-  
+
     // Create first raffle for the first era
-    raffles[0] = Raffle(pCurrentRoot, totalEffectiveStake , bytes16(blockhash(block.number)));
+    raffles[0] = Raffle(pCurrentRoot, totalEffectiveStake, bytes16(blockhash(block.number)));
     firstBlock = initialBlock;
     initialized = true;
 
@@ -178,12 +178,12 @@ contract StakeManager{
     bytes32 msgHash,
     bytes memory rsv
   ) public payable isInitialized {
-  
+
     // Verify signature with stakeAddress
     require(StakeManagerHelpers.checkSig(msgHash, rsv) == stakeAddress, 'Signature not valid');
 
     // Verify minimal amount to stake
-    require( msg.value >= MIN_STAKE, 'Not enough balance to enter the raffle');
+    require(msg.value >= MIN_STAKE, 'Not enough balance to enter the raffle');
 
     // Verify operator is not on waiting list or has not been registered
     require(operatorsWaiting[msg.sender] == false, 'operator is waiting for enter raffle');
@@ -206,19 +206,19 @@ contract StakeManager{
   function enterRaffle(uint operatorId) public payable isInitialized {
     // Verify operator id exist
     require(operatorId <= operators.length - 1, 'Operator index does not exist');
-    
+
     // get operator by its id
     Operator storage operator = operators[operatorId];
 
     // Verify message sender related with operator index
     require(msg.sender == operator.controllerAddress, 'Sender does not match with operator controller');
-    
+
     // Verify operator is on waiting list
     require(operatorsWaiting[msg.sender] == true, 'operator is not on the waiting list');
-    
-    // Verify operator has wait min blocks before staking 
+
+    // Verify operator has wait min blocks before staking
     require(operator.unlockStakingBlock >= block.number, 'Block before unlock staking block');
-    
+
     // Update operator state
     operatorsWaiting[msg.sender] = false;
     operatorsRegistered[msg.sender] = true;
@@ -231,23 +231,23 @@ contract StakeManager{
   * @dev function to get removed from the stake tree
   * In order to get back the amount staked, opertor must call withdraw function
   * @param operatorId operator identifier
-  * beneficiary, address stakeAddress + r,s,v stakeAddress + message 
+  * beneficiary, address stakeAddress + r,s,v stakeAddress + message
   */
   function removeStake(uint operatorId) public {
     // Verify operator id exist
     require(operatorId <= operators.length - 1, 'Operator index does not exist');
-    
+
     // get operator by its id
     Operator storage operator = operators[operatorId];
     require(msg.sender == operator.controllerAddress, 'Sender does not match with operator controller');
-    
+
     // add funds staked to operator refunds
     refunds[operator.controllerAddress].amount += operator.amountStaked;
-    
+
     // Reset operator parameters
     operator.amountStaked = 0;
     operator.effectiveStake = 0;
-    
+
     // Set block from which the operator can withdraw the stake
     refunds[operator.controllerAddress].unlockBlock = uint64(block.number + MIN_BLOCKS_BEFORE_REFUND);
   }
@@ -260,14 +260,14 @@ contract StakeManager{
   function withdraw(uint operatorId) public {
     // Verify operator id exist
     require(operatorId <= operators.length - 1, 'Operator index does not exist');
-    
+
     // get operator by its id
     Operator storage operator = operators[operatorId];
     require(msg.sender == operator.controllerAddress, 'Sender does not match with operator controller');
 
     // verify operator is registered and can be removed from staker tree
     require(operatorsRegistered[msg.sender] == true, 'operator already registered');
-    
+
     // get refund struct depending on msg.sender
     Refund storage refund = refunds[msg.sender];
 
@@ -277,12 +277,12 @@ contract StakeManager{
     // update operator state
     operatorsRegistered[msg.sender] = false;
     removeStakerNode(operatorId);
-    
+
     uint amount = refund.amount;
-    require(amount > 0);
+    require(amount > 0, 'Amount must be greater than 0');
     refund.amount = 0;
     refund.unlockBlock = 0;
-    
+
     // send stake back to the operator
     (msg.sender).transfer(amount);
   }
@@ -295,46 +295,46 @@ contract StakeManager{
   function getWinnerOperatorIndexBySlot(uint slot) public view returns(uint){
     require(slot <= currentSlot(), 'Slot requested still does not exist');
     uint era = slot / SLOTS_PER_ERA;
-    
+
     // From the 'era' number:
     // Get raffle entropy
     bytes16 entropy = raffles[era].entropy;
-    
+
     // calculate lucky number for the raffle for each slot
     uint256 inValue = uint256(keccak256(abi.encodePacked(entropy, slot)));
     inValue = inValue % raffles[era].totalStaked;
-    
+
     // retrieve address operator winner
-    return findStakerNode(raffles[era].pRoot ,uint64(inValue));
+    return findStakerNode(raffles[era].pRoot, uint64(inValue));
   }
 
   /**
    * @dev function to report an operator which has not commited a batch
    * it that case, staked amount is burned and the slasher gets a 10% of the satked amount
-   * @param slot slot index 
+   * @param slot slot index
    */
   function slash(uint slot) public {
     require(slot < currentSlot(), 'Slot requested still does not exist');
     require(batchForged[slot] == false, 'Batch has been forged during this slot');
-    
+
     // get operator index
     uint slashedIndexOperator = getWinnerOperatorIndexBySlot(slot);
-    
+
     // remove operator from staker tree
     removeStakerNode(slashedIndexOperator);
-    
+
     // Calculate amounts to: burn and reward
     uint amoutStaked = operators[slashedIndexOperator].amountStaked;
     uint amountBurned = amoutStaked * 9000/10000;
     uint amountReward = amoutStaked - amountBurned;
-    
+
     // update operator state
     operators[slashedIndexOperator].amountStaked = 0;
     operators[slashedIndexOperator].effectiveStake = 0;
-    
+
     // Burn
     address(0).transfer(amountBurned);
-    
+
     // Pay reward
     msg.sender.transfer(amountReward);
   }
@@ -347,10 +347,10 @@ contract StakeManager{
    */
   function batchForgedStaker(bytes32 previousHash, address operator) public onlyRollup returns(address){
     uint indexOperator = getWinnerOperatorIndexBySlot(currentSlot());
-    
+
     Operator storage winnerOperator = operators[indexOperator];
     // verify that the operator that wants to forge the batch is the raffle winner
-    require(winnerOperator.controllerAddress == operator);
+    require(winnerOperator.controllerAddress == operator, 'Not allowed to forge batch');
 
     // verify that operator send the previous hash of the current commited hash
     bytes32 hashCommited = keccak256(abi.encodePacked(previousHash));
@@ -361,10 +361,10 @@ contract StakeManager{
 
     // Snapshot Raffle
     updateRaffle(uint(previousHash));
-    
+
     // forge batch is succesfull, mark that in this slot a batch has been forged
     batchForged[currentSlot()] = true;
-    
+
     // return benefiacry address
     return operators[indexOperator].beneficiaryAddress;
   }
@@ -380,7 +380,7 @@ contract StakeManager{
 
   /**
    * @dev add node to the staker tree
-   * @param operatorId operator to add into the staker tree  
+   * @param operatorId operator to add into the staker tree
    */
   function addStakerNode(uint operatorId) private {
     // TODO:
@@ -391,10 +391,10 @@ contract StakeManager{
 
   /**
    * @dev remove node from the staker tree
-   * @param operatorId operator to remove from the staker tree  
+   * @param operatorId operator to remove from the staker tree
    */
   function removeStakerNode(uint operatorId) private {
-    // TODO: 
+    // TODO:
     // Remove leaf to staker tree
     // Update pCurrentRoot
     // Update totalEffectiveStake
@@ -429,7 +429,7 @@ contract StakeManager{
    * @return effective stake
    */
   function calcEffectiveAmount(uint amount) private pure returns (uint) {
-    //TODO: exponentiation 1.2 
+    //TODO: exponentiation 1.2
     return amount**(2);
   }
 
@@ -441,10 +441,10 @@ contract StakeManager{
     Raffle storage raffle = raffles[currentEra()+1];
     raffle.pRoot = pCurrentRoot;
     raffle.totalStaked = totalEffectiveStake;
-    
+
     // Update entropy only the first batch that is forged into the slot
     if(!batchForged[currentSlot()]) {
-      uint128 oldEntropy = uint128(raffle.entropy); 
+      uint128 oldEntropy = uint128(raffle.entropy);
       raffle.entropy = bytes16(keccak256(abi.encodePacked(oldEntropy, uint128(entropy))));
     }
   }
@@ -457,7 +457,7 @@ contract StakeManager{
    * @dev Retrieve current era
    * @return era number
    */
-  function currentEra() public view returns(uint){ 
+  function currentEra() public view returns(uint){
     return (block.number - firstBlock) / (BLOCKS_PER_SLOT*SLOTS_PER_ERA);
   }
 

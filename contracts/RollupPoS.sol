@@ -4,6 +4,7 @@ contract RollupPoS {
 
     uint32 constant BLOCKS_PER_SLOT = 100;
     uint32 constant SLOTS_PER_ERA = 20;
+    uint constant MIN_STAKE = 10 ether; // Minimum stake to enter the raffle
 
     uint public genesisBlock;
     uint32 lastInitializedRaffle;
@@ -16,9 +17,9 @@ contract RollupPoS {
         bytes32 rndHash;
     }
 
-    //This structure should feed im a songle 256bit word
+    // This structure should feed im a songle 256bit word
     struct IntermediateNode {
-        uint32 era;             //Updates on the same era, are not keeped
+        uint32 era;             // Updates on the same era, are not keeped
         uint64 threashold;
         uint64 increment;
         bool isOpLeft;          // true if left is an index of an op. false if it's a node
@@ -59,10 +60,9 @@ contract RollupPoS {
         return block.number;
     }
 
-
     // log2
     function _log2(uint32 n) private pure returns (uint32) {
-        uint32 level =0 ;
+        uint32 level = 0;
         uint32 rem = n;
         while (rem > 1) {
             rem = rem >> 1;
@@ -71,8 +71,8 @@ contract RollupPoS {
         return level;
     }
 
-    function effectiveStake(uint stake) pure public returns (uint64) {
-        return uint64( (stake*stake*0x10000000000000000) / (200000000 ether * 200000000 ether));
+    function effectiveStake(uint stake) public pure returns (uint64) {
+        return uint64((stake*stake*0x10000000000000000) / (200000000 ether * 200000000 ether));
     }
 
     function block2era(uint bn) public view returns (uint32) {
@@ -97,8 +97,8 @@ contract RollupPoS {
         uint32 ce = currentEra();
         // Shorcut
         if (lastInitializedRaffle >= ce+2) return;
-        for (uint32 i=ce; i<= ce+2; i++) {
-            if ((i>0)&&(raffles[i].era == 0)) {
+        for (uint32 i = ce; i <= ce+2; i++) {
+            if ((i>0) && (raffles[i].era == 0)) {
                 Raffle storage lastRaffle = raffles[lastInitializedRaffle];
                 raffles[i] = Raffle(
                     i,
@@ -107,16 +107,14 @@ contract RollupPoS {
                     lastRaffle.activeStake,
                     lastRaffle.seedRnd
                 );
-                lastInitializedRaffle=i;
+                lastInitializedRaffle = i;
             }
         }
     }
 
-
-
     function _addToNode(Raffle storage raffle, uint32 n, uint32 idOp, uint32 level) private returns(uint32 newRoot) {
         IntermediateNode storage N = nodes[n];
-        if (0 == (uint32(1)<<(level))-1 & idOp ) {  // Left side is full
+        if (0 == ( uint32(1) << (level) ) - 1 & idOp ) {  // Left side is full
             nodes.push(IntermediateNode(
                 raffle.era,
                 raffle.activeStake,
@@ -140,8 +138,9 @@ contract RollupPoS {
                 ));
                 newRoot = uint32(nodes.length-1);
             } else {
-                while (idOp & (uint32(1) << (level - 1)) == 0) level--;
-                newRoot =  _addToNode( raffle, N.right, idOp, level-1);
+                uint32 tmpLevel = level;
+                while (idOp & (uint32(1) << (tmpLevel - 1)) == 0) tmpLevel--;
+                newRoot = _addToNode(raffle, N.right, idOp, tmpLevel-1);
             }
             if (N.era == raffle.era) {
                 N.isOpRight = false;
@@ -168,12 +167,12 @@ contract RollupPoS {
         uint32 updateEra = currentEra() + 2;
         uint32 newRoot = 0xFFFFFFFF;
         uint64 eStake = effectiveStake(value);
-        require(eStake>0);
+        require(eStake > 0, 'Stake should be greater than 0');
         _updateRaffles();
-        Raffle storage raffle = raffles[ updateEra ];
-        if (idOp>0) {
+        Raffle storage raffle = raffles[updateEra];
+        if (idOp > 0) {
             uint32 level = _log2(idOp);
-            if (idOp==1) {
+            if (idOp == 1) {
                 nodes.push(IntermediateNode(
                     raffle.era,
                     raffle.activeStake,
@@ -195,23 +194,22 @@ contract RollupPoS {
         return idOp;
     }
 
-    function addStaker(bytes32 rndHash) payable external returns(uint) {
-        require(msg.value < 1<<128);
-        return doAddStaker(msg.sender, msg.sender, rndHash, uint128(msg.value) );
+    function addStaker(bytes32 rndHash) external payable returns(uint) {
+        require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
+        return doAddStaker(msg.sender, msg.sender, rndHash, uint128(msg.value));
     }
 
-    function addStakerWithDifferentBeneficiary(address payable beneficiaryAddress, bytes32 rndHash) payable external returns(uint) {
-        require(msg.value < 1<<128);
-        return doAddStaker(msg.sender, beneficiaryAddress, rndHash, uint128(msg.value) );
+    function addStakerWithDifferentBeneficiary(address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
+        require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
+        return doAddStaker(msg.sender, beneficiaryAddress, rndHash, uint128(msg.value));
     }
 
-    function addStakerRly(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash) payable external returns(uint) {
+    function addStakerRly(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
 
         /* Add a third party staker, do not need signature */
-        require(msg.value < 1<<128);
-        return doAddStaker(controllerAddress, beneficiaryAddress, rndHash, uint128(msg.value) );
+        require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
+        return doAddStaker(controllerAddress, beneficiaryAddress, rndHash, uint128(msg.value));
     }
-
 
     function _removeFromNode(Raffle storage raffle, uint32 n, uint32 opId, uint32 level, uint64 eStake) private {
         IntermediateNode storage N = nodes[n];
@@ -232,22 +230,23 @@ contract RollupPoS {
                 ));
             }
         } else {
-            while (operators.length & (uint32(1) << (level - 1)) == 0) level--;
-            if (!N.isOpRight) _removeFromNode(raffle, N.right, opId, level-1, eStake);
+            uint32 tmpLevel = level;
+            while (operators.length & (uint32(1) << (tmpLevel - 1)) == 0) tmpLevel--;
+            if (!N.isOpRight) _removeFromNode(raffle, N.right, opId, tmpLevel-1, eStake);
         }
     }
 
     function doRemove(uint32 opId) private {
-        require(opId < operators.length);
+        require(opId < operators.length, 'Operator does not exist');
 
         Operator storage op = operators[opId];
         uint32 updateEra = currentEra() + 2;
         uint64 eStake = effectiveStake(op.amountStaked);
-        require(op.unlockEra == 0);
+        require(op.unlockEra == 0, 'Operator has been already removed');
         op.unlockEra = updateEra;
 
         _updateRaffles();
-        Raffle storage raffle = raffles[ updateEra ];
+        Raffle storage raffle = raffles[updateEra];
 
         uint32 level = _log2(uint32(operators.length));
         if (operators.length>1) {
@@ -258,24 +257,23 @@ contract RollupPoS {
 
     function remove(uint32 opId) external {
         Operator storage op = operators[opId];
-        require(msg.sender == op.controllerAddress);
+        require(msg.sender == op.controllerAddress, 'Sender does not match with operator controller');
         doRemove(opId);
     }
 
     function removeRly(uint32 opId, bytes32 r, bytes32 s, uint8 v) external {
         Operator storage op = operators[opId];
-        bytes32 h = keccak256( abi.encodePacked("RollupPoS", "remove", opId) );
+        bytes32 h = keccak256(abi.encodePacked("RollupPoS", "remove", opId));
         assert(ecrecover(h, v, r, s) == op.controllerAddress);
         doRemove(opId);
     }
 
-
-    function withdrow(uint32 opId) external {
+    function withdraw(uint32 opId) external {
         Operator storage op = operators[opId];
-        require(op.unlockEra > 0);
-        require(op.unlockEra <= currentEra());
+        require(op.unlockEra > 0, 'Era to withdraw has not been set yet');
+        require(op.unlockEra <= currentEra(), 'Era to withdraw after current era');
         uint amount = op.amountStaked;
-        require(amount>0);
+        require(amount > 0, 'Amount to return must be greater than 0');
         op.amountStaked = 0;
         op.beneficiaryAddress.transfer(amount);
     }
@@ -309,8 +307,8 @@ contract RollupPoS {
 
         uint32 ri;
         if (raffles[era].era == era) {
-            ri=era;
-        } else if (era>lastInitializedRaffle) {
+            ri = era;
+        } else if (era > lastInitializedRaffle) {
             ri = lastInitializedRaffle;
         } else {
             require(false, "Raffle not initialized for that era");
@@ -330,13 +328,13 @@ contract RollupPoS {
     }
 
     function slash(uint32 slot) external {
-        require(slot < currentSlot());
-        require(fullFilled[slot]==false);
+        require(slot < currentSlot(), 'Slot requested still does not exist');
+        require(fullFilled[slot] == false, 'Batch has been forged during this slot');
 
         uint32 opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
 
-        uint reward = op.amountStaked /10;
+        uint reward = op.amountStaked / 10;
         uint burned = op.amountStaked - reward;
 
         doRemove(opId);
@@ -361,8 +359,10 @@ contract RollupPoS {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
-        require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash );
+        require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash, 'hash revelead not match current commited hash');
         op.rndHash = previousRndHash;
+        // TODO:
+        // Call Rollup `forge batch` with beneficiary address --> op.beneficiaryAddress
         fullFilled[slot] = true;
     }
 }

@@ -18,7 +18,7 @@ contract ERC20 {
  */
 contract Verifier {
   function verifyProof( uint[2] memory a, uint[2][2] memory b,
-    uint[2] memory c, uint[8] memory input) view public returns (bool r);
+    uint[2] memory c, uint[8] memory input) public view returns (bool r);
 }
 
 contract Rollup is Ownable, RollupHelpers {
@@ -27,7 +27,7 @@ contract Rollup is Ownable, RollupHelpers {
   Verifier verifier;
   StakeManager stakeManager;
 
-  // Each batch forged will have the root state of the 'balance tree' 
+  // Each batch forged will have the root state of the 'balance tree'
   bytes32[] stateRoots;
 
   // Each batch forged will have a correlated 'exit tree' represented by the exit root
@@ -46,12 +46,12 @@ contract Rollup is Ownable, RollupHelpers {
 
   // Hash of all on chain transmissions ( will be forged in the next batch )
   // Forces 'operator' to add all on chain transmission
-  uint256 miningOnChainTxsHash;   
+  uint256 miningOnChainTxsHash;
 
   // Hash of all on chain transmissions ( will be forged in two batches )
   // Forces 'operator' to add all on chain transmissions
   uint256 fillingOnChainTxsHash;
-  
+
   // Fees of all on-chain transactions for the operator that forge that batch
   uint256 totalMinningOnChainFee;
   // Fees of all on-chain transactions for the operator
@@ -80,7 +80,7 @@ contract Rollup is Ownable, RollupHelpers {
 
   /**
    * @dev Event called when a user makes a force withdraw
-   * contains all data required for the operator to add the transaction 
+   * contains all data required for the operator to add the transaction
    */
   event ForceFullWithdraw(uint idBalanceTree, uint amount, uint tokenId, uint Ax, uint Ay,
     address withdrawAddress, uint nonce);
@@ -105,7 +105,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @dev modifier to check if staker manager has been initialized
    */
   modifier isStakerLoad {
-    require(initialized == true);
+    require(initialized == true, 'staker manager not loaded');
     _;
   }
 
@@ -139,38 +139,38 @@ contract Rollup is Ownable, RollupHelpers {
   function addToken(address tokenAddress) public payable {
     // Allow MAX_TOKENS different types of tokens
     require(tokens.length <= MAX_TOKENS, 'token list is full');
-    require(msg.value >= feeAddToken);
+    require(msg.value >= feeAddToken, 'Amount is not enough to cover token fees');
     uint tokenId = tokens.push(tokenAddress) - 1;
     tokenList[tokenId] = tokenAddress;
     // increase fees for next token deposit
-    feeAddToken = feeAddToken * 2; 
+    feeAddToken = feeAddToken * 2;
     emit AddToken(tokenAddress, tokenId);
   }
 
   /**
    * @dev Deposit on-chain transaction to enter balance tree
-   * @param depositAmount initial balance on balance tree 
+   * @param depositAmount initial balance on balance tree
    * @param tokenId token type identifier
    * @param babyPubKey public key babyjub represented as point (Ax, Ay)
    * @param withdrawAddress allowed address to perform withdraw on-chain transaction
    */
-  function deposit( 
+  function deposit(
       uint16 depositAmount,
       uint16 tokenId,
       uint256[2] memory babyPubKey,
       address withdrawAddress
-  ) payable public {
- 
+  ) public payable {
+
     require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
     require(depositAmount > 0, 'Deposit amount must be greater than 0');
     require(withdrawAddress != address(0), 'Must specify withdraw address');
-    require(tokenList[tokenId] != address(0) , 'token has not been registered');
+    require(tokenList[tokenId] != address(0), 'token has not been registered');
 
     // Build entry deposit and get its hash
     Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
       tokenId, babyPubKey[0], babyPubKey[1], withdrawAddress, 0);
     uint256 hashDeposit = hashEntry(depositEntry);
-    
+
     // Update 'fillingOnChainHash'
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = fillingOnChainTxsHash;
@@ -198,15 +198,15 @@ contract Rollup is Ownable, RollupHelpers {
    * @param input public zk-snark inputs
    * @param feePlan fee operator plan
    * @param nTxPerToken number of transmission per token in order to calculate total fees
-   * @param compressedTxs data availability to maintain 'balance tree' 
+   * @param compressedTxs data availability to maintain 'balance tree'
    */
   function forgeBatch(
     bytes32 previousHash,
-    uint[2] memory proofA, 
-    uint[2][2] memory proofB, 
+    uint[2] memory proofA,
+    uint[2][2] memory proofB,
     uint[2] memory proofC,
-    uint[8] memory input, 
-    bytes32[2] memory feePlan, 
+    uint[8] memory input,
+    bytes32[2] memory feePlan,
     bytes32 nTxPerToken,
     bytes memory compressedTxs
   ) public isStakerLoad{
@@ -227,7 +227,7 @@ contract Rollup is Ownable, RollupHelpers {
       // Verify old state roots
       require(bytes32(input[0]) == stateRoots[stateRoots.length - 1], 'old state root does not match current state root');
     }
-    
+
     // Verify on-chain hash
     require(input[3] == miningOnChainTxsHash, 'on-chain hash does not match current filling on-chain hash');
 
@@ -289,8 +289,8 @@ contract Rollup is Ownable, RollupHelpers {
    * All leaves created on the exit are allowed to call on-chain transaction to finish the withdraw
    * @param idBalanceTree account identifier on the balance tree
    * @param amount amount to retrieve
-   * @param tokenId token type 
-   * @param numExitRoot exit root depth. Number of batch where the withdar transaction has been done 
+   * @param tokenId token type
+   * @param numExitRoot exit root depth. Number of batch where the withdar transaction has been done
    * @param siblings siblings to demonstrate merkle tree proof
    */
   function withdraw(
@@ -308,21 +308,21 @@ contract Rollup is Ownable, RollupHelpers {
 
     // Get exit root given its index depth
     uint256 exitRoot = uint256(getExitRoot(numExitRoot));
-    
+
     // Check exit tree nullifier
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = exitRoot;
     inputs[1] = valueExitTree;
     uint256 nullifier = hashGeneric(inputs);
     require(exitNullifier[nullifier] == false, 'withdraw has been already done');
-    
+
     // Check sparse merkle tree proof
-    bool result = smtVerifier( exitRoot, siblings, keyExitTree, valueExitTree, 0, 0, false, false, 24);
+    bool result = smtVerifier(exitRoot, siblings, keyExitTree, valueExitTree, 0, 0, false, false, 24);
     require(result == true, 'invalid proof');
-    
+
     // Withdraw token from rollup smart contract to withdraw address
     require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
-    
+
     // Set nullifier
     exitNullifier[nullifier] = true;
   }
@@ -346,7 +346,7 @@ contract Rollup is Ownable, RollupHelpers {
       uint256[2] memory babyPubKey,
       uint256[] memory siblings
   ) public payable{
-    
+
     require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
 
     // build 'key' and 'value' for balance tree
@@ -354,14 +354,14 @@ contract Rollup is Ownable, RollupHelpers {
     Entry memory balanceEntry = buildEntryBalanceTree(amount, tokenId, babyPubKey[0],
       babyPubKey[1], msg.sender, nonce);
     uint256 valueBalanceTree = hashEntry(balanceEntry);
-    
+
     // get current state root
     uint256 lastStateRoot = uint256(stateRoots[stateRoots.length - 1]);
-    
+
     // Check sparse merkle tree proof
     bool result = smtVerifier(lastStateRoot, siblings, keyBalanceTree, valueBalanceTree, 0, 0, false, false, 24);
     require(result == true, 'invalid proof');
-    
+
     // Update 'fillingOnChainHash'
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = fillingOnChainTxsHash;
@@ -373,7 +373,7 @@ contract Rollup is Ownable, RollupHelpers {
 
     // Withdraw token from rollup smart contract to withdraw address
     require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
-    
+
     // event force withdraw
     emit ForceFullWithdraw(idBalanceTree, amount, tokenId, babyPubKey[0], babyPubKey[1], msg.sender, nonce);
   }
@@ -417,7 +417,7 @@ contract Rollup is Ownable, RollupHelpers {
     // Check sparse merkle tree proof
     bool result = smtVerifier(stateRoot, siblings, keyBalanceTree, valueBalanceTree, 0, 0, false, false, 24);
     require(result == true, 'invalid proof');
-    
+
     // Update 'fillingOnChainHash'
     uint256[] memory inputs = new uint256[](2);
     inputs[0] = fillingOnChainTxsHash;
@@ -459,7 +459,7 @@ contract Rollup is Ownable, RollupHelpers {
 
   /**
    * @dev Retrieve exit root given its batch depth
-   * @param numBatch batch depth 
+   * @param numBatch batch depth
    * @return exit root
    */
   function getExitRoot(uint numBatch) public view returns (bytes32) {
@@ -500,7 +500,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @param tokenId token id
    * @param receiver address to receive amount
    * @param amount quantity to withdraw
-   * @return true if succesfull 
+   * @return true if succesfull
    */
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
     return ERC20(tokenList[tokenId]).transfer(receiver, amount);
@@ -516,7 +516,7 @@ contract Rollup is Ownable, RollupHelpers {
   // // Blocks while the operator can forge
   // uint constant MAX_COMMIT_BLOCKS = 150;
   // // Operator that is commited to forge the batch
-  // address commitedOperator;     
+  // address commitedOperator;
   // // Balance staked for operators at the time to commit a batch
   // uint balanceCommited;
   // // Block where the commit is not valid any more
@@ -542,7 +542,7 @@ contract Rollup is Ownable, RollupHelpers {
   //  * @dev operator commits the new batch along with a deposit
   //  * operator has a certain amount of blocks to validate the batch commited
   //  * fees and deposit are paied to operator if batch is finally added succesfully
-  //  * otherwise, deposit is burned and new batch commit would be available again 
+  //  * otherwise, deposit is burned and new batch commit would be available again
   //  * @param newRoot of 'balance tree' commited
   //  */
   // function commitToBatch( bytes32 newRoot ) public payable {
@@ -552,7 +552,7 @@ contract Rollup is Ownable, RollupHelpers {
   //   // Ensure msg.sender has enough balance to commit a new root
   //   require( msg.value >= MIN_COMMIT_COLLATERAL );
   //   // Stake balance
-  //   balanceCommited = msg.value; 
+  //   balanceCommited = msg.value;
   //   // Set last block to forge the root
   //   batchBlockExpires = block.number + MAX_COMMIT_BLOCKS;
   //   // Save operator that commited the root
