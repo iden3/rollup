@@ -1,23 +1,33 @@
 pragma solidity ^0.5.1;
 
+// TODO:
+// Add interface rollup
+// load rollup address
+// call forgeBatch rollup function with beneficiary address
+
 contract RollupPoS {
 
     uint32 constant BLOCKS_PER_SLOT = 100;
     uint32 constant SLOTS_PER_ERA = 20;
-    uint constant MIN_STAKE = 10 ether; // Minimum stake to enter the raffle
+    // Minimum stake to enter the raffle
+    uint constant MIN_STAKE = 1 ether;
 
+    // First block where the first era begins
     uint public genesisBlock;
+    // last raffle that has been initialized
     uint32 lastInitializedRaffle;
 
+  // defines operator structure
     struct Operator {
         uint128 amountStaked;
-        uint32 unlockEra;
+        uint32 unlockEra; // era from the operator can withdraw its stake
         address controllerAddress;
         address payable beneficiaryAddress;
         bytes32 rndHash;
     }
 
-    // This structure should feed im a songle 256bit word
+    // This structure should feed in a single 256 bit word
+    // Defines node for the staker tree
     struct IntermediateNode {
         uint32 era;             // Updates on the same era, are not keeped
         uint64 threashold;
@@ -28,6 +38,11 @@ contract RollupPoS {
         uint32 right;
     }
 
+    // defines raffle structure
+    // each era will have a raffle
+    // At the begining of each era, all slots winners are determined by:
+    // seedRnd --> which will select an operator that will be able to forge at each slot
+    // root --> pointer of the initial stake root leaf
     struct Raffle {
         uint32 era;
         uint32 root;
@@ -36,12 +51,28 @@ contract RollupPoS {
         bytes8 seedRnd;
     }
 
+    // Array of operators
     Operator[] operators;
+    // Store all staker tree nodes
     IntermediateNode[] nodes;
 
+    // list of raffles depending on era index
     mapping (uint32 => Raffle) raffles;
+    // Indicates if at least one batch has been forged on an slot
+    // used for slashing operators
     mapping (uint32 =>  bool) fullFilled;
 
+
+    // TODO:
+    // events: - createOperator
+    //         - removeOperator
+
+    /**
+     * @dev Stake manager constructor
+     * Set first block where the era will begin
+     * Initializes raffle for first era
+     * @param _rollup rollup address
+     */
     constructor() public {
         genesisBlock = getBlockNumber() + 1000;
 
@@ -53,17 +84,24 @@ contract RollupPoS {
             0,
             bytes8(keccak256(abi.encodePacked(blockhash(getBlockNumber()))))
         );
-
     }
 
+    /**
+     * @dev Retrieve block number
+     * @return current block number
+     */
     function getBlockNumber() public view returns (uint) {
         return block.number;
     }
 
-    // log2
-    function _log2(uint32 n) private pure returns (uint32) {
+    /**
+     * @dev Calculate necessary bits to code a number in binary
+     * @param num number to code
+     * @return number of bits
+     */
+    function _log2(uint32 num) private pure returns (uint32) {
         uint32 level = 0;
-        uint32 rem = n;
+        uint32 rem = num;
         while (rem > 1) {
             rem = rem >> 1;
             level++;
@@ -71,28 +109,56 @@ contract RollupPoS {
         return level;
     }
 
+    /**
+     * @dev Calculate square exponentiation
+     * @param stake number to get the exponentiation
+     * @return stake square exponentiation
+     */
     function effectiveStake(uint stake) public pure returns (uint64) {
-        return uint64((stake*stake*0x10000000000000000) / (200000000 ether * 200000000 ether));
+        // return uint64( (stake*stake*0x10000000000000000) / (200000000 ether * 200000000 ether) );
+        return uint64(stake*stake / (1 ether * 1 ether));
     }
 
-    function block2era(uint bn) public view returns (uint32) {
-        if (bn<genesisBlock) return 0;
-        return uint32((bn - genesisBlock) / (BLOCKS_PER_SLOT*SLOTS_PER_ERA));
+    /**
+     * @dev Calculate era from block number
+     * @param numBlock block number
+     * @return era number
+     */
+    function block2era(uint numBlock) public view returns (uint32) {
+        if (numBlock < genesisBlock) return 0;
+        return uint32((numBlock - genesisBlock) / (BLOCKS_PER_SLOT*SLOTS_PER_ERA));
     }
 
-    function block2slot(uint bn) public view returns (uint32) {
-        if (bn<genesisBlock) return 0;
-        return uint32((bn - genesisBlock) / (BLOCKS_PER_SLOT));
+    /**
+     * @dev Calculate slot from block number
+     * @param numBlock block number
+     * @return slot number
+     */
+    function block2slot(uint numBlock) public view returns (uint32) {
+        if (numBlock < genesisBlock) return 0;
+        return uint32((numBlock - genesisBlock) / (BLOCKS_PER_SLOT));
     }
 
+    /**
+     * @dev Retrieve current era
+     * @return era number
+     */
     function currentEra() public view returns (uint32) {
         return block2era(getBlockNumber());
     }
 
+    /**
+     * @dev Retrieve current slot
+     * @return slot number
+     */
     function currentSlot() public view returns (uint32) {
         return block2slot(getBlockNumber());
     }
 
+    /**
+     * @dev update raffles mapping
+     * initialize raffle according its era
+     */
     function _updateRaffles() private {
         uint32 ce = currentEra();
         // Shorcut
@@ -205,7 +271,6 @@ contract RollupPoS {
     }
 
     function addStakerRly(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
-
         /* Add a third party staker, do not need signature */
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
         return doAddStaker(controllerAddress, beneficiaryAddress, rndHash, uint128(msg.value));
@@ -298,11 +363,10 @@ contract RollupPoS {
     }
 
     function getRaffleWinner(uint32 slot) public view returns (uint32 winner) {
-
         // No negative era
         uint32 era = slot / SLOTS_PER_ERA;
 
-        // Only accepr raffle for present and past eras
+        // Only accept raffle for present and past eras
         require (era <= currentEra()+1, "No access to not done raffles");
 
         uint32 ri;
@@ -322,7 +386,7 @@ contract RollupPoS {
         // If only one staker, just return it
         if (operators.length == 1) return 0;
 
-        // Do the raffle.
+        // Do the raffle
         uint64 rnd = uint64(uint(keccak256(abi.encodePacked(raffle.seedRnd, slot))) % raffle.activeStake);
         winner = nodeRaffle(raffle.root, rnd);
     }
