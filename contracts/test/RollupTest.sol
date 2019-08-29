@@ -21,7 +21,7 @@ contract RollupTest is Ownable, RollupHelpers {
   // External contracts used
   StakeManager stakeManager;
 
-  // Each batch forged will have the root state of the 'balance tree' 
+  // Each batch forged will have the root state of the 'balance tree'
   bytes32[] stateRoots;
 
   // Each batch forged will have a correlated 'exit tree' represented by the exit root
@@ -40,7 +40,7 @@ contract RollupTest is Ownable, RollupHelpers {
 
   // Hash of all on chain transmissions ( will be forged in the next batch )
   // Forces 'operator' to add all on chain transmission
-  uint256 public miningOnChainTxsHash;   
+  uint256 public miningOnChainTxsHash;
 
   // Hash of all on chain transmissions ( will be forged in two batches )
   // Forces 'operator' to add all on chain transmissions
@@ -68,7 +68,7 @@ contract RollupTest is Ownable, RollupHelpers {
   // Flag to determine if the staker manager has been initialized
   bool initialized = false;
 
-  
+
   modifier isStakerLoad {
     require(initialized == true);
     _;
@@ -135,7 +135,7 @@ contract RollupTest is Ownable, RollupHelpers {
     bytes memory compressedTxs,
     uint256 offChainHash,
     uint256 nTxPerToken,
-    address beneficiary
+    address payable beneficiary
   ) public isStakerLoad{
     // Public parameters of the circuit
     // input[0] ==> old state root
@@ -189,8 +189,8 @@ contract RollupTest is Ownable, RollupHelpers {
 
     // Pay onChain transactions fees
     uint payOnChainFees = totalMinningOnChainFee;
-    address payable beneficiaryPayable = address(uint160(beneficiary));
-    beneficiaryPayable.transfer(payOnChainFees);
+    // address payable beneficiaryPayable = address(uint160(beneficiary));
+    beneficiary.transfer(payOnChainFees);
 
     // Update state roots
     stateRoots.push(bytes32(newStateRoot));

@@ -1,11 +1,23 @@
 pragma solidity ^0.5.1;
 
-// TODO:
-// Add interface rollup
-// load rollup address
-// call forgeBatch rollup function with beneficiary address
+/**
+ * @dev Define interface Rollup smart contract
+ */
+contract RollupInterface {
+  function forgeBatch(
+    address payable beneficiaryAddress,
+    uint[2] memory proofA,
+    uint[2][2] memory proofB,
+    uint[2] memory proofC,
+    uint[8] memory input,
+    bytes memory compressedTxs
+  ) public returns (bool);
+}
 
 contract RollupPoS {
+
+    // External contracts used
+    RollupInterface insRollup;
 
     uint32 constant BLOCKS_PER_SLOT = 100;
     uint32 constant SLOTS_PER_ERA = 20;
@@ -62,20 +74,25 @@ contract RollupPoS {
     // used for slashing operators
     mapping (uint32 =>  bool) fullFilled;
 
+    /**
+     * @dev Event called when an operator is added to the staker tree
+    */
+    event createOperator(address controllerAddress, uint operatorId);
 
-    // TODO:
-    // events: - createOperator
-    //         - removeOperator
+    /**
+     * @dev Event called when an operator is removed from the staker tree
+    */
+    event removeOperator(address controllerAddress, uint operatorId);
 
     /**
      * @dev Stake manager constructor
      * Set first block where the era will begin
      * Initializes raffle for first era
-     * @param _rollup rollup address
      */
-    constructor() public {
+    constructor(address _rollup) public {
+        require(_rollup != address(0),'Address 0 inserted');
+        insRollup = RollupInterface(_rollup);
         genesisBlock = getBlockNumber() + 1000;
-
         // Initialize first raffle
         raffles[0] = Raffle(
             0,
@@ -178,6 +195,14 @@ contract RollupPoS {
         }
     }
 
+    /**
+     * @dev Add operator to staker tree
+     * @param raffle raffle structure depending on era where the operator has to be added
+     * @param n index node
+     * @param idOp index operator
+     * @param level level where the operator has to be added
+     * @return new root of the staker tree once the operator has been added
+     */
     function _addToNode(Raffle storage raffle, uint32 n, uint32 idOp, uint32 level) private returns(uint32 newRoot) {
         IntermediateNode storage N = nodes[n];
         if (0 == ( uint32(1) << (level) ) - 1 & idOp ) {  // Left side is full
@@ -227,6 +252,14 @@ contract RollupPoS {
         }
     }
 
+    /**
+     * @dev create operator, update raffles and add it to the staker tree
+     * @param controllerAddress operator controller address
+     * @param beneficiaryAddress address which will get the operator earnings
+     * @param rndHash hash commited by the operator. Must be revealed its predecessor hash to forge a batch
+     * @param value amount staked
+     * @return index operator
+     */
     function doAddStaker(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash, uint128 value) private returns(uint) {
         operators.push(Operator(value, 0, controllerAddress, beneficiaryAddress, rndHash));
         uint32 idOp = uint32(operators.length)-1;
@@ -257,25 +290,57 @@ contract RollupPoS {
         raffle.activeStake += eStake;
         raffle.historicStake += eStake;
         raffle.seedRnd = bytes8(keccak256(abi.encodePacked(raffle.seedRnd, rndHash)));
+        emit createOperator(controllerAddress, idOp);
         return idOp;
     }
 
+    /**
+     * @dev Add operator to the staker tree where:
+     * Controller address, beneficiary address and staker address are the same address, msg.sender
+     * @param rndHash hash commited by the operator
+     * @return index operator
+     */
     function addStaker(bytes32 rndHash) external payable returns(uint) {
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
         return doAddStaker(msg.sender, msg.sender, rndHash, uint128(msg.value));
     }
 
+    /**
+     * @dev Add operator to the staker tree where:
+     * Controller address and staker address are the same address, msg.sender
+     * Specify address (beneficiary address) to receive operator earnings
+     * @param beneficiaryAddress beneficiary address
+     * @param rndHash hash commited by the operator
+     * @return index operator
+     */
     function addStakerWithDifferentBeneficiary(address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
         return doAddStaker(msg.sender, beneficiaryAddress, rndHash, uint128(msg.value));
     }
 
+    /**
+     * @dev Add operator to the staker tree where:
+     * msg.sender is the staker address
+     * controller address and  beneficiary address are submitted as parameters
+     * @param controllerAddress controller address
+     * @param beneficiaryAddress beneficiary address
+     * @param rndHash hash commited by the operator
+     * @return index operator
+     */
     function addStakerRly(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
         /* Add a third party staker, do not need signature */
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
         return doAddStaker(controllerAddress, beneficiaryAddress, rndHash, uint128(msg.value));
     }
 
+    /**
+     * @dev Remove operator from staker tree
+     * @param raffle raffle structure depending on era where the operator has to be removed
+     * @param n index node
+     * @param opId index operator
+     * @param level level where the operator has to be added
+     * @param eStake effective stake
+     */
     function _removeFromNode(Raffle storage raffle, uint32 n, uint32 opId, uint32 level, uint64 eStake) private {
         IntermediateNode storage N = nodes[n];
         if (opId & (uint32(1) << level) == 0) {
@@ -301,6 +366,10 @@ contract RollupPoS {
         }
     }
 
+    /**
+     * @dev Remove operator from staker tree and update raffles
+     * @param opId index operator
+     */
     function doRemove(uint32 opId) private {
         require(opId < operators.length, 'Operator does not exist');
 
@@ -318,21 +387,39 @@ contract RollupPoS {
             _removeFromNode(raffle, raffle.root, opId, level, eStake);
         }
         raffle.activeStake -= eStake;
+        emit removeOperator(op.controllerAddress, opId);
     }
 
+    /**
+     * @dev Remove operator where:
+     * msg.sender is considered the controller address
+     * @param opId index operator
+     */
     function remove(uint32 opId) external {
         Operator storage op = operators[opId];
         require(msg.sender == op.controllerAddress, 'Sender does not match with operator controller');
         doRemove(opId);
     }
 
+    /**
+     * @dev Remove operator where:
+     * the sender must prove ownership of controller address
+     * @param opId index operator
+     * @param r parameter signature
+     * @param s parameter signature
+     * @param v parameter signature
+     */
     function removeRly(uint32 opId, bytes32 r, bytes32 s, uint8 v) external {
         Operator storage op = operators[opId];
         bytes32 h = keccak256(abi.encodePacked("RollupPoS", "remove", opId));
-        assert(ecrecover(h, v, r, s) == op.controllerAddress);
+        require(ecrecover(h, v, r, s) == op.controllerAddress, 'Sender does not match with operator controller');
         doRemove(opId);
     }
 
+    /**
+     * @dev function to withdraw stake
+     * @param opId index operator
+     */
     function withdraw(uint32 opId) external {
         Operator storage op = operators[opId];
         require(op.unlockEra > 0, 'Era to withdraw has not been set yet');
@@ -343,25 +430,34 @@ contract RollupPoS {
         op.beneficiaryAddress.transfer(amount);
     }
 
+    /**
+     * @dev find operator on the staker tree given the input number
+     * @param nodeId index node
+     * @param inputNum input number
+     */
+    function nodeRaffle(uint32 nodeId, uint64 inputNum) public view returns(uint32 winner) {
+        IntermediateNode storage N = nodes[nodeId];
 
-    function nodeRaffle(uint32 n, uint64 rnd) public view returns(uint32 winner) {
-        IntermediateNode storage N = nodes[n];
-
-        if ( rnd < N.threashold ) {
+        if ( inputNum < N.threashold ) {
             if (N.isOpLeft) {
                 winner = N.left;
             } else {
-                winner = nodeRaffle(N.left, rnd);
+                winner = nodeRaffle(N.left, inputNum);
             }
         } else {
             if (N.isOpRight) {
                 winner = N.right;
             } else {
-                winner = nodeRaffle(N.right, rnd+N.increment);
+                winner = nodeRaffle(N.right, inputNum + N.increment);
             }
         }
     }
 
+    /**
+     * @dev Retrieve index operator winner given a slot
+     * @param slot slot number
+     * @return index operator winner
+     */
     function getRaffleWinner(uint32 slot) public view returns (uint32 winner) {
         // No negative era
         uint32 era = slot / SLOTS_PER_ERA;
@@ -391,6 +487,11 @@ contract RollupPoS {
         winner = nodeRaffle(raffle.root, rnd);
     }
 
+    /**
+     * @dev function to report an operator which has not commited a batch
+     * it that case, staked amount is burned and the slasher gets a 10% of the satked amount
+     * @param slot slot index
+     */
     function slash(uint32 slot) external {
         require(slot < currentSlot(), 'Slot requested still does not exist');
         require(fullFilled[slot] == false, 'Batch has been forged during this slot');
@@ -408,25 +509,43 @@ contract RollupPoS {
         msg.sender.transfer(reward);
     }
 
-    function forgeBlock(
+    /**
+     * @dev function called to forge batch
+     * This function will call Rollup forge batch function with the beneficiary address
+     * sender must reveal previous has of the current commited hash to proof ownership
+     * // Public parameters of the circuit
+     * // input[0] ==> old state root
+     * // input[1] ==> new state root
+     * // input[2] ==> new exit root
+     * // input[3] ==> on chain hash
+     * // input[4] ==> off chain hash
+     * // input[5] ==> fee plan[1]
+     * // input[6] ==> fee plan[2]
+     * // input[7] ==> nTxperToken
+     * @param previousRndHash previous hash that operator commited on current hash
+     * @param proofA zk-snark input
+     * @param proofB zk-snark input
+     * @param proofC zk-snark input
+     * @param input public zk-snark inputs
+     * @param compressedTxs data availability to maintain 'balance tree'
+     */
+    function forgeBatchStaker(
         bytes32 previousRndHash,
-        uint oldStateRoot,
-        uint newStateRoot,
-        uint exitRoot,
-        uint[2] calldata feePlan,
-        uint nTxPerToken,
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        bytes calldata compressedOffchainData
+        uint[8] calldata input,
+        bytes calldata compressedTxs
     ) external {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
         require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash, 'hash revelead not match current commited hash');
         op.rndHash = previousRndHash;
-        // TODO:
-        // Call Rollup `forge batch` with beneficiary address --> op.beneficiaryAddress
-        fullFilled[slot] = true;
+        bool blockForged = insRollup.forgeBatch(op.beneficiaryAddress, proofA,
+          proofB, proofC, input, compressedTxs);
+        if(blockForged) {
+          fullFilled[slot] = true;
+        }
     }
 }

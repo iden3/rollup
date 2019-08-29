@@ -191,25 +191,21 @@ contract Rollup is Ownable, RollupHelpers {
   /**
    * @dev Checks proof given by the operator
    * forge a batch if succesfull and pay fees to beneficiary address
-   * @param previousHash operator must reveal previous hash that it was commited
+   * @param beneficiaryAddress address to send the roolup fess
    * @param proofA zk-snark input
    * @param proofB zk-snark input
    * @param proofC zk-snark input
    * @param input public zk-snark inputs
-   * @param feePlan fee operator plan
-   * @param nTxPerToken number of transmission per token in order to calculate total fees
    * @param compressedTxs data availability to maintain 'balance tree'
    */
   function forgeBatch(
-    bytes32 previousHash,
+    address payable beneficiaryAddress,
     uint[2] memory proofA,
     uint[2][2] memory proofB,
     uint[2] memory proofC,
     uint[8] memory input,
-    bytes32[2] memory feePlan,
-    bytes32 nTxPerToken,
     bytes memory compressedTxs
-  ) public isStakerLoad{
+  ) public isStakerLoad returns (bool){
     // Public parameters of the circuit
     // input[0] ==> old state root
     // input[1] ==> new state root
@@ -232,11 +228,11 @@ contract Rollup is Ownable, RollupHelpers {
     require(input[3] == miningOnChainTxsHash, 'on-chain hash does not match current filling on-chain hash');
 
     // Verify fee plan is commited on the zk-snark input
-    require(uint(feePlan[0]) == input[5], 'fee plan 0 does not match its public input');
-    require(uint(feePlan[1]) == input[6], 'fee plan 1 does not match its public input');
+    // require(uint(feePlan[0]) == input[5], 'fee plan 0 does not match its public input');
+    // require(uint(feePlan[1]) == input[6], 'fee plan 1 does not match its public input');
 
     // Verify number of transaction per token is commited on the zk-snark input
-    require(uint(nTxPerToken) == input[7], 'Number of transaction per token does not match its public input');
+    // require(uint(nTxPerToken) == input[7], 'Number of transaction per token does not match its public input');
 
     // Verify all off-chain are commited on the public zk-snark input
     uint256 offChainTxHash = hashOffChainTx(compressedTxs);
@@ -245,10 +241,11 @@ contract Rollup is Ownable, RollupHelpers {
     // Verify zk-snark circuit
     require(verifier.verifyProof(proofA, proofB, proofC, input) == true, 'zk-snark proof is not valid');
 
-    // Call Stake SmartContract to return de beneficiary address
-    address beneficiary = stakeManager.batchForgedStaker(previousHash, msg.sender);
-
     // Calculate fees and pay them
+    // bytes32[] memory feePlan = new bytes32[](2);
+    bytes32[2] memory feePlan = [bytes32(input[5]), bytes32(input[6])];
+    bytes32 nTxPerToken = bytes32(input[7]);
+
     for (uint i = 0; i < 16; i++) {
       uint tokenId;
       uint totalTokenFee;
@@ -256,14 +253,13 @@ contract Rollup is Ownable, RollupHelpers {
         bytes32(nTxPerToken), i);
 
       if(totalTokenFee != 0) {
-        require(withdrawToken(tokenId, beneficiary, totalTokenFee), 'Fail ERC20 withdraw');
+        require(withdrawToken(tokenId, beneficiaryAddress, totalTokenFee), 'Fail ERC20 withdraw');
       }
     }
 
     // Pay onChain transactions fees
     uint payOnChainFees = totalMinningOnChainFee;
-    address payable beneficiaryPayable = address(uint160(beneficiary));
-    beneficiaryPayable.transfer(payOnChainFees);
+    beneficiaryAddress.transfer(payOnChainFees);
 
     // Update state roots
     stateRoots.push(bytes32(input[1]));
@@ -279,6 +275,8 @@ contract Rollup is Ownable, RollupHelpers {
 
     // event with all compressed transactions given its batch number
     emit ForgeBatch(getStateDepth() - 1, compressedTxs);
+
+    return true;
   }
 
   /**

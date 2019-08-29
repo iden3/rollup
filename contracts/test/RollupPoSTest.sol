@@ -4,6 +4,8 @@ import "../RollupPoS.sol";
 
 contract RollupPoSTest is RollupPoS {
 
+  constructor( address _rollup) RollupPoS(_rollup) public {}
+
   uint public blockNumber;
 
   function getBlockNumber() public view returns (uint) {
