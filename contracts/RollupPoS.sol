@@ -339,19 +339,29 @@ contract RollupPoS {
      * @param n index node
      * @param opId index operator
      * @param level level where the operator has to be added
+     * @param skip flag to skip levels
      * @param eStake effective stake
      */
-    function _removeFromNode(Raffle storage raffle, uint32 n, uint32 opId, uint32 level, uint64 eStake) private returns(uint32 newRoot){
+    function _removeFromNode(
+      Raffle storage raffle,
+      uint32 n,
+      uint32 opId,
+      uint32 level,
+      bool skip,
+      uint64 eStake
+    ) private returns(uint32 newRoot){
         IntermediateNode storage N = nodes[n];
         if (opId & (uint32(1) << level) == 0) {
             if (!N.isOpLeft) {
-              newRoot = _removeFromNode(raffle, N.left, opId, level-1, eStake);
+              newRoot = _removeFromNode(raffle, N.left, opId, level-1, true, eStake);
             }
             if (N.era == raffle.era) {
+                N.left = newRoot;
                 N.threashold -= eStake;
                 N.increment += eStake;
+                newRoot = n;
             } else {
-              if(N.isOpLeft) newRoot = N.left;
+              if (N.isOpLeft) newRoot = N.left;
                 nodes.push(IntermediateNode(
                     raffle.era,
                     N.threashold - eStake,
@@ -365,22 +375,27 @@ contract RollupPoS {
             }
         } else {
             uint32 tmpLevel = level;
-              while ((tmpLevel != 0) && ((operators.length - 1) & (uint32(1) << (tmpLevel - 1)) == 0)) tmpLevel--;
-              if (!N.isOpRight) {
-                newRoot = _removeFromNode(raffle, N.right, opId, tmpLevel-1, eStake);
-              }
-              if ((N.era != raffle.era)) {
-                nodes.push(IntermediateNode(
-                    raffle.era,
-                    N.threashold,
-                    N.increment,
-                    N.isOpLeft,
-                    N.left,
-                    N.isOpRight,
-                    newRoot
-                ));
-                newRoot = uint32(nodes.length-1);
-              }
+            while ( (skip == false) && (tmpLevel != 0) && ((opId & (uint32(1) << (tmpLevel - 1))) == 0) && ((operators.length - 1) & (uint32(1) << (tmpLevel - 1)) == 0)) tmpLevel--;
+            if (!N.isOpRight) {
+              if (skip == false) newRoot = _removeFromNode(raffle, N.right, opId, tmpLevel-1, false, eStake);
+                else newRoot = _removeFromNode(raffle, N.right, opId, tmpLevel-1, true, eStake);
+            }
+            if ((N.era != raffle.era)) {
+              if (N.isOpRight) newRoot = N.right;
+              nodes.push(IntermediateNode(
+                  raffle.era,
+                  N.threashold,
+                  N.increment,
+                  N.isOpLeft,
+                  N.left,
+                  N.isOpRight,
+                  newRoot
+              ));
+              newRoot = uint32(nodes.length-1);
+            } else {
+              N.right = newRoot;
+              newRoot = n;
+            }
         }
     }
 
@@ -398,10 +413,10 @@ contract RollupPoS {
         _updateRaffles();
         Raffle storage raffle = raffles[updateEra];
 
-        uint32 level = _log2(uint32(operators.length-1));
+        uint32 level = _log2(uint32(operators.length - 1));
         uint32 newRoot = 0xFFFFFFFF;
         if (operators.length > 1) {
-            newRoot = _removeFromNode(raffle, raffle.root, opId, level, eStake);
+            newRoot = _removeFromNode(raffle, raffle.root, opId, level, false, eStake);
         }
         raffle.root = newRoot;
         raffle.activeStake -= eStake;
