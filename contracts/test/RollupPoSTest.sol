@@ -65,4 +65,25 @@ contract RollupPoSTest is RollupPoS {
       N.right
     );
   }
+
+  function getTreeLen() public view returns (uint256 era) {
+    return nodes.length;
+  }
+
+  function getRaffle(uint32 eraIndex) public view returns (
+    uint32 era,
+    uint32 root,
+    uint64 historicStake,
+    uint64 activeStake,
+    bytes8 seedRnd
+    ) {
+    Raffle memory raffleTest = raffles[eraIndex];
+    return (
+      raffleTest.era,
+      raffleTest.root,
+      raffleTest.historicStake,
+      raffleTest.activeStake,
+      raffleTest.seedRnd
+    );
+  }
 }

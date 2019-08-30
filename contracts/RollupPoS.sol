@@ -341,28 +341,46 @@ contract RollupPoS {
      * @param level level where the operator has to be added
      * @param eStake effective stake
      */
-    function _removeFromNode(Raffle storage raffle, uint32 n, uint32 opId, uint32 level, uint64 eStake) private {
+    function _removeFromNode(Raffle storage raffle, uint32 n, uint32 opId, uint32 level, uint64 eStake) private returns(uint32 newRoot){
         IntermediateNode storage N = nodes[n];
         if (opId & (uint32(1) << level) == 0) {
-            if (!N.isOpLeft) _removeFromNode(raffle, N.left, opId, level-1, eStake);
+            if (!N.isOpLeft) {
+              newRoot = _removeFromNode(raffle, N.left, opId, level-1, eStake);
+            }
             if (N.era == raffle.era) {
                 N.threashold -= eStake;
                 N.increment += eStake;
             } else {
+              if(N.isOpLeft) newRoot = N.left;
                 nodes.push(IntermediateNode(
                     raffle.era,
                     N.threashold - eStake,
                     N.increment + eStake,
                     N.isOpLeft,
-                    N.left,
+                    newRoot,
                     N.isOpRight,
                     N.right
                 ));
+                newRoot = uint32(nodes.length-1);
             }
         } else {
             uint32 tmpLevel = level;
-            while (operators.length & (uint32(1) << (tmpLevel - 1)) == 0) tmpLevel--;
-            if (!N.isOpRight) _removeFromNode(raffle, N.right, opId, tmpLevel-1, eStake);
+              while ((tmpLevel != 0) && ((operators.length - 1) & (uint32(1) << (tmpLevel - 1)) == 0)) tmpLevel--;
+              if (!N.isOpRight) {
+                newRoot = _removeFromNode(raffle, N.right, opId, tmpLevel-1, eStake);
+              }
+              if ((N.era != raffle.era)) {
+                nodes.push(IntermediateNode(
+                    raffle.era,
+                    N.threashold,
+                    N.increment,
+                    N.isOpLeft,
+                    N.left,
+                    N.isOpRight,
+                    newRoot
+                ));
+                newRoot = uint32(nodes.length-1);
+              }
         }
     }
 
@@ -371,8 +389,6 @@ contract RollupPoS {
      * @param opId index operator
      */
     function doRemove(uint32 opId) private {
-        require(opId < operators.length, 'Operator does not exist');
-
         Operator storage op = operators[opId];
         uint32 updateEra = currentEra() + 2;
         uint64 eStake = effectiveStake(op.amountStaked);
@@ -382,10 +398,12 @@ contract RollupPoS {
         _updateRaffles();
         Raffle storage raffle = raffles[updateEra];
 
-        uint32 level = _log2(uint32(operators.length));
-        if (operators.length>1) {
-            _removeFromNode(raffle, raffle.root, opId, level, eStake);
+        uint32 level = _log2(uint32(operators.length-1));
+        uint32 newRoot = 0xFFFFFFFF;
+        if (operators.length > 1) {
+            newRoot = _removeFromNode(raffle, raffle.root, opId, level, eStake);
         }
+        raffle.root = newRoot;
         raffle.activeStake -= eStake;
         emit removeOperator(op.controllerAddress, opId);
     }
@@ -396,6 +414,7 @@ contract RollupPoS {
      * @param opId index operator
      */
     function remove(uint32 opId) external {
+        require(opId < operators.length, 'Operator does not exist');
         Operator storage op = operators[opId];
         require(msg.sender == op.controllerAddress, 'Sender does not match with operator controller');
         doRemove(opId);
@@ -410,6 +429,7 @@ contract RollupPoS {
      * @param v parameter signature
      */
     function removeRly(uint32 opId, bytes32 r, bytes32 s, uint8 v) external {
+        require(opId < operators.length, 'Operator does not exist');
         Operator storage op = operators[opId];
         bytes32 h = keccak256(abi.encodePacked("RollupPoS", "remove", opId));
         require(ecrecover(h, v, r, s) == op.controllerAddress, 'Sender does not match with operator controller');
