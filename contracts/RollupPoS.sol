@@ -1,18 +1,5 @@
 pragma solidity ^0.5.1;
-
-/**
- * @dev Define interface Rollup smart contract
- */
-contract RollupInterface {
-  function forgeBatch(
-    address payable beneficiaryAddress,
-    uint[2] memory proofA,
-    uint[2][2] memory proofB,
-    uint[2] memory proofC,
-    uint[8] memory input,
-    bytes memory compressedTxs
-  ) public returns (bool);
-}
+import './RollupInterface.sol';
 
 contract RollupPoS {
 
@@ -21,6 +8,7 @@ contract RollupPoS {
 
     uint32 constant BLOCKS_PER_SLOT = 100;
     uint32 constant SLOTS_PER_ERA = 20;
+
     // Minimum stake to enter the raffle
     uint constant MIN_STAKE = 1 ether;
 
@@ -76,12 +64,12 @@ contract RollupPoS {
 
     /**
      * @dev Event called when an operator is added to the staker tree
-    */
+     */
     event createOperatorLog(address controllerAddress, uint operatorId);
 
     /**
      * @dev Event called when an operator is removed from the staker tree
-    */
+     */
     event removeOperatorLog(address controllerAddress, uint operatorId);
 
     /**
@@ -178,7 +166,6 @@ contract RollupPoS {
      */
     function _updateRaffles() private {
         uint32 ce = currentEra();
-        // Shorcut
         if (lastInitializedRaffle >= ce+2) return;
         for (uint32 i = ce; i <= ce+2; i++) {
             if ((i>0) && (raffles[i].era == 0)) {

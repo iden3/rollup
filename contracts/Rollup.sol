@@ -3,6 +3,8 @@ pragma solidity ^0.5.0;
 
 import '../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './lib/RollupHelpers.sol';
+import './RollupInterface.sol';
+import './VerifierInterface.sol';
 
 /**
  * @dev Define interface ERC20 contract
@@ -12,18 +14,10 @@ contract ERC20 {
   function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-/**
- * @dev Define interface Verifier contract
- */
-contract Verifier {
-  function verifyProof( uint[2] memory a, uint[2][2] memory b,
-    uint[2] memory c, uint[8] memory input) public view returns (bool r);
-}
-
-contract Rollup is Ownable, RollupHelpers {
+contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
   // External contracts used
-  Verifier verifier;
+  VerifierInterface verifier;
 
   // Forge batch mechanism owner
   address ownerForgeBatch;
@@ -107,7 +101,7 @@ contract Rollup is Ownable, RollupHelpers {
    */
   modifier isForgeBatch {
     require(initialized == true, 'forge batch mechanism has not been loaded');
-    require(ownerForgeBatch == msg.sender, 'forge batch mechanism has not been loaded');
+    require(ownerForgeBatch == msg.sender, 'message sender is not forge batch mechanism owner');
     _;
   }
 
@@ -119,7 +113,7 @@ contract Rollup is Ownable, RollupHelpers {
    * @param _poseidon poseidon hash function address
    */
   constructor(address _verifier, address _poseidon) RollupHelpers(_poseidon) public {
-    verifier = Verifier(_verifier);
+    verifier = VerifierInterface(_verifier);
   }
 
   /**
@@ -200,20 +194,20 @@ contract Rollup is Ownable, RollupHelpers {
    */
   function forgeBatch(
     address payable beneficiaryAddress,
-    uint[2] memory proofA,
-    uint[2][2] memory proofB,
-    uint[2] memory proofC,
-    uint[8] memory input,
-    bytes memory compressedTxs
-  ) public isForgeBatch {
+    uint[2] calldata proofA,
+    uint[2][2] calldata proofB,
+    uint[2] calldata proofC,
+    uint[8] calldata input,
+    bytes calldata compressedTxs
+  ) external isForgeBatch {
     // Public parameters of the circuit
     // input[0] ==> old state root
     // input[1] ==> new state root
     // input[2] ==> new exit root
     // input[3] ==> on chain hash
     // input[4] ==> off chain hash
-    // input[5] ==> fee plan[1]
-    // input[6] ==> fee plan[2]
+    // input[5] ==> fee plan[0]
+    // input[6] ==> fee plan[1]
     // input[7] ==> nTxperToken
 
     // If there is no roots commited it means that it will be the genesis block
@@ -416,7 +410,6 @@ contract Rollup is Ownable, RollupHelpers {
     totalFillingOnChainFee += msg.value;
 
     // Get token deposit on rollup smart contract
-    // require(ERC20(tokenList[tokenId]).approve(address(this), amountDeposit), 'Fail approve ERC20 transaction');
     require(depositToken(tokenId, amountDeposit), 'Fail deposit ERC20 transaction');
 
     // event deposit on top

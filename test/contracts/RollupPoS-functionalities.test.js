@@ -26,6 +26,7 @@ contract('RollupPoS', (accounts) => {
   const {
     6: relayStaker,
     7: beneficiaryAddress,
+    9: slashAddress,
   } = accounts;
 
   let insRollupPoS;
@@ -37,7 +38,7 @@ contract('RollupPoS', (accounts) => {
   const hashChain = [];
   const blockPerEra = 2000;
   const slotPerEra = 20;
-  const amountToStake = 2;
+  let amountToStake = 2;
 
   const initialMsg = 'rollup';
   hashChain.push(web3.utils.keccak256(initialMsg));
@@ -97,7 +98,7 @@ contract('RollupPoS', (accounts) => {
       expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOpWithdraw) - 2);
     });
 
-    it('add operator with different benefiacry address', async () => {
+    it('add operator with different beneficiary address', async () => {
       const initBalance = await getEtherBalance(beneficiaryAddress);
       await insRollupPoS.setBlockNumber(eraBlock[5]);
       // add operator 1 with eStake = 4
@@ -112,7 +113,7 @@ contract('RollupPoS', (accounts) => {
       expect(initBalance + 2).to.be.equal(balance);
     });
 
-    it('add operator with different benefiacry address and relay staker', async () => {
+    it('add operator with different beneficiary address and relay staker', async () => {
       const initBalanceRelay = await getEtherBalance(relayStaker);
       const initBalOp = await getEtherBalance(operators[2].address);
       const initBalBeneficiary = await getEtherBalance(beneficiaryAddress);
@@ -146,6 +147,57 @@ contract('RollupPoS', (accounts) => {
       expect(balanceRelay0).to.be.equal(balanceRelay1);
       expect(balOp1).to.be.equal(balOp1);
       expect(balBeneficiary0 + 2).to.be.equal(balBeneficiary1);
+    });
+
+    it('slash operator', async () => {
+      amountToStake = 20;
+      const initBalOp = await getEtherBalance(operators[0].address);
+      const initBalanceSlash = await getEtherBalance(slashAddress);
+      // reset rollup PoS
+      insRollupPoS = await RollupPoS.new(addressRollupTest);
+      await insRollupPoS.setBlockNumber(eraBlock[0]);
+      await insRollupPoS.addOperator(hashChain[9],
+        { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
+      await insRollupPoS.setBlockNumber(eraBlock[1]);
+      try {
+        await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
+      } catch (error) {
+        expect((error.message).includes('Slot requested still does not exist')).to.be.equal(true);
+      }
+      try {
+        await insRollupPoS.slash(eraSlot[0], { from: slashAddress });
+      } catch (error) {
+        expect((error.message).includes('Must be stakers')).to.be.equal(true);
+      }
+      await insRollupPoS.setBlockNumber(eraBlock[3]);
+      // Check balances before slashing
+      let balOp = await getEtherBalance(operators[0].address);
+      let balSlash = await getEtherBalance(slashAddress);
+
+      expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStake);
+      expect(Math.ceil(initBalanceSlash)).to.be.equal(Math.ceil(balSlash));
+
+      await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
+      // Check balances after slashing
+      balOp = await getEtherBalance(operators[0].address);
+      balSlash = await getEtherBalance(slashAddress);
+      // operator 1 lose its amount staked
+      expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStake);
+      // slash account to receive 10% of amount staked
+      expect(Math.ceil(initBalanceSlash) + 0.1 * amountToStake).to.be.equal(Math.ceil(balSlash));
+
+      // Add operator again
+      await insRollupPoS.addOperator(hashChain[9],
+        { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
+      await insRollupPoS.setBlockNumber(eraBlock[6]);
+      // simulate operator has forge a batch
+      await insRollupPoS.setBlockForged(eraSlot[5]);
+      // try to slash operator
+      try {
+        await insRollupPoS.slash(eraSlot[5], { from: slashAddress });
+      } catch (error) {
+        expect((error.message).includes('Batch has been forged during this slot')).to.be.equal(true);
+      }
     });
   });
 });
