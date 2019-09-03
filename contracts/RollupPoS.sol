@@ -321,7 +321,7 @@ contract RollupPoS {
     /**
      * @dev Add operator to the staker tree where:
      * msg.sender is the staker address
-     * controller address and  beneficiary address are submitted as parameters
+     * controller address and beneficiary address are submitted as parameters
      * @param controllerAddress controller address
      * @param beneficiaryAddress beneficiary address
      * @param rndHash hash commited by the operator
@@ -447,7 +447,9 @@ contract RollupPoS {
         require(opId < operators.length, 'Operator does not exist');
         Operator storage op = operators[opId];
         bytes32 h = keccak256(abi.encodePacked("RollupPoS", "remove", opId));
-        require(ecrecover(h, v, r, s) == op.controllerAddress, 'Sender does not match with operator controller');
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, h));
+        require(ecrecover(prefixedHash, v, r, s) == op.controllerAddress, 'Signature does not match with operator controller');
         doRemove(opId);
     }
 
