@@ -3,7 +3,6 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require('chai');
 
@@ -16,16 +15,15 @@ async function getEtherBalance(address) {
   return Number(balance);
 }
 
-async function getTxGasSpent(resTx) {
-  const infoTx = await web3.eth.getTransaction(resTx.tx);
-  const { gasPrice } = infoTx;
-  const gasSpent = gasPrice * resTx.receipt.gasUsed;
-  return Number(web3.utils.fromWei(gasSpent.toString(), 'ether'));
-}
+// async function getTxGasSpent(resTx) {
+//   const infoTx = await web3.eth.getTransaction(resTx.tx);
+//   const { gasPrice } = infoTx;
+//   const gasSpent = gasPrice * resTx.receipt.gasUsed;
+//   return Number(web3.utils.fromWei(gasSpent.toString(), 'ether'));
+// }
 
 contract('RollupPoS', (accounts) => {
   const {
-    0: owner,
     6: relayStaker,
     7: beneficiaryAddress,
   } = accounts;
@@ -69,7 +67,7 @@ contract('RollupPoS', (accounts) => {
     it('add operator', async () => {
       let initBalOp = await getEtherBalance(operators[0].address);
       // add operator 0 with eStake = 4
-      await insRollupPoS.addStaker(hashChain[9],
+      await insRollupPoS.addOperator(hashChain[9],
         { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
       const balOpAdd = await getEtherBalance(operators[0].address);
       expect(Math.ceil(balOpAdd)).to.be.equal(Math.ceil(initBalOp) - 2);
@@ -77,12 +75,12 @@ contract('RollupPoS', (accounts) => {
       await insRollupPoS.setBlockNumber(eraBlock[3]);
       // try to get back stake from different operator
       try {
-        await insRollupPoS.remove(operators[0].idOp, { from: operators[1].address });
+        await insRollupPoS.removeOperator(operators[0].idOp, { from: operators[1].address });
       } catch (error) {
         expect((error.message).includes('Sender does not match with operator controller')).to.be.equal(true);
       }
       initBalOp = await getEtherBalance(operators[0].address);
-      await insRollupPoS.remove(operators[0].idOp, { from: operators[0].address });
+      await insRollupPoS.removeOperator(operators[0].idOp, { from: operators[0].address });
 
       // Era to remove operator
       await insRollupPoS.setBlockNumber(eraBlock[4]);
@@ -103,10 +101,10 @@ contract('RollupPoS', (accounts) => {
       const initBalance = await getEtherBalance(beneficiaryAddress);
       await insRollupPoS.setBlockNumber(eraBlock[5]);
       // add operator 1 with eStake = 4
-      await insRollupPoS.addStakerWithDifferentBeneficiary(beneficiaryAddress, hashChain[9],
+      await insRollupPoS.addOperatorWithDifferentBeneficiary(beneficiaryAddress, hashChain[9],
         { from: operators[1].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
       await insRollupPoS.setBlockNumber(eraBlock[6]);
-      await insRollupPoS.remove(1, { from: operators[1].address });
+      await insRollupPoS.removeOperator(1, { from: operators[1].address });
       await insRollupPoS.setBlockNumber(eraBlock[8]);
       await insRollupPoS.withdraw(1);
       // Check balance beneficiary Address
@@ -120,7 +118,7 @@ contract('RollupPoS', (accounts) => {
       const initBalBeneficiary = await getEtherBalance(beneficiaryAddress);
       await insRollupPoS.setBlockNumber(eraBlock[8]);
       // add operator 2 with stakerAddress commiting 2 ether
-      await insRollupPoS.addStakerRly(operators[2].address, beneficiaryAddress, hashChain[9],
+      await insRollupPoS.addOperatorRelay(operators[2].address, beneficiaryAddress, hashChain[9],
         { from: relayStaker, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
 
       const balanceRelay0 = await getEtherBalance(relayStaker);
@@ -138,7 +136,7 @@ contract('RollupPoS', (accounts) => {
       const v = Number(sigOp.substring(130, 132)) + 27;
       // remove operator and withdraw
       await insRollupPoS.setBlockNumber(eraBlock[7]);
-      await insRollupPoS.removeRly(operators[2].idOp, r, s, v.toString());
+      await insRollupPoS.removeOperatorRelay(operators[2].idOp, r, s, v.toString());
       await insRollupPoS.setBlockNumber(eraBlock[9]);
       await insRollupPoS.withdraw(operators[2].idOp);
       // check
