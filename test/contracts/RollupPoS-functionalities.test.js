@@ -3,7 +3,6 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require('chai');
 
@@ -16,18 +15,18 @@ async function getEtherBalance(address) {
   return Number(balance);
 }
 
-async function getTxGasSpent(resTx) {
-  const infoTx = await web3.eth.getTransaction(resTx.tx);
-  const { gasPrice } = infoTx;
-  const gasSpent = gasPrice * resTx.receipt.gasUsed;
-  return Number(web3.utils.fromWei(gasSpent.toString(), 'ether'));
-}
+// async function getTxGasSpent(resTx) {
+//   const infoTx = await web3.eth.getTransaction(resTx.tx);
+//   const { gasPrice } = infoTx;
+//   const gasSpent = gasPrice * resTx.receipt.gasUsed;
+//   return Number(web3.utils.fromWei(gasSpent.toString(), 'ether'));
+// }
 
 contract('RollupPoS', (accounts) => {
   const {
-    0: owner,
     6: relayStaker,
     7: beneficiaryAddress,
+    9: slashAddress,
   } = accounts;
 
   let insRollupPoS;
@@ -39,7 +38,7 @@ contract('RollupPoS', (accounts) => {
   const hashChain = [];
   const blockPerEra = 2000;
   const slotPerEra = 20;
-  const amountToStake = 2;
+  let amountToStake = 2;
 
   const initialMsg = 'rollup';
   hashChain.push(web3.utils.keccak256(initialMsg));
@@ -69,7 +68,7 @@ contract('RollupPoS', (accounts) => {
     it('add operator', async () => {
       let initBalOp = await getEtherBalance(operators[0].address);
       // add operator 0 with eStake = 4
-      await insRollupPoS.addStaker(hashChain[9],
+      await insRollupPoS.addOperator(hashChain[9],
         { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
       const balOpAdd = await getEtherBalance(operators[0].address);
       expect(Math.ceil(balOpAdd)).to.be.equal(Math.ceil(initBalOp) - 2);
@@ -77,12 +76,12 @@ contract('RollupPoS', (accounts) => {
       await insRollupPoS.setBlockNumber(eraBlock[3]);
       // try to get back stake from different operator
       try {
-        await insRollupPoS.remove(operators[0].idOp, { from: operators[1].address });
+        await insRollupPoS.removeOperator(operators[0].idOp, { from: operators[1].address });
       } catch (error) {
         expect((error.message).includes('Sender does not match with operator controller')).to.be.equal(true);
       }
       initBalOp = await getEtherBalance(operators[0].address);
-      await insRollupPoS.remove(operators[0].idOp, { from: operators[0].address });
+      await insRollupPoS.removeOperator(operators[0].idOp, { from: operators[0].address });
 
       // Era to remove operator
       await insRollupPoS.setBlockNumber(eraBlock[4]);
@@ -99,14 +98,14 @@ contract('RollupPoS', (accounts) => {
       expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOpWithdraw) - 2);
     });
 
-    it('add operator with different benefiacry address', async () => {
+    it('add operator with different beneficiary address', async () => {
       const initBalance = await getEtherBalance(beneficiaryAddress);
       await insRollupPoS.setBlockNumber(eraBlock[5]);
       // add operator 1 with eStake = 4
-      await insRollupPoS.addStakerWithDifferentBeneficiary(beneficiaryAddress, hashChain[9],
+      await insRollupPoS.addOperatorWithDifferentBeneficiary(beneficiaryAddress, hashChain[9],
         { from: operators[1].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
       await insRollupPoS.setBlockNumber(eraBlock[6]);
-      await insRollupPoS.remove(1, { from: operators[1].address });
+      await insRollupPoS.removeOperator(1, { from: operators[1].address });
       await insRollupPoS.setBlockNumber(eraBlock[8]);
       await insRollupPoS.withdraw(1);
       // Check balance beneficiary Address
@@ -114,13 +113,13 @@ contract('RollupPoS', (accounts) => {
       expect(initBalance + 2).to.be.equal(balance);
     });
 
-    it('add operator with different benefiacry address and relay staker', async () => {
+    it('add operator with different beneficiary address and relay staker', async () => {
       const initBalanceRelay = await getEtherBalance(relayStaker);
       const initBalOp = await getEtherBalance(operators[2].address);
       const initBalBeneficiary = await getEtherBalance(beneficiaryAddress);
       await insRollupPoS.setBlockNumber(eraBlock[8]);
       // add operator 2 with stakerAddress commiting 2 ether
-      await insRollupPoS.addStakerRly(operators[2].address, beneficiaryAddress, hashChain[9],
+      await insRollupPoS.addOperatorRelay(operators[2].address, beneficiaryAddress, hashChain[9],
         { from: relayStaker, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
 
       const balanceRelay0 = await getEtherBalance(relayStaker);
@@ -138,7 +137,7 @@ contract('RollupPoS', (accounts) => {
       const v = Number(sigOp.substring(130, 132)) + 27;
       // remove operator and withdraw
       await insRollupPoS.setBlockNumber(eraBlock[7]);
-      await insRollupPoS.removeRly(operators[2].idOp, r, s, v.toString());
+      await insRollupPoS.removeOperatorRelay(operators[2].idOp, r, s, v.toString());
       await insRollupPoS.setBlockNumber(eraBlock[9]);
       await insRollupPoS.withdraw(operators[2].idOp);
       // check
@@ -148,6 +147,57 @@ contract('RollupPoS', (accounts) => {
       expect(balanceRelay0).to.be.equal(balanceRelay1);
       expect(balOp1).to.be.equal(balOp1);
       expect(balBeneficiary0 + 2).to.be.equal(balBeneficiary1);
+    });
+
+    it('slash operator', async () => {
+      amountToStake = 20;
+      const initBalOp = await getEtherBalance(operators[0].address);
+      const initBalanceSlash = await getEtherBalance(slashAddress);
+      // reset rollup PoS
+      insRollupPoS = await RollupPoS.new(addressRollupTest);
+      await insRollupPoS.setBlockNumber(eraBlock[0]);
+      await insRollupPoS.addOperator(hashChain[9],
+        { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
+      await insRollupPoS.setBlockNumber(eraBlock[1]);
+      try {
+        await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
+      } catch (error) {
+        expect((error.message).includes('Slot requested still does not exist')).to.be.equal(true);
+      }
+      try {
+        await insRollupPoS.slash(eraSlot[0], { from: slashAddress });
+      } catch (error) {
+        expect((error.message).includes('Must be stakers')).to.be.equal(true);
+      }
+      await insRollupPoS.setBlockNumber(eraBlock[3]);
+      // Check balances before slashing
+      let balOp = await getEtherBalance(operators[0].address);
+      let balSlash = await getEtherBalance(slashAddress);
+
+      expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStake);
+      expect(Math.ceil(initBalanceSlash)).to.be.equal(Math.ceil(balSlash));
+
+      await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
+      // Check balances after slashing
+      balOp = await getEtherBalance(operators[0].address);
+      balSlash = await getEtherBalance(slashAddress);
+      // operator 1 lose its amount staked
+      expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStake);
+      // slash account to receive 10% of amount staked
+      expect(Math.ceil(initBalanceSlash) + 0.1 * amountToStake).to.be.equal(Math.ceil(balSlash));
+
+      // Add operator again
+      await insRollupPoS.addOperator(hashChain[9],
+        { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), 'ether') });
+      await insRollupPoS.setBlockNumber(eraBlock[6]);
+      // simulate operator has forge a batch
+      await insRollupPoS.setBlockForged(eraSlot[5]);
+      // try to slash operator
+      try {
+        await insRollupPoS.slash(eraSlot[5], { from: slashAddress });
+      } catch (error) {
+        expect((error.message).includes('Batch has been forged during this slot')).to.be.equal(true);
+      }
     });
   });
 });

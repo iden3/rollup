@@ -66,10 +66,10 @@ contract('RollupPoS', (accounts) => {
 
     it('add 2 operators', async () => {
       // add operator 0 with eStake = 4
-      await insRollupPoS.addStaker(hashChain[9],
+      await insRollupPoS.addOperator(hashChain[9],
         { from: operators[0].address, value: web3.utils.toWei('4', 'ether') });
       // add operator 1 with eStake = 4
-      await insRollupPoS.addStaker(hashChain[9],
+      await insRollupPoS.addOperator(hashChain[9],
         { from: operators[1].address, value: web3.utils.toWei('2', 'ether') });
       // move to era 2, where there are two operators
       await insRollupPoS.setBlockNumber(eraBlock[2]);
@@ -97,13 +97,13 @@ contract('RollupPoS', (accounts) => {
       await insRollupPoS.setBlockNumber(eraBlock[0]);
       // Add operators
       for (let i = 0; i < numOp2Add; i++) {
-        await insRollupPoS.addStaker(hashChain[9],
+        await insRollupPoS.addOperator(hashChain[9],
           { from: operators[i].address, value: web3.utils.toWei('2', 'ether') });
         raffleWinner.push(4 * i);
       }
       // remove operators
       for (let i = 0; i < numOp2Remove; i++) {
-        await insRollupPoS.remove(operators[i].idOp, { from: operators[i].address });
+        await insRollupPoS.removeOperator(operators[i].idOp, { from: operators[i].address });
       }
       // move to era 2
       await insRollupPoS.setBlockNumber(eraBlock[2]);
@@ -133,14 +133,14 @@ contract('RollupPoS', (accounts) => {
         await insRollupPoS.setBlockNumber(eraBlock[0]);
         // add numOp2Add operators with eStake = 4
         for (let n = 0; n < numOp2Add; n++) {
-          await insRollupPoS.addStaker(hashChain[9],
+          await insRollupPoS.addOperator(hashChain[9],
             { from: operators[n].address, value: web3.utils.toWei('2', 'ether') });
           raffleWinner.push(4 * n);
         }
         // move to era 1
         await insRollupPoS.setBlockNumber(eraBlock[1]);
         // remove operator
-        await insRollupPoS.remove(operators[i].idOp, { from: operators[i].address });
+        await insRollupPoS.removeOperator(operators[i].idOp, { from: operators[i].address });
         // move to era 3, where there are the operators
         await insRollupPoS.setBlockNumber(eraBlock[3]);
         // store all winners
@@ -167,14 +167,14 @@ contract('RollupPoS', (accounts) => {
       insRollupPoS = await RollupPoS.new(addressRollupTest);
       await insRollupPoS.setBlockNumber(eraBlock[0]);
       for (let i = 0; i < numOp2Add; i++) {
-        await insRollupPoS.addStaker(hashChain[9],
+        await insRollupPoS.addOperator(hashChain[9],
           { from: operators[i].address, value: web3.utils.toWei('2', 'ether') });
         raffleWinner.push(4 * i);
       }
       await insRollupPoS.setBlockNumber(eraBlock[1]);
       // remove operators
       op2Remove.forEach(async (opId) => {
-        await insRollupPoS.remove(operators[opId].idOp, { from: operators[opId].address });
+        await insRollupPoS.removeOperator(operators[opId].idOp, { from: operators[opId].address });
       });
       await insRollupPoS.setBlockNumber(eraBlock[3]);
       // store all winners
@@ -200,7 +200,7 @@ contract('RollupPoS', (accounts) => {
       await insRollupPoS.setBlockNumber(eraBlock[1]);
       // remove the rest of operators
       winners.forEach(async (opId) => {
-        await insRollupPoS.remove(operators[opId].idOp, { from: operators[opId].address });
+        await insRollupPoS.removeOperator(operators[opId].idOp, { from: operators[opId].address });
       });
       // move to era 3, where there are the operators
       await insRollupPoS.setBlockNumber(eraBlock[3]);
@@ -215,14 +215,14 @@ contract('RollupPoS', (accounts) => {
     it('remove operator twice', async () => {
       // removed previously
       try {
-        await insRollupPoS.remove(operators[4].idOp, { from: operators[4].address });
+        await insRollupPoS.removeOperator(operators[4].idOp, { from: operators[4].address });
       } catch (error) {
         expect((error.message).includes('Operator has been already removed')).to.be.equal(true);
       }
       await insRollupPoS.setBlockNumber(eraBlock[4]);
       // try to remove operator in the next era
       try {
-        await insRollupPoS.remove(operators[4].idOp, { from: operators[4].address });
+        await insRollupPoS.removeOperator(operators[4].idOp, { from: operators[4].address });
       } catch (error) {
         expect((error.message).includes('Operator has been already removed')).to.be.equal(true);
       }
@@ -230,7 +230,7 @@ contract('RollupPoS', (accounts) => {
 
     it('remove unexistent operator', async () => {
       try {
-        await insRollupPoS.remove(operators[22].idOp, { from: operators[22].address });
+        await insRollupPoS.removeOperator(operators[22].idOp, { from: operators[22].address });
       } catch (error) {
         expect((error.message).includes('Operator does not exist')).to.be.equal(true);
       }

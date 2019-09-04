@@ -3,7 +3,8 @@ pragma solidity ^0.5.0;
 
 import '../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './lib/RollupHelpers.sol';
-import './StakeManager.sol';
+import './RollupInterface.sol';
+import './VerifierInterface.sol';
 
 /**
  * @dev Define interface ERC20 contract
@@ -13,19 +14,13 @@ contract ERC20 {
   function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-/**
- * @dev Define interface Verifier contract
- */
-contract Verifier {
-  function verifyProof( uint[2] memory a, uint[2][2] memory b,
-    uint[2] memory c, uint[8] memory input) public view returns (bool r);
-}
-
-contract Rollup is Ownable, RollupHelpers {
+contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
   // External contracts used
-  Verifier verifier;
-  StakeManager stakeManager;
+  VerifierInterface verifier;
+
+  // Forge batch mechanism owner
+  address ownerForgeBatch;
 
   // Each batch forged will have the root state of the 'balance tree'
   bytes32[] stateRoots;
@@ -98,14 +93,15 @@ contract Rollup is Ownable, RollupHelpers {
    */
   event AddToken(address tokenAddress, uint tokenId);
 
-  // Flag to determine if the staker manager has been initialized
+  // Flag to determine if the mechanism to forge batch has been initialized
   bool initialized = false;
 
   /**
-   * @dev modifier to check if staker manager has been initialized
+   * @dev modifier to check if forge batch mechanism has been initialized
    */
-  modifier isStakerLoad {
-    require(initialized == true, 'staker manager not loaded');
+  modifier isForgeBatch {
+    require(initialized == true, 'forge batch mechanism has not been loaded');
+    require(ownerForgeBatch == msg.sender, 'message sender is not forge batch mechanism owner');
     _;
   }
 
@@ -113,21 +109,19 @@ contract Rollup is Ownable, RollupHelpers {
    * @dev Rollup constructor
    * Loads 'RollupHelpers' constructor with poseidon
    * Loads verifier zk-snark proof
-   * Deploy 'StakeManager' with 'Rollup' smart contract address
-   * Load 'StakeManager' smart contract
    * @param _verifier verifier zk-snark proof address
    * @param _poseidon poseidon hash function address
    */
   constructor(address _verifier, address _poseidon) RollupHelpers(_poseidon) public {
-    verifier = Verifier(_verifier);
+    verifier = VerifierInterface(_verifier);
   }
 
   /**
-   * @dev Load stake manager smart contract
-   * @param stakeManagerAddress stake manager contract address
+   * @dev Load forge batch mechanism smart contract
+   * @param forgeBatchMechanismAddress rollupPoS contract address
    */
-  function loadStakeManager(address stakeManagerAddress) public onlyOwner{
-    stakeManager = StakeManager(stakeManagerAddress);
+  function loadForgeBatchMechanism(address forgeBatchMechanismAddress) public onlyOwner{
+    ownerForgeBatch = forgeBatchMechanismAddress;
     initialized = true;
   }
 
@@ -191,7 +185,7 @@ contract Rollup is Ownable, RollupHelpers {
   /**
    * @dev Checks proof given by the operator
    * forge a batch if succesfull and pay fees to beneficiary address
-   * @param beneficiaryAddress address to send the roolup fess
+   * @param beneficiaryAddress address to receive all fees
    * @param proofA zk-snark input
    * @param proofB zk-snark input
    * @param proofC zk-snark input
@@ -200,20 +194,20 @@ contract Rollup is Ownable, RollupHelpers {
    */
   function forgeBatch(
     address payable beneficiaryAddress,
-    uint[2] memory proofA,
-    uint[2][2] memory proofB,
-    uint[2] memory proofC,
-    uint[8] memory input,
-    bytes memory compressedTxs
-  ) public isStakerLoad returns (bool){
+    uint[2] calldata proofA,
+    uint[2][2] calldata proofB,
+    uint[2] calldata proofC,
+    uint[8] calldata input,
+    bytes calldata compressedTxs
+  ) external isForgeBatch {
     // Public parameters of the circuit
     // input[0] ==> old state root
     // input[1] ==> new state root
     // input[2] ==> new exit root
     // input[3] ==> on chain hash
     // input[4] ==> off chain hash
-    // input[5] ==> fee plan[1]
-    // input[6] ==> fee plan[2]
+    // input[5] ==> fee plan[0]
+    // input[6] ==> fee plan[1]
     // input[7] ==> nTxperToken
 
     // If there is no roots commited it means that it will be the genesis block
@@ -227,13 +221,6 @@ contract Rollup is Ownable, RollupHelpers {
     // Verify on-chain hash
     require(input[3] == miningOnChainTxsHash, 'on-chain hash does not match current filling on-chain hash');
 
-    // Verify fee plan is commited on the zk-snark input
-    // require(uint(feePlan[0]) == input[5], 'fee plan 0 does not match its public input');
-    // require(uint(feePlan[1]) == input[6], 'fee plan 1 does not match its public input');
-
-    // Verify number of transaction per token is commited on the zk-snark input
-    // require(uint(nTxPerToken) == input[7], 'Number of transaction per token does not match its public input');
-
     // Verify all off-chain are commited on the public zk-snark input
     uint256 offChainTxHash = hashOffChainTx(compressedTxs);
     require(offChainTxHash == input[4], 'off chain tx does not match its public hash');
@@ -242,7 +229,6 @@ contract Rollup is Ownable, RollupHelpers {
     require(verifier.verifyProof(proofA, proofB, proofC, input) == true, 'zk-snark proof is not valid');
 
     // Calculate fees and pay them
-    // bytes32[] memory feePlan = new bytes32[](2);
     bytes32[2] memory feePlan = [bytes32(input[5]), bytes32(input[6])];
     bytes32 nTxPerToken = bytes32(input[7]);
 
@@ -275,8 +261,6 @@ contract Rollup is Ownable, RollupHelpers {
 
     // event with all compressed transactions given its batch number
     emit ForgeBatch(getStateDepth() - 1, compressedTxs);
-
-    return true;
   }
 
   /**
@@ -426,7 +410,6 @@ contract Rollup is Ownable, RollupHelpers {
     totalFillingOnChainFee += msg.value;
 
     // Get token deposit on rollup smart contract
-    // require(ERC20(tokenList[tokenId]).approve(address(this), amountDeposit), 'Fail approve ERC20 transaction');
     require(depositToken(tokenId, amountDeposit), 'Fail deposit ERC20 transaction');
 
     // event deposit on top
@@ -503,59 +486,4 @@ contract Rollup is Ownable, RollupHelpers {
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
     return ERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
-
-
-  // /**
-  //  * @dev global variales for batch commited
-  //  * Function: Commit a batch
-  //  */
-  // // Minim collateral required to commit for a batch
-  // uint constant MIN_COMMIT_COLLATERAL = 1 ether;
-  // // Blocks while the operator can forge
-  // uint constant MAX_COMMIT_BLOCKS = 150;
-  // // Operator that is commited to forge the batch
-  // address commitedOperator;
-  // // Balance staked for operators at the time to commit a batch
-  // uint balanceCommited;
-  // // Block where the commit is not valid any more
-  // uint batchBlockExpires;
-  // // Root commited
-  // bytes32 rootCommited;
-
-  // /**
-  //  * @dev check if the last root commited have not been forged
-  //  * by checking the batches that the operator is able to forge
-  //  */
-  // function resetCommitState() public {
-  //   require( block.number > batchBlockExpires );
-  //   require( commitedOperator != address(0) );
-  //   // burn balance staked by the operator
-  //   address(0).transfer(balanceCommited);
-  //   // reset commit variables
-  //   balanceCommited = 0;
-  //   commitedOperator = address(0);
-  // }
-
-  // /**
-  //  * @dev operator commits the new batch along with a deposit
-  //  * operator has a certain amount of blocks to validate the batch commited
-  //  * fees and deposit are paied to operator if batch is finally added succesfully
-  //  * otherwise, deposit is burned and new batch commit would be available again
-  //  * @param newRoot of 'balance tree' commited
-  //  */
-  // function commitToBatch( bytes32 newRoot ) public payable {
-  //   // Ensure there is no current batch commited
-  //   require( commitedOperator == address(0) );
-  //   require( block.number > batchBlockExpires );
-  //   // Ensure msg.sender has enough balance to commit a new root
-  //   require( msg.value >= MIN_COMMIT_COLLATERAL );
-  //   // Stake balance
-  //   balanceCommited = msg.value;
-  //   // Set last block to forge the root
-  //   batchBlockExpires = block.number + MAX_COMMIT_BLOCKS;
-  //   // Save operator that commited the root
-  //   commitedOperator = msg.sender;
-  //   // Save the root
-  //   rootCommited = newRoot;
- // }
 }

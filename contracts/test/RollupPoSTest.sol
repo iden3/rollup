@@ -16,6 +16,10 @@ contract RollupPoSTest is RollupPoS {
     blockNumber = bn;
   }
 
+  function setBlockForged(uint32 slot) public {
+    fullFilled[slot] = true;
+  }
+
   function getRaffleWinnerTest(uint32 slot, uint64 luckyNumber) public view returns (uint32 winner) {
     // No negative era
     uint32 era = slot / SLOTS_PER_ERA;

@@ -13,7 +13,8 @@ const { expect } = chai;
 const poseidonUnit = require('../../node_modules/circomlib/src/poseidon_gencontract.js');
 
 const TokenRollup = artifacts.require('../contracts/test/TokenRollup');
-const StakerManager = artifacts.require('../contracts/StakeManager');
+const Verifier = artifacts.require('../contracts/test/VerifierHelper');
+const StakerManager = artifacts.require('../contracts/RollupPoS');
 const RollupTest = artifacts.require('../contracts/test/RollupTest');
 
 contract('Rollup', (accounts) => {
@@ -25,6 +26,7 @@ contract('Rollup', (accounts) => {
   let insTokenRollup;
   let insStakerManager;
   let insRollupTest;
+  let insVerifier;
 
   // BabyJub public key
   const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
@@ -51,17 +53,20 @@ contract('Rollup', (accounts) => {
     // Deploy TokenRollup
     insTokenRollup = await TokenRollup.new(id1, tokenInitialAmount);
 
+    // Deploy Verifier
+    insVerifier = await Verifier.new();
+
     // Deploy Rollup test
-    insRollupTest = await RollupTest.new(insPoseidonUnit._address);
+    insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address);
 
     // Deploy Staker manager
     insStakerManager = await StakerManager.new(insRollupTest.address);
   });
 
-  it('Load Staker manager', async () => {
-    await insRollupTest.loadStakeManager(insStakerManager.address);
+  it('Load forge batch mechanism', async () => {
+    await insRollupTest.loadForgeBatchMechanism(insStakerManager.address);
     try {
-      await insRollupTest.loadStakeManager(insStakerManager.address, { from: id1 });
+      await insRollupTest.loadForgeBatchMechanism(insStakerManager.address, { from: id1 });
     } catch (error) {
       expect((error.message).includes('caller is not the owner')).to.be.equal(true);
     }
@@ -138,7 +143,7 @@ contract('Rollup', (accounts) => {
     let fillingOnChainTxsHash = BigInt(0);
     fillingOnChainTxsHash = utils.hash([fillingOnChainTxsHash, calcFilling]);
 
-    const resFillingTest = await insRollupTest.fillingOnChainTxsHash();
+    const resFillingTest = await insRollupTest.getFillingOnChainTxsHash();
     expect(fillingOnChainTxsHash.toString()).to.be.equal(BigInt(resFillingTest).toString());
 
     // Update on-chain hashes
@@ -162,7 +167,7 @@ contract('Rollup', (accounts) => {
 
     const nTxPerToken = BigInt(0).toString();
 
-    const resForge = await insRollupTest.forgeBatch(oldStateRoot, newStateRoot, newExitRoot,
+    const resForge = await insRollupTest.forgeBatchTest(oldStateRoot, newStateRoot, newExitRoot,
       onChainHash, feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge.logs[0].event).to.be.equal('ForgeBatch');
@@ -174,8 +179,8 @@ contract('Rollup', (accounts) => {
     fillingOnChainTest = BigInt(0).toString();
 
     // Check minning / filling on-chain hash
-    const resMinning = await insRollupTest.miningOnChainTxsHash();
-    const resFilling = await insRollupTest.fillingOnChainTxsHash();
+    const resMinning = await insRollupTest.getMinningOnChainTxsHash();
+    const resFilling = await insRollupTest.getFillingOnChainTxsHash();
 
     expect(minningOnChainTest).to.be.equal(BigInt(resMinning).toString());
     expect(fillingOnChainTest).to.be.equal(BigInt(resFilling).toString());
@@ -203,7 +208,7 @@ contract('Rollup', (accounts) => {
 
     const nTxPerToken = BigInt(0).toString();
 
-    const resForge = await insRollupTest.forgeBatch(oldStateRoot, newStateRoot, newExitRoot,
+    const resForge = await insRollupTest.forgeBatchTest(oldStateRoot, newStateRoot, newExitRoot,
       onChainHash, feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge.logs[0].event).to.be.equal('ForgeBatch');
@@ -215,8 +220,8 @@ contract('Rollup', (accounts) => {
     fillingOnChainTest = BigInt(0).toString();
 
     // Check minning / filling on-chain hash
-    const resMinning = await insRollupTest.miningOnChainTxsHash();
-    const resFilling = await insRollupTest.fillingOnChainTxsHash();
+    const resMinning = await insRollupTest.getMinningOnChainTxsHash();
+    const resFilling = await insRollupTest.getFillingOnChainTxsHash();
 
     expect(minningOnChainTest).to.be.equal(BigInt(resMinning).toString());
     expect(fillingOnChainTest).to.be.equal(BigInt(resFilling).toString());
@@ -292,7 +297,7 @@ contract('Rollup', (accounts) => {
 
     const nTxPerToken = BigInt(0).toString();
 
-    const resForge = await insRollupTest.forgeBatch(oldStateRoot, newStateRoot, newExitRoot,
+    const resForge = await insRollupTest.forgeBatchTest(oldStateRoot, newStateRoot, newExitRoot,
       onChainHash, feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge.logs[0].event).to.be.equal('ForgeBatch');
@@ -300,7 +305,7 @@ contract('Rollup', (accounts) => {
     expect(resForge.logs[0].args.offChainTx).to.be.equal(compressedTxs);
 
     // Update on-chain hashes
-    minningOnChainTest = await insRollupTest.miningOnChainTxsHash();
+    minningOnChainTest = await insRollupTest.getMinningOnChainTxsHash();
     fillingOnChainTest = BigInt(0).toString();
 
     // Calculate fillingOnChainHash
@@ -315,7 +320,7 @@ contract('Rollup', (accounts) => {
     // Update balance tree with 'deposit on top' transaction
     await balanceTree.updateId(BigInt(1), BigInt(35));
 
-    const resForge2 = await insRollupTest.forgeBatch(oldStateRoot, balanceTree.getRoot().toString(),
+    const resForge2 = await insRollupTest.forgeBatchTest(oldStateRoot, balanceTree.getRoot().toString(),
       newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');
@@ -375,7 +380,7 @@ contract('Rollup', (accounts) => {
 
     const nTxPerToken = BigInt(0).toString();
 
-    const resForge = await insRollupTest.forgeBatch(oldStateRoot, newStateRoot, newExitRoot,
+    const resForge = await insRollupTest.forgeBatchTest(oldStateRoot, newStateRoot, newExitRoot,
       onChainHash, feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge.logs[0].event).to.be.equal('ForgeBatch');
@@ -383,7 +388,7 @@ contract('Rollup', (accounts) => {
     expect(resForge.logs[0].args.offChainTx).to.be.equal(compressedTxs);
 
     // Update on-chain hashes
-    minningOnChainTest = await insRollupTest.miningOnChainTxsHash();
+    minningOnChainTest = await insRollupTest.getMinningOnChainTxsHash();
     fillingOnChainTest = BigInt(0).toString();
 
     // Calculate fillingOnChainHash
@@ -398,7 +403,7 @@ contract('Rollup', (accounts) => {
     // Update balance tree with 'deposit on top' transaction
     await balanceTree.updateId(BigInt(1), BigInt(35));
 
-    const resForge2 = await insRollupTest.forgeBatch(oldStateRoot, balanceTree.getRoot().toString(),
+    const resForge2 = await insRollupTest.forgeBatchTest(oldStateRoot, balanceTree.getRoot().toString(),
       newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');
