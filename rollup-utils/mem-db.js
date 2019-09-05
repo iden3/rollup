@@ -7,19 +7,6 @@ class MemorydB {
   }
 
   /**
-   * new database from object
-   * @param {Object} dbObj - database as object representation
-   * @return {Object} - MemorydB class object
-   */
-  static newFromObj(dbObj) {
-    const db = new MemorydB();
-    Object.keys(dbObj).forEach((key) => {
-      db.insert(key, dbObj[key]);
-    });
-    return db;
-  }
-
-  /**
    * Method to store [key - value] on database
    * @param {String} key
    * @param {String} value
@@ -73,12 +60,23 @@ class MemorydB {
    * export MemoryDb into an object
    * @return {Object} - Database as object representation
    */
-  exportObj() {
+  export() {
     const obj = {};
     this.db.forEach((value, key) => {
       obj[key] = value;
     });
     return obj;
+  }
+
+  /**
+   * new database from object
+   * @param {Object} dbObj - database as object representation
+   * @return {Object} - MemorydB class object
+   */
+  import(dbObj) {
+    Object.keys(dbObj).forEach((key) => {
+      this.insert(key, dbObj[key]);
+    });
   }
 }
 

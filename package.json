@@ -30,18 +30,22 @@
   },
   "homepage": "https://github.com/iden3/rollup#readme",
   "devDependencies": {
-    "circom": "0.0.30",
-    "circomlib": "0.0.15",
-    "eslint": "^5.16.0",
+    "circom": "0.0.31",
+    "eslint": "^6.3.0",
+    "eslint-config-airbnb-base": "^13.2.0",
+    "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-mocha": "^5.3.0",
     "blakejs": "^1.1.0",
     "mocha": "^6.2.0"
   },
   "dependencies": {
     "chai": "^4.2.0",
+    "circomlib": "0.0.14",
     "dotenv": "^8.1.0",
     "ethereumjs-util": "^6.1.0",
+    "level": "^5.0.1",
     "openzeppelin-solidity": "^2.3.0",
+    "snarkjs": "^0.1.18",
     "truffle": "^5.0.27",
     "truffle-hdwallet-provider": "^1.0.17"
   }

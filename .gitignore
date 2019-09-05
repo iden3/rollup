@@ -65,3 +65,6 @@ tmp
 # truffle
 build
 rollup-cli/src/wallet-rollup-cli.json
+
+# vscode configuration
+.vscode

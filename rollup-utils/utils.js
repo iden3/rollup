@@ -1,5 +1,4 @@
-/* global BigInt */
-const Poseidon = require('../../../node_modules/circomlib/src/poseidon.js');
+const Poseidon = require('../node_modules/circomlib/src/poseidon');
 
 const hash = Poseidon.createHash(6, 8, 57);
 

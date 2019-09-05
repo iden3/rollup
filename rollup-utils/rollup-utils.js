@@ -1,4 +1,3 @@
-/* global BigInt */
 const {
   hash, padZeroes, buildElement, arrayHexToBigInt,
 } = require('./utils');
