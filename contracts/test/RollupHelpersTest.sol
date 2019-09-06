@@ -32,7 +32,7 @@ contract RollupHelpersTest is RollupHelpers{
   function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
     uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
   ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
-    
+
     Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
       Ax, Ay, withdrawAddress, nonce);
     return (entry.e1,
@@ -45,16 +45,16 @@ contract RollupHelpersTest is RollupHelpers{
   function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
     uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
   ) public view returns (uint256) {
-    
+
     Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
       Ax, Ay, withdrawAddress, nonce);
-    
+
     return hashEntry(entry);
   }
 
   function buildEntryFeePlanTest(bytes32[2] memory feePlan)
     public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
-    
+
     Entry memory entry = buildEntryFeePlan(feePlan);
     return (entry.e1,
             entry.e2,

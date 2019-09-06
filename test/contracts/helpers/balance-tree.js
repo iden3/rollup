@@ -7,7 +7,7 @@ const utils = require('./balance-tree-utils');
 
 class BalanceTree {
   constructor(_leafDb, _smt) {
-    this.leafDb = _leafDb; // Store last key - value of the baance tree
+    this.leafDb = _leafDb; // Store last key - value of the balance tree
     this.smt = _smt; // Store sparse merkle tree balance tree
   }
 

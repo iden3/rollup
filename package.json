@@ -39,9 +39,10 @@
   },
   "dependencies": {
     "chai": "^4.2.0",
+    "dotenv": "^8.1.0",
     "ethereumjs-util": "^6.1.0",
     "openzeppelin-solidity": "^2.3.0",
     "truffle": "^5.0.27",
-    "web3": "^1.2.1"
+    "truffle-hdwallet-provider": "^1.0.17"
   }
 }

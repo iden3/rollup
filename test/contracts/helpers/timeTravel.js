@@ -1,28 +1,42 @@
 /* global web3 */
-module.exports = seconds => new Promise((resolve, reject) => {
-  web3.currentProvider.send(
-    {
+function advanceTime(time) {
+  // eslint-disable-next-line no-new
+  new Promise((resolve, reject) => {
+    web3.currentProvider.send({
       jsonrpc: '2.0',
       method: 'evm_increaseTime',
-      params: [seconds],
+      params: [time],
       id: new Date().getTime(),
-    },
-    // eslint-disable-next-line consistent-return
-    (err1) => {
-      if (err1) return reject(err1);
-      web3.currentProvider.send(
-        {
-          jsonrpc: '2.0',
-          method: 'evm_mine',
-          params: [],
-          id: new Date().getTime(),
-        },
-        // eslint-disable-next-line consistent-return
-        (err2) => {
-          if (err2) return reject(err2);
-          resolve();
-        },
-      );
-    },
-  );
-});
+    }, (err, result) => {
+      if (err) { return reject(err); }
+      return resolve(result);
+    });
+  });
+}
+
+function advanceBlock() {
+  // eslint-disable-next-line no-new
+  new Promise((resolve, reject) => {
+    web3.currentProvider.send({
+      jsonrpc: '2.0',
+      method: 'evm_mine',
+      id: new Date().getTime(),
+    }, (err, result) => {
+      if (err) { return reject(err); }
+      return resolve(result);
+    });
+  });
+}
+
+async function addBlocks(numBlocks) {
+  for (let i = 0; i < numBlocks; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await advanceBlock();
+  }
+}
+
+module.exports = {
+  advanceTime,
+  advanceBlock,
+  addBlocks,
+};
