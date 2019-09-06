@@ -1,5 +1,5 @@
 const chai = require('chai');
-const wallet = require('../../rollup-utils/babyjub-hdwallet');
+const babyKeys = require('../../rollup-utils/babyjub-hd-keys');
 const eddsa = require('../../rollup-utils/eddsa-babyjub');
 
 const { expect } = chai;
@@ -10,18 +10,18 @@ describe('BabyJubjub key generation', () => {
   const privTest1 = 'e26a07ed01c9784622200d4f40008dfd8b1163f11d250886c5f6a37a10df8a9f';
 
   it('from mnemonic', () => {
-    const hdWallet = wallet.fromMnemonic(mnemonic);
-    const priv0 = hdWallet.getPrivate(0);
-    const priv1 = hdWallet.getPrivate(1);
+    const hdKeys = babyKeys.fromMnemonic(mnemonic);
+    const priv0 = hdKeys.getPrivate(0);
+    const priv1 = hdKeys.getPrivate(1);
     expect(priv0.toString('hex')).to.be.equal(privTest0);
     expect(priv1.toString('hex')).to.be.equal(privTest1);
   });
 
   it('from random', () => {
-    const hdWallet = wallet.fromRandom(mnemonic);
-    const pubPoint = hdWallet.getPublic(0);
-    const pubCompressed = hdWallet.getPublic(0, true);
-    const priv = new eddsa.PrivateKey(hdWallet.getPrivate(0));
+    const hdKeys = babyKeys.fromRandom();
+    const pubPoint = hdKeys.getPublic(0);
+    const pubCompressed = hdKeys.getPublic(0, true);
+    const priv = new eddsa.PrivateKey(hdKeys.getPrivate(0));
     expect(priv.public().p[0].toString()).to.be.equal(pubPoint[0].toString());
     expect(priv.public().p[1].toString()).to.be.equal(pubPoint[1].toString());
     expect(priv.public().compress().toString()).to.be.equal(pubCompressed.toString());

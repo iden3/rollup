@@ -106,6 +106,16 @@ class PublicKey {
   verifyMimc7(msg, sig) {
     return eddsa.verifyMiMC(msg, { R8: sig.r8, S: sig.s }, this.p);
   }
+
+  /**
+   * Verify the signature of a bigInt message using Poseidon hash
+   * @param {bigInt} msg - message to verify
+   * @param {Signature} sig - signature to check
+   * @returns {boolean} True if validation is succesfull; otherwise false
+   */
+  verifyPoseidon(msg, sig) {
+    return eddsa.verifyPoseidon(msg, { R8: sig.r8, S: sig.s }, this.p);
+  }
 }
 
 /**
@@ -165,6 +175,17 @@ class PrivateKey {
    */
   signMimc7(msg) {
     const s = eddsa.signMiMC(this.sk, msg);
+    return new Signature(s.R8, s.S);
+  }
+
+
+  /**
+   * Sign a bigInt message using Poseidon hash
+   * @param {bigInt} msg - message to sign
+   * @returns {Signature} Signature generated
+   */
+  signPoseidon(msg) {
+    const s = eddsa.signPoseidon(this.sk, msg);
     return new Signature(s.R8, s.S);
   }
 }

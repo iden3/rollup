@@ -6,25 +6,25 @@ const eddsaBabyJub = require('./eddsa-babyjub');
  * Use to create babyjub private/public keys following the next rules:
  * path to create babyjubjub keys is the next path used to generate ethereum keys
  * Ethereum common path --> "m/44'/60'/0'/0/0"
- * BabyJubJub path --> "m/44'/60'/0'/0/0/{BabyJubJub path}"
+ * BabyJubJub derived key --> "m/44'/60'/0'/0/0/{BabyJubJub path}"
  */
 
-class BabyJubJubHDWallet {
+class BabyJubJubHdKeys {
   /**
    * Create a babyjubjub hdwallet froma given mnemonic
    * @return {BabyJubJubHDWallet} mnemonic Babyjubjub hd wallet class
    */
   static fromMnemonic(mnemonic) {
-    return new BabyJubJubHDWallet(mnemonic);
+    return new BabyJubJubHdKeys(mnemonic);
   }
 
   /**
    * Create a random babyjubjub hdwallet
-   * @return {BabyJubJubHDWallet} mnemonic Babyjubjub hd wallet class
+   * @return {BabyJubJubHdKeys} mnemonic Babyjubjub hd wallet class
    */
   static fromRandom() {
     const randMnemonic = bip39.generateMnemonic();
-    return new BabyJubJubHDWallet(randMnemonic);
+    return new BabyJubJubHdKeys(randMnemonic);
   }
 
   /**
@@ -62,4 +62,4 @@ class BabyJubJubHDWallet {
   }
 }
 
-module.exports = BabyJubJubHDWallet;
+module.exports = BabyJubJubHdKeys;

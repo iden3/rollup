@@ -85,10 +85,6 @@ contract('Rollup - RollupPoS', (accounts) => {
     for (let i = 1; i < 5; i++) {
       hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
     }
-    // send ether to RollupPoS
-    // await insRollupPoS.sendTransaction({ from: accounts[13], value: 10000000000000000000 });
-    // const bal = await getEtherBalance(insRollupPoS.address);
-    // console.log('balance insRollupPoS', bal);
   });
 
   it('Initialization', async () => {
