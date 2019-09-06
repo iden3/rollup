@@ -83,8 +83,10 @@ template FeeSelectorStep() {
     signal input isSelectedIn;
     signal input currentFeeIn;
     signal input feePlanFee;
+    signal input counterBaseIn;
     signal output isSelectedOut;
     signal output currentFeeOut;
+    signal output counterBaseOut;
 
     component isEqual = IsEqual();
     isEqual.in[0] <== coin;
@@ -93,23 +95,31 @@ template FeeSelectorStep() {
     signal isSelectedIsEqual;
     isSelectedIsEqual <== isSelectedIn*isEqual.out;
 
-    component mux = Mux1();
-    mux.c[0] <== currentFeeIn;
-    mux.c[1] <== feePlanFee;
+    component mux1 = Mux1();
+    mux1.c[0] <== currentFeeIn;
+    mux1.c[1] <== feePlanFee;
 
-    // mux.s <== (1 - isSelectedIn)*isEqual.out
-    mux.s <== isEqual.out - isSelectedIsEqual
+    // mux1.s <== (1 - isSelectedIn)*isEqual.out
+    mux1.s <== isEqual.out - isSelectedIsEqual
 
-    currentFeeOut <== mux.out;
+    currentFeeOut <== mux1.out;
 
     isSelectedOut <== isSelectedIn + isEqual.out - isSelectedIsEqual;
+
+    component mux2 = Mux1();
+    mux2.c[0] <== counterBaseIn*(1<<16);
+    mux2.c[1] <== counterBaseIn;
+    mux2.s <== isSelectedOut;
+    mux2.out ==> counterBaseOut;
+
 }
 
 template FeeSelector() {
     signal input coin;
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
-    signal output fee;
+    signal output minFee;
+    signal output countersBase;
 
     component stp[16];
 
@@ -118,14 +128,17 @@ template FeeSelector() {
         if (i==0) {
             stp[i].isSelectedIn <== 0;
             stp[i].currentFeeIn <== 0;
+            stp[i].counterBaseIn <== 1;
         } else {
             stp[i].isSelectedIn <== stp[i-1].isSelectedOut;
             stp[i].currentFeeIn <== stp[i-1].currentFeeOut;
+            stp[i].counterBaseIn <== stp[i-1].counterBaseOut;
         }
         stp[i].coin <== coin;
         stp[i].feePlanCoin <== feePlanCoin[i];
         stp[i].feePlanFee <== feePlanFee[i];
     }
 
-    fee <== stp[15].currentFeeOut;
+    minFee <== stp[15].currentFeeOut;
+    countersBase <== stp[15].counterBaseOut * stp[15].isSelectedOut;
 }

@@ -1,8 +1,16 @@
-include "./node_modules/circomlib/circuits/smt/smtprocessor.circom";
-include "./node_modules/circomlib/circuits/eddsposeidon.circom";
-include "./node_modules/circomlib/circuits/gates.circom";
+include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
+include "../node_modules/circomlib/circuits/eddsaposeidon.circom";
+include "../node_modules/circomlib/circuits/gates.circom";
+include "../node_modules/circomlib/circuits/mux1.circom";
+include "feeselector.circom";
+include "balancesupdater.circom";
+include "rolluptxstates.circom";
+include "statepacker.circom";
+include "requiredtxverifier.circom";
+include "statepacker.circom";
 
 template RollupTx(nLevels) {
+
 
     // Fee Plan
     signal input feePlanCoin[16];
@@ -11,36 +19,39 @@ template RollupTx(nLevels) {
     // Past and future TxHashes
     signal input pastTxHash[4];
     signal input futureTxHash[3];
-    signal output TxHash;
 
     //TX
-    /*
-    fn[0]  fn[1]   Function    S1  S2  S3  S4
-    0       0       NOP         0   0   0   0
-    0       1       TRANSFER    0   1   0   1
-    1       0       ENTRY       0   1   0   1
-    1       1       EXIT        1   0   1   1
-    */
-    signal input fnc[2];                        // 2
-    signal input fromIdx;                       // 24
-    signal input toIdx;                         // 24
-    signal input amount;                        // 16
-    signal input nonce;
-    signal input fee;
-    signal input rqTxHash;
-    signal input rqTxOffset;
+
+    signal input fromIdx;
+    signal input toIdx;
+    signal input amount;
     signal input coin;
-    signal input sigR8;
-    signal input sigS;
-    signal input initAmount;
-    signal input inChain;
-    signal input coinSelector;
+    signal input nonce;
+    signal input maxFee;
+    signal input rqOffset;
+    signal input onChain;
+    signal input newAccount;
+
+    signal input offChainHash;
+
+    signal input rqTxHash;
+    signal input s;
+    signal input r8x;
+    signal input r8y;
+
+    // For ENTRY TX
+    signal input loadAmount;
+    signal input ethAddr;
+    signal input ax;
+    signal input ay;
 
     // State 1
     signal input ax1;
     signal input ay1;
-    signal input StAmount1;
-    signal input siblings1[nlevels];
+    signal input amount1;
+    signal input nonce1;
+    signal input ethAddr1;
+    signal input siblings1[nLevels];
     // Required for inserts and delete
     signal input isOld0_1;                     // 1
     signal input oldKey1;
@@ -49,11 +60,13 @@ template RollupTx(nLevels) {
     // State 2
     signal input ax2;
     signal input ay2;
-    signal input StAmount2;
-    signal input siblings2[nlevels];
+    signal input amount2;
+    signal input nonce2;
+    signal input ethAddr2;
+    signal input siblings2[nLevels];
     // Required for inserts and delete
     signal input isOld0_2;                     // 1
-    signal input oldKe2;
+    signal input oldKey2;
     signal input oldValue2;
 
     // Roots
@@ -63,67 +76,262 @@ template RollupTx(nLevels) {
     signal input oldExitRoot;
     signal output newExitRoot;
 
-    signal input oldInChain;
-    signal output newInChain;
+    signal input countersIn;
+    signal output countersOut;
 
-    signal input oldInChainHash;
-    signal output newInChainHash;
 
-    signal input oldOffChainHash;
-    signal output newOffChainHash;
+    var i;
 
-///////
-//  Components
-///////
-    component feeChooser = MultiMux4(2);
-    for (var i=0; i<16; i++) {
-        feePlanChosser.coins[i] <== feePlanCoin[i];
-        feePlanChosser.fees[i] <== feePlanFee[i];
+
+// feeSelector
+///////////////
+    component feeSelector = FeeSelector();
+    for (i=0; i<16; i++) {
+        feeSelector.feePlanCoin[i] <== feePlanCoin[i];
+        feeSelector.feePlanFee[i] <== feePlanFee[i];
     }
-    feePlanChosser.coinSel <== coinSel;
-    feePlanChosser.coin <== coin;
+    feeSelector.coin <== coin;
 
-    component txHasher = TxHasher();
+//  states
+///////////
+    component states = RollupTXStates();
+    states.onChain <== onChain;
+    states.fromIdx <== fromIdx;
+    states.toIdx <== toIdx;
+    states.amount <== amount;
+    states.amount2 <== amount2;
+    states.loadAmount <== loadAmount;
+    states.newAccount <== newAccount;
 
-    component s5 = StateSelector();
-    component s6 = StateSelector();
 
-    component balanceSubstracter = BalanceUpdater();
-
-    component sigVerifier = EdDSAPoseidongVerifier();
+// requiredTxVerifier
+//////////
     component requiredTxVerifier = RequiredTxVerifier();
 
-    // Check coin
-    feePlanChooser.coin === coin;
-    s5.coin === s6.coin;
-    s5.coin === coin;
+    for (i=0; i<4; i++) {
+        requiredTxVerifier.pastTxHash[i] <== pastTxHash[i];
+    }
 
-    // Check nonce
-    s5.nonce === nonce;
+    for (i=0; i<3; i++) {
+        requiredTxVerifier.futureTxHash[i] <== futureTxHash[i];
+    }
+
+    requiredTxVerifier.rqTxHash <== rqTxHash;
+    requiredTxVerifier.rqTxOffset <== rqOffset;
+
+// nonceChecker
+//////////
+
+    component nonceChecker = ForceEqualIfEnabled();
+    nonceChecker.in[0] <== nonce;
+    nonceChecker.in[1] <== nonce1;
+    nonceChecker.enabled <== (1-onChain);
 
 
-    component txHash TxHash();
+// ethAddrChecker
+//////////
 
-    component oldStateHasher1 = StateHasher() ;
-    component newStateHasher1 = StateHasher() ;
-    component oldStateHasher2 = StateHasher() ;
-    component newStateHasher2 = StateHasher() ;
+    component ethAddrChecker = ForceEqualIfEnabled();
+    ethAddrChecker.in[0] <== ethAddr;
+    ethAddrChecker.in[1] <== ethAddr1;
+    ethAddrChecker.enabled <== onChain;
 
-    component processor1 = SMTProcessor(nLevelse) ;
-    component processor2 = SMTProcessor(nLevelse) ;
+// oldState1 Packer
+/////////////////
+    component oldSt1Pck = StatePacker();
+    oldSt1Pck.ax <== ax1;
+    oldSt1Pck.ay <== ay1;
+    oldSt1Pck.amount <== amount1;
+    oldSt1Pck.nonce <== nonce1;
+    oldSt1Pck.coin <== coin;
+    oldSt1Pck.ethAddr <== ethAddr1;
+
+// oldState2 Packer
+/////////////////
+    component oldSt2Pck = StatePacker();
+    oldSt2Pck.ax <== ax2;
+    oldSt2Pck.ay <== ay2;
+    oldSt2Pck.amount <== amount2;
+    oldSt2Pck.nonce <== nonce2;
+    oldSt2Pck.coin <== coin;
+    oldSt2Pck.ethAddr <== ethAddr2;
 
 
-    component s1 = Mux2();
-    component s2 = Mux2();
-    component s3 = Mux2();
-    component s4 = Mux2();
-    component s7 = Mux2();
-    component s8 = Mux2();
+// s1
+//////////////
+    component s1Amount = Mux1();
+    s1Amount.c[0] <== 0;
+    s1Amount.c[1] <== amount1;
+    s1Amount.s <== states.s1;
 
-    component inChanHasher = new InChainHash();
-    component offChainHasher = new OffChainHash();
+    component s1Ax = Mux1();
+    s1Ax.c[0] <== ax;
+    s1Ax.c[1] <== ax1;
+    s1Ax.s <== states.s1;
 
-    component andInChain = And();
+    component s1Ay = Mux1();
+    s1Ay.c[0] <== ay;
+    s1Ay.c[1] <== ay1;
+    s1Ay.s <== states.s1;
+
+    component s1Nonce = Mux1();
+    s1Nonce.c[0] <== 0;
+    s1Nonce.c[1] <== nonce1;
+    s1Nonce.s <== states.s1;
+
+    component s1EthAddr = Mux1();
+    s1EthAddr.c[0] <== ethAddr;
+    s1EthAddr.c[1] <== ethAddr1;
+    s1EthAddr.s <== states.s1;
+
+    component s1OldKey = Mux1();
+    s1OldKey.c[0] <== fromIdx;
+    s1OldKey.c[1] <== oldKey1;
+    s1OldKey.s <== states.s1;
+
+    component s1OldValue = Mux1();
+    s1OldValue.c[0] <== fromIdx;
+    s1OldValue.c[1] <== oldSt1Pck.out;
+    s1OldValue.s <== states.s1;
+
+// s2
+//////////////
+
+    component s2Ax = Mux1();
+    s2Ax.c[0] <== ax2;
+    s2Ax.c[1] <== s1Ax.out;
+    s2Ax.s <== states.s2;
+
+    component s2Ay = Mux1();
+    s2Ay.c[0] <== ay2;
+    s2Ay.c[1] <== s1Ay.out;
+    s2Ay.s <== states.s2;
+
+    component s2Nonce = Mux1();
+    s2Nonce.c[0] <== 0;
+    s2Nonce.c[1] <== nonce2;
+    s2Nonce.s <== states.s2;
+
+    component s2EthAddr = Mux1();
+    s2EthAddr.c[0] <== s1EthAddr.out;
+    s2EthAddr.c[1] <== ethAddr2;
+    s2EthAddr.s <== states.s2;
+
+    component s2OldKey = Mux1();
+    s2OldKey.c[0] <== states.key2;
+    s2OldKey.c[1] <== oldKey2;
+    s2OldKey.s <== states.s2;
+
+    component s2OldValue = Mux1();
+    s2OldValue.c[0] <== fromIdx;
+    s2OldValue.c[1] <== oldSt2Pck.out;
+    s2OldValue.s <== states.s2;
+
+// sigVerifier
+//////////
+    component sigVerifier = EdDSAPoseidonVerifier();
+    sigVerifier.enabled <== states.verifySignEnabled;
+
+    sigVerifier.Ax <== s1Ax.out;
+    sigVerifier.Ay <== s1Ay.out;
+
+    sigVerifier.S <== s;
+    sigVerifier.R8x <== r8x;
+    sigVerifier.R8y <== r8y;
+
+    sigVerifier.M <== offChainHash;
+
+
+// balancesUpdater
+///////////////
+    component balancesUpdater = BalancesUpdater();
+    balancesUpdater.oldStAmountSender <== s1Amount.out;
+    balancesUpdater.oldStAmountRecieiver <== amount2;
+    balancesUpdater.amount <== amount;
+    balancesUpdater.maxFee <== maxFee;
+    balancesUpdater.minFee <== feeSelector.minFee;
+    balancesUpdater.onChain <== onChain;
+    balancesUpdater.countersIn <== countersIn;
+    balancesUpdater.countersBase <== feeSelector.countersBase;
+    balancesUpdater.loadAmount <== loadAmount;
+
+    balancesUpdater.countersOut ==> countersOut;
+
+// newState1 Packer
+/////////////////
+    component newSt1Pck = StatePacker();
+    newSt1Pck.ax <== s1Ax.out;
+    newSt1Pck.ay <== s1Ay.out;
+    newSt1Pck.amount <== balancesUpdater.newStAmountSender;
+    newSt1Pck.nonce <== s1Nonce.out + (1 - onChain);
+    newSt1Pck.coin <== coin;
+    newSt1Pck.ethAddr <== s1EthAddr.out;
+
+// newState1 Packer
+/////////////////
+    component newSt2Pck = StatePacker();
+    newSt2Pck.ax <== s2Ax.out;
+    newSt2Pck.ay <== s2Ay.out;
+    newSt2Pck.amount <== balancesUpdater.newStAmountReceiver;
+    newSt2Pck.nonce <== s2Nonce.out;
+    newSt2Pck.coin <== coin;
+    newSt2Pck.ethAddr <== s2EthAddr.out;
+
+// processor1
+/////////////////
+    component processor1 = SMTProcessor(nLevels) ;
+    processor1.oldRoot <== oldStRoot;
+    for (i=0; i<nLevels; i++) {
+        processor1.siblings[i] <== siblings1[i];
+    }
+    processor1.oldKey <== s1OldKey.out;
+    processor1.oldValue <== s1OldValue.out;
+    processor1.isOld0 <== isOld0_1;
+    processor1.newKey <== fromIdx;
+    processor1.newValue <== newSt1Pck.out;
+    processor1.fnc[0] <== states.P1_fnc0;
+    processor1.fnc[1] <== states.P1_fnc1;
+
+// s3
+/////////////////
+    component s3 = Mux1();
+    s3.c[0] <== processor1.newRoot;
+    s3.c[1] <== oldExitRoot;
+    s3.s <== states.isExit;
+
+// processor2
+/////////////////
+    component processor2 = SMTProcessor(nLevels) ;
+    processor2.oldRoot <== s3.out;
+    for (i=0; i<nLevels; i++) {
+        processor2.siblings[i] <== siblings1[i];
+    }
+    processor2.oldKey <== s2OldKey.out;
+    processor2.oldValue <== s2OldValue.out;
+    processor2.isOld0 <== isOld0_2;
+    processor2.newKey <== states.key2;
+    processor2.newValue <== newSt1Pck.out;
+    processor2.fnc[0] <== states.P2_fnc0;
+    processor2.fnc[1] <== states.P2_fnc1;
+
+
+// s4
+/////////////////
+    component s4 = Mux1();
+    s4.c[0] <== processor2.newRoot;
+    s4.c[1] <== processor1.newRoot;
+    s4.s <== states.isExit;
+    s4.out ==> newStRoot;
+
+// s5
+/////////////////
+    component s5 = Mux1();
+    s5.c[0] <== oldExitRoot;
+    s5.c[1] <== processor2.newRoot;
+    s5.s <== states.isExit;
+    s5.out ==> newExitRoot;
+
+
 
 
 }

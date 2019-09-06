@@ -1,39 +1,39 @@
-#include "rolluptx.circom"
+include "../node_modules/circomlib/circuits/sha256/sha256.circom";
+include "../node_modules/circomlib/circuits/bitify.circom";
+include "decodetx.circom";
+include "rolluptx.circom";
+include "feeplandecoder.circom";
+
 
 template Rollup(nTx, nLevels) {
 
     // Roots
-    signal public input oldStRoot;
-    signal public output newStRoot;
-    signal public output newExitRoot;
-    signal public input onChainHash;
-    signal public input offChainHash;
-    signal public output feePlanHash;
+    signal input oldStRoot;
+    signal input feePlanCoins;
+    signal input feePlanFees;
+    signal output newStRoot;
+    signal output newExitRoot;
+    signal output onChainHash;
+    signal output offChainHash;
+    signal output countersOut;
 
-
-    signal private input feePlanCoin[16];
-    signal private input feePlanFee[16];
-
-    // TX Data
-    signal private input fnc[nTx][2];
-    signal private input fromIdx[nTx];
-    signal private input toIdx[nTx];
-    signal private input amount[nTx];
-    signal private input nonce[nTx];
-    signal private input fee[nTx];
+    signal private input txData[nTx];
     signal private input rqTxHash[nTx];
-    signal private input rqTxOffset[nTx];
-    signal private input coin[nTx];
-    signal private input sigR8[nTx];
-    signal private input sigS[nTx];
-    signal private input initAmount[nTx];
-    signal private input inChain[nTx];
+    signal private input s[nTx];
+    signal private input r8x[nTx];
+    signal private input r8y[nTx];
+    signal private input loadAmount[nTx];
+    signal private input ethAddr[nTx];
+    signal private input ax[nTx];
+    signal private input ay[nTx];
 
     // State 1
     signal private input ax1[nTx];
     signal private input ay1[nTx];
-    signal private input StAmount1[nTx];
-    signal private input siblings1[nTx][nlevels];
+    signal private input amount1[nTx];
+    signal private input nonce1[nTx];
+    signal private input ethAddr1[nTx];
+    signal private input siblings1[nTx][nLevels];
     // Required for inserts and delete
     signal private input isOld0_1[nTx];
     signal private input oldKey1[nTx];
@@ -42,107 +42,156 @@ template Rollup(nTx, nLevels) {
     // State 2
     signal private input ax2[nTx];
     signal private input ay2[nTx];
-    signal private input StAmount2[nTx];
-    signal input siblings2[nlevels][nTx];
+    signal private input amount2[nTx];
+    signal private input nonce2[nTx];
+    signal private input ethAddr2[nTx];
+    signal input siblings2[nTx][nLevels];
     // Required for inserts and delete
     signal private input isOld0_2[nTx];
     signal private input oldKey2[nTx];
     signal private input oldValue2[nTx];
 
 
-    component feePlanHasher = FeePlanHasher();
+    signal feePlanCoin[16];
+    signal feePlanFee[16];
 
-    for (var i=0; i<16; i++) {
-        feePlanHasher.coin[i] <== feePlanCoin[i];
-        feePlanHasher.fee[i] <== feePlanFee[i];
+    var i;
+    var j;
+
+    component feePlanDecoder = FeePlanDecoder();
+    feePlanDecoder.feePlanCoins <== feePlanCoins;
+    feePlanDecoder.feePlanFees <== feePlanFees;
+
+    for (i=0; i<16; i++) {
+        feePlanCoin[i] <== feePlanDecoder.feePlanCoin[i];
+        feePlanFee[i] <== feePlanDecoder.feePlanFee[i];
     }
-    feePlanHasher.hash ==> feePlanHash;
 
+    var nDataAvailabilityBitsPerTx;
+    nDataAvailabilityBitsPerTx = (nLevels*2+16+16)
+    component offChainHasher = Sha256(nDataAvailabilityBitsPerTx*nTx);
 
+    component decodeTx[nTx]
     component Tx[nTx];
 
-    for (var i=0; i<nTx; i++) {
+    // First decode the TX data
+
+    for (i=0; i<nTx; i++) {
+        decodeTx[i] = DecodeTx(nLevels);
+        if (i==0) {
+            decodeTx[i].oldOnChainHash <== 0;
+        } else {
+            decodeTx[i].oldOnChainHash <== decodeTx[i-1].newOnChainHash;
+        }
+        decodeTx[i].txData <== txData[i];
+        decodeTx[i].rqTxHash <== rqTxHash[i];
+        decodeTx[i].loadAmount <== loadAmount[i];
+        decodeTx[i].ethAddr <== ethAddr[i];
+        decodeTx[i].ax <== ax[i];
+        decodeTx[i].ay <== ay[i];
+        for (j=0; j<nLevels*2+32; j++) {
+            offChainHasher.in[i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
+        }
+    }
+
+    for (i=0; i<nTx; i++) {
 
         // Chaining part
 
         Tx[i] = RollupTx(nLevels);
-        if (i==0) {
-            Tx[0].oldStRoot <== oldStRoot;
-            Tx[0].oldExitRoot <== 0;
-            Tx[0].oldInChain <== 1;
-            Tx[0].oldInChainHash <== 0;
-            Tx[0].oldOffChainHash <== 0;
-        }
-        Tx[i].oldStRoot <== Tx[i-1].newStRoot;
-        Tx[i].oldExitRoot <== Tx[i-1].newExitRoot;
-        Tx[i].oldInChain <== Tx[i-1].newInChain;
-        Tx[i].oldInChainHash <== Tx[i-1].newInChainHash;
-        Tx[i].oldOffChainHash <== Tx[i-1].newOffChainHash;
+
 
         // Tx itself
-        Tx[i].fnc[0] <== fnc[i][0];
-        Tx[i].fnc[1] <== fnc[i][1];
-        Tx[i].fromIdx <== fromIdx[i];
-        Tx[i].toIdx <== toIdx[i];
-        Tx[i].amount <== amount[i];
-        Tx[i].nonce <== [nonce];
-        Tx[i].fee <== fee[i];
+
+        Tx[i].fromIdx <== decodeTx[i].fromIdx;
+        Tx[i].toIdx <== decodeTx[i].toIdx;
+        Tx[i].amount <== decodeTx[i].amount;
+        Tx[i].coin <== decodeTx[i].coin;
+        Tx[i].nonce <== decodeTx[i].nonce;
+        Tx[i].maxFee <== decodeTx[i].maxFee;
+        Tx[i].rqOffset <== decodeTx[i].rqOffset;
+        Tx[i].onChain <== decodeTx[i].onChain;
+        Tx[i].newAccount <== decodeTx[i].newAccount;
+
+        Tx[i].offChainHash <== decodeTx[i].offChainHash;
+
         Tx[i].rqTxHash <== rqTxHash[i];
-        Tx[i].rqTxOffset <== rqTxOffset[i];
-        Tx[i].coin <== coin[i];
-        Tx[i].sigR8 <== sigR8[i];
-        Tx[i].sigS <== sigS[i];
-        Tx[i].initAmount <== initAmount[i];
-        Tx[i].inChain <== inChain[i];
+        Tx[i].s <== s[i];
+        Tx[i].r8x <== r8x[i];
+        Tx[i].r8y <== r8y[i];
+        Tx[i].loadAmount <== loadAmount[i];
+        Tx[i].ethAddr <== ethAddr[i];
+        Tx[i].ax <== ax[i];
+        Tx[i].ay <== ay[i];
 
         // State 1
         Tx[i].ax1 <== ax1[i];
         Tx[i].ay1 <== ay1[i];
-        Tx[i].stAmount1 <== stAmount1;
-        for (var j=0; j<nLevels; j++) {
+        Tx[i].amount1 <== amount1[i];
+        Tx[i].nonce1 <== nonce1[i];
+        Tx[i].ethAddr1 <== ethAddr1[i];
+        for (j=0; j<nLevels; j++) {
             Tx[i].siblings1[j] <== siblings1[i][j]
         }
         Tx[i].isOld0_1 <== isOld0_1[i];
         Tx[i].oldKey1 <== oldKey1[i];
         Tx[i].oldValue1 <== oldValue1[i];
 
+
         // State 2
         Tx[i].ax2 <== ax2[i];
         Tx[i].ay2 <== ay2[i];
-        Tx[i].stAmount2 <== stAmount2;
-        for (var j=0; j<nLevels; j++) {
+        Tx[i].amount2 <== amount2[i];
+        Tx[i].nonce2 <== nonce2[i];
+        Tx[i].ethAddr2 <== ethAddr2[i];
+        for (j=0; j<nLevels; j++) {
             Tx[i].siblings2[j] <== siblings2[i][j]
         }
         Tx[i].isOld0_2 <== isOld0_2[i];
         Tx[i].oldKey2 <== oldKey2[i];
-        Tx[i].oldValu2 <== oldValue2[i];
+        Tx[i].oldValue2 <== oldValue2[i];
 
-        for (var j=0; j<16; j++) {
-            Tx[i].feePlanCoin[j] <== feePlanCoin[i];
-            Tx[i].feePlanFee[i] <== feePlanFee[i];
+        for (j=0; j<16; j++) {
+            Tx[i].feePlanCoin[j] <== feePlanCoin[j];
+            Tx[i].feePlanFee[j] <== feePlanFee[j];
         }
 
-        for (var j=0; j<4; j++) {
-            if (i-j-1 >= 0) {
-                Tx[i].pastTxHasg[j] <== Tx[i-j-1].txHash;
+
+        if (i==0) {
+            Tx[0].oldStRoot <== oldStRoot;
+            Tx[0].oldExitRoot <== 0;
+            Tx[0].countersIn <== 0;
+        } else {
+            Tx[i].oldStRoot <== Tx[i-1].newStRoot;
+            Tx[i].oldExitRoot <== Tx[i-1].newExitRoot;
+            Tx[i].countersIn <== Tx[i-1].countersOut;
+        }
+
+        for (j=0; j<4; j++) {
+            if (i-j-1 < -1/2) {
+                Tx[i].pastTxHash[j] <== decodeTx[i-j-1].offChainHash;
             } else {
                 Tx[i].pastTxHash[j] <== 0;
             }
         }
-        for (var j=0; j<3; j++) {
+
+        for (j=0; j<3; j++) {
             if (i+j+1 < nTx) {
-                Tx[i].futureTxHash[j] <== Tx[i+j+1].txHash;
+                Tx[i].futureTxHash[j] <== decodeTx[i+j+1].offChainHash;
             } else {
                 Tx[i].futureTxHash[j] <== 0;
             }
         }
-
     }
 
-    Tx[nTx-1].newStRoot ==> newStRoot;
-    Tx[nTx-1].newExitRoot ==> newExitRoot;
-    Tx[nTx-1].newInChain ==> inChain;
-    Tx[nTx-1].newOffChainHash ==> offChainHash;
-}
+    component n2bOffChainHash = Bits2Num(256);
+    for (i=0; i<256; i++) {
+        n2bOffChainHash.in[i] <== offChainHasher.out[i];
+    }
 
-component main = Rollup(4, 24);
+    newStRoot <== Tx[nTx-1].newStRoot;
+    newExitRoot <== Tx[nTx-1].newExitRoot;
+    offChainHash <== n2bOffChainHash.out;
+    onChainHash <== decodeTx[nTx-1].newOnChainHash;
+    countersOut <== Tx[nTx-1].countersOut;
+}

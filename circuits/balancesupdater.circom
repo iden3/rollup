@@ -3,7 +3,7 @@
    the amount and the fee. newAmount is the amount remaining into the state.
    effectiveAmount is the amount that actually is transfered.
 
-   In an inChain Transaction, no errors are allowed, so in case it is not enough money,
+   In an onChain Transaction, no errors are allowed, so in case it is not enough money,
    it will do a 0 transfer.
 
    In case of an offChan TX the system does not allow it.
@@ -18,12 +18,16 @@ template BalancesUpdater() {
     signal input oldStAmountSender;
     signal input oldStAmountRecieiver;
     signal input amount;
-    signal input fee;
+    signal input loadAmount;
+    signal input maxFee;
     signal input minFee;
-    signal input inChain;
+    signal input onChain;
+    signal input countersIn;
+    signal input countersBase;
 
     signal output newStAmountSender;
     signal output newStAmountReceiver;
+    signal output countersOut;
 
     signal limitsOk;
     signal feeOk;
@@ -32,22 +36,33 @@ template BalancesUpdater() {
     component n2bSender = Num2Bits(127);
     component n2bReceiver = Num2Bits(127);
     component feeGE = GreaterEqThan(128);
+    component amountIsZero = IsZero();
 
-    n2bSender.in <== (1<<126) + oldStAmountSender - (amount + minFee);
+    amountIsZero.in <== amount;
+
+    // Only apply fee if amount >0
+    signal applyFee;
+    applyFee <== minFee*(1- amountIsZero.out);
+
+    n2bSender.in <== (1<<126) + oldStAmountSender + loadAmount - (amount + applyFee);
     n2bReceiver.in <== oldStAmountRecieiver + amount;
 
-    feeGE.in[0] <== fee;
-    feeGE.in[1] <== minFee;
+    feeGE.in[0] <== maxFee;
+    feeGE.in[1] <== applyFee;
 
     feeOk <== feeGE.out;
     limitsOk <== (n2bSender.out[126])*(1-n2bReceiver.out[126]);
 
     txOk <== feeOk * limitsOk;
 
-    // if inChain and not txOk => error
-    (1-txOk)*(1-inChain) === 0;
+    // if not onChain and not txOk => error
+    (1-txOk)*(1-onChain) === 0;
 
     // if !txOk then return 0;
-    newStAmountSender <== oldStAmountSender - (minFee + amount)*txOk;
+    newStAmountSender <== oldStAmountSender + loadAmount - (applyFee + amount)*txOk;
     newStAmountReceiver <== oldStAmountRecieiver + amount*txOk
+
+    // Counters
+    countersOut <== countersIn + countersBase*(1- amountIsZero.out);
+
 }

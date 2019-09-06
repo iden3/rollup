@@ -20,8 +20,8 @@ template DecodeFloatBin() {
     var lcm;
 
     // Mapping
-    d <== in[0]
-    for (i=0; i<10; i++) m[i] <== in[i+1];
+    d <== in[10]
+    for (i=0; i<10; i++) m[i] <== in[i];
     for (i=0; i<5; i++) e[i] <== in[i+11];
 
     pe[0] = 9*e[0]+1;

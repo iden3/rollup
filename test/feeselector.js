@@ -59,7 +59,7 @@ describe("FeeSelectorTest test", function () {
 
             const w = circuit.calculateWitness(testVectors[i].input);
 
-            for (outk in testVectors[i].out) {
+            for (let outk in testVectors[i].out) {
                 const v = w[circuit.getSignalIdx("main."+outk)];
                 assert(v.equals(bigInt(testVectors[i].out[outk])));
             }

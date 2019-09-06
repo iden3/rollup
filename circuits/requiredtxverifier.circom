@@ -35,8 +35,8 @@ RqTxVerifier
 
  */
 
-include "./node_modules/circomlib/circuits/bitify.circom";
-include "./node_modules/circomlib/circuits/mux3.circom";
+include "../node_modules/circomlib/circuits/bitify.circom";
+include "../node_modules/circomlib/circuits/mux3.circom";
 
 template RequiredTxVerifier() {
     signal input pastTxHash[4];
@@ -55,12 +55,12 @@ template RequiredTxVerifier() {
     mux.c[6] <== pastTxHash[1];
     mux.c[7] <== pastTxHash[0];
 
-    component n2b = Num2Bin(3);
+    component n2b = Num2Bits(3);
 
-    n2b.in <== rqOffset;
+    n2b.in <== rqTxOffset;
     n2b.out[0] ==> mux.s[0];
     n2b.out[1] ==> mux.s[1];
     n2b.out[2] ==> mux.s[2];
 
-    mux.out === rqHash;
+    mux.out === rqTxHash;
 }
