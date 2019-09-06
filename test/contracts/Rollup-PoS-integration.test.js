@@ -3,12 +3,11 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require('chai');
-const BalanceTree = require('./helpers/balance-tree.js');
-const rollupUtils = require('./helpers/rollup-utils.js');
-const utils = require('./helpers/utils.js');
+const RollupTree = require('../../rollup-utils/rollup-tree');
+const rollupUtils = require('../../rollup-utils/rollup-utils.js');
+const utils = require('../../rollup-utils/utils.js');
 const timeTravel = require('./helpers/timeTravel.js');
 
 const { expect } = chai;
@@ -79,17 +78,13 @@ contract('Rollup - RollupPoS', (accounts) => {
     insRollupPoS = await RollupPoS.new(insRollup.address);
 
     // Init balance tree
-    balanceTree = await BalanceTree.newBalanceTree();
+    balanceTree = await RollupTree.newMemRollupTree();
 
     // Create hash chain for the operator
     hashChain.push(web3.utils.keccak256(initialMsg));
     for (let i = 1; i < 5; i++) {
       hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
     }
-    // send ether to RollupPoS
-    // await insRollupPoS.sendTransaction({ from: accounts[13], value: 10000000000000000000 });
-    // const bal = await getEtherBalance(insRollupPoS.address);
-    // console.log('balance insRollupPoS', bal);
   });
 
   it('Initialization', async () => {
@@ -120,7 +115,7 @@ contract('Rollup - RollupPoS', (accounts) => {
     const resWithdrawAddress = BigInt(resDeposit.logs[0].args.withdrawAddress);
 
     // create balance tree and add leaf
-    balanceTree = await BalanceTree.newBalanceTree();
+    balanceTree = await RollupTree.newMemRollupTree();
     await balanceTree.addId(resId, resDepositAmount,
       resTokenId, resAx, resAy, resWithdrawAddress, BigInt(0));
 
@@ -153,7 +148,7 @@ contract('Rollup - RollupPoS', (accounts) => {
 
     // build inputs
     const oldStateRoot = BigInt(0).toString();
-    const newStateRoot = BigInt(0).toString();
+    let newStateRoot = BigInt(0).toString();
     const newExitRoot = BigInt(0).toString();
     const onChainHash = BigInt(0).toString();
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
@@ -184,9 +179,10 @@ contract('Rollup - RollupPoS', (accounts) => {
     fillingOnChainTest = BigInt(0).toString();
 
     // build inputs
+    newStateRoot = await balanceTree.getRoot();
     inputs = [
       oldStateRoot,
-      balanceTree.getRoot().toString(),
+      newStateRoot.toString(),
       newExitRoot,
       minningOnChainTest,
       offChainHash,

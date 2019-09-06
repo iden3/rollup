@@ -2,11 +2,10 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const ethUtil = require('ethereumjs-util');
 const chai = require('chai');
-const { smt } = require('../../node_modules/circomlib/index');
+const { smt } = require('circomlib');
 
 const { expect } = chai;
 const poseidonUnit = require('../../node_modules/circomlib/src/poseidon_gencontract.js');

@@ -1,6 +1,5 @@
-/* global BigInt */
 const chai = require('chai');
-const rollupUtils = require('./rollup-utils');
+const rollupUtils = require('../../rollup-utils/rollup-utils');
 
 const { expect } = chai;
 

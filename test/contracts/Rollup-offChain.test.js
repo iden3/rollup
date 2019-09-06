@@ -2,12 +2,11 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require('chai');
-const BalanceTree = require('./helpers/balance-tree.js');
-const rollupUtils = require('./helpers/rollup-utils.js');
-const utils = require('./helpers/utils.js');
+const RollupTree = require('../../rollup-utils/rollup-tree');
+const rollupUtils = require('../../rollup-utils/rollup-utils.js');
+const utils = require('../../rollup-utils/utils.js');
 
 const { expect } = chai;
 const poseidonUnit = require('../../node_modules/circomlib/src/poseidon_gencontract.js');
@@ -70,10 +69,10 @@ contract('Rollup', (accounts) => {
     insStakerManager = await StakerManager.new(insRollupTest.address);
 
     // Init balance tree
-    balanceTree = await BalanceTree.newBalanceTree();
+    balanceTree = await RollupTree.newMemRollupTree();
 
     // Init exitTree
-    exitTree = await BalanceTree.newBalanceTree();
+    exitTree = await RollupTree.newMemRollupTree();
   });
 
   it('Check ganache provider', async () => {
@@ -166,7 +165,8 @@ contract('Rollup', (accounts) => {
 
     // Forge batch
     const oldStateRoot = BigInt(0).toString();
-    const newStateRoot = balanceTree.getRoot().toString();
+    let newStateRoot = await balanceTree.getRoot();
+    newStateRoot = newStateRoot.toString();
     const newExitRoot = BigInt(0).toString();
     const onChainHash = minigHash.toString();
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
@@ -202,7 +202,8 @@ contract('Rollup', (accounts) => {
     let lastIndexStateRoot = await insRollupTest.getStateDepth();
     lastIndexStateRoot = BigInt(lastIndexStateRoot) - BigInt(1);
     const oldStateRoot = await insRollupTest.getStateRoot(lastIndexStateRoot.toString());
-    const newStateRoot = balanceTree.getRoot().toString();
+    let newStateRoot = await balanceTree.getRoot();
+    newStateRoot = newStateRoot.toString();
     const newExitRoot = BigInt(0).toString();
     const onChainHash = BigInt(0).toString();
     const feePlan = ['0x0000000000000000000000000000000000000000000000000000000000000000', '0x0001000000000000000000000000000000000000000000000000000000000000'];
@@ -246,8 +247,10 @@ contract('Rollup', (accounts) => {
     let lastIndexStateRoot = await insRollupTest.getStateDepth();
     lastIndexStateRoot = BigInt(lastIndexStateRoot) - BigInt(1);
     const oldStateRoot = await insRollupTest.getStateRoot(lastIndexStateRoot.toString());
-    const newStateRoot = balanceTree.getRoot().toString();
-    const newExitRoot = exitTree.getRoot().toString();
+    let newStateRoot = await balanceTree.getRoot();
+    newStateRoot = newStateRoot.toString();
+    let newExitRoot = await exitTree.getRoot();
+    newExitRoot = newExitRoot.toString();
     const onChainHash = BigInt(0).toString();
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
     const offChainHash = hashOffTx.toString();
