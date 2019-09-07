@@ -2,12 +2,11 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require('chai');
-const BalanceTree = require('./helpers/balance-tree.js');
-const rollupUtils = require('./helpers/rollup-utils.js');
-const utils = require('./helpers/utils.js');
+const RollupTree = require('../../rollup-utils/rollup-tree');
+const rollupUtils = require('../../rollup-utils/rollup-utils.js');
+const utils = require('../../rollup-utils/utils.js');
 
 const { expect } = chai;
 const poseidonUnit = require('../../node_modules/circomlib/src/poseidon_gencontract.js');
@@ -131,7 +130,7 @@ contract('Rollup', (accounts) => {
     const resWithdrawAddress = BigInt(resDeposit.logs[0].args.withdrawAddress);
 
     // create balance tree and add leaf
-    balanceTree = await BalanceTree.newBalanceTree();
+    balanceTree = await RollupTree.newMemRollupTree();
     await balanceTree.addId(resId, resDepositAmount,
       resTokenId, resAx, resAy, resWithdrawAddress, BigInt(0));
 
@@ -197,7 +196,8 @@ contract('Rollup', (accounts) => {
     // root must be updated
 
     const oldStateRoot = BigInt(0).toString();
-    const newStateRoot = balanceTree.getRoot().toString();
+    let newStateRoot = await balanceTree.getRoot();
+    newStateRoot = newStateRoot.toString();
     const newExitRoot = BigInt(0).toString(); // Assume no off-chain tx
     const onChainHash = minningOnChainTest;
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
@@ -286,7 +286,7 @@ contract('Rollup', (accounts) => {
     let lastIndexStateRoot = await insRollupTest.getStateDepth();
     lastIndexStateRoot = BigInt(lastIndexStateRoot) - BigInt(1);
     const oldStateRoot = await insRollupTest.getStateRoot(lastIndexStateRoot.toString());
-    const newStateRoot = oldStateRoot;
+    let newStateRoot = oldStateRoot;
     const newExitRoot = BigInt(0).toString();
     const onChainHash = BigInt(0).toString();
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
@@ -319,8 +319,9 @@ contract('Rollup', (accounts) => {
 
     // Update balance tree with 'deposit on top' transaction
     await balanceTree.updateId(BigInt(1), BigInt(35));
-
-    const resForge2 = await insRollupTest.forgeBatchTest(oldStateRoot, balanceTree.getRoot().toString(),
+    newStateRoot = await balanceTree.getRoot();
+    newStateRoot = newStateRoot.toString();
+    const resForge2 = await insRollupTest.forgeBatchTest(oldStateRoot, newStateRoot,
       newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');
@@ -369,7 +370,7 @@ contract('Rollup', (accounts) => {
     let lastIndexStateRoot = await insRollupTest.getStateDepth();
     lastIndexStateRoot = BigInt(lastIndexStateRoot) - BigInt(1);
     const oldStateRoot = await insRollupTest.getStateRoot(lastIndexStateRoot.toString());
-    const newStateRoot = oldStateRoot;
+    let newStateRoot = oldStateRoot;
     const newExitRoot = BigInt(0).toString();
     const onChainHash = BigInt(0).toString();
     const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
@@ -402,8 +403,9 @@ contract('Rollup', (accounts) => {
 
     // Update balance tree with 'deposit on top' transaction
     await balanceTree.updateId(BigInt(1), BigInt(35));
-
-    const resForge2 = await insRollupTest.forgeBatchTest(oldStateRoot, balanceTree.getRoot().toString(),
+    newStateRoot = await balanceTree.getRoot();
+    newStateRoot = newStateRoot.toString();
+    const resForge2 = await insRollupTest.forgeBatchTest(oldStateRoot, newStateRoot,
       newExitRoot, onChainHashOp.toString(), feePlan, compressedTxs, offChainHash, nTxPerToken, beneficiary);
 
     expect(resForge2.logs[0].event).to.be.equal('ForgeBatch');

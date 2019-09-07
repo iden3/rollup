@@ -1,26 +1,35 @@
-/* global BigInt */
-const LeafDb = require('./db');
+/* eslint-disable no-return-await */
+const { smt } = require('circomlib');
+const { stringifyBigInts, unstringifyBigInts } = require('snarkjs');
+const { newLevelDbEmptyTree } = require('./smt-leveldb');
+const LeafMemDb = require('./mem-db');
+const LeafLevelDb = require('./level-db');
+const utils = require('./rollup-tree-utils');
 
-const { smt } = require('../../../node_modules/circomlib/index');
-const utils = require('./balance-tree-utils');
-
-
-class BalanceTree {
+class RollupTree {
   constructor(_leafDb, _smt) {
     this.leafDb = _leafDb; // Store last key - value of the balance tree
     this.smt = _smt; // Store sparse merkle tree balance tree
   }
 
+  _toString(val) {
+    return JSON.stringify(stringifyBigInts(val));
+  }
+
+  _fromString(val) {
+    return unstringifyBigInts(JSON.parse(val));
+  }
+
   async addId(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     const resDeposit = utils.hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce);
-    this.leafDb.insert(resDeposit.hash, resDeposit.leafObj);
+    await this.leafDb.insert(resDeposit.hash, this._toString(resDeposit.leafObj));
     const resInsert = await this.smt.insert(id, resDeposit.hash);
     return { hashValue: resDeposit.hash, proof: resInsert };
   }
 
   async addIdExit(id, amount, tokenId, withdrawAddress) {
     const resExit = utils.hashExitLeafValue(id, amount, tokenId, withdrawAddress);
-    this.leafDb.insert(resExit.hash, resExit.leafObj);
+    await this.leafDb.insert(resExit.hash, this._toString(resExit.leafObj));
     const resInsert = await this.smt.insert(id, resExit.hash);
     return { hashValue: resExit.hash, proof: resInsert };
   }
@@ -28,13 +37,13 @@ class BalanceTree {
   async getIdInfo(id) {
     const resFind = await this.smt.find(id);
     if (resFind.found) {
-      resFind.foundObject = this.leafDb.get(resFind.foundValue);
+      resFind.foundObject = this._fromString(await this.leafDb.get(resFind.foundValue));
     }
     return resFind;
   }
 
-  getRoot() {
-    return this.smt.root;
+  async getRoot() {
+    return await this.smt.root;
   }
 
   async updateId(id, balance) {
@@ -46,22 +55,28 @@ class BalanceTree {
 
     const resDeposit = utils.hashLeafValue(balance, leafValues.tokenId,
       leafValues.Ax, leafValues.Ay, leafValues.withdrawAddress, leafValues.nonce + BigInt(1));
-    this.leafDb.insert(resDeposit.hash, resDeposit.leafObj);
+    await this.leafDb.insert(resDeposit.hash, this._toString(resDeposit.leafObj));
     const resUpdate = await this.smt.update(id, resDeposit.hash);
     return { hashValue: resDeposit.hash, proof: resUpdate };
   }
 }
 
-async function newBalanceTree() {
-  const lastTreeDb = new LeafDb();
-
+async function newMemRollupTree() {
+  const lastTreeDb = new LeafMemDb();
   const tree = await smt.newMemEmptyTrie();
+  const rollupTree = new RollupTree(lastTreeDb, tree);
+  return rollupTree;
+}
 
-  const balanceTree = new BalanceTree(lastTreeDb, tree);
-  return balanceTree;
+async function newLevelDbRollupTree(path, prefix) {
+  const lastTreeDb = new LeafLevelDb(`${path}-leafs`, prefix);
+  const tree = await newLevelDbEmptyTree(`${path}-tree`, prefix);
+  const rollupTree = new RollupTree(lastTreeDb, tree);
+  return rollupTree;
 }
 
 module.exports = {
-  newBalanceTree,
-  BalanceTree,
+  newLevelDbRollupTree,
+  newMemRollupTree,
+  RollupTree,
 };
