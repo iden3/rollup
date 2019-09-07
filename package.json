@@ -31,7 +31,7 @@
   "homepage": "https://github.com/iden3/rollup#readme",
   "devDependencies": {
     "circom": "0.0.30",
-    "circomlib": "0.0.15",
+    "circomlib": "0.0.16",
     "eslint": "^5.16.0",
     "eslint-plugin-mocha": "^5.3.0",
     "blakejs": "^1.1.0",
@@ -40,7 +40,9 @@
   "dependencies": {
     "chai": "^4.2.0",
     "dotenv": "^8.1.0",
+    "elliptic": "^6.5.1",
     "ethereumjs-util": "^6.1.0",
+    "js-sha3": "^0.8.0",
     "openzeppelin-solidity": "^2.3.0",
     "truffle": "^5.0.27",
     "truffle-hdwallet-provider": "^1.0.17"

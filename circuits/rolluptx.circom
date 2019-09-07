@@ -160,39 +160,29 @@ template RollupTx(nLevels) {
 // s1
 //////////////
     component s1Amount = Mux1();
-    s1Amount.c[0] <== 0;
-    s1Amount.c[1] <== amount1;
+    s1Amount.c[0] <== amount1;
+    s1Amount.c[1] <== 0;
     s1Amount.s <== states.s1;
 
     component s1Ax = Mux1();
-    s1Ax.c[0] <== ax;
-    s1Ax.c[1] <== ax1;
+    s1Ax.c[0] <== ax1;
+    s1Ax.c[1] <== ax;
     s1Ax.s <== states.s1;
 
     component s1Ay = Mux1();
-    s1Ay.c[0] <== ay;
-    s1Ay.c[1] <== ay1;
+    s1Ay.c[0] <== ay1;
+    s1Ay.c[1] <== ay;
     s1Ay.s <== states.s1;
 
     component s1Nonce = Mux1();
-    s1Nonce.c[0] <== 0;
-    s1Nonce.c[1] <== nonce1;
+    s1Nonce.c[0] <== nonce1;
+    s1Nonce.c[1] <== nonce;
     s1Nonce.s <== states.s1;
 
     component s1EthAddr = Mux1();
-    s1EthAddr.c[0] <== ethAddr;
-    s1EthAddr.c[1] <== ethAddr1;
+    s1EthAddr.c[0] <== ethAddr1;
+    s1EthAddr.c[1] <== ethAddr;
     s1EthAddr.s <== states.s1;
-
-    component s1OldKey = Mux1();
-    s1OldKey.c[0] <== fromIdx;
-    s1OldKey.c[1] <== oldKey1;
-    s1OldKey.s <== states.s1;
-
-    component s1OldValue = Mux1();
-    s1OldValue.c[0] <== fromIdx;
-    s1OldValue.c[1] <== oldSt1Pck.out;
-    s1OldValue.s <== states.s1;
 
 // s2
 //////////////
@@ -216,16 +206,6 @@ template RollupTx(nLevels) {
     s2EthAddr.c[0] <== s1EthAddr.out;
     s2EthAddr.c[1] <== ethAddr2;
     s2EthAddr.s <== states.s2;
-
-    component s2OldKey = Mux1();
-    s2OldKey.c[0] <== states.key2;
-    s2OldKey.c[1] <== oldKey2;
-    s2OldKey.s <== states.s2;
-
-    component s2OldValue = Mux1();
-    s2OldValue.c[0] <== fromIdx;
-    s2OldValue.c[1] <== oldSt2Pck.out;
-    s2OldValue.s <== states.s2;
 
 // sigVerifier
 //////////
@@ -284,8 +264,8 @@ template RollupTx(nLevels) {
     for (i=0; i<nLevels; i++) {
         processor1.siblings[i] <== siblings1[i];
     }
-    processor1.oldKey <== s1OldKey.out;
-    processor1.oldValue <== s1OldValue.out;
+    processor1.oldKey <== oldKey1;
+    processor1.oldValue <== oldValue1;
     processor1.isOld0 <== isOld0_1;
     processor1.newKey <== fromIdx;
     processor1.newValue <== newSt1Pck.out;
@@ -306,13 +286,13 @@ template RollupTx(nLevels) {
     for (i=0; i<nLevels; i++) {
         processor2.siblings[i] <== siblings1[i];
     }
-    processor2.oldKey <== s2OldKey.out;
-    processor2.oldValue <== s2OldValue.out;
+    processor2.oldKey <== oldKey2;
+    processor2.oldValue <== oldValue2;
     processor2.isOld0 <== isOld0_2;
     processor2.newKey <== states.key2;
     processor2.newValue <== newSt1Pck.out;
-    processor2.fnc[0] <== states.P2_fnc0;
-    processor2.fnc[1] <== states.P2_fnc1;
+    processor2.fnc[0] <== states.P2_fnc0*balancesUpdater.update2;
+    processor2.fnc[1] <== states.P2_fnc1*balancesUpdater.update2;
 
 
 // s4

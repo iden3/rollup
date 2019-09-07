@@ -80,8 +80,10 @@ template Rollup(nTx, nLevels) {
         decodeTx[i] = DecodeTx(nLevels);
         if (i==0) {
             decodeTx[i].oldOnChainHash <== 0;
+            decodeTx[i].previousOnChain <== 0;
         } else {
             decodeTx[i].oldOnChainHash <== decodeTx[i-1].newOnChainHash;
+            decodeTx[i].previousOnChain <== decodeTx[i-1].onChain;
         }
         decodeTx[i].txData <== txData[i];
         decodeTx[i].rqTxHash <== rqTxHash[i];
@@ -186,7 +188,7 @@ template Rollup(nTx, nLevels) {
 
     component n2bOffChainHash = Bits2Num(256);
     for (i=0; i<256; i++) {
-        n2bOffChainHash.in[i] <== offChainHasher.out[i];
+        n2bOffChainHash.in[i] <== offChainHasher.out[255-i];
     }
 
     newStRoot <== Tx[nTx-1].newStRoot;

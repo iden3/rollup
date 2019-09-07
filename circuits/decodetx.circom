@@ -12,6 +12,7 @@ include "./decodefloat.circom";
 */
 
 template DecodeTx(nLevels) {
+    signal input previousOnChain;
     signal input oldOnChainHash;
     signal input txData;
     signal input rqTxHash;
@@ -161,5 +162,7 @@ template DecodeTx(nLevels) {
     s6.s <== onChain;
     s6.out ==> newOnChainHash;
 
+// Check that offChain are before onChain
+    previousOnChain * (1 - onChain) === 0;
 
 }

@@ -28,6 +28,7 @@ template BalancesUpdater() {
     signal output newStAmountSender;
     signal output newStAmountReceiver;
     signal output countersOut;
+    signal output update2;
 
     signal limitsOk;
     signal feeOk;
@@ -64,5 +65,6 @@ template BalancesUpdater() {
 
     // Counters
     countersOut <== countersIn + countersBase*(1- amountIsZero.out);
+    update2 <== txOk * (1 - amountIsZero.out);
 
 }

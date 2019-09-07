@@ -1,4 +1,5 @@
 const bigInt = require("snarkjs").bigInt;
+const poseidon = require("circomlib").poseidon;
 
 function float2fix(fl) {
     const m = (fl & 0x3FF);
@@ -81,6 +82,22 @@ function buildTxData(tx) {
     return res;
 }
 
+function hashState(st) {
+    const hash = poseidon.createHash(6, 8, 57);
+
+    const data = bigInt(st.amount).add(  bigInt(st.coin).shl(128) ).add( bigInt(st.nonce).shl(142) );
+
+    const res = hash([
+        data,
+        bigInt("0x" + st.ax),
+        bigInt("0x" + st.ay),
+        bigInt(st.ethAddress),
+    ]);
+
+    return res;
+}
+
 module.exports.buildTxData = buildTxData;
 module.exports.fix2float = fix2float;
 module.exports.float2fix = float2fix;
+module.exports.hashState = hashState;
