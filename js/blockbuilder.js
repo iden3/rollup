@@ -8,7 +8,6 @@ const bigInt = require("snarkjs").bigInt;
 const poseidon = require("circomlib").poseidon;
 
 module.exports = class BlockBuilder {
-
     constructor(currentTree, maxNTx, nLevels) {
         assert((nLevels % 8) == 0);
         this.maxNTx = maxNTx || 4;
@@ -17,7 +16,6 @@ module.exports = class BlockBuilder {
         this.onChainTxs = [];
         this.stateTree = new SMT(new SMTTmpDb(currentTree.db), currentTree.root);
         this.input = {
-
             oldStRoot: currentTree.root,
             feePlanCoins: 0,
             feePlanFees: 0,
