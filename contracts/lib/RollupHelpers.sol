@@ -12,7 +12,7 @@ contract PoseidonUnit {
 /**
  * @dev Rollup helper functions
  */
-contract RollupHelpers { 
+contract RollupHelpers {
 
   using Memory for *;
 
@@ -225,7 +225,7 @@ contract RollupHelpers {
    * @param nToken token position on fee plan
    * @return total fee amount
    */
-  function calcTokenTotalFee(bytes32 tokenIds ,bytes32 fees, bytes32 nTxToken, uint nToken)
+  function calcTokenTotalFee(bytes32 tokenIds, bytes32 fees, bytes32 nTxToken, uint nToken)
     internal pure returns (uint, uint) {
     // get number of transaction depending on token
     uint nTx = uint16(bytes2(nTxToken << nToken*16));
@@ -233,7 +233,7 @@ contract RollupHelpers {
     uint fee = uint16(bytes2(fees << nToken*16));
     // get token id
     uint tokenId = uint16(bytes2(tokenIds << nToken*16));
-    
+
     return (tokenId, nTx*fee);
   }
 
