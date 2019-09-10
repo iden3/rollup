@@ -90,7 +90,7 @@ const type = (argv.type) ? argv.type : 'notype';
 const to = (argv.to) ? argv.to : 'norecipient';
 const walletPath = (argv.wallet) ? argv.wallet : 'src/wallet-rollup-cli.json';
 const amount = (argv.amount) ? argv.amount : '0';
-const operator = (argv.operator) ? argv.operator : 'nooperator'
+const operator = (argv.operator) ? argv.operator : 'nooperator';
 
 try {
   if (argv._[0].toUpperCase() === 'CREATE') {
@@ -113,7 +113,7 @@ try {
     if (type === 'notype') {
       console.log('It is necessary to specify the type of action\n\n');
       throw new Error('No type was submitted');
-    }else if (type === 'send') {
+    } else if (type === 'send') {
       if (passString === 'nopassphrase') {
         console.log('Please provide a passphrase\n\n');
         throw new Error('No passphrase was submitted');
@@ -123,21 +123,21 @@ try {
       } else {
         sendTx(walletPath, passString, to, amount, operator);
       }
-    }else {
+    } else {
       throw new Error('Invalid type');
     }
   } else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
     if (type === 'notype') {
       console.log('It is necessary to specify the type of action\n\n');
       throw new Error('No type was submitted');
-    }else if (type === 'deposit') {
+    } else if (type === 'deposit') {
       if (passString === 'nopassphrase') {
         console.log('Please provide a passphrase to encrypt keys by:\n\n');
         throw new Error('No passphrase was submitted');
       } else {
         depositTx(walletPath, passString);
       }
-    }else {
+    } else {
       throw new Error('Invalid type');
     }
   } else {
