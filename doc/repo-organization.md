@@ -4,7 +4,7 @@
 ## contracts
 smart contracts:
 - Rollup.sol: main `rollup` functionalities
-- StakeManager.sol: implements proof of stake to select operator to forge a `rollup` batch
+- RollupPoS.sol: implements proof of stake to select operator to forge a `rollup` batch
 
 ## rollup-cli
 light client to interact with `rollup`. It includes:
