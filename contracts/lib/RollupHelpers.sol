@@ -26,6 +26,8 @@ contract RollupHelpers {
     bytes32 e5;
   }
 
+  uint constant bytesOffChainTx = 3*2 + 2 + 2;
+
   /**
    * @dev Load poseidon smart contract
    * @param _poseidonContractAddr poseidon contract address
@@ -41,6 +43,30 @@ contract RollupHelpers {
    */
   function hashGeneric(uint256[] memory inputs) internal view returns (uint256){
     return insPoseidonUnit.poseidon(inputs);
+  }
+
+  /**
+   * @dev hash poseidon multi-input elements
+   * @param inputs input element array
+   * @return poseidon hash
+   */
+  function multiHash(uint256[] memory inputs) internal view returns (uint256){
+    uint rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    uint lenInputs = inputs.length;
+    uint totalHash = 0;
+    for(uint i = 0; i < lenInputs; i += 5) {
+      uint256[] memory in5 = new uint256[](5);
+      for( uint j = 0; j < 5; j++) {
+        if(i + j < lenInputs) {
+          in5[j] = inputs[i + j];
+        } else {
+          in5[j] = 0;
+        }
+      }
+      uint256 tmpHash = hashGeneric(in5);
+      totalHash = (totalHash + tmpHash) % rField;
+    }
+    return totalHash;
   }
 
   /**
@@ -76,7 +102,7 @@ contract RollupHelpers {
    * @return poseidon hash
    */
   function hashEntry(Entry memory entry) internal view returns (uint256){
-    uint256[] memory inputs = new uint256[](5);
+    uint256[] memory inputs = new uint256[](6);
     inputs[0] = uint256(entry.e1);
     inputs[1] = uint256(entry.e2);
     inputs[2] = uint256(entry.e3);
@@ -262,6 +288,124 @@ contract RollupHelpers {
       hashTotal = hashGeneric(inputs);
     }
     return hashTotal;
+  }
+
+  /**
+   * @dev hash all off-chain transactions
+   * @param offChainTx off-chain transaction compressed format
+   * @return hash of all off-chain transactions
+   */
+  function hashOffChainTxV2(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
+    uint256 r = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+    bytes memory hashOffTx = new bytes(maxTx*bytesOffChainTx);
+    Memory.Cursor memory c = Memory.read(offChainTx);
+    uint ptr = 0;
+    while(!c.eof()) {
+      bytes1 iTx = c.readBytes1();
+      hashOffTx[ptr] = iTx;
+      ptr++;
+    }
+    uint256 hashOff = uint256(sha256(hashOffTx));
+    return hashOff % r;
+  }
+
+  /**
+   * @dev build entry for the exit tree leaf
+   * @param amount amunt to withdraw
+   * @param token token type
+   * @param Ax x coordinate public key babyJub
+   * @param Ay y coordinate public key babyJub
+   * @param withAddress withdraw address
+   * @param nonce nonce parameter
+   * @return entry structure
+   */
+  function buildTreeState(uint16 amount, uint16 token, uint256 Ax, uint Ay,
+    address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
+     // build element 1
+    entry.e1 = bytes32(bytes16(uint128(amount))) >> (256 - 128);
+    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 128);
+    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 16 - 128);
+    // build element 2
+    entry.e2 = bytes32(Ax);
+    // build element 3
+    entry.e3 = bytes32(Ay);
+    // build element 4
+    entry.e4 = bytes32(bytes20(withAddress)) >> (256 - 160);
+  }
+
+  /**
+   * @dev build entry for the exit tree leaf
+   * @param fromId sender
+   * @param toId reseiver
+   * @param amount number of token to send
+   * @param token token identifier
+   * @param nonce nonce parameter
+   * @param maxFee maximum fee
+   * @param rqOffset atomic swap paramater
+   * @param onChain flag to indicate that transaction is an onChain one
+   * @param newAccount flag to indicate if transaction is of deposit type
+   * @return entry structure
+   */
+  function buildTxData(
+    uint24 fromId,
+    uint24 toId,
+    uint16 amount,
+    uint16 token,
+    uint32 nonce,
+    uint16 maxFee,
+    uint8 rqOffset,
+    bool onChain,
+    bool newAccount
+    ) internal pure returns (bytes32 element) {
+    // build element
+    element = bytes32(bytes8(uint64(fromId))) >> (256 - 64);
+    element |= bytes32(bytes8(uint64(toId))) >> (256 - 64 - 64);
+    element |= bytes32(bytes2(amount)) >> (256 - 16 - 64 - 64);
+    element |= bytes32(bytes2(token)) >> (256 - 16 - 16 - 64 - 64);
+    element |= bytes32(bytes6(uint48(nonce))) >> (256 - 48 - 16 - 16 - 64 - 64);
+    element |= bytes32(bytes2(maxFee)) >> (256 - 16 - 48 - 16 - 16 - 64 - 64);
+
+    bytes1 last = bytes1(rqOffset) & 0x0F;
+    last = onChain ? (last | 0x10): last;
+    last = newAccount ? (last | 0x20): last;
+
+    element |= bytes32(last) >> (256 - 8 - 16 - 48 - 16 - 16 - 64 - 64);
+  }
+
+  /**
+   * @dev build entry for the exit tree leaf
+   * @param oldOnChainHash previous on chain hash
+   * @param txData transaction data coded into a bytes32
+   * @param loadAmount input amount
+   * @param withdrawAddress address to withdraw
+   * @param Ax x coordinate public key BabyJubJub
+   * @param Ay y coordinate public key BabyJubJub
+   * @return entry structure
+   */
+  function buildOnChainData(
+    uint256 oldOnChainHash,
+    uint256 txData,
+    uint128 loadAmount,
+    address withdrawAddress,
+    uint256 Ax,
+    uint256 Ay
+    ) internal pure returns (uint256[] memory) {
+    uint256[] memory inputs = new uint256[](6);
+    // build element 1
+    inputs[0] = oldOnChainHash;
+    // build element 2
+    inputs[1] = txData;
+    // build element 3
+    inputs[2] = uint256(bytes32(bytes16(loadAmount)) >> (256 - 128));
+    // build element 4
+    inputs[3] = uint256(bytes32(bytes20(withdrawAddress)) >> (256 - 160));
+    // build element 5
+    inputs[4] = Ax;
+    // build element 6
+    inputs[5] = Ay;
+
+    return inputs;
   }
 
   /**

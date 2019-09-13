@@ -61,7 +61,7 @@ e_3: [ 160 bits] withdraw address
 ```
 
 ## Off-chain tx hash
-It will hash all the off-chain transactions that are publicly available through smart contract `Rollup` at the timne to forge a batch:
+It will hash all the off-chain transactions that are publicly available through smart contract `Rollup` at the time to forge a batch:
 - maxTx: maximum number of transactions
 - Tx_struct: 
   - [ 24  bits] from
