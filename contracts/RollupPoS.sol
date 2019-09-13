@@ -7,8 +7,8 @@ contract RollupPoS {
     RollupInterface rollupInterface;
 
     uint32 constant BLOCKS_PER_SLOT = 100;
+    uint constant SLOT_DEADLINE = 80;
     uint32 constant SLOTS_PER_ERA = 20;
-
     // Minimum stake to enter the raffle
     uint constant MIN_STAKE = 1 ether;
 
@@ -71,6 +71,11 @@ contract RollupPoS {
      * @dev Event called when an operator is removed from the staker tree
      */
     event removeOperatorLog(address controllerAddress, uint operatorId);
+
+    /**
+     * @dev Event called when an operator is removed from the staker tree
+     */
+    event dataCommited(uint32 slot, uint blockNumber, bytes compressedTx);
 
     /**
      * @dev RollupPoS constructor
@@ -514,11 +519,15 @@ contract RollupPoS {
     /**
      * @dev function to report an operator which has not commited a batch
      * it that case, staked amount is burned and the slasher gets a 10% of the satked amount
+     * An operator can be slashed if:
+     * - no block has been forged during a slot
+     * - it has commited data but it has not been forged
      * @param slot slot index
      */
     function slash(uint32 slot) external {
         require(slot < currentSlot(), 'Slot requested still does not exist');
-        require(fullFilled[slot] == false, 'Batch has been forged during this slot');
+        require(fullFilled[slot] == false || commitSlot[slot].commited == true,
+            'Batch has been commited and forged during this slot');
 
         uint32 opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
@@ -531,6 +540,56 @@ contract RollupPoS {
 
         (address)(0).transfer(burned);
         msg.sender.transfer(reward);
+    }
+
+    mapping (uint => commitData) commitSlot;
+
+    struct commitData {
+        bytes32 previousHash;
+        bool commited;
+        bytes compressedTx;
+    }
+
+    function commitBatch(
+        bytes32 previousRndHash,
+        bytes calldata compressedTx
+    ) external {
+        uint32 slot = currentSlot();
+        uint opId = getRaffleWinner(slot);
+        Operator storage op = operators[opId];
+        // operator must know data to generate current hash
+        require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash,
+            'hash revelead not match current commited hash');
+        // Check if deadline has been achieved to not commit any more data
+        uint blockDeadline = getBlockBySlot(slot) + SLOT_DEADLINE;
+        require(getBlockNumber() < blockDeadline, 'not possible to commit data afer deadline');
+        // Check there is no data to be forged
+        require(commitSlot[slot].commited == false, 'there is data which is not forged');
+        // Store data commited
+        commitSlot[slot].commited = true;
+        commitSlot[slot].compressedTx = compressedTx;
+        commitSlot[slot].previousHash = previousRndHash;
+        emit dataCommited(slot, getBlockNumber(), compressedTx);
+    }
+
+    function forgeCommitedBatch(
+        uint[2] calldata proofA,
+        uint[2][2] calldata proofB,
+        uint[2] calldata proofC,
+        uint[8] calldata input
+     ) external {
+        uint32 slot = currentSlot();
+        uint opId = getRaffleWinner(slot);
+        Operator storage op = operators[opId];
+        // Check that operator has commited data
+        require(commitSlot[opId].commited == true, 'There is no commited data');
+        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, commitSlot[slot].compressedTx);
+        // update previous hash commited by the operator
+        op.rndHash = commitSlot[slot].previousHash;
+        // clear commited data
+        commitSlot[slot].commited = false;
+        // one block has been forged in this slot
+        fullFilled[slot] = true;
     }
 
     /**
@@ -560,5 +619,9 @@ contract RollupPoS {
         rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedTxs);
         op.rndHash = previousRndHash;
         fullFilled[slot] = true;
+    }
+
+    function getBlockBySlot(uint32 slot) public view returns (uint) {
+        return (genesisBlock + slot*BLOCKS_PER_SLOT);
     }
 }

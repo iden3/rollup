@@ -57,6 +57,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
   // maximum on-chain transactions
   uint constant MAX_ONCHAIN_TX = 100;
+  // current on chain transactions
+  uint currentOnChainTx = 0;
 
   /**
    * @dev Event called when a deposit has been made
@@ -159,6 +161,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     require(depositAmount > 0, 'Deposit amount must be greater than 0');
     require(withdrawAddress != address(0), 'Must specify withdraw address');
     require(tokenList[tokenId] != address(0), 'token has not been registered');
+    require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
 
     // Build entry deposit and get its hash
     Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
@@ -176,6 +179,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Update total on-chain fees
     totalFillingOnChainFee += msg.value;
+
+    // Update number of on-chain transactions
+    currentOnChainTx++;
 
     emit Deposit(lastBalanceTreeIndex, depositAmount, tokenId, babyPubKey[0], babyPubKey[1],
       withdrawAddress);
@@ -259,6 +265,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     totalMinningOnChainFee = totalFillingOnChainFee;
     totalFillingOnChainFee = 0;
 
+    // Update number of on-chain transactions
+    currentOnChainTx = 0;
+
     // event with all compressed transactions given its batch number
     emit ForgeBatch(getStateDepth() - 1, compressedTxs);
   }
@@ -330,6 +339,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
   ) public payable{
 
     require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
+    require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
 
     // build 'key' and 'value' for balance tree
     uint256 keyBalanceTree = idBalanceTree;
@@ -352,6 +362,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Update total on-chain fees
     totalFillingOnChainFee += msg.value;
+
+    // Update number of on-chain transactions
+    currentOnChainTx++;
 
     // Withdraw token from rollup smart contract to withdraw address
     require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
@@ -386,6 +399,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
   ) public payable{
 
     require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
+    require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
 
     // build 'key' and 'value' for balance tree
     uint256 keyBalanceTree = uint256(idBalanceTree);
@@ -408,6 +422,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Update total on-chain fees
     totalFillingOnChainFee += msg.value;
+
+    // Update number of on-chain transactions
+    currentOnChainTx++;
 
     // Get token deposit on rollup smart contract
     require(depositToken(tokenId, amountDeposit), 'Fail deposit ERC20 transaction');
