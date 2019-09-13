@@ -27,6 +27,7 @@ contract RollupHelpers {
   }
 
   uint constant bytesOffChainTx = 3*2 + 2 + 2;
+  uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
   /**
    * @dev Load poseidon smart contract
@@ -51,7 +52,6 @@ contract RollupHelpers {
    * @return poseidon hash
    */
   function multiHash(uint256[] memory inputs) internal view returns (uint256){
-    uint rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint lenInputs = inputs.length;
     uint totalHash = 0;
     for(uint i = 0; i < lenInputs; i += 5) {
@@ -296,8 +296,6 @@ contract RollupHelpers {
    * @return hash of all off-chain transactions
    */
   function hashOffChainTxV2(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
-    uint256 r = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-
     bytes memory hashOffTx = new bytes(maxTx*bytesOffChainTx);
     Memory.Cursor memory c = Memory.read(offChainTx);
     uint ptr = 0;
@@ -307,7 +305,7 @@ contract RollupHelpers {
       ptr++;
     }
     uint256 hashOff = uint256(sha256(hashOffTx));
-    return hashOff % r;
+    return hashOff % rField;
   }
 
   /**
