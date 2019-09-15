@@ -16,9 +16,9 @@ template RollupTx(nLevels) {
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
 
-    // Past and future TxHashes
-    signal input pastTxHash[4];
-    signal input futureTxHash[3];
+    // Past and future TxDatas
+    signal input pastTxData[4];
+    signal input futureTxData[3];
 
     //TX
 
@@ -27,14 +27,14 @@ template RollupTx(nLevels) {
     signal input amount;
     signal input coin;
     signal input nonce;
-    signal input maxFee;
+    signal input userFee;
     signal input rqOffset;
     signal input onChain;
     signal input newAccount;
 
     signal input offChainHash;
 
-    signal input rqTxHash;
+    signal input rqTxData;
     signal input s;
     signal input r8x;
     signal input r8y;
@@ -109,14 +109,14 @@ template RollupTx(nLevels) {
     component requiredTxVerifier = RequiredTxVerifier();
 
     for (i=0; i<4; i++) {
-        requiredTxVerifier.pastTxHash[i] <== pastTxHash[i];
+        requiredTxVerifier.pastTxData[i] <== pastTxData[i];
     }
 
     for (i=0; i<3; i++) {
-        requiredTxVerifier.futureTxHash[i] <== futureTxHash[i];
+        requiredTxVerifier.futureTxData[i] <== futureTxData[i];
     }
 
-    requiredTxVerifier.rqTxHash <== rqTxHash;
+    requiredTxVerifier.rqTxData <== rqTxData;
     requiredTxVerifier.rqTxOffset <== rqOffset;
 
 // nonceChecker
@@ -184,6 +184,16 @@ template RollupTx(nLevels) {
     s1EthAddr.c[1] <== ethAddr;
     s1EthAddr.s <== states.s1;
 
+    component s1OldKey = Mux1();
+    s1OldKey.c[0] <== states.key1;
+    s1OldKey.c[1] <== oldKey1;
+    s1OldKey.s <== states.s1;
+
+    component s1OldValue = Mux1();
+    s1OldValue.c[0] <== oldSt1Pck.out;
+    s1OldValue.c[1] <== oldValue1;
+    s1OldValue.s <== states.s1;
+
 // s2
 //////////////
 
@@ -198,14 +208,25 @@ template RollupTx(nLevels) {
     s2Ay.s <== states.s2;
 
     component s2Nonce = Mux1();
-    s2Nonce.c[0] <== 0;
-    s2Nonce.c[1] <== nonce2;
+    s2Nonce.c[0] <== nonce2;
+    s2Nonce.c[1] <== 0;
     s2Nonce.s <== states.s2;
 
     component s2EthAddr = Mux1();
-    s2EthAddr.c[0] <== s1EthAddr.out;
-    s2EthAddr.c[1] <== ethAddr2;
+    s2EthAddr.c[0] <== ethAddr2;
+    s2EthAddr.c[1] <== s1EthAddr.out;
     s2EthAddr.s <== states.s2;
+
+    component s2OldKey = Mux1();
+    s2OldKey.c[0] <== states.key2;
+    s2OldKey.c[1] <== oldKey2;
+    s2OldKey.s <== states.s2;
+
+    component s2OldValue = Mux1();
+    s2OldValue.c[0] <== oldSt2Pck.out;
+    s2OldValue.c[1] <== oldValue2;
+    s2OldValue.s <== states.s2;
+
 
 // sigVerifier
 //////////
@@ -228,12 +249,13 @@ template RollupTx(nLevels) {
     balancesUpdater.oldStAmountSender <== s1Amount.out;
     balancesUpdater.oldStAmountRecieiver <== amount2;
     balancesUpdater.amount <== amount;
-    balancesUpdater.maxFee <== maxFee;
-    balancesUpdater.minFee <== feeSelector.minFee;
+    balancesUpdater.userFee <== userFee;
+    balancesUpdater.operatorsFee <== feeSelector.operatorsFee;
     balancesUpdater.onChain <== onChain;
     balancesUpdater.countersIn <== countersIn;
     balancesUpdater.countersBase <== feeSelector.countersBase;
     balancesUpdater.loadAmount <== loadAmount;
+    balancesUpdater.nop <== states.nop;
 
     balancesUpdater.countersOut ==> countersOut;
 
@@ -264,8 +286,8 @@ template RollupTx(nLevels) {
     for (i=0; i<nLevels; i++) {
         processor1.siblings[i] <== siblings1[i];
     }
-    processor1.oldKey <== oldKey1;
-    processor1.oldValue <== oldValue1;
+    processor1.oldKey <== s1OldKey.out;
+    processor1.oldValue <== s1OldValue.out;
     processor1.isOld0 <== isOld0_1;
     processor1.newKey <== fromIdx;
     processor1.newValue <== newSt1Pck.out;
@@ -284,13 +306,13 @@ template RollupTx(nLevels) {
     component processor2 = SMTProcessor(nLevels) ;
     processor2.oldRoot <== s3.out;
     for (i=0; i<nLevels; i++) {
-        processor2.siblings[i] <== siblings1[i];
+        processor2.siblings[i] <== siblings2[i];
     }
-    processor2.oldKey <== oldKey2;
-    processor2.oldValue <== oldValue2;
+    processor2.oldKey <== s2OldKey.out;
+    processor2.oldValue <== s2OldValue.out;
     processor2.isOld0 <== isOld0_2;
     processor2.newKey <== states.key2;
-    processor2.newValue <== newSt1Pck.out;
+    processor2.newValue <== newSt2Pck.out;
     processor2.fnc[0] <== states.P2_fnc0*balancesUpdater.update2;
     processor2.fnc[1] <== states.P2_fnc1*balancesUpdater.update2;
 

@@ -18,7 +18,7 @@ template Rollup(nTx, nLevels) {
     signal output countersOut;
 
     signal private input txData[nTx];
-    signal private input rqTxHash[nTx];
+    signal private input rqTxData[nTx];
     signal private input s[nTx];
     signal private input r8x[nTx];
     signal private input r8y[nTx];
@@ -68,7 +68,7 @@ template Rollup(nTx, nLevels) {
     }
 
     var nDataAvailabilityBitsPerTx;
-    nDataAvailabilityBitsPerTx = (nLevels*2+16+16)
+    nDataAvailabilityBitsPerTx = (nLevels*2+16)
     component offChainHasher = Sha256(nDataAvailabilityBitsPerTx*nTx);
 
     component decodeTx[nTx]
@@ -86,12 +86,12 @@ template Rollup(nTx, nLevels) {
             decodeTx[i].previousOnChain <== decodeTx[i-1].onChain;
         }
         decodeTx[i].txData <== txData[i];
-        decodeTx[i].rqTxHash <== rqTxHash[i];
+        decodeTx[i].rqTxData <== rqTxData[i];
         decodeTx[i].loadAmount <== loadAmount[i];
         decodeTx[i].ethAddr <== ethAddr[i];
         decodeTx[i].ax <== ax[i];
         decodeTx[i].ay <== ay[i];
-        for (j=0; j<nLevels*2+32; j++) {
+        for (j=0; j<nLevels*2+16; j++) {
             offChainHasher.in[i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
         }
     }
@@ -110,14 +110,14 @@ template Rollup(nTx, nLevels) {
         Tx[i].amount <== decodeTx[i].amount;
         Tx[i].coin <== decodeTx[i].coin;
         Tx[i].nonce <== decodeTx[i].nonce;
-        Tx[i].maxFee <== decodeTx[i].maxFee;
+        Tx[i].userFee <== decodeTx[i].userFee;
         Tx[i].rqOffset <== decodeTx[i].rqOffset;
         Tx[i].onChain <== decodeTx[i].onChain;
         Tx[i].newAccount <== decodeTx[i].newAccount;
 
         Tx[i].offChainHash <== decodeTx[i].offChainHash;
 
-        Tx[i].rqTxHash <== rqTxHash[i];
+        Tx[i].rqTxData <== rqTxData[i];
         Tx[i].s <== s[i];
         Tx[i].r8x <== r8x[i];
         Tx[i].r8y <== r8y[i];
@@ -171,17 +171,17 @@ template Rollup(nTx, nLevels) {
 
         for (j=0; j<4; j++) {
             if (i-j-1 < -1/2) {
-                Tx[i].pastTxHash[j] <== decodeTx[i-j-1].offChainHash;
+                Tx[i].pastTxData[j] <== txData[i-j-1];
             } else {
-                Tx[i].pastTxHash[j] <== 0;
+                Tx[i].pastTxData[j] <== 0;
             }
         }
 
         for (j=0; j<3; j++) {
             if (i+j+1 < nTx) {
-                Tx[i].futureTxHash[j] <== decodeTx[i+j+1].offChainHash;
+                Tx[i].futureTxData[j] <== txData[i+j+1];
             } else {
-                Tx[i].futureTxHash[j] <== 0;
+                Tx[i].futureTxData[j] <== 0;
             }
         }
     }

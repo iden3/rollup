@@ -11,26 +11,26 @@ RqTxVerifier
                            └──┬─┬─┬──────┘
                               │ │ │
                            ╲  │ │ │
-               TxHash -1    ╲ │ │ │
+               TxData -1    ╲ │ │ │
                ──────────▶   ╲▼ │ │
-               TxHash -2      ╲ │ │
+               TxData -2      ╲ │ │
                ──────────▶     ╲▼ │
-               TxHash -3        ╲ │
+               TxData -3        ╲ │
                ──────────▶       ╲▼
-               TxHash -4          ╲
+               TxData -4          ╲
                ──────────▶         ╲
-               TxHash +3      Mux3  ──────────┐
+               TxData +3      Mux3  ──────────┐
                ──────────▶         ╱          │
-               TxHash +2          ╱           │          ┌────────┐
+               TxData +2          ╱           │          ┌────────┐
                ──────────▶       ╱            │          │        │
-               TxHash +1        ╱             └─────────▶│        │
+               TxData +1        ╱             └─────────▶│        │
                ──────────▶     ╱                         │  ===   │
                    0          ╱                          │        │
                ──────────▶   ╱     ┌────────────────────▶│        │
                             ╱      │                     └────────┘
                            ╱       │
                                    │
-               rqHash              │
+               rqTxData            │
                ────────────────────┘
 
  */
@@ -39,21 +39,21 @@ include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/mux3.circom";
 
 template RequiredTxVerifier() {
-    signal input pastTxHash[4];
-    signal input futureTxHash[3];
-    signal input rqTxHash;
+    signal input pastTxData[4];
+    signal input futureTxData[3];
+    signal input rqTxData;
     signal input rqTxOffset;
 
     component mux = Mux3();
 
     mux.c[0] <== 0;
-    mux.c[1] <== futureTxHash[0];
-    mux.c[2] <== futureTxHash[1];
-    mux.c[3] <== futureTxHash[2];
-    mux.c[4] <== pastTxHash[3];
-    mux.c[5] <== pastTxHash[2];
-    mux.c[6] <== pastTxHash[1];
-    mux.c[7] <== pastTxHash[0];
+    mux.c[1] <== futureTxData[0];
+    mux.c[2] <== futureTxData[1];
+    mux.c[3] <== futureTxData[2];
+    mux.c[4] <== pastTxData[3];
+    mux.c[5] <== pastTxData[2];
+    mux.c[6] <== pastTxData[1];
+    mux.c[7] <== pastTxData[0];
 
     component n2b = Num2Bits(3);
 
@@ -62,5 +62,5 @@ template RequiredTxVerifier() {
     n2b.out[1] ==> mux.s[1];
     n2b.out[2] ==> mux.s[2];
 
-    mux.out === rqTxHash;
+    mux.out === rqTxData;
 }

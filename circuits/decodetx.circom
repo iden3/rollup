@@ -15,7 +15,7 @@ template DecodeTx(nLevels) {
     signal input previousOnChain;
     signal input oldOnChainHash;
     signal input txData;
-    signal input rqTxHash;
+    signal input rqTxData;
     signal input loadAmount;
     signal input ethAddr;
     signal input ax;
@@ -24,21 +24,21 @@ template DecodeTx(nLevels) {
     signal output fromIdx;       // 64        0..63
     signal output toIdx;         // 64       64..127
     signal output amount;        // 16      128..143
-    signal output coin;          // 16      144..159
-    signal output nonce;         // 48      160..207
-    signal output maxFee;        // 16      208..223
-    signal output rqOffset;      // 4       224..227
-    signal output onChain        // 1       228
-    signal output newAccount     // 1       229
+    signal output coin;          // 32      144..175
+    signal output nonce;         // 48      176..223
+    signal output userFee;       // 16      224..239
+    signal output rqOffset;      // 3       240..242
+    signal output onChain        // 1       243
+    signal output newAccount     // 1       244
 
-    signal output dataAvailabilityBits[nLevels*2+16+16];
+    signal output dataAvailabilityBits[nLevels*2+16];
     signal output offChainHash;  // For the signature
     signal output newOnChainHash;   // For the chained onchain
 
     var i;
     var IDEN3_ROLLUP_TX = 1625792389453394788515067275302403776356063435417596283072371667635754651289; // blake2b("IDEN3_ROLLUP_TX") % r
 
-    component n2bData = Num2Bits(230);
+    component n2bData = Num2Bits(245);
     n2bData.in <== txData;
 
 // from
@@ -77,8 +77,8 @@ template DecodeTx(nLevels) {
 
 // coin
 ////////
-    component b2nCoin = Bits2Num(16);
-    for (i=0; i<16; i++) {
+    component b2nCoin = Bits2Num(32);
+    for (i=0; i<32; i++) {
         b2nCoin.in[i] <== n2bData.out[144 + i];
     }
     b2nCoin.out ==> coin;
@@ -87,47 +87,44 @@ template DecodeTx(nLevels) {
 ////////
     component b2nNonce = Bits2Num(48);
     for (i=0; i<48; i++) {
-        b2nNonce.in[i] <== n2bData.out[160 + i];
+        b2nNonce.in[i] <== n2bData.out[176 + i];
     }
     b2nNonce.out ==> nonce;
 
-// maxFee
+// userFee
 ////////
-    component dfMaxFee = DecodeFloatBin();
+    component dfUserFee = DecodeFloatBin();
     for (i=0; i<16; i++) {
-        dfMaxFee.in[i] <== n2bData.out[208 + i];
+        dfUserFee.in[i] <== n2bData.out[224 + i];
     }
-    dfMaxFee.out ==> maxFee;
+    dfUserFee.out ==> userFee;
 
 // rqOffset
 ////////
-    component b2nRqOffset = Bits2Num(4);
-    for (i=0; i<4; i++) {
-        b2nRqOffset.in[i] <== n2bData.out[224 + i];
+    component b2nRqOffset = Bits2Num(3);
+    for (i=0; i<3; i++) {
+        b2nRqOffset.in[i] <== n2bData.out[240 + i];
     }
     b2nRqOffset.out ==> rqOffset;
 
 // onChain
 ////////
-    onChain <== n2bData.out[228];
+    onChain <== n2bData.out[243];
 
 // newAccount
 ////////
-    newAccount <== n2bData.out[229];
+    newAccount <== n2bData.out[244];
 
 //  Data Availability bits
 ////////
     for (i=0; i<nLevels; i++) {
-        dataAvailabilityBits[i] <== n2bData.out[i]*(1-onChain);
+        dataAvailabilityBits[nLevels - 1 - i] <== n2bData.out[i]*(1-onChain);
     }
     for (i=0; i<nLevels; i++) {
-        dataAvailabilityBits[nLevels + i] <== n2bData.out[64 + i]*(1-onChain);
+        dataAvailabilityBits[nLevels + nLevels - 1 - i] <== n2bData.out[64 + i]*(1-onChain);
     }
     for (i=0; i<16; i++) {
-        dataAvailabilityBits[nLevels*2 + i] <== n2bData.out[128 + i]*(1-onChain);
-    }
-    for (i=0; i<16; i++) {
-        dataAvailabilityBits[nLevels*2+16 + i] <== n2bData.out[144 + i]*(1-onChain);
+        dataAvailabilityBits[nLevels*2 + 16 -1 - i] <== n2bData.out[128 + i]*(1-onChain);
     }
 
 // offChainHash
@@ -135,7 +132,7 @@ template DecodeTx(nLevels) {
     component hash1 = Poseidon(3, 6, 8, 57);
     hash1.inputs[0] <== IDEN3_ROLLUP_TX;
     hash1.inputs[1] <== txData;
-    hash1.inputs[2] <== rqTxHash;
+    hash1.inputs[2] <== rqTxData;
 
     hash1.out ==> offChainHash;
 

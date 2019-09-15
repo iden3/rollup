@@ -12,13 +12,14 @@ template StatePacker() {
     signal output out;
 
     signal data;
-    data <== amount + coin * (1<<128) + nonce * (1<<142);
-    component hash = Poseidon(4, 6, 8, 57);
+    data <== coin + nonce * (1<<32);
+    component hash = Poseidon(5, 6, 8, 57);
 
     hash.inputs[0] <== data;
-    hash.inputs[1] <== ax;
-    hash.inputs[2] <== ay;
-    hash.inputs[3] <== ethAddr;
+    hash.inputs[1] <== amount;
+    hash.inputs[2] <== ax;
+    hash.inputs[3] <== ay;
+    hash.inputs[4] <== ethAddr;
 
     hash.out ==> out;
 }

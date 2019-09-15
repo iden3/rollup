@@ -3,12 +3,20 @@ const ec = new EC("secp256k1");
 const keccak256 = require("js-sha3").keccak256;
 const crypto = require("crypto");
 const babyJub = require("circomlib").babyJub;
+const eddsa = require("circomlib").eddsa;
 const bigInt = require("snarkjs").bigInt;
+const utils = require("./utils");
+const poseidon = require("circomlib").poseidon;
 
 module.exports = class RollupAccount {
     constructor(privateKey) {
         if (privateKey) {
-            this.privateKey = privateKey;
+            if (typeof(privateKey) != "string") {
+                this.privateKey = bigInt(privateKey).toString(16);
+            } else {
+                this.privateKey = privateKey;
+            }
+            while (this.privateKey.length < 64) this.privateKey = "0" + this.privateKey;
         } else {
             this.privateKey = crypto.randomBytes(32).toString("hex");
         }
@@ -40,9 +48,26 @@ module.exports = class RollupAccount {
         // Derive a private key wit a hash
         this.rollupPrvKey = keccak256("ROLLUP" + this.privateKey);
 
-        const bjPubKey = babyJub.mulPointEscalar(babyJub.Base8, bigInt("0x" + this.rollupPrvKey));
+        const bjPubKey = eddsa.prv2pub(this.rollupPrvKey);
 
         this.ax = bjPubKey[0].toString(16);
         this.ay = bjPubKey[1].toString(16);
+    }
+
+    signTx(tx) {
+        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
+        const data = utils.buildTxData(tx);
+        const hash = poseidon.createHash(6, 8, 57);
+
+        const h = hash([
+            IDEN3_ROLLUP_TX,
+            data,
+            tx.rqData || 0
+        ]);
+
+        const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
+        tx.r8x = signature.R8[0];
+        tx.r8y = signature.R8[1];
+        tx.s = signature.S;
     }
 };

@@ -118,7 +118,7 @@ template FeeSelector() {
     signal input coin;
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
-    signal output minFee;
+    signal output operatorsFee;
     signal output countersBase;
 
     component stp[16];
@@ -139,6 +139,6 @@ template FeeSelector() {
         stp[i].feePlanFee <== feePlanFee[i];
     }
 
-    minFee <== stp[15].currentFeeOut;
+    operatorsFee <== stp[15].currentFeeOut;
     countersBase <== stp[15].counterBaseOut * stp[15].isSelectedOut;
 }

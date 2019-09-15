@@ -73,31 +73,46 @@ function buildTxData(tx) {
     res = res.add( bigInt(tx.toIdx || 0).shl(64));
     res = res.add( bigInt(fix2float(tx.amount || 0)).shl(128));
     res = res.add( bigInt(tx.coin || 0).shl(144));
-    res = res.add( bigInt(tx.nonce || 0).shl(160));
-    res = res.add( bigInt(fix2float(tx.maxFee || 0)).shl(208));
-    res = res.add( bigInt(tx.rqOffset || 0).shl(224));
-    res = res.add( bigInt(tx.inChain ? 1 : 0).shl(228));
-    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(229));
+    res = res.add( bigInt(tx.nonce || 0).shl(176));
+    res = res.add( bigInt(fix2float(tx.userFee || 0)).shl(224));
+    res = res.add( bigInt(tx.rqOffset || 0).shl(240));
+    res = res.add( bigInt(tx.onChain ? 1 : 0).shl(243));
+    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(244));
 
     return res;
+}
+
+function state2array(st) {
+    const data = bigInt(st.coin).add( bigInt(st.nonce).shl(32) );
+    return [
+        data,
+        bigInt(st.amount),
+        bigInt("0x" + st.ax),
+        bigInt("0x" + st.ay),
+        bigInt(st.ethAddress),
+    ];
+}
+
+function array2state(a) {
+    return {
+        coin: bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
+        nonce: bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
+        amount: bigInt(a[1]),
+        ax: bigInt(a[2]).toString(16),
+        ay: bigInt(a[3]).toString(16),
+        ethAddress: "0x" + bigInt(a[4]).toString(16),
+    };
 }
 
 function hashState(st) {
     const hash = poseidon.createHash(6, 8, 57);
 
-    const data = bigInt(st.amount).add(  bigInt(st.coin).shl(128) ).add( bigInt(st.nonce).shl(142) );
-
-    const res = hash([
-        data,
-        bigInt("0x" + st.ax),
-        bigInt("0x" + st.ay),
-        bigInt(st.ethAddress),
-    ]);
-
-    return res;
+    return hash(state2array(st));
 }
 
 module.exports.buildTxData = buildTxData;
 module.exports.fix2float = fix2float;
 module.exports.float2fix = float2fix;
 module.exports.hashState = hashState;
+module.exports.state2array = state2array;
+module.exports.array2state = array2state;

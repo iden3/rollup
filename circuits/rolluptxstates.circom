@@ -22,6 +22,7 @@ template RollupTXStates() {
     signal output P2_fnc1;
     signal output isExit;
     signal output verifySignEnabled;
+    signal output nop;
 
     component fromIdxIsZero = IsZero();
     fromIdxIsZero.in <== fromIdx;
@@ -53,7 +54,7 @@ template RollupTXStates() {
     // newAccount MUST be 0 if it an offChain Tx
     (1-onChain)*newAccount === 0;
 
-    s1 <== onChain*isLoadAmount; // The first Processor is initialized
+    s1 <== onChain*isLoadAmount; // The first Processor is in insert
 
     s2 <== isExit*(1-isAmount2) // The second Processor is initialized
 
@@ -79,7 +80,8 @@ template RollupTXStates() {
     mux2.s[1] <== isExit;
     mux2.out ==> key2;
 
-    verifySignEnabled <== (1-onChain)*isFromIdx
+    verifySignEnabled <== (1-onChain)*isFromIdx;
 
+    nop <== fromIdxIsZero.out;
 
 }
