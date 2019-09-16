@@ -130,3 +130,13 @@ The following parameters can be configured in a json file in order to not manual
   - id exit tree
 - forcewithdraw
   - id balance tree
+
+## Off-chain parameters definition
+
+- send
+  - amount
+  - id (receiver)
+  - password
+  X - from
+  X - wallet
+  X - operator
