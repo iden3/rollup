@@ -131,6 +131,7 @@ const importWallet = (argv.import) ? argv.import : 'noimport';
 const param = (argv.param) ? argv.param : 'noparam';
 const value = (argv.value) ? argv.value : 'novalue';
 const configjson = (argv.paramsTx) ? argv.paramsTx : configJsonDefault;
+<<<<<<< HEAD
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
 
 (async () => {
@@ -171,6 +172,44 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
             const readWallet = fs.readFileSync(importWallet, 'utf8');
             wallet = await EthereumWallet.fromEncryptedJson(readWallet, passString);
             encWallet = await wallet.toEncryptedJson(passString);
+=======
+const tokenId = (argv.tokenid||argv.tokenid==0) ? argv.tokenid : 'notokenid';
+//const nodeEth = (argv.node) ? argv.node : 'nonode';
+//const address = (argv.address) ? argv.address : 'noaddress';
+const operator = (argv.operator) ? argv.operator : 'nooperator';
+<<<<<<< HEAD
+//const walletPath = (argv.wallet) ? argv.wallet : walletPathDefault;
+//const walletEthPath = (argv.walleteth) ? argv.walleteth : walletEthPathDefault;
+//const walletBabyjubPath = (argv.walletbabyjub) ? argv.walletbabyjub : walletBabyjubPathDefault;
+
+(async () => {
+=======
+//asd
+>>>>>>> first commit
+try {
+  var actualConfig = {};
+  if (fs.existsSync(configjson)) {
+    actualConfig = JSON.parse(fs.readFileSync(configjson, "utf8"));
+  }
+  //createkeys
+  if (argv._[0].toUpperCase() === 'CREATEKEYS') {
+    let newWalletPath = pathName;
+    let wallet = {};
+    let encWallet = {};
+    //createkeys ethereum
+    if (keytype === 'ethereum') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
+        if (pathName === 'nopath') {
+          newWalletPath = walletEthPathDefault;
+        }
+        if (mnemonic !== 'nomnemonic') {
+          if (mnemonic.split(" ").length !== 12) {
+            console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
+            throw new Error('Invalid Mnemonic');
+>>>>>>> 22454ce... first commit
           } else {
             console.log('create ethereum wallet random');
             wallet = EthereumWallet.createRandom();
