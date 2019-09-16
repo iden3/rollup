@@ -1,4 +1,4 @@
-const { createEth, importEth, readFile, createBabyJub, importBabyJub, decrypt } = require('./wallet');
+const { createEth, importEth, readFile, createBabyJub, importBabyJub, decrypt } = require('../wallet');
 
 async function send(walletPath, passString, to, amount, operator) {
   console.log(walletPath, passString, to, amount, operator)
