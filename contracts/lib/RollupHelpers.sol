@@ -306,8 +306,7 @@ contract RollupHelpers {
       hashOffTx[ptr] = iTx;
       ptr++;
     }
-    uint256 hashOff = uint256(sha256(hashOffTx));
-    return hashOff % rField;
+    return uint256(sha256(hashOffTx)) % rField;
   }
 
   /**
