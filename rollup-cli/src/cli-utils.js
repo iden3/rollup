@@ -1,5 +1,5 @@
 const Db = require('./db');
-const { send, deposit } = require('./cli-actions');
+const { send, deposit } = require('./actions/cli-actions');
 
 function loadDb(obj) {
   
