@@ -1,0 +1,9 @@
+{
+ "wallet": "./src/wallet.json",
+ "walletBabyjub": "./src/babyjubWallet.json",
+ "operator": "http://127.0.0.1:9000",
+ "walletEth": "./src/ethWallet.json",
+ "address": "0x09FCcF59498ab8Da597f4A2a9c36913E2029bcBD",
+ "nodeEth": "http://localhost:8545",
+ "abi": "./src/actions/onchain/rollupabi.js"
+}
