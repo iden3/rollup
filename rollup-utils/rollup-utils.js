@@ -1,6 +1,6 @@
 /* global BigInt */
 const {
-    hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff, multiHash,
+    hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff,
 } = require("./utils");
 
 function createOffChainTx(numTx) {
@@ -76,19 +76,19 @@ function hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
 }
 
 function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onChain, newAccount) {
-    // Build Entry
+    // Build Elemnt Tx Data
     // element 0
     const fromStr = padZeroes(fromId.toString("16"), 16);
     const toStr = padZeroes(toId.toString("16"), 16);
     const amountStr = padZeroes(amount.toString("16"), 4);
-    const tokenStr = padZeroes(token.toString("16"), 4);
+    const tokenStr = padZeroes(token.toString("16"), 8);
     const nonceStr = padZeroes(nonce.toString("16"), 12);
     const maxFeeStr = padZeroes(maxFee.toString("16"), 4);
-    const rqOffsetStr = padZeroes(rqOffset.toString("16"), 1);
-    let last = onChain ? 1 : 0;
-    last = newAccount ? ( last | 0x02 ): last;
-    const element = buildElement([last.toString("16"), rqOffsetStr,
-        maxFeeStr, nonceStr, tokenStr, amountStr, toStr, fromStr]);
+    let last = rqOffset & 0x07;
+    last = onChain ? ( last | 0x08 ): last;
+    last = newAccount ? ( last | 0x10 ): last;
+    const element = buildElement([last.toString("16"), maxFeeStr,
+        nonceStr, tokenStr, amountStr, toStr, fromStr]);
     return element;
 }
 
@@ -110,7 +110,7 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay
     // Get array BigInt
     const entryBigInt = arrayHexToBigInt([e0, e1, e2, e3, e4, e5]);
     // Hash entryobject
-    return { elements: {e0, e1, e2, e3, e4, e5}, hash: multiHash(entryBigInt)};
+    return { elements: {e0, e1, e2, e3, e4, e5}, hash: hash(entryBigInt)};
 }
 
 module.exports = {
