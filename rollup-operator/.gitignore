@@ -1,3 +1,4 @@
 getIden3.sh
 node_modules
 test/config/operator-config.json
+test/tmp-*

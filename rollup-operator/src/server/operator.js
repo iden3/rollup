@@ -11,7 +11,7 @@ const fs = require("fs");
 let operatorConfig;
 let rollupTree;
 let synchDb;
-let ethAddress;
+
 // load operator configuration file
 if (process.env.PATH_CONFIG_JSON) {
     operatorConfig = JSON.parse(fs.readFileSync(process.env.PATH_CONFIG_JSON, "utf8"));
@@ -23,6 +23,7 @@ async function loadDb(operatorConfig) {
     rollupTree = await newLevelDbRollupTree(operatorConfig.TREE_DB);    
     synchDb = new LevelDb(operatorConfig.SYNCH_DB);
 }
+
 
 // load data bases
 loadDb(operatorConfig);
