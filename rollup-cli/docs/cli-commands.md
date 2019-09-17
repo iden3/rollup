@@ -137,6 +137,6 @@ The following parameters can be configured in a json file in order to not manual
   - amount
   - id (receiver)
   - password
-  X - from
-  X - wallet
-  X - operator
+  - from
+  - wallet
+  - operator
