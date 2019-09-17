@@ -136,15 +136,18 @@ const tokenId = (argv.tokenid||argv.tokenid==0) ? argv.tokenid : 'notokenid';
 //const nodeEth = (argv.node) ? argv.node : 'nonode';
 //const address = (argv.address) ? argv.address : 'noaddress';
 const operator = (argv.operator) ? argv.operator : 'nooperator';
-<<<<<<< HEAD
 //const walletPath = (argv.wallet) ? argv.wallet : walletPathDefault;
 //const walletEthPath = (argv.walleteth) ? argv.walleteth : walletEthPathDefault;
 //const walletBabyjubPath = (argv.walletbabyjub) ? argv.walletbabyjub : walletBabyjubPathDefault;
 
 (async () => {
-=======
+const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
+const nodeEth = (argv.nodeEth) ? argv.nodeEth : 'nodeEth';
+const scAddress = (argv.scAddress) ? argv.scAddress : 'scAddress';
+const opRollup = (argv.opRollup) ? argv.opRollup : 'opRollup';
+const from = (argv.from) ? argv.from : 'from';
+
 //asd
->>>>>>> first commit
 try {
   var actualConfig = {};
   if (fs.existsSync(configjson)) {
