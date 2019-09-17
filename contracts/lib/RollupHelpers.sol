@@ -312,7 +312,7 @@ contract RollupHelpers {
 
   /**
    * @dev build entry for the exit tree leaf
-   * @param amount amunt to withdraw
+   * @param amount amunt
    * @param token token type
    * @param Ax x coordinate public key babyJub
    * @param Ay y coordinate public key babyJub
@@ -323,15 +323,16 @@ contract RollupHelpers {
   function buildTreeState(uint16 amount, uint16 token, uint256 Ax, uint Ay,
     address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
      // build element 1
-    entry.e1 = bytes32(bytes16(uint128(amount))) >> (256 - 128);
-    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 128);
-    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 16 - 128);
+    entry.e1 = bytes32(bytes4(uint32(token))) >> (256 - 32);
+    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 32);
     // build element 2
-    entry.e2 = bytes32(Ax);
+    entry.e2 = bytes32(uint256(amount));
     // build element 3
-    entry.e3 = bytes32(Ay);
+    entry.e3 = bytes32(Ax);
     // build element 4
-    entry.e4 = bytes32(bytes20(withAddress)) >> (256 - 160);
+    entry.e4 = bytes32(Ay);
+    // build element 5
+    entry.e5 = bytes32(bytes20(withAddress)) >> (256 - 160);
   }
 
   /**

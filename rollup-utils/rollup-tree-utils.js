@@ -1,5 +1,5 @@
 const {
-    hash, padZeroes, hash7elem, arrayHexToBigInt, buildElement,
+    hash, padZeroes, arrayHexToBigInt, buildElement,
 } = require("./utils");
 
 function hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
@@ -32,18 +32,19 @@ function hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
 function hashLeafValueV2(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     // Build Entry
     // element 0
-    const amountStr = padZeroes(balance.toString("16"), 32);
-    const tokenStr = padZeroes(tokenId.toString("16"), 4);
+    const tokenStr = padZeroes(tokenId.toString("16"), 8);
     const nonceStr = padZeroes(nonce.toString("16"), 8);
-    const e1 = buildElement([nonceStr, tokenStr, amountStr]);
+    const e0 = buildElement([nonceStr, tokenStr]);
     // element 1
-    const e2 = buildElement([Ax.toString("16")]);
+    const e1 = buildElement([balance.toString("16")]);
     // element 2
-    const e3 = buildElement([Ay.toString("16")]);
+    const e2 = buildElement([Ax.toString("16")]);
     // element 3
+    const e3 = buildElement([Ay.toString("16")]);
+    // element 4
     const e4 = buildElement([withdrawAddress.toString("16")]);
     // Get array BigInt
-    const entryBigInt = arrayHexToBigInt([e1, e2, e3, e4]);
+    const entryBigInt = arrayHexToBigInt([e0, e1, e2, e3, e4]);
     // Object leaf
     const leafObj = {
         balance,
@@ -54,7 +55,7 @@ function hashLeafValueV2(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
         nonce,
     };
     // Hash entry and object
-    return { leafObj, elements: {e1, e2, e3, e4}, hash: hash(entryBigInt) };
+    return { leafObj, elements: {e0, e1, e2, e3, e4}, hash: hash(entryBigInt) };
 }
 
 function hashExitLeafValue(id, amount, tokenId, withdrawAddress) {
