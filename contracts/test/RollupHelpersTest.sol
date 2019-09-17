@@ -138,14 +138,13 @@ contract RollupHelpersTest is RollupHelpers{
     uint256 Ax,
     uint256 Ay
   ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32, bytes32){
-    uint[] memory inputs = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
-    return (
-      bytes32(inputs[0]),
-      bytes32(inputs[1]),
-      bytes32(inputs[2]),
-      bytes32(inputs[3]),
-      bytes32(inputs[4]),
-      bytes32(inputs[5]));
+    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5,
+            entry.e6);
   }
 
   function hashOnChainTest(
@@ -156,7 +155,7 @@ contract RollupHelpersTest is RollupHelpers{
     uint256 Ax,
     uint256 Ay
   ) public view returns (uint256){
-    uint[] memory inputs = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
-    return multiHash(inputs);
+    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    return hashEntry(entry);
   }
 }

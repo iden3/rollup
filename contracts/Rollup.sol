@@ -29,6 +29,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
   bytes32[] exitRoots;
   mapping(uint256 => bool) exitNullifier;
 
+  // Maxim Deposit allowed
+  uint constant MAX_AMOUNT_DEPOSIT = (1 << 128);
+
   // List of valid ERC20 tokens that can be deposit in 'balance tree'
   address[] tokens;
   mapping(uint => address) tokenList;
@@ -162,7 +165,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     require(withdrawAddress != address(0), 'Must specify withdraw address');
     require(tokenList[tokenId] != address(0), 'token has not been registered');
     require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
-
+    require(depositAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
     // Build entry deposit and get its hash
     Entry memory depositEntry = buildEntryDeposit(lastBalanceTreeIndex, depositAmount,
       tokenId, babyPubKey[0], babyPubKey[1], withdrawAddress, 0);
@@ -400,7 +403,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
     require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
-
+    require(amountDeposit < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
     // build 'key' and 'value' for balance tree
     uint256 keyBalanceTree = uint256(idBalanceTree);
     Entry memory balanceEntry = buildEntryBalanceTree(amount, tokenId, babyPubKey[0],

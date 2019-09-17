@@ -24,6 +24,7 @@ contract RollupHelpers {
     bytes32 e3;
     bytes32 e4;
     bytes32 e5;
+    bytes32 e6;
   }
 
   uint constant bytesOffChainTx = 3*2 + 2 + 2;
@@ -108,6 +109,7 @@ contract RollupHelpers {
     inputs[2] = uint256(entry.e3);
     inputs[3] = uint256(entry.e4);
     inputs[4] = uint256(entry.e5);
+    inputs[5] = uint256(entry.e6);
     return hashGeneric(inputs);
   }
 
@@ -310,7 +312,7 @@ contract RollupHelpers {
 
   /**
    * @dev build entry for the exit tree leaf
-   * @param amount amunt to withdraw
+   * @param amount amunt
    * @param token token type
    * @param Ax x coordinate public key babyJub
    * @param Ay y coordinate public key babyJub
@@ -321,15 +323,16 @@ contract RollupHelpers {
   function buildTreeState(uint16 amount, uint16 token, uint256 Ax, uint Ay,
     address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
      // build element 1
-    entry.e1 = bytes32(bytes16(uint128(amount))) >> (256 - 128);
-    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 128);
-    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 16 - 128);
+    entry.e1 = bytes32(bytes4(uint32(token))) >> (256 - 32);
+    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 32);
     // build element 2
-    entry.e2 = bytes32(Ax);
+    entry.e2 = bytes32(uint256(amount));
     // build element 3
-    entry.e3 = bytes32(Ay);
+    entry.e3 = bytes32(Ax);
     // build element 4
-    entry.e4 = bytes32(bytes20(withAddress)) >> (256 - 160);
+    entry.e4 = bytes32(Ay);
+    // build element 5
+    entry.e5 = bytes32(bytes20(withAddress)) >> (256 - 160);
   }
 
   /**
@@ -360,15 +363,15 @@ contract RollupHelpers {
     element = bytes32(bytes8(uint64(fromId))) >> (256 - 64);
     element |= bytes32(bytes8(uint64(toId))) >> (256 - 64 - 64);
     element |= bytes32(bytes2(amount)) >> (256 - 16 - 64 - 64);
-    element |= bytes32(bytes2(token)) >> (256 - 16 - 16 - 64 - 64);
-    element |= bytes32(bytes6(uint48(nonce))) >> (256 - 48 - 16 - 16 - 64 - 64);
-    element |= bytes32(bytes2(maxFee)) >> (256 - 16 - 48 - 16 - 16 - 64 - 64);
+    element |= bytes32(bytes4(uint32(token))) >> (256 - 32 - 16 - 64 - 64);
+    element |= bytes32(bytes6(uint48(nonce))) >> (256 - 48 - 32 - 16 - 64 - 64);
+    element |= bytes32(bytes2(maxFee)) >> (256 - 16 - 48 - 32 - 16 - 64 - 64);
 
-    bytes1 last = bytes1(rqOffset) & 0x0F;
-    last = onChain ? (last | 0x10): last;
-    last = newAccount ? (last | 0x20): last;
+    bytes1 last = bytes1(rqOffset) & 0x07;
+    last = onChain ? (last | 0x08): last;
+    last = newAccount ? (last | 0x10): last;
 
-    element |= bytes32(last) >> (256 - 8 - 16 - 48 - 16 - 16 - 64 - 64);
+    element |= bytes32(last) >> (256 - 8 - 16 - 48 - 32 - 16 - 64 - 64);
   }
 
   /**
@@ -388,22 +391,19 @@ contract RollupHelpers {
     address withdrawAddress,
     uint256 Ax,
     uint256 Ay
-    ) internal pure returns (uint256[] memory) {
-    uint256[] memory inputs = new uint256[](6);
+    ) internal pure returns (Entry memory entry) {
     // build element 1
-    inputs[0] = oldOnChainHash;
+    entry.e1 = bytes32(oldOnChainHash);
     // build element 2
-    inputs[1] = txData;
+    entry.e2 = bytes32(txData);
     // build element 3
-    inputs[2] = uint256(bytes32(bytes16(loadAmount)) >> (256 - 128));
+    entry.e3 = bytes32(bytes16(loadAmount)) >> (256 - 128);
     // build element 4
-    inputs[3] = uint256(bytes32(bytes20(withdrawAddress)) >> (256 - 160));
+    entry.e4 = bytes32(bytes20(withdrawAddress)) >> (256 - 160);
     // build element 5
-    inputs[4] = Ax;
+    entry.e5 = bytes32(Ax);
     // build element 6
-    inputs[5] = Ay;
-
-    return inputs;
+    entry.e6 = bytes32(Ay);
   }
 
   /**

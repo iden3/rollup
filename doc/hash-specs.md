@@ -26,12 +26,12 @@ Value = H(e0, e1, e2, e3)
 ```
 
 ```
-e_0: [ 128 bits ] amount
-     [ 16 bits  ] token
-     [ 32 bits  ] nonce
-e_1: [ 253 bits] Ax
-e_2: [ 253 bits] Ay
-e_3: [ 160 bits] withdraw address
+e_0: [ 32 bits ] token
+     [ 32 bits ] nonce
+e_1: [ 253 bits] amount     
+e_2: [ 253 bits] Ax
+e_3: [ 253 bits] Ay
+e_4: [ 160 bits] withdraw address
 ```
 
 ## Exit tree leaf
@@ -50,14 +50,13 @@ e_3: [ 160 bits] withdraw address
 Key = id
 Value = H(e0, e1, e2, e3)
 ```
-
 ```
-e_0: [ 128 bits ] amount
-     [ 16 bits  ] token
-     [ 32 bits  ] nonce
-e_1: [ 253 bits] Ax
-e_2: [ 253 bits] Ay
-e_3: [ 160 bits] withdraw address
+e_0: [ 32 bits ] token
+     [ 32 bits ] nonce
+e_1: [ 253 bits] amount     
+e_2: [ 253 bits] Ax
+e_3: [ 253 bits] Ay
+e_4: [ 160 bits] withdraw address
 ```
 
 ## Off-chain tx hash
@@ -67,11 +66,10 @@ It will hash all the off-chain transactions that are publicly available through 
   - [ 24  bits] from
     [ 24  bits] to
     [ 16  bits] amount
-    [ 16  bits] coin
 ```
 sha256(Tx_struct[0] # Tx_struct[1] # ... # Tx_struct[maxTx - 1])
 ```
-In the case that there are less transactions than the maximum, those transactions are set to: [0, 0, 0, 0]
+In the case that there are less transactions than the maximum, those transactions are set to: [0, 0, 0]
 
 ## On-chain tx hash
 - on-chain tx information:
@@ -91,10 +89,10 @@ e_0: [ 253 bits] oldOnChainHash
 e_1: [ 64 bits ] from
      [ 64 bits ] to
      [ 16 bits ] amount
-     [ 16 bits ] coin
+     [ 32 bits ] token
      [ 48 bits ] nonce
      [ 16 bits ] maxFee
-     [ 4 bits  ] reqOffset
+     [ 3 bits  ] reqOffset
      [ 1 bit   ] flag on chain
      [ 1 bit   ] flag new account 
 e_2: [ 253 bits] load amount

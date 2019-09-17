@@ -505,10 +505,11 @@ contract("RollupHelpers functions", (accounts) => {
         
         const infoLeaf = treeUtils.hashLeafValueV2(amountDeposit, tokenId, Ax, Ay, BigInt(withdrawAddress), nonce);
 
-        expect(res[0]).to.be.equal(infoLeaf.elements.e1);
-        expect(BigInt(res[1]).toString()).to.be.equal(BigInt(infoLeaf.elements.e2).toString());
-        expect(BigInt(res[2]).toString()).to.be.equal(BigInt(infoLeaf.elements.e3).toString());
-        expect(res[3]).to.be.equal(infoLeaf.elements.e4);
+        expect(res[0]).to.be.equal(infoLeaf.elements.e0);
+        expect(res[1]).to.be.equal(infoLeaf.elements.e1);
+        expect(BigInt(res[2]).toString()).to.be.equal(BigInt(infoLeaf.elements.e2).toString());
+        expect(BigInt(res[3]).toString()).to.be.equal(BigInt(infoLeaf.elements.e3).toString());
+        expect(res[4]).to.be.equal(infoLeaf.elements.e4);
 
         const resHash = await insHelpers.hashTreeStateTest(amountDeposit, tokenId, Ax.toString(),
             Ay.toString(), withdrawAddress, nonce);
@@ -522,7 +523,7 @@ contract("RollupHelpers functions", (accounts) => {
         const token = 4;
         const nonce = 5;
         const maxFee = 6;
-        const rqOffset = 7;
+        const rqOffset = 4;
         const onChain = true;
         const newAccount = true;
         const oldOnChainHash = 1;
@@ -533,6 +534,15 @@ contract("RollupHelpers functions", (accounts) => {
 
         let element;
         let onChainJs;
+
+        it("hash 6 elements", async () => {
+            const hashJs = poseidonJs.createHash(6, 8, 57);
+            const resJs = hashJs([1, 2, 3, 4, 5, 6]);
+    
+            const resSm = await insHelpers.testHashGeneric([1, 2, 3, 4, 5, 6]);
+            expect(resJs.toString()).to.be.equal(resSm.toString());
+        });
+
         it("Build tx data", async () => {            
             element = utils.buildTxData(fromId, toId, amount, token,
                 nonce, maxFee, rqOffset, onChain, newAccount);
@@ -540,9 +550,7 @@ contract("RollupHelpers functions", (accounts) => {
                 nonce, maxFee, rqOffset, onChain, newAccount);
             expect(res).to.be.equal(element);
         });
-        // TODO:
-        // NOTE: Poseidon hash for 6 elements has been done in a multihash way computing
-        // chunks of 5 elements elements
+
         it("Build on chain data", async () => {            
             const res = await insHelpers.buildOnChainDataTest(oldOnChainHash,
                 BigInt(element).toString(), loadAmount, withdrawAddress, Ax.toString(), Ay.toString());
