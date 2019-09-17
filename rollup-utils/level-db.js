@@ -35,6 +35,26 @@ class LeveldB {
     }
 
     /**
+   * Method to retrieve a value given a key if it exist
+   * otherwise return default value
+   * @param {String} key
+   * @param {Any} defaultElem
+   * @returns {String | Any}
+   */
+    async getOrDefault(key, defaultElem) {
+        try {
+            const res = await this.get(key);
+            return res;
+        } catch(err) {
+            if (err.notFound) {
+                return defaultElem;
+            }
+            throw err; 
+        }
+    }
+
+
+    /**
    * Method to delete a value given a key
    * @param {String} key
    */

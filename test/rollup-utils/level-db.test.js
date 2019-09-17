@@ -24,11 +24,22 @@ describe("level Db", () => {
     });
 
     it("Get database values", async () => {
+        // get
         for (let i = 0; i < 10; i++) {
             const key = `key-${i}`;
             const value = await dataBase.get(key);
             expect(value).to.be.equal(`value-${i}`);
         }
+        // get or default
+        const defaultRes = "default";
+        for (let i = 0; i < 10; i++) {
+            const key = `key-${i}`;
+            const value = await dataBase.getOrDefault(key, defaultRes);
+            expect(value).to.be.equal(`value-${i}`);
+        }
+        const keyNotExist = "notExist";
+        const res = await dataBase.getOrDefault(keyNotExist, defaultRes);
+        expect(res).to.be.equal(defaultRes);
     });
 
     it("delete value", async () => {

@@ -2,7 +2,7 @@
 
 const Web3 = require("web3");
 const RollupABI = require("../../../build/contracts/Rollup.json");
-
+const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
 // globsal vars
 const lastBlockKey = "last-block-synch";
 const lastStateRoot = "last-state-root";
@@ -24,6 +24,15 @@ class Synchronizer {
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.rollupContract = new this.web3.eth.Contract(RollupABI.abi, this.rollupAddress);
     }
+
+    _toString(val) {
+        return JSON.stringify(stringifyBigInts(val));
+    }
+
+    _fromString(val) {
+        return unstringifyBigInts(JSON.parse(val));
+    }
+
 
     async synchLoop() {
         this.creationBlock = 0;
@@ -48,7 +57,6 @@ class Synchronizer {
                 const lastRoot = await this.getLastRoot();
                 console.log(`saved root: ${JSON.stringify(lastRoot)}`);
                 
-                
             } catch (e) {
                 console.error(`Message error: ${e.message}`);
                 console.error(`Error in loop: ${e.stack}`);
@@ -58,18 +66,11 @@ class Synchronizer {
     }
 
     async getLastSynchBlock() {
-        let lastBlock;
-        try {
-            lastBlock = this.db.get(lastBlockKey);
-        } catch(error) {
-            this.db.insert(lastBlockKey, this.creationBlock);
-            lastBlock = 0;
-        }
-        return lastBlock;
+        return this._fromString(await this.db.getOrDefault(lastBlockKey, this.creationBlock.toString()));
     }
 
     async getLastRoot() {
-        return this.db.get(lastStateRoot);
+        return this._fromString(await this.db.getOrDefault(lastStateRoot, Buffer.alloc(32).toString()));
     }
 }
 
