@@ -29,11 +29,11 @@ function hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     return { leafObj, hash: hash(entryBigInt) };
 }
 
-function hashLeafValueV2(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
+function hashStateTree(balance, tokenId, Ax, Ay, ethAddress, nonce) {
     // Build Entry
     // element 0
     const tokenStr = padZeroes(tokenId.toString("16"), 8);
-    const nonceStr = padZeroes(nonce.toString("16"), 8);
+    const nonceStr = padZeroes(nonce.toString("16"), 12);
     const e0 = buildElement([nonceStr, tokenStr]);
     // element 1
     const e1 = buildElement([balance.toString("16")]);
@@ -42,7 +42,7 @@ function hashLeafValueV2(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     // element 3
     const e3 = buildElement([Ay.toString("16")]);
     // element 4
-    const e4 = buildElement([withdrawAddress.toString("16")]);
+    const e4 = buildElement([ethAddress.toString("16")]);
     // Get array BigInt
     const entryBigInt = arrayHexToBigInt([e0, e1, e2, e3, e4]);
     // Object leaf
@@ -51,7 +51,7 @@ function hashLeafValueV2(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
         tokenId,
         Ax,
         Ay,
-        withdrawAddress,
+        ethAddress,
         nonce,
     };
     // Hash entry and object
@@ -84,5 +84,5 @@ module.exports = {
     buildElement,
     hashLeafValue,
     hashExitLeafValue,
-    hashLeafValueV2,
+    hashStateTree,
 };

@@ -52,7 +52,7 @@ contract("Rollup", (accounts) => {
     } = accounts;
 
     before(async () => {
-    // Deploy poseidon
+        // Deploy poseidon
         const C = new web3.eth.Contract(poseidonUnit.abi);
         insPoseidonUnit = await C.deploy({ data: poseidonUnit.createCode() })
             .send({ gas: 2500000, from: owner });

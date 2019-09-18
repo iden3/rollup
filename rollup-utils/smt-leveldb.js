@@ -2,7 +2,7 @@
 /* eslint-disable no-await-in-loop */
 /* global BigInt */
 const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
-const { smt } = require("circomlib");
+const { SMT } = require("circomlib");
 const LevelDb = require("./level-db");
 
 class SMTLevelDb {
@@ -56,7 +56,7 @@ class SMTLevelDb {
 async function newLevelDbEmptyTree(pathDb, prefix) {
     const db = new SMTLevelDb(pathDb, prefix);
     const rt = await db.getRoot();
-    const smtLevelDb = new smt.SMT(db, rt);
+    const smtLevelDb = new SMT(db, rt);
     return smtLevelDb;
 }
 
