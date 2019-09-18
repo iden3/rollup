@@ -1,4 +1,5 @@
 /* eslint-disable no-return-await */
+/* global BigInt */
 const { smt } = require("circomlib");
 const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
 const { newLevelDbEmptyTree } = require("./smt-leveldb");
