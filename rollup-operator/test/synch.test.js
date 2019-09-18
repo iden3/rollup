@@ -66,12 +66,12 @@ contract("Synchronizer", (accounts) => {
     });
 
     it("forge batches", async () => {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 1; i++) {
             await insEvent.forgeBatch(stateRoots[i], "0x00000000");    
         }
     });
 
     it("loop synchronize events", async () => {
-        // await synch.synchLoop();
+        await synch.synchLoop();
     });
 });

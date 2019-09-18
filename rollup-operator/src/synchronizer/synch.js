@@ -6,7 +6,7 @@ const lastBlockKey = "last-block-synch";
 const stateRootKey = "last-state-root";
 const lastBatchKey = "last-state-batch";
 const TIMEOUT_ERROR = 3000;
-const TIMEOUT_NEXT_LOOP = 3000;
+const TIMEOUT_NEXT_LOOP = 15000;
 
 
 function timeout(ms) {
@@ -47,10 +47,12 @@ class Synchronizer {
                 let lastSynchBlock = await this.getLastSynchBlock();
                 const currentBlock = await this.web3.eth.getBlockNumber();
 
+                console.log(`creation block: ${this.creationBlock}`);
                 console.log(`last synchronized block: ${lastSynchBlock}`);
                 console.log(`current block number: ${currentBlock}`);
 
                 if (lastSynchBlock <= this.creationBlock) {
+                    console.log("creation block to last synch block");
                     await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
                     lastSynchBlock = this.creationBlock;
                 }
@@ -58,16 +60,17 @@ class Synchronizer {
                 const batchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
                 const lastBatchSaved = await this.getLastBatch();
 
-                if (batchDepth != 0 &&  lastBatchSaved < batchDepth) {
+                if ((batchDepth != 0) && (lastBatchSaved < batchDepth)) {
                     // const stateRoot = await this.rollupContract.methods.getStateRoot(this.batchDepth).call({from: this.ethAddress}, lastSynchBlock);
                     // const lastRoot = await this.getStateRoot(batchDepth);
-
+                    console.log("IN get events");
                     const targetBlockNumber = Math.min(currentBlock, lastSynchBlock + 10);
                     const logs = await this.rollupContract.getPastEvents("allEvents", {
                         fromBlock: lastSynchBlock + 1,
                         toBlock: targetBlockNumber,
                     });
-                    console.log(logs);
+                    await this.saveEvents(logs, batchDepth, targetBlockNumber);
+
                 } else{
                     console.log("No batches has been forged");
                 }
@@ -90,6 +93,12 @@ class Synchronizer {
 
     async getLastBatch(){
         return this._fromString(await this.db.getOrDefault(lastBatchKey, "0"));
+    }
+
+    async saveEvents(logs, batchDepth, blockNumber){
+        console.log(logs);
+        await this.db.insert(lastBlockKey, this._toString(blockNumber));
+        await this.db.insert(lastBatchKey, this._toString(batchDepth));
     }
 }
 
