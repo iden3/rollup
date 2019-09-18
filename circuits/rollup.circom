@@ -45,7 +45,7 @@ template Rollup(nTx, nLevels) {
     signal private input amount2[nTx];
     signal private input nonce2[nTx];
     signal private input ethAddr2[nTx];
-    signal input siblings2[nTx][nLevels];
+    signal private input siblings2[nTx][nLevels];
     // Required for inserts and delete
     signal private input isOld0_2[nTx];
     signal private input oldKey2[nTx];
