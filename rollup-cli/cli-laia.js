@@ -8,9 +8,9 @@ const { Wallet } = require('./src/wallet');
 const { depositTx, sendTx } = require("./src/cli-utils");
 
 const walletPathDefault = './src/wallet.json';
-const walletEthPathDefault = './src/ethWallet.json'; // /docs?
-const walletBabyjubPathDefault = './src/babyjubWallet.json'; // /docs?
-const configJsonDefault = './src/config.json'; // /docs?
+const walletEthPathDefault = './src/ethWallet.json';
+const walletBabyjubPathDefault = './src/babyjubWallet.json';
+const configJsonDefault = './src/config.json';
 
 const { version } = require('./package');
 const { argv } = require('yargs') // eslint-disable-line
@@ -185,15 +185,15 @@ try {
   }
   //createkeys
   if (argv._[0].toUpperCase() === 'CREATEKEYS') {
-    if (passString === 'nopassphrase') {
-      console.log('Please provide a passphrase to encrypt keys by:\n\n');
-      throw new Error('No passphrase was submitted');
-    }else{
-      let newWalletPath = pathName;
-      let wallet = {};
-      let encWallet = {};
-      //createkeys ethereum
-      if (keytype === 'ethereum') {
+    let newWalletPath = pathName;
+    let wallet = {};
+    let encWallet = {};
+    //createkeys ethereum
+    if (keytype === 'ethereum') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
         if (pathName === 'nopath') {
           newWalletPath = walletEthPathDefault;
         }
@@ -223,8 +223,13 @@ try {
           encWallet = await wallet.toEncryptedJson(passString);
         }
         fs.writeFileSync(newWalletPath, encWallet, "utf-8");
+      }
       //createkeys babyjub
-      } else if (keytype === 'babyjub') {
+    } else if (keytype === 'babyjub') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
         if (pathName === 'nopath') {
           newWalletPath = walletBabyjubPathDefault;
         }
@@ -249,8 +254,13 @@ try {
           encWallet = wallet.toEncryptedJson(passString);
         }
         fs.writeFileSync(newWalletPath, encWallet, "utf-8")
+      }
       //createkeys rollup
-      } else if (keytype === 'rollup') {
+    } else if (keytype === 'rollup') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
         if (pathName === 'nopath') {
           newWalletPath = walletPathDefault;
         }
@@ -271,10 +281,10 @@ try {
           encWallet = await Wallet.createRandom(passString);
         }
         fs.writeFileSync(newWalletPath, encWallet, "utf-8")
-      } else {
+      }
+    } else {
         console.log('Invalid keytype\n\n');
         throw new Error('Invalid keytype');
-      }
     }
     process.exit(0);
     //setparam
@@ -413,6 +423,8 @@ try {
       throw new Error('Invalid type');
     }
     process.exit(0);
+  } else {
+    throw new Error('Invalid command');
   }
 } catch (err) {
   console.log(err.stack);
