@@ -3,7 +3,7 @@ const {send}= require('../src/actions/offchain/send.js');
 const { BabyJubWallet } = require('../../rollup-utils/babyjub-wallet');
 const { expect } = chai;
 const fs = require('fs');
-const walletBabyjubPathDefault="../src/babyjubWallet.json"
+const walletBabyjubPathDefault="../src/resources/babyjubWallet.json"
 
 describe('Send', () => {
   const UrlOperator ="http://127.0.0.1:9000";

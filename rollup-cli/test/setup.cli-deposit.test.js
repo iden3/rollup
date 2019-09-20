@@ -1,11 +1,11 @@
 const chai = require('chai');
 const deposit= require('../src/actions/onchain/deposit.js');
-const walletEthPathDefault="../src/wallet.json"
+const walletEthPathDefault="../src/resources/wallet.json"
 const { expect } = chai;
-const rollupabi = require ('../src/actions/onchain/rollupabi.js');
+const rollupabi = require ('../src/resources/rollupabi.js');
 const ethers = require('ethers');
 const fs = require('fs');
-const config = "../src/config.json"
+const config = "../src/resources/config.json"
 
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const Verifier = artifacts.require("../../../../contracts/test/VerifierHelper");

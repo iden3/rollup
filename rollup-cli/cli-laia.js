@@ -124,7 +124,7 @@ const pathName = (argv.path) ? argv.path : 'nopath';
 const passString = (argv.passphrase) ? argv.passphrase : 'nopassphrase';
 const type = (argv.type) ? argv.type : 'notype';
 const keytype = (argv.keytype) ? argv.keytype : 'nokeytype';
-const to = (argv.to||argv.to0) ? argv.to : 'norecipient';
+const to = (argv.to||argv.to==0) ? argv.to : 'norecipient';
 //const from = (argv.from) ? argv.from : 'from';
 const amount = (argv.amount) ? argv.amount : -1;
 const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
@@ -148,16 +148,15 @@ try {
   }
   //createkeys
   if (argv._[0].toUpperCase() === 'CREATEKEYS') {
-    
-      let newWalletPath = pathName;
-      let wallet = {};
-      let encWallet = {};
-      //createkeys ethereum
-      if (keytype === 'ethereum') {
-        if (passString === 'nopassphrase') {
-            console.log('Please provide a passphrase to encrypt keys by:\n\n');
-            throw new Error('No passphrase was submitted');
-        }else{
+    let newWalletPath = pathName;
+    let wallet = {};
+    let encWallet = {};
+    //createkeys ethereum
+    if (keytype === 'ethereum') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
         if (pathName === 'nopath') {
           newWalletPath = walletEthPathDefault;
         }
@@ -194,12 +193,12 @@ try {
         fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
 
       //createkeys babyjub
-    }
-      } else if (keytype === 'babyjub') {
-        if (passString === 'nopassphrase') {
-            console.log('Please provide a passphrase to encrypt keys by:\n\n');
-            throw new Error('No passphrase was submitted');
-        }else{
+      }
+    } else if (keytype === 'babyjub') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
         if (pathName === 'nopath') {
           newWalletPath = walletBabyjubPathDefault;
         }
@@ -224,16 +223,16 @@ try {
           encWallet = wallet.toEncryptedJson(passString);
         }
         fs.writeFileSync(newWalletPath, JSON.stringify(JSON.parse(encWallet),null,1), "utf-8");
-         //write in config.json the actual path of created wallet
-         actualConfig.walletBabyjub = newWalletPath;
-         fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
-    }
-      //createkeys rollup
-      } else if (keytype === 'rollup') {
-        if (passString === 'nopassphrase') {
-            console.log('Please provide a passphrase to encrypt keys by:\n\n');
-            throw new Error('No passphrase was submitted');
-        }else{
+        //write in config.json the actual path of created wallet
+        actualConfig.walletBabyjub = newWalletPath;
+        fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
+      }
+    //createkeys rollup
+    } else if (keytype === 'rollup') {
+      if (passString === 'nopassphrase') {
+        console.log('Please provide a passphrase to encrypt keys by:\n\n');
+        throw new Error('No passphrase was submitted');
+      }else{
         if (pathName === 'nopath') {
           newWalletPath = walletPathDefault;
         }
@@ -257,12 +256,11 @@ try {
          //write in config.json the actual path of created wallet
          actualConfig.wallet = newWalletPath;
          fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
-    }
-      } else {
-        console.log('Invalid keytype\n\n');
-        throw new Error('Invalid keytype');
       }
-    
+    } else {
+      console.log('Invalid keytype\n\n');
+      throw new Error('Invalid keytype');
+    }
     process.exit(0);
     //setparam
   } else if (argv._[0].toUpperCase() === 'SETPARAM') {
@@ -398,6 +396,8 @@ try {
       throw new Error('Invalid type');
     }
     process.exit(0);
+  } else {
+    throw new Error('Invalid command');
   }
 } catch (err) {
   console.log(err.stack);

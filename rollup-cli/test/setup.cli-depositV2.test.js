@@ -1,16 +1,13 @@
 const chai = require('chai');
-const deposit= require('../src/actions/onchain/deposit.js');
-const walletEthPathDefault="../src/resources/ethWallet.json"
-const walletBabyjubPathDefault="../src/resources/babyjubWallet.json"
+const walletEthPathDefault="../src/resources/wallet.json"
 const { expect } = chai;
-const rollupabi = require ('../src/resources/rollupabi.js');
 const ethers = require('ethers');
 const fs = require('fs');
-
+const config = "../src/resources/config.json"
 
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const Verifier = artifacts.require("../../../../contracts/test/VerifierHelper");
-const RollupTest = artifacts.require("../../../../contracts/test/RollupTest");
+const RollupTest = artifacts.require("../../../../contracts/test/RollupTestV2");
 const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
 /* global artifacts */
 /* global contract */
@@ -24,6 +21,8 @@ contract("Rollup", async (accounts) => {
     let insVerifier;
     let walletEth;
 
+    const maxTx = 10;
+    const maxOnChainTx = 3;
   const tokenInitialAmount = 100;
   const {
       0: owner,
@@ -51,11 +50,12 @@ contract("Rollup", async (accounts) => {
       insVerifier = await Verifier.new();
 
       // Deploy Rollup test
-      insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address);
+      insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
+        maxTx, maxOnChainTx);
 
-      walletEth = await ethers.Wallet.fromEncryptedJson(fs.readFileSync(walletEthPathDefault, "utf8"), "foo");
+      walletEth = await ethers.Wallet.fromEncryptedJson(JSON.stringify(JSON.parse(fs.readFileSync(walletEthPathDefault, "utf8")).ethWallet), "foo");
       
-
+      
   });
 
   it("Distribute token rollup", async () => {
@@ -86,13 +86,8 @@ contract("Rollup", async (accounts) => {
     // - Add leaf to balance tree
     // - Check 'filling on-chain' hash
         
-        const password = "foo";
-        const babyjubJson= fs.readFileSync(walletBabyjubPathDefault, "utf8")
-        const abi = rollupabi.ABI
-        const addressSC =insRollupTest.address;
-
         const depositAmount = 10;
-        const tokenId = 0;
+   
     
         web3.eth.sendTransaction({to:walletEth.address, from:providerfunds, value: web3.utils.toWei("5", "ether")})//provide funds to our account
         
@@ -111,22 +106,15 @@ contract("Rollup", async (accounts) => {
         let signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction).on('receipt', console.log);;
 
-       
+        let actualConfig = {}
+        if (fs.existsSync(config)){
+          actualConfig = JSON.parse(fs.readFileSync(config, "utf8"));
+        }
+        actualConfig.address = insRollupTest.address
+        fs.writeFileSync(config, JSON.stringify(actualConfig,null,1), "utf-8");
         //expect(sentTx.logs[0].event).to.be.equal("Approval");
      
-        let resDeposit= await deposit.deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId, 
-            fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi)
-
-
-        console.log({resDeposit})
-
-        //expect(resDeposit.logs[0].event).to.be.equal("Deposit");
-
-        // Check token balances for id1 and rollup smart contract
-        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
-        expect(resRollup.toString()).to.be.equal("10");
-        expect(resWalletEth.toString()).to.be.equal("40");
+       
         
 
         // create balance tree and add leaf
