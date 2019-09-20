@@ -6,7 +6,7 @@ const walletPathDefault = '../src/wallet.json';
 
 const { expect } = chai;
 
-describe("PRINT KEYS", () => {
+/*describe("PRINT KEYS", () => {
   it("printkeys command", (done) => {
     const out = process.exec('cd ..; node cli-laia.js printkeys');
     out.stdout.on('data', (data) => {
@@ -145,6 +145,15 @@ describe("CREATE KEYS IMPORT", () => {
     out.on('exit', (code) => {
       expect(code).to.not.be.equal(0);
       done();
+    });
+  });
+});*/
+
+describe("ONCHAINTX", () => {
+  it("onchaintx deposit", () => {
+    const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --pass password --amount 3 --tokenid 1234');
+    out.stdout.on('data', (data) => {
+      console.log(data);
     });
   });
 });
