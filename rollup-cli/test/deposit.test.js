@@ -1,9 +1,9 @@
 const chai = require('chai');
 const deposit= require('../src/actions/onchain/deposit.js');
-const walletEthPathDefault="../src/ethWallet.json"
-const walletBabyjubPathDefault="../src/babyjubWallet.json"
+const walletEthPathDefault="../src/resources/ethWallet.json"
+const walletBabyjubPathDefault="../src/resources/babyjubWallet.json"
 const { expect } = chai;
-const rollupabi = require ('../src/actions/onchain/rollupabi.js');
+const rollupabi = require ('../src/resources/rollupabi.js');
 const ethers = require('ethers');
 const fs = require('fs');
 

@@ -7,10 +7,10 @@ const { BabyJubWallet, verifyBabyJub } = require('../rollup-utils/babyjub-wallet
 const { Wallet } = require('./src/wallet');
 const { depositTx, sendTx } = require("./src/cli-utils");
 
-const walletPathDefault = './src/wallet.json';
-const walletEthPathDefault = './src/ethWallet.json'; // /docs?
-const walletBabyjubPathDefault = './src/babyjubWallet.json'; // /docs?
-const configJsonDefault = './src/config.json'; // /docs?
+const walletPathDefault = './src/resources/wallet.json';
+const walletEthPathDefault = './src/resources/ethWallet.json'; // /docs?
+const walletBabyjubPathDefault = './src/resources/babyjubWallet.json'; // /docs?
+const configJsonDefault = './src/resources/config.json'; // /docs?
 
 const { version } = require('./package');
 const { argv } = require('yargs') // eslint-disable-line
