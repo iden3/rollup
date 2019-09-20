@@ -141,6 +141,13 @@ const operator = (argv.operator) ? argv.operator : 'nooperator';
 //const walletBabyjubPath = (argv.walletbabyjub) ? argv.walletbabyjub : walletBabyjubPathDefault;
 
 (async () => {
+const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
+const nodeEth = (argv.nodeEth) ? argv.nodeEth : 'nodeEth';
+const scAddress = (argv.scAddress) ? argv.scAddress : 'scAddress';
+const opRollup = (argv.opRollup) ? argv.opRollup : 'opRollup';
+const from = (argv.from) ? argv.from : 'from';
+
+//asd
 try {
   var actualConfig = {};
   if (fs.existsSync(configjson)) {
