@@ -1,7 +1,6 @@
 const ethers = require('ethers');
 
 class EthereumWallet {
-
   constructor(wallet) {
     this.wallet = wallet;
 
@@ -19,7 +18,7 @@ class EthereumWallet {
     return new EthereumWallet(ethers.Wallet.createRandom());
   }
 
- static async fromEncryptedJson(json, pass) {
+  static async fromEncryptedJson(json, pass) {
     return new EthereumWallet(await ethers.Wallet.fromEncryptedJson(json, pass));
   }
 
@@ -33,7 +32,7 @@ class EthereumWallet {
 }
 
 function verifyEthereum(publicKey, messStr, signatureHex) {
-  var address = ethers.utils.verifyMessage(messStr, signatureHex);
+  const address = ethers.utils.verifyMessage(messStr, signatureHex);
   return address === ethers.utils.computeAddress(publicKey);
 }
 
