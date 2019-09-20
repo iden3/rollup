@@ -334,6 +334,7 @@ try {
   }
   //onchaintx
   else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
+    console.log(actualConfig);
     if (type === 'notype') {
       console.log('It is necessary to specify the type of action\n\n');
       throw new Error('No type was submitted');
