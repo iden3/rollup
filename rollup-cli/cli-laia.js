@@ -8,60 +8,43 @@ const { Wallet } = require('./src/wallet');
 const { depositTx, sendTx } = require("./src/cli-utils");
 
 const walletPathDefault = './src/wallet.json';
-const walletEthPathDefault = './src/ethWallet.json';
-const walletBabyjubPathDefault = './src/babyjubWallet.json';
-const configJsonDefault = './src/config.json';
+const walletEthPathDefault = './src/ethWallet.json'; // /docs?
+const walletBabyjubPathDefault = './src/babyjubWallet.json'; // /docs?
+const configJsonDefault = './src/config.json'; // /docs?
 
 const { version } = require('./package');
 const { argv } = require('yargs') // eslint-disable-line
   .version(version)
   .usage(`
 rollup-cli <command> <options>
-
 createkeys command
 =============
   rollup-cli createkeys <option>
-
     create new wallet for rollup client
-
   -keytype or --kt [ethereum | babyjubjub | rollup]
     ...
-
   -path or --p <path>
-
     Path to store key container
     Default: current path
-
   -passphrase or --pass <passphrase string>
-
     Passphrase to encrypt private key
-
   -mnemonic or --mn <mnemonic>
     ...
   -import or --imp <walletPath>
     ...
-
 printkeys command
 =============
   rollup-cli printkeys <options>
-
   Print public keys
-
   -path or --p <path>
-
     Path to JSON file
     
   -keytype [ethereum | babyjubjub]
-
     Define which wallet type needs to be readed
-
-
 offchainTx command
 =============
   rollup-cli offchaintx <options>
-
   --operator or -o <operator url>
-
     Operator url to send the transaction
     
   --wallet or -w <path json>
@@ -69,60 +52,40 @@ offchainTx command
     Path to babyjubjub wallet  
       
     Default: wallet-babyjubjub.json
-
   --pass <passphrase string>
-
     Passphrasse to decrypt babyjubjub wallet
-
   --to <recipient address>
-
     User identifier on balance tree which will receive the transaction
     
     Note: send to 0 makes a withdraw transaction
-
   --amount or -a <amount>
-
     Amount to send or withdraw
-
   --paramsTx <parameter file>
-
     Contains all necessary parameters to perform transacction
     Parameters would be different depending on transaction type
     
     Default: config.json
-
 onchainTx command
 =============
   rollup-cli onchaintx <options>
     
   --node or -n <node url>
-
     Provide ethereum node to send transaction
-
   --address <ethereum address>
-
     Rollup ethereum smart contract address
     
   --operator <operator url>
-
     Operator url to retrieve information about current balance tree state
-
   --type or -t [deposit | depositontop | withdraw | forcewithdraw]
-
     Defines which transaction should be done
-
   --wallet or -w <path json>
       
     Path to ethereum wallet  
       
     Default: wallet-ethereum.json
-
   --pass <passphrase string>
-
     Passphrasse to decrypt ethereum wallet
-
   --paramsTx <parameter file>
-
     Contains all necessary parameters to perform transacction
     Parameters would be different depending on transaction type
     
@@ -161,7 +124,7 @@ const pathName = (argv.path) ? argv.path : 'nopath';
 const passString = (argv.passphrase) ? argv.passphrase : 'nopassphrase';
 const type = (argv.type) ? argv.type : 'notype';
 const keytype = (argv.keytype) ? argv.keytype : 'nokeytype';
-const to = (argv.to) ? argv.to : 'norecipient';
+const to = (argv.to||argv.to==0) ? argv.to : 'norecipient';
 //const from = (argv.from) ? argv.from : 'from';
 const amount = (argv.amount) ? argv.amount : -1;
 const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
@@ -169,7 +132,7 @@ const importWallet = (argv.import) ? argv.import : 'noimport';
 const param = (argv.param) ? argv.param : 'noparam';
 const value = (argv.value) ? argv.value : 'novalue';
 const configjson = (argv.paramsTx) ? argv.paramsTx : configJsonDefault;
-const tokenId = (argv.tokenid) ? argv.tokenid : 'notokenid';
+const tokenId = (argv.tokenid||argv.tokenid==0) ? argv.tokenid : 'notokenid';
 //const nodeEth = (argv.node) ? argv.node : 'nonode';
 //const address = (argv.address) ? argv.address : 'noaddress';
 const operator = (argv.operator) ? argv.operator : 'nooperator';
@@ -222,9 +185,15 @@ try {
           wallet = EthereumWallet.createRandom();
           encWallet = await wallet.toEncryptedJson(passString);
         }
-        fs.writeFileSync(newWalletPath, encWallet, "utf-8");
-      }
+        
+        fs.writeFileSync(newWalletPath, JSON.stringify(JSON.parse(encWallet),null,1), "utf-8");
+        
+        //write in config.json the actual path of created wallet
+        actualConfig.walletEth = newWalletPath;
+        fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
+
       //createkeys babyjub
+      }
     } else if (keytype === 'babyjub') {
       if (passString === 'nopassphrase') {
         console.log('Please provide a passphrase to encrypt keys by:\n\n');
@@ -253,9 +222,12 @@ try {
           wallet = BabyJubWallet.createRandom();
           encWallet = wallet.toEncryptedJson(passString);
         }
-        fs.writeFileSync(newWalletPath, encWallet, "utf-8")
+        fs.writeFileSync(newWalletPath, JSON.stringify(JSON.parse(encWallet),null,1), "utf-8");
+        //write in config.json the actual path of created wallet
+        actualConfig.walletBabyjub = newWalletPath;
+        fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
       }
-      //createkeys rollup
+    //createkeys rollup
     } else if (keytype === 'rollup') {
       if (passString === 'nopassphrase') {
         console.log('Please provide a passphrase to encrypt keys by:\n\n');
@@ -280,11 +252,14 @@ try {
           console.log('create rollup wallet random')
           encWallet = await Wallet.createRandom(passString);
         }
-        fs.writeFileSync(newWalletPath, encWallet, "utf-8")
+        fs.writeFileSync(newWalletPath, JSON.stringify(JSON.parse(encWallet),null,1), "utf-8");
+         //write in config.json the actual path of created wallet
+         actualConfig.wallet = newWalletPath;
+         fs.writeFileSync(configjson, JSON.stringify(actualConfig,null,1), "utf-8");
       }
     } else {
-        console.log('Invalid keytype\n\n');
-        throw new Error('Invalid keytype');
+      console.log('Invalid keytype\n\n');
+      throw new Error('Invalid keytype');
     }
     process.exit(0);
     //setparam
@@ -334,7 +309,6 @@ try {
   }
   //onchaintx
   else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
-    console.log(actualConfig);
     if (type === 'notype') {
       console.log('It is necessary to specify the type of action\n\n');
       throw new Error('No type was submitted');
@@ -346,6 +320,7 @@ try {
         console.log('It is necessary to specify amount\n\n');
         throw new Error('No amount was submitted');
       } else if (tokenId === "notokenid") {
+        console.log(tokenId)
         console.log('It is necessary to specify token id\n\n');
         throw new Error('No token id was submitted');
       } else if (actualConfig.nodeEth === undefined){
@@ -368,7 +343,7 @@ try {
         //console.log("token id " + tokenId);
         //console.log("pass " + passString);
         //console.log("url abi " + actualConfig.abi);
-        const abi = fs.readFileSync(actualConfig.abi, "utf8");
+        const abi = JSON.parse(fs.readFileSync(actualConfig.abi, "utf8"));
         //console.log("abi " + abi);
         //console.log("url wallet " + actualConfig.wallet);
         const wallet = fs.readFileSync(actualConfig.wallet, "utf8");
@@ -377,7 +352,7 @@ try {
         const walletBabyjub = JSON.stringify(JSON.parse(wallet).babyjubWallet)
         //console.log("wallet Ethereum " + walletEth);
         //console.log("wallet Babyjub " + walletBabyjub);
-        depositTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi);
+        await depositTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi);
       }
     } else {
       throw new Error('Invalid type');
@@ -403,10 +378,7 @@ try {
       } else if (actualConfig.operator === undefined){
         console.log('It is necessary to specify the operator url with setparam command\n\n');
         throw new Error('No operator was submitted');
-      } else if (actualConfig.from === undefined){
-        console.log('It is necessary to specify the sender with setparam command\n\n');
-        throw new Error('No sender (from) was submitted');
-      } else {
+      }  else {
         //console.log("send")
         //console.log("urlOperator " + actualConfig.operator);
         //console.log("from " + actualConfig.from);
@@ -418,7 +390,7 @@ try {
         //console.log("wallet " + wallet);
         const walletBabyjub = JSON.stringify(JSON.parse(wallet).babyjubWallet)
         //console.log("wallet Babyjub " + walletBabyjub);
-        sendTx(actualConfig.operator, actualConfig.from, to, amount, walletBabyjub, passString);
+        await sendTx(actualConfig.operator, to, amount, walletBabyjub, passString);
       }
     } else {
       throw new Error('Invalid type');

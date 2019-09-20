@@ -6,7 +6,7 @@ const walletPathDefault = '../src/wallet.json';
 
 const { expect } = chai;
 
-/*describe("PRINT KEYS", () => {
+describe("PRINT KEYS", () => {
   it("printkeys command", (done) => {
     const out = process.exec('cd ..; node cli-laia.js printkeys');
     out.stdout.on('data', (data) => {
@@ -147,13 +147,94 @@ describe("CREATE KEYS IMPORT", () => {
       done();
     });
   });
-});*/
+});
 
 describe("ONCHAINTX", () => {
-  it("onchaintx deposit", () => {
+  it("onchaintx deposit", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --pass password --amount 3 --tokenid 1234 --paramsTx ./src/config-example.json');
+    out.stdout.on('data', (data) => {
+      expect("deposit\n").to.be.equal(data);
+      done();
+    });
+  });
+  it("onchaintx deposit default config.json", (done) => {
     const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --pass password --amount 3 --tokenid 1234');
     out.stdout.on('data', (data) => {
-      console.log(data);
+      expect("deposit\n").to.be.equal(data);
+      done();
+    });
+  });
+  it("onchaintx deposit error pass", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --amount 3 --tokenid 1234 --paramsTx ./src/config-example.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it("onchaintx deposit error amount", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --pass password --tokenid 1234 --paramsTx ./src/config-example.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it("onchaintx deposit error token id", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --pass password --amount 3 --paramsTx ./src/config-example.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it("onchaintx deposit error config file", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js onchaintx --type deposit --pass password --amount 3 --paramsTx ./src/config-examplee.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+});
+
+describe("OFFCHAINTX", () => {
+  it("offchaintx send", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js offchaintx --type send --pass password --amount 3 --to 1111 --paramsTx ./src/config-example.json');
+    out.stdout.on('data', (data) => {
+      expect("send\n").to.be.equal(data);
+      done();
+    });
+  });
+  it("offchaintx send default config.json", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js offchaintx --type send --pass password --amount 3 --to 1111');
+    out.stdout.on('data', (data) => {
+      expect("send\n").to.be.equal(data);
+      done();
+    });
+  });
+  it("offchaintx send error pass", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js offchaintx --type send --amount 3 --to 1111 --paramsTx ./src/config-example.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it("offchaintx send error amount", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js offchaintx --type send --pass password --to 1111 --paramsTx ./src/config-example.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it("offchaintx send error recipient", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js offchaintx --type send --pass password --amount 3 --paramsTx ./src/config-example.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it("offchaintx send error config file", (done) => {
+    const out = process.exec('cd ..; node cli-laia.js offchaintx --type send --pass password --amount 3 --to 1111 --paramsTx ./src/config-examplee.json');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
     });
   });
 });
