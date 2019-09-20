@@ -1,21 +1,29 @@
 {
-    "id": "fb1280c0-d646-4e40-9550-7026b1be504a",
-    "address": "88a5c2d9919e46f883eb62f7b8dd9d0cc45bc290",
-    "Crypto": {
-        "kdfparams": {
-            "dklen": 32,
-            "p": 1,
-            "salt": "bbfa53547e3e3bfcc9786a2cbef8504a5031d82734ecef02153e29daeed658fd",
-            "r": 8,
-            "n": 262144
-        },
-        "kdf": "scrypt",
-        "ciphertext": "10adcc8bcaf49474c6710460e0dc974331f71ee4c7baa7314b4a23d25fd6c406",
-        "mac": "1cf53b5ae8d75f8c037b453e7c3c61b010225d916768a6b145adf5cf9cb3a703",
-        "cipher": "aes-128-ctr",
-        "cipherparams": {
-            "iv": "1dcdf13e49cea706994ed38804f6d171"
-            }
-    },
-    "version" : 3
+ "address": "986c94d1551a948e26f01a961d9c92e54aedfd51",
+ "id": "c919571c-6b1b-469f-8710-e9ec4b3489bc",
+ "version": 3,
+ "Crypto": {
+  "cipher": "aes-128-ctr",
+  "cipherparams": {
+   "iv": "1421bc007a416743ef7f5e5a1a383557"
+  },
+  "ciphertext": "11804e89d3d89d7517610d7db46261a76dd799c049f2147b1b64942db18a08c3",
+  "kdf": "scrypt",
+  "kdfparams": {
+   "salt": "af35a1f0de7aac891efece5c45d25a3a34e7ab3cb133ad700cf03a92dd1bbafc",
+   "n": 131072,
+   "dklen": 32,
+   "p": 1,
+   "r": 8
+  },
+  "mac": "8c72f031fa8c9c1250d83a17b3489859df3dcaab3bfc3dd4b39608106e89be9f"
+ },
+ "x-ethers": {
+  "client": "ethers.js",
+  "gethFilename": "UTC--2019-09-19T15-20-29.0Z--986c94d1551a948e26f01a961d9c92e54aedfd51",
+  "mnemonicCounter": "4144cec3b6668ec7b68c583a29dbdf73",
+  "mnemonicCiphertext": "cd51038d0c4c5805739d85b38289b6a5",
+  "path": "m/44'/60'/0'/0/0",
+  "version": "0.1"
+ }
 }

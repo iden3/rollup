@@ -1,4 +1,4 @@
-exports.ABI= [
+[
     {
       "constant": true,
       "inputs": [
