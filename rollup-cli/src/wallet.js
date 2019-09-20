@@ -1,8 +1,7 @@
-const { EthereumWallet, verifyEthereum } = require('../src/ethereum-wallet');
-const { BabyJubWallet, verifyBabyJub } = require('../../rollup-utils/babyjub-wallet');
+const { EthereumWallet } = require('../src/ethereum-wallet');
+const { BabyJubWallet } = require('../../rollup-utils/babyjub-wallet');
 
 class Wallet {
-
   constructor(ethWallet, babyjubWallet) {
     this.ethWallet = JSON.parse(ethWallet);
     this.babyjubWallet = JSON.parse(babyjubWallet);
@@ -36,5 +35,5 @@ class Wallet {
 }
 
 module.exports = {
-  Wallet
+  Wallet,
 };
