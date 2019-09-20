@@ -10,7 +10,7 @@ describe('Ethereum wallet', () => {
 
   it('from mnemonic', () => {
     const wallet = EthereumWallet.fromMnemonic(mnemonic);
-    expect(wallet.wallet.privateKey).to.be.equal(privTest);
+    expect(wallet.privateKey).to.be.equal(privTest);
   });
 
   it('from random', () => {
@@ -23,11 +23,11 @@ describe('Ethereum wallet', () => {
 
   it('from-to json', async () => {
     const wallet0 = EthereumWallet.fromMnemonic(mnemonic);
-    const priv0 = wallet0.wallet.privateKey;
+    const priv0 = wallet0.privateKey;
     const json = await wallet0.toEncryptedJson(pass);
     // import walllet from json generated
     const wallet1 = await EthereumWallet.fromEncryptedJson(json, pass);
-    const priv1 = wallet1.wallet.privateKey;
+    const priv1 = wallet1.privateKey;
     expect(priv0).to.be.equal(priv1);
     // import walllet from json generated with invalid passphrase
     const passInvalid = 'passInvalid';
