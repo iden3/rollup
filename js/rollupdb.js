@@ -32,7 +32,7 @@ class RollupDB {
             [ bb.blockNumber, [bb.stateTree.root, bb.exitTree.root]],
             [ 0, this.lastBlock]
         ]);
-        this.lastBlock = this.blockNumber;
+        this.lastBlock = bb.blockNumber;
         this.stateRoot = bb.stateTree.root;
     }
 }

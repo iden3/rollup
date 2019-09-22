@@ -95,8 +95,10 @@ function state2array(st) {
 
 function array2state(a) {
     return {
-        coin: bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
-        nonce: bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
+        // coin: bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
+        // nonce: bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
+        coin: parseInt(bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toString(), 10),
+        nonce: parseInt(bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toString() , 10),
         amount: bigInt(a[1]),
         ax: bigInt(a[2]).toString(16),
         ay: bigInt(a[3]).toString(16),

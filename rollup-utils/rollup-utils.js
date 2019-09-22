@@ -44,12 +44,11 @@ function hashOffChainTx(hexOffChainTx) {
     return hashTotal;
 }
 
-function buildOffChainTx(from, to, amount, coin) {
+function buildOffChainTx(from, to, amount) {
     return Buffer.concat([
         num2Buff(from, 3), 
         num2Buff(to, 3), 
-        num2Buff(amount, 2),
-        num2Buff(coin, 2)
+        num2Buff(amount, 2)
     ]);
 }
 
@@ -92,7 +91,24 @@ function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onCha
     return element;
 }
 
-function hashOnChain(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay) {
+function decodeTxData(txDataEncodedHex) {
+    const txDataBi = BigInt(txDataEncodedHex);
+    let txData = {};
+
+    txData.fromId = txDataBi.and(BigInt(1).shl(64).sub(BigInt(1)));
+    txData.toId = txDataBi.shr(64).and(BigInt(1).shl(64).sub(BigInt(1)));
+    txData.amount = txDataBi.shr(128).and(BigInt(1).shl(16).sub(BigInt(1)));
+    txData.tokenId = txDataBi.shr(144).and(BigInt(1).shl(32).sub(BigInt(1)));
+    txData.nonce = txDataBi.shr(176).and(BigInt(1).shl(48).sub(BigInt(1)));
+    txData.maxFee = txDataBi.shr(224).and(BigInt(1).shl(16).sub(BigInt(1)));
+    txData.rqOffset = txDataBi.shr(240).and(BigInt(1).shl(3).sub(BigInt(1)));
+    txData.onChain = txDataBi.shr(243).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
+    txData.newAccount = txDataBi.shr(244).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
+
+    return txData;
+}
+
+function hashOnChain(oldOnChainHash, txData, loadAmount, ethAddress, Ax, Ay) {
     // Build Entry
     // element 0
     const e0 = buildElement([oldOnChainHash.toString("16")]);
@@ -101,7 +117,7 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay
     // element 2
     const e2 = buildElement([loadAmount.toString("16")]);
     // element 3
-    const e3 = buildElement([withdrawAddress.toString("16")]); 
+    const e3 = buildElement([ethAddress.toString("16")]); 
     // element 4
     const e4 = buildElement([Ax.toString("16")]);
     // element 5
@@ -120,4 +136,5 @@ module.exports = {
     buildOffChainTx,
     buildTxData,
     hashOnChain,
+    decodeTxData,
 };

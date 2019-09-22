@@ -13,14 +13,14 @@ describe("Rollup tree memory", () => {
     const tokenId = BigInt(3);
     const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
     const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-    const withdrawAddress = BigInt("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
+    const ethAddress = BigInt("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
     const nonce = BigInt(4);
 
     it("Create Balance tree and insert a deposit", async () => {
         balanceTree = await RollupTree.newMemRollupTree();
-        const resAddId = await balanceTree.addId(id, amountDeposit, tokenId, Ax, Ay, withdrawAddress, nonce);
+        const resAddId = await balanceTree.addId(id, amountDeposit, tokenId, Ax, Ay, ethAddress, nonce);
 
-        const hashValue = "16416ff969572d7677f049afa00440b5b422d01d1775cb93a65cc346873f0c3e";
+        const hashValue = "1fe3084d286a7b1f787435623b7b8b45f19a0e3ceb2e805c34633d37c8378e60";
         expect(resAddId.hashValue.toString("16")).to.be.equal(hashValue);
     });
 
@@ -33,7 +33,7 @@ describe("Rollup tree memory", () => {
         expect(leafValue.tokenId.toString()).to.be.equal(tokenId.toString());
         expect(leafValue.Ax.toString()).to.be.equal(Ax.toString());
         expect(leafValue.Ay.toString()).to.be.equal(Ay.toString());
-        expect(leafValue.withdrawAddress.toString()).to.be.equal(withdrawAddress.toString());
+        expect(leafValue.ethAddress.toString()).to.be.equal(ethAddress.toString());
         expect(leafValue.nonce.toString()).to.be.equal(nonce.toString());
     });
 
@@ -68,7 +68,7 @@ describe("Rollup tree level db", () => {
     const tokenId = BigInt(3);
     const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
     const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-    const withdrawAddress = BigInt("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
+    const ethAddress = BigInt("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
     const nonce = BigInt(4);
 
     after(async () => {
@@ -78,9 +78,9 @@ describe("Rollup tree level db", () => {
 
     it("Create Balance tree and insert a deposit", async () => {
         balanceTree = await RollupTree.newLevelDbRollupTree(pathDb);
-        const resAddId = await balanceTree.addId(id, amountDeposit, tokenId, Ax, Ay, withdrawAddress, nonce);
+        const resAddId = await balanceTree.addId(id, amountDeposit, tokenId, Ax, Ay, ethAddress, nonce);
 
-        const hashValue = "16416ff969572d7677f049afa00440b5b422d01d1775cb93a65cc346873f0c3e";
+        const hashValue = "1fe3084d286a7b1f787435623b7b8b45f19a0e3ceb2e805c34633d37c8378e60";
         expect(resAddId.hashValue.toString("16")).to.be.equal(hashValue);
     });
 
@@ -93,7 +93,7 @@ describe("Rollup tree level db", () => {
         expect(leafValue.tokenId.toString()).to.be.equal(tokenId.toString());
         expect(leafValue.Ax.toString()).to.be.equal(Ax.toString());
         expect(leafValue.Ay.toString()).to.be.equal(Ay.toString());
-        expect(leafValue.withdrawAddress.toString()).to.be.equal(withdrawAddress.toString());
+        expect(leafValue.ethAddress.toString()).to.be.equal(ethAddress.toString());
         expect(leafValue.nonce.toString()).to.be.equal(nonce.toString());
     });
 
