@@ -216,6 +216,34 @@ contract RollupV2 is Ownable, RollupHelpersV2, RollupInterface {
     }
 
     /**
+     * @dev Transfer between two accounts already defined in balance tree
+     * @param fromId account sender
+     * @param toId account receiver
+     * @param amount amount to send
+     * @param tokenId token identifier
+    */
+    function tranfer(
+        uint64 fromId,
+        uint64 toId,
+        uint16 amount,
+        uint32 tokenId,
+        uint256[2] memory babyPubKey
+    ) public payable{
+        require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
+        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        require(amount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
+        require(fromId < lastBalanceTreeIndex, 'From account does not exist on balance tree');
+        require(toId < lastBalanceTreeIndex, 'From account does not exist on balance tree');
+        require(treeInfo[fromId].tokenId == tokenId, 'token type does not match');
+        require(treeInfo[toId].tokenId == tokenId, 'token type does not match');
+        require(msg.sender == treeInfo[fromId].ethAddress, 'Sender does not match identifier balance tree');
+        // build txData for transfer
+        bytes32 txDataTransfer = buildTxData(fromId, toId, amount, tokenId, 0, 0, 0, true, false);
+        _updateOnChainHash(uint256(txDataTransfer), 0, msg.sender, babyPubKey, msg.value);
+        lastBalanceTreeIndex++;
+    }
+
+    /**
      * @dev Withdraw balance from identifier balance tree
      * user has to prove ownership of ethAddress
      * @param idBalanceTree account identifier on the balance tree which will do the withdraw

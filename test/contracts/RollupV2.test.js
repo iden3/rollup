@@ -345,10 +345,27 @@ contract("Rollup", (accounts) => {
     });
 
     it("Should add transfer", async () => {
+    // Steps:
+    // - Transaction from 'id2' to 'id3'
+    // - Get event data
+    // - Update rollupTree
+    // - forge blocks to include transaction
+        const fromId = 2;
+        const toId = 3;
+        const amount = 1;
+        const tokenId = 0;
 
+        const resTransfer = await insRollupTest.tranfer(fromId, toId, amount, tokenId,
+            [Ax, Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
+
+        // forge empty block
+        await forgeBlock();
+        // forge block with deposit on top transaction
+        await forgeBlock([resTransfer.logs[0]]);
+
+        checkBatchNumber([resTransfer.logs[0]]);
     });
 
     it("Should forge off-chain transaction with fee", async () => {
-
     });
 });
