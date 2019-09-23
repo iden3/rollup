@@ -7,7 +7,7 @@ const pass = 'foo';
 
 const { expect } = chai;
 
-describe('PRINT KEYS', () => {
+/*describe('PRINT KEYS', () => {
   it('printkeys command', (done) => {
     const out = process.exec('cd ..; node cli.js printkeys');
     out.stdout.on('data', (data) => {
@@ -139,7 +139,7 @@ describe('CREATE KEYS IMPORT', () => {
       done();
     });
   });
-});
+});*/
 
 describe('ONCHAINTX deposit', () => {
   it('onchaintx deposit default config.json', (done) => {
@@ -187,7 +187,7 @@ describe('ONCHAINTX deposit', () => {
   }); */
 });
 
-describe('ONCHAINTX depositOnTop', () => {
+/*describe('ONCHAINTX depositOnTop', () => {
   it('onchaintx deposit default config.json', (done) => {
     const out = process.exec(`cd ..; node cli.js onchaintx --type depositontop --pass ${pass} --amount 2 --tokenid 0`);
     out.stdout.on('data', (data) => {
@@ -215,7 +215,7 @@ describe('ONCHAINTX forceWithdraw', () => {
       done();
     });
   });
-});
+});*/
 
 describe('OFFCHAINTX', () => {
   it('offchaintx send', (done) => {
@@ -241,14 +241,14 @@ describe('OFFCHAINTX', () => {
   });
   it('offchaintx send error amount', (done) => {
     const out = process.exec(`cd ..; node cli.js offchaintx --type send --pass ${pass} --to 12 --paramsTx ./src/resources/config-example.json`);
-    out.on(' exit', (code) => {
+    out.on('exit', (code) => {
       expect(code).to.not.be.equal(0);
       done();
     });
   });
-  it(' offchaintx send error recipient', (done) => {
-    const out = process.exec(`cd ..; node cli.js offchaintx --type send --pass ${pass} --amount 2 --paramsTx ./src/resources/config-example.json`);
-    out.on(' exit', (code) => {
+  it('offchaintx send error recipient', (done) => {
+    const out = process.exec(`cd ..; node cli.js offchaintx --type send --amount 2 --pass ${pass} --paramsTx ./src/resources/config-example.json`);
+    out.on('exit', (code) => {
       expect(code).to.not.be.equal(0);
       done();
     });
