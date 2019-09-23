@@ -132,13 +132,6 @@ const param = (argv.param) ? argv.param : 'noparam';
 const value = (argv.value) ? argv.value : 'novalue';
 const configjson = (argv.paramsTx) ? argv.paramsTx : configJsonDefault;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
-// const from = (argv.from) ? argv.from : 'from';
-// const nodeEth = (argv.node) ? argv.node : 'nonode';
-// const address = (argv.address) ? argv.address : 'noaddress';
-// const operator = (argv.operator) ? argv.operator : 'nooperator';
-// const walletPath = (argv.wallet) ? argv.wallet : walletPathDefault;
-// const walletEthPath = (argv.walleteth) ? argv.walleteth : walletEthPathDefault;
-// const walletBabyjubPath = (argv.walletbabyjub) ? argv.walletbabyjub : walletBabyjubPathDefault;
 
 (async () => {
   let actualConfig = {};
@@ -201,7 +194,6 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
             console.log('create babyjub wallet mnemonic');
             wallet = BabyJubWallet.fromMnemonic(mnemonic);
             encWallet = wallet.toEncryptedJson(passString);
-            console.log(encWallet);
           } else if (importWallet !== 'noimport') {
             if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
               console.log('Path provided dont work:\n\n');
@@ -232,7 +224,8 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
           }
           if (mnemonic !== 'nomnemonic') {
             console.log('create rollup wallet mnemonic');
-            encWallet = await Wallet.fromMnemonic(mnemonic, passString);
+            wallet = await Wallet.fromMnemonic(mnemonic, passString);
+            encWallet = await wallet.toEncryptedJson(passString);
           } else if (importWallet !== 'noimport') {
             if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
               console.log('Path provided dont work:\n\n');
@@ -240,13 +233,14 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
             }
             console.log('create rollup wallet import');
             const readWallet = fs.readFileSync(importWallet, 'utf-8');
-            encWallet = await Wallet.fromEncryptedJson(readWallet, passString);
+            wallet = await Wallet.fromEncryptedJson(JSON.parse(readWallet), passString);
+            encWallet = await wallet.toEncryptedJson(passString);
           } else {
             console.log('create rollup wallet random');
-            encWallet = await Wallet.createRandom(passString);
+            wallet = await Wallet.createRandom(passString);
+            encWallet = await wallet.toEncryptedJson(passString);
           }
-          fs.writeFileSync(newWalletPath, JSON.stringify(JSON.parse(encWallet), null, 1), 'utf-8');
-          // write in config.json the actual path of created wallet
+          fs.writeFileSync(newWalletPath, JSON.stringify(encWallet, null, 1), 'utf-8');
           actualConfig.wallet = newWalletPath;
           fs.writeFileSync(configjson, JSON.stringify(actualConfig, null, 1), 'utf-8');
         }
@@ -269,9 +263,7 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
         actualConfig.walletBabyjub = value;
       } else if (param.toUpperCase() === 'WALLET' && value !== 'novalue') {
         actualConfig.wallet = value;
-      } /* else if (param.toUpperCase() === 'FROM' && value !== 'novalue') {
-        actualConfig.from = value;
-      } */ else if (param.toUpperCase() === 'ABI' && value !== 'novalue') {
+      } else if (param.toUpperCase() === 'ABI' && value !== 'novalue') {
         actualConfig.abi = value;
       } else {
         if (param === 'noparam') {
@@ -291,7 +283,7 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
       process.exit(0);
     } else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
       // onchaintx
-      if(type !== 'notype' || type.toUpperCase() !== 'DEPOSIT' || type.toUpperCase() !== 'DEPOSITONTOP' || type.toUpperCase() !== 'WITHDRAW' || type.toUpperCase() !== 'FORCEWITHDRAW') {
+      if(type !== 'notype' && type.toUpperCase() !== 'DEPOSIT' && type.toUpperCase() !== 'DEPOSITONTOP' && type.toUpperCase() !== 'WITHDRAW' && type.toUpperCase() !== 'FORCEWITHDRAW') {
         throw new Error('Invalid type');
       } else {
         if (type === 'notype') {
