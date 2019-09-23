@@ -2,6 +2,7 @@
 const {
     hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff,
 } = require("./utils");
+const eddsa = require("circomlib").eddsa;
 
 function createOffChainTx(numTx) {
     // create bunch of tx
@@ -77,13 +78,13 @@ function hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
 function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onChain, newAccount) {
     // Build Elemnt Tx Data
     // element 0
-    const fromStr = padZeroes(fromId.toString("16"), 16);
-    const toStr = padZeroes(toId.toString("16"), 16);
-    const amountStr = padZeroes(amount.toString("16"), 4);
-    const tokenStr = padZeroes(token.toString("16"), 8);
-    const nonceStr = padZeroes(nonce.toString("16"), 12);
-    const maxFeeStr = padZeroes(maxFee.toString("16"), 4);
-    let last = rqOffset & 0x07;
+    const fromStr = fromId ? padZeroes(fromId.toString("16"), 16) : padZeroes("", 16);
+    const toStr = toId ? padZeroes(toId.toString("16"), 16) : padZeroes("", 16);
+    const amountStr = amount ? padZeroes(amount.toString("16"), 4) : padZeroes("", 4);
+    const tokenStr = token ? padZeroes(token.toString("16"), 8) : padZeroes("", 8);
+    const nonceStr = nonce ? padZeroes(nonce.toString("16"), 12) : padZeroes("", 12);
+    const maxFeeStr = maxFee ? padZeroes(maxFee.toString("16"), 4) : padZeroes("", 4);
+    let last = rqOffset ? (rqOffset & 0x07) : 0x00;
     last = onChain ? ( last | 0x08 ): last;
     last = newAccount ? ( last | 0x10 ): last;
     const element = buildElement([last.toString("16"), maxFeeStr,
@@ -129,6 +130,37 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, ethAddress, Ax, Ay) {
     return { elements: {e0, e1, e2, e3, e4, e5}, hash: hash(entryBigInt)};
 }
 
+function signRollupTx(walletBabyJub, tx) {
+    const IDEN3_ROLLUP_TX = BigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
+    const data = buildTxData(tx.fromIdx, tx.toIdx, tx.amount, tx.coin, tx.nonce,
+        tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
+
+    const h = hash([
+        IDEN3_ROLLUP_TX,
+        data,
+        tx.rqData || 0
+    ]);
+    const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
+    tx.r8x = signature.R8[0];
+    tx.r8y = signature.R8[1];
+    tx.s = signature.S;
+}
+
+function buildFeeInputSm(feePlan) {
+    if (feePlan == undefined) return ["0", "0"];
+    if (feePlan.length > 16){
+        throw new Error("Not allowed more than 16 coins with fee");
+    }
+    let feePlanCoins = BigInt(0);
+    let feePlanFees = BigInt(0);
+    for (let i = 0; i < feePlan.length; i++) {
+        feePlanCoins = feePlanCoins.add( BigInt(feePlan[i][0]).shl(16*i) );
+        feePlanFees = feePlanFees.add( BigInt(feePlan[i][1]).shl(16*i) );
+    }
+    return [feePlanCoins.toString(), feePlanFees.toString()];
+}
+
+
 module.exports = {
     createOffChainTx,
     hashDeposit,
@@ -137,4 +169,6 @@ module.exports = {
     buildTxData,
     hashOnChain,
     decodeTxData,
+    signRollupTx,
+    buildFeeInputSm,
 };

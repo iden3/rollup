@@ -303,7 +303,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayTokenIds.push(tokenId);
             const tokenIdHex = padZeroes(tokenId.toString("16"), 4);
             const tmpBuff = Buffer.from(tokenIdHex, "hex");
-            tokenIdsBuff = Buffer.concat([tokenIdsBuff, tmpBuff]);
+            tokenIdsBuff = Buffer.concat([tmpBuff, tokenIdsBuff]);
         }
         const tokenIdsBytes = `0x${tokenIdsBuff.toString("hex")}`;
 
@@ -313,7 +313,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayFee.push(fee);
             const feeHex = padZeroes(fee.toString("16"), 4);
             const tmpBuff = Buffer.from(feeHex, "hex");
-            feeBuff = Buffer.concat([feeBuff, tmpBuff]);
+            feeBuff = Buffer.concat([tmpBuff, feeBuff]);
         }
         const feeBytes = `0x${feeBuff.toString("hex")}`;
         // Build number of transactions buffer
@@ -324,7 +324,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayTx.push(rand);
             const nTxHex = padZeroes(rand.toString("16"), 4);
             const tmpBuff = Buffer.from(nTxHex, "hex");
-            nTxBuff = Buffer.concat([nTxBuff, tmpBuff]);
+            nTxBuff = Buffer.concat([tmpBuff, nTxBuff]);
         }
         const nTxBytes = `0x${nTxBuff.toString("hex")}`;
 
