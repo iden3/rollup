@@ -164,12 +164,13 @@ contract RollupHelpersV2 {
    */
   function calcTokenTotalFee(bytes32 tokenIds, bytes32 fees, bytes32 nTxToken, uint nToken)
     internal pure returns (uint, uint) {
+    uint ptr = 256 - ((nToken+1)*16);
     // get number of transaction depending on token
-    uint nTx = uint16(bytes2(nTxToken << nToken*16));
+    uint nTx = uint16(bytes2(nTxToken << ptr));
     // get fee depending on token
-    uint fee = uint16(bytes2(fees << nToken*16));
+    uint fee = uint16(bytes2(fees << ptr));
     // get token id
-    uint tokenId = uint16(bytes2(tokenIds << nToken*16));
+    uint tokenId = uint16(bytes2(tokenIds << ptr));
 
     return (tokenId, nTx*fee);
   }

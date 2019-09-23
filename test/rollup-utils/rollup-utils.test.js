@@ -70,4 +70,16 @@ describe("Rollup helpers js", () => {
         expect(txData.onChain).to.be.equal(onChain);
         expect(txData.newAccount).to.be.equal(newAccount);
     });
+
+    it("Build fee input smart contract", async () => {
+        const feePlan = [[1, 1], [1, 1], [2, 4]];
+        // Retrieves from RollupHelpers
+        const feePlanCoinsHex = "200010001";
+        const feePlanFeesHex = "400010001";
+
+        const res = rollupUtils.buildFeeInputSm(feePlan);
+
+        expect(BigInt(res[0]).toString("16")).to.be.equal(feePlanCoinsHex);
+        expect(BigInt(res[1]).toString("16")).to.be.equal(feePlanFeesHex);
+    });
 });

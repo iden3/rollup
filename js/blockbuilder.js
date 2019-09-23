@@ -111,7 +111,7 @@ module.exports = class BlockBuilder {
 
     getOperatorFee(coin) {
         for (let i=0; i<this.feePlan.length; i++) {
-            if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[1]);
+            if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[i][1]);
         }
         return bigInt[0];
 
