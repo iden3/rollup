@@ -113,8 +113,7 @@ module.exports = class BlockBuilder {
         for (let i=0; i<this.feePlan.length; i++) {
             if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[i][1]);
         }
-        return bigInt[0];
-
+        return bigInt(0);
     }
 
     async _addTx(tx) {

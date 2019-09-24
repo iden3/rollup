@@ -4,7 +4,8 @@ import '../Rollup.sol';
 
 contract RollupTest is Rollup {
 
-  constructor(address _verifier, address _poseidon) Rollup(_verifier, _poseidon) public {}
+  constructor(address _verifier, address _poseidon, uint _maxTx, uint _maxOnChainTx)
+    Rollup(_verifier, _poseidon, _maxTx, _maxOnChainTx) public {}
 
   function forgeBatchTest(
     uint256 oldStateRoot,
@@ -18,19 +19,12 @@ contract RollupTest is Rollup {
     address payable beneficiary
   ) public {
 
-    // If there is no roots commited it means that it will be the genesis block
-    if (stateRoots.length == 0) {
-      require(oldStateRoot == 0, 'old state root does not match current state root');
-    } else {
-      // Verify old state roots
-      require(bytes32(oldStateRoot) == stateRoots[stateRoots.length - 1], 'old state root does not match current state root');
-    }
-
+    require(bytes32(oldStateRoot) == stateRoots[getStateDepth()], 'old state root does not match current state root');
     // Verify on-chain hash
     require(onChainHash == miningOnChainTxsHash, 'on-chain hash does not match current filling on-chain hash');
 
     // Verify all off-chain are commited on the public zk-snark input
-    uint256 offChainTxHash = hashOffChainTx(compressedTxs);
+    uint256 offChainTxHash = hashOffChainTx(compressedTxs, MAX_TX);
     require(offChainTxHash == offChainHash, 'off chain tx does not match its public hash');
 
     // Calculate fees and pay them
@@ -47,7 +41,6 @@ contract RollupTest is Rollup {
 
     // Pay onChain transactions fees
     uint payOnChainFees = totalMinningOnChainFee;
-    // address payable beneficiaryPayable = address(uint160(beneficiary));
     beneficiary.transfer(payOnChainFees);
 
     // Update state roots
@@ -62,8 +55,11 @@ contract RollupTest is Rollup {
     totalMinningOnChainFee = totalFillingOnChainFee;
     totalFillingOnChainFee = 0;
 
+    // Update number of on-chain transactions
+    currentOnChainTx = 0;
+
     // event with all compressed transactions given its batch number
-    emit ForgeBatch(getStateDepth() - 1, compressedTxs);
+    emit ForgeBatch(getStateDepth() - 1, block.number);
   }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
