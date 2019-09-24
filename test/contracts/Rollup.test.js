@@ -11,12 +11,12 @@ const rollupUtils = require("../../rollup-utils/rollup-utils.js");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 
 const { expect } = chai;
-const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
+const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const StakerManager = artifacts.require("../contracts/RollupPoS");
-const RollupTest = artifacts.require("../contracts/test/RollupTestV2");
+const RollupTest = artifacts.require("../contracts/test/RollupTest");
 
 const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupTest.abi);
@@ -130,7 +130,7 @@ contract("Rollup", (accounts) => {
         // Deploy Staker manager
         insStakerManager = await StakerManager.new(insRollupTest.address);
         
-        // init rollup databse
+        // init rollup database
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
         exitTree = await RollupTree.newMemRollupTree();
@@ -290,19 +290,19 @@ contract("Rollup", (accounts) => {
         // Should trigger error since we are try get withdraw from different sender
         try {
             await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
-                BigInt(lastBlock).sub(BigInt(1)).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
+                BigInt(lastBlock).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
                 siblingsId, { from: id2 });
         } catch (error) {
             expect((error.message).includes("invalid proof")).to.be.equal(true);
         }
         // send withdraw transaction
         await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
-            BigInt(lastBlock).sub(BigInt(1)).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
+            BigInt(lastBlock).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
             siblingsId, { from: id1 });
         // Should trigger error since we are repeating the withdraw transaction
         try {
             await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
-                BigInt(lastBlock).sub(BigInt(1)).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
+                BigInt(lastBlock).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
                 siblingsId, { from: id1 });
         } catch (error) {
             expect((error.message).includes("withdraw has been already done")).to.be.equal(true);
@@ -357,7 +357,7 @@ contract("Rollup", (accounts) => {
         const amount = 1;
         const tokenId = 0;
 
-        const resTransfer = await insRollupTest.tranfer(fromId, toId, amount, tokenId,
+        const resTransfer = await insRollupTest.transfer(fromId, toId, amount, tokenId,
             [Ax, Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
 
         // forge empty block

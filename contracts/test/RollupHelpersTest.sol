@@ -10,10 +10,6 @@ contract RollupHelpersTest is RollupHelpers{
     return hashGeneric(inputs);
   }
 
-  function testHashMulti(uint256[] memory inputs) public view returns(uint256) {
-    return multiHash(inputs);
-  }
-
   function testHashNode(uint256 left, uint256 right) public view returns(uint256) {
     return hashNode(left, right);
   }
@@ -33,29 +29,6 @@ contract RollupHelpersTest is RollupHelpers{
     return checkSig(msgHash, rsv);
   }
 
-  function buildEntryDepositTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
-  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
-
-    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
-      Ax, Ay, withdrawAddress, nonce);
-    return (entry.e1,
-            entry.e2,
-            entry.e3,
-            entry.e4,
-            entry.e5);
-  }
-
-  function hashEntryTest(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce
-  ) public view returns (uint256) {
-
-    Entry memory entry = buildEntryDeposit(idBalanceTree, amountDeposit, tokenId,
-      Ax, Ay, withdrawAddress, nonce);
-
-    return hashEntry(entry);
-  }
-
   function buildEntryFeePlanTest(bytes32[2] memory feePlan)
     public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
 
@@ -67,8 +40,8 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function hashOffChainTxTest(bytes memory compressedTxs) public view returns (uint256) {
-    return hashOffChainTx(compressedTxs);
+  function hashOffChainTxTest(bytes memory compressedTxs, uint256 maxTx) public pure returns (uint256) {
+    return hashOffChainTx(compressedTxs, maxTx);
   }
 
   function calcTokenTotalFeeTest(bytes32 tokenIds, bytes32 fee, bytes32 nTxToken, uint nToken)
@@ -76,9 +49,9 @@ contract RollupHelpersTest is RollupHelpers{
     return calcTokenTotalFee(tokenIds, fee, nTxToken, nToken);
   }
 
-  function buildEntryExitLeafTest(uint24 id, uint16 amount, uint16 token, address withAddress)
-    public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
-    Entry memory entry = buildEntryExitLeaf(id, amount, token, withAddress);
+  function buildTreeStateTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
+    address withAddress, uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+    Entry memory entry = buildTreeState(amount, token, Ax, Ay, withAddress, nonce);
     return (entry.e1,
             entry.e2,
             entry.e3,
@@ -86,13 +59,52 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function buildEntryBalanceTreeTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
-    address withAddress, uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
-    Entry memory entry = buildEntryBalanceTree(amount, token, Ax, Ay, withAddress, nonce);
+  function hashTreeStateTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
+    address withAddress, uint32 nonce) public view returns (bytes32) {
+    Entry memory entry = buildTreeState(amount, token, Ax, Ay, withAddress, nonce);
+    return bytes32(hashEntry(entry));
+  }
+
+  function buildTxDataTest(
+    uint24 fromId,
+    uint24 toId,
+    uint16 amount,
+    uint16 token,
+    uint32 nonce,
+    uint16 maxFee,
+    uint8 rqOffset,
+    bool onChain,
+    bool newAccount
+  ) public pure returns (bytes32){
+    return buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onChain, newAccount);
+  }
+
+  function buildOnChainDataTest(
+    uint256 oldOnChainHash,
+    uint256 txData,
+    uint128 loadAmount,
+    address withdrawAddress,
+    uint256 Ax,
+    uint256 Ay
+  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32, bytes32){
+    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
     return (entry.e1,
             entry.e2,
             entry.e3,
             entry.e4,
-            entry.e5);
+            entry.e5,
+            entry.e6);
+  }
+
+  function hashOnChainTest(
+    uint256 oldOnChainHash,
+    uint256 txData,
+    uint128 loadAmount,
+    address withdrawAddress,
+    uint256 Ax,
+    uint256 Ay
+  ) public view returns (uint256){
+    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    return hashEntry(entry);
   }
 }

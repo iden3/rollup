@@ -91,7 +91,7 @@ contract RollupPoSTest is RollupPoS {
         );
     }
 
-    function forgeCommitedBatch(
+    function forgeCommittedBatch(
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
@@ -100,12 +100,12 @@ contract RollupPoSTest is RollupPoS {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
-        // Check that operator has commited data
-        require(commitSlot[slot].commited == true, 'There is no commited data');
-        // update previous hash commited by the operator
+        // Check that operator has committed data
+        require(commitSlot[slot].committed == true, 'There is no committed data');
+        // update previous hash committed by the operator
         op.rndHash = commitSlot[slot].previousHash;
-        // clear commited data
-        commitSlot[slot].commited = false;
+        // clear committed data
+        commitSlot[slot].committed = false;
         // one block has been forged in this slot
         fullFilled[slot] = true;
     }

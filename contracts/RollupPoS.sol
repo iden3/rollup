@@ -73,14 +73,15 @@ contract RollupPoS {
     event removeOperatorLog(address controllerAddress, uint operatorId);
 
     /**
-     * @dev Event called when an operator is removed from the staker tree
+     * @dev Event called when an operator commits data before forging it
      */
-    event dataCommited(uint32 slot, uint blockNumber, bytes compressedTx);
+    event dataCommitted(uint32 slot, uint blockNumber);
 
     /**
      * @dev RollupPoS constructor
      * Set first block where the era will begin
      * Initializes raffle for first era
+     * @param _rollup rollup main smart contract address
      */
     constructor(address _rollup) public {
         require(_rollup != address(0),'Address 0 inserted');
@@ -248,7 +249,7 @@ contract RollupPoS {
      * @dev create operator, update raffles and add it to the staker tree
      * @param controllerAddress operator controller address
      * @param beneficiaryAddress address which will get the operator earnings
-     * @param rndHash hash commited by the operator. Must be revealed its predecessor hash to forge a batch
+     * @param rndHash hash committed by the operator. Must be revealed its predecessor hash to forge a batch
      * @param value amount staked
      * @return index operator
      */
@@ -288,8 +289,8 @@ contract RollupPoS {
 
     /**
      * @dev Add operator to the staker tree where:
-     * Controller address, beneficiary address and staker address are the same address, msg.sender
-     * @param rndHash hash commited by the operator
+     * Controller address, beneficiary address and staker address are the same address ( msg.sender )
+     * @param rndHash hash committed by the operator
      * @return index operator
      */
     function addOperator(bytes32 rndHash) external payable returns(uint) {
@@ -299,10 +300,10 @@ contract RollupPoS {
 
     /**
      * @dev Add operator to the staker tree where:
-     * Controller address and staker address are the same address, msg.sender
-     * Specify address (beneficiary address) to receive operator earnings
+     * Controller address and staker address are the same address ( msg.sender )
+     * Specify address ( beneficiary address ) to receive operator earnings
      * @param beneficiaryAddress beneficiary address
-     * @param rndHash hash commited by the operator
+     * @param rndHash hash committed by the operator
      * @return index operator
      */
     function addOperatorWithDifferentBeneficiary(address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
@@ -316,7 +317,7 @@ contract RollupPoS {
      * controller address and beneficiary address are submitted as parameters
      * @param controllerAddress controller address
      * @param beneficiaryAddress beneficiary address
-     * @param rndHash hash commited by the operator
+     * @param rndHash hash committed by the operator
      * @return index operator
      */
     function addOperatorRelay(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
@@ -460,9 +461,10 @@ contract RollupPoS {
     }
 
     /**
-     * @dev find operator on the staker tree given the input number
+     * @dev find operator on the staker tree given an input number
      * @param nodeId index node
      * @param inputNum input number
+     * @return operator id
      */
     function nodeRaffle(uint32 nodeId, uint64 inputNum) public view returns(uint32 winner) {
         IntermediateNode storage N = nodes[nodeId];
@@ -517,17 +519,17 @@ contract RollupPoS {
     }
 
     /**
-     * @dev function to report an operator which has not commited a batch
-     * it that case, staked amount is burned and the slasher gets a 10% of the satked amount
+     * @dev function to report an operator which has not committed a batch
+     * in that case, staked amount is burned and the slasher gets a 10% of the staked amount
      * An operator can be slashed if:
      * - no block has been forged during a slot
-     * - it has commited data but it has not been forged
+     * - it has committed data but it has not been forged
      * @param slot slot index
      */
     function slash(uint32 slot) external {
         require(slot < currentSlot(), 'Slot requested still does not exist');
-        require(fullFilled[slot] == false || commitSlot[slot].commited == true,
-            'Batch has been commited and forged during this slot');
+        require(fullFilled[slot] == false || commitSlot[slot].committed == true,
+            'Batch has been committed and forged during this slot');
 
         uint32 opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
@@ -542,14 +544,21 @@ contract RollupPoS {
         msg.sender.transfer(reward);
     }
 
+    // mapping to control data committed by slot
     mapping (uint => commitData) commitSlot;
 
+    // Information regarding data committed
     struct commitData {
         bytes32 previousHash;
-        bool commited;
+        bool committed;
         bytes compressedTx;
     }
 
+    /**
+     * @dev operator commits data that must be forged afterwards
+     * @param previousRndHash previous hash to match current hash
+     * @param compressedTx data committed by the operator. Represents off-chain transactions
+     */
     function commitBatch(
         bytes32 previousRndHash,
         bytes calldata compressedTx
@@ -559,20 +568,28 @@ contract RollupPoS {
         Operator storage op = operators[opId];
         // operator must know data to generate current hash
         require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash,
-            'hash revelead not match current commited hash');
+            'hash revelead not match current committed hash');
         // Check if deadline has been achieved to not commit any more data
         uint blockDeadline = getBlockBySlot(slot) + SLOT_DEADLINE;
         require(getBlockNumber() < blockDeadline, 'not possible to commit data afer deadline');
         // Check there is no data to be forged
-        require(commitSlot[slot].commited == false, 'there is data which is not forged');
-        // Store data commited
-        commitSlot[slot].commited = true;
+        require(commitSlot[slot].committed == false, 'there is data which is not forged');
+        // Store data committed
+        commitSlot[slot].committed = true;
         commitSlot[slot].compressedTx = compressedTx;
         commitSlot[slot].previousHash = previousRndHash;
-        emit dataCommited(slot, getBlockNumber(), compressedTx);
+        emit dataCommitted(slot, getBlockNumber());
     }
 
-    function forgeCommitedBatch(
+    /**
+     * @dev forge a batch given the current committed data
+     * it forwards the batch directly to rollup main contract
+     * @param proofA zk-snark input
+     * @param proofB zk-snark input
+     * @param proofC zk-snark input
+     * @param input public zk-snark inputs
+     */
+    function forgeCommittedBatch(
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
@@ -581,46 +598,22 @@ contract RollupPoS {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
-        // Check that operator has commited data
-        require(commitSlot[opId].commited == true, 'There is no commited data');
+        // Check that operator has committed data
+        require(commitSlot[slot].committed == true, 'There is no committed data');
         rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, commitSlot[slot].compressedTx);
-        // update previous hash commited by the operator
+        // update previous hash committed by the operator
         op.rndHash = commitSlot[slot].previousHash;
-        // clear commited data
-        commitSlot[slot].commited = false;
+        // clear committed data
+        commitSlot[slot].committed = false;
         // one block has been forged in this slot
         fullFilled[slot] = true;
     }
 
     /**
-     * @dev function called to forge batch
-     * This function will be called Rollup forge batch function
-     * sender must reveal previous hash of the current commited hash to proof operator ownership
-     * it returns the beneficiary address of the operator
-     * @param previousRndHash previous hash that operator commited on current hash
-     * @param proofA zk-snark input
-     * @param proofB zk-snark input
-     * @param proofC zk-snark input
-     * @param input public zk-snark inputs
-     * @param compressedTxs data availability to maintain 'balance tree'
+     * @dev Retrieve the first block number for a gicen slot
+     * @param slot slot number
+     * @return block number
      */
-    function forgeBatchPoS(
-      bytes32 previousRndHash,
-      uint[2] calldata proofA,
-      uint[2][2] calldata proofB,
-      uint[2] calldata proofC,
-      uint[8] calldata input,
-      bytes calldata compressedTxs
-      ) external {
-        uint32 slot = currentSlot();
-        uint opId = getRaffleWinner(slot);
-        Operator storage op = operators[opId];
-        require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash, 'hash revelead not match current commited hash');
-        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedTxs);
-        op.rndHash = previousRndHash;
-        fullFilled[slot] = true;
-    }
-
     function getBlockBySlot(uint32 slot) public view returns (uint) {
         return (genesisBlock + slot*BLOCKS_PER_SLOT);
     }
