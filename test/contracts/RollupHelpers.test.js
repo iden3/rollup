@@ -7,6 +7,7 @@
 const ethUtil = require("ethereumjs-util");
 const chai = require("chai");
 const { smt } = require("circomlib");
+const crypto = require("crypto");
 
 const { expect } = chai;
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");

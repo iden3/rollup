@@ -264,6 +264,36 @@
     "constant": false,
     "inputs": [
       {
+        "name": "fromId",
+        "type": "uint64"
+      },
+      {
+        "name": "toId",
+        "type": "uint64"
+      },
+      {
+        "name": "amount",
+        "type": "uint16"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint32"
+      },
+      {
+        "name": "babyPubKey",
+        "type": "uint256[2]"
+      }
+    ],
+    "name": "transfer",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
         "name": "idBalanceTree",
         "type": "uint64"
       },

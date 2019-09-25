@@ -3,7 +3,7 @@
  "walletBabyjub": "./src/resources/prova.json",
  "operator": "http://127.0.0.1:9000",
  "walletEth": "./src/resources/ethWallet.json",
- "address": "0xDF2Fa48E01a98235bD463F66ADE2Ba795B9f0363",
+ "address": "0x47f65C4Ce4Ea42305838e58861Cf0Dd6F5292145",
  "nodeEth": "http://localhost:8545",
- "abi": "./src/resources/rollupabi.js"
+ "abi": "./src/resources/rollupabi.json"
 }
