@@ -61,8 +61,8 @@ class EthereumWallet {
 
 /**
  * To verify ethereum signature
- * @param {String} publicKey 
- * @param {String} messStr 
+ * @param {String} publicKey
+ * @param {String} messStr
  * @param {String} signatureHex
  * @returns {Boolean}
  */
