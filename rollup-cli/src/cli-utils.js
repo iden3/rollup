@@ -1,4 +1,3 @@
- 
 const { send } = require('./actions/offchain/send.js');
 const { deposit } = require('./actions/onchain/depositV2.js');
 const { depositOnTop } = require('./actions/onchain/depositOnTopV2.js');
@@ -22,12 +21,12 @@ async function depositOnTopTx(node, address, amount, tokenid, walletEth, passStr
   console.log(JSON.stringify(response));
 }
 
-async function withdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi) {
+async function withdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi, operator) {
   const response = await withdraw(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi, operator);
   console.log(JSON.stringify(response));
 }
 
-async function forceWithdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi) {
+async function forceWithdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi, operator) {
   const response = await forceWithdraw(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi, operator);
   console.log(JSON.stringify(response));
 }
@@ -37,5 +36,5 @@ module.exports = {
   depositTx,
   depositOnTopTx,
   withdrawTx,
-  forceWithdrawTx
+  forceWithdrawTx,
 };

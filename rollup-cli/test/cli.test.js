@@ -7,7 +7,7 @@ const pass = 'foo';
 
 const { expect } = chai;
 
-/*describe('PRINT KEYS', () => {
+describe('PRINT KEYS', () => {
   it('printkeys command', (done) => {
     const out = process.exec('cd ..; node cli.js printkeys');
     out.stdout.on('data', (data) => {
@@ -139,7 +139,7 @@ describe('CREATE KEYS IMPORT', () => {
       done();
     });
   });
-});*/
+});
 
 describe('ONCHAINTX deposit', () => {
   it('onchaintx deposit default config.json', (done) => {
@@ -187,35 +187,98 @@ describe('ONCHAINTX deposit', () => {
   }); */
 });
 
-/*describe('ONCHAINTX depositOnTop', () => {
-  it('onchaintx deposit default config.json', (done) => {
+describe('ONCHAINTX depositOnTop', () => {
+  it('onchaintx depositontop default config.json', (done) => {
     const out = process.exec(`cd ..; node cli.js onchaintx --type depositontop --pass ${pass} --amount 2 --tokenid 0`);
     out.stdout.on('data', (data) => {
       expect(data).to.be.equal('depositOnTopTx\n');
       done();
     });
   });
+  it('onchaintx depositontop error pass', (done) => {
+    const out = process.exec('cd ..; node cli.js onchaintx --type deposit --amount 2 --tokenid 0');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it('onchaintx depositontop error amount', (done) => {
+    const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --tokenid 0`);
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it('onchaintx depositontop error token id', (done) => {
+    const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --amount 2`);
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
 });
 
 describe('ONCHAINTX withdraw', () => {
-  it('onchaintx deposit default config.json', (done) => {
+  it('onchaintx withdraw default config.json', (done) => {
     const out = process.exec(`cd ..; node cli.js onchaintx --type withdraw --pass ${pass} --amount 2 --tokenid 0`);
     out.stdout.on('data', (data) => {
       expect(data).to.be.equal('withdrawTx\n');
       done();
     });
   });
+  it('onchaintx withdraw error pass', (done) => {
+    const out = process.exec('cd ..; node cli.js onchaintx --type deposit --amount 2 --tokenid 0');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it('onchaintx withdraw error amount', (done) => {
+    const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --tokenid 0`);
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it('onchaintx withdraw error token id', (done) => {
+    const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --amount 2`);
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
 });
 
 describe('ONCHAINTX forceWithdraw', () => {
-  it('onchaintx deposit default config.json', (done) => {
+  it('onchaintx forcewithdraw default config.json', (done) => {
     const out = process.exec(`cd ..; node cli.js onchaintx --type forceWithdraw --pass ${pass} --amount 2 --tokenid 0`);
     out.stdout.on('data', (data) => {
       expect(data).to.be.equal('forceWithdrawTx\n');
       done();
     });
   });
-});*/
+  it('onchaintx forcewithdraw error pass', (done) => {
+    const out = process.exec('cd ..; node cli.js onchaintx --type deposit --amount 2 --tokenid 0');
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it('onchaintx forcewithdraw error amount', (done) => {
+    const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --tokenid 0`);
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+  it('onchaintx forcewithdraw error token id', (done) => {
+    const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --amount 2`);
+    out.on('exit', (code) => {
+      expect(code).to.not.be.equal(0);
+      done();
+    });
+  });
+});
 
 describe('OFFCHAINTX', () => {
   it('offchaintx send', (done) => {
