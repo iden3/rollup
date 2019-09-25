@@ -1,8 +1,6 @@
 const chai = require('chai');
-const deposit= require('../src/actions/onchain/deposit.js');
 const walletEthPathDefault="../src/resources/wallet.json"
 const { expect } = chai;
-const rollupabi = require ('../src/resources/rollupabi.js');
 const ethers = require('ethers');
 const fs = require('fs');
 const config = "../src/resources/config.json"
@@ -23,6 +21,8 @@ contract("Rollup", async (accounts) => {
     let insVerifier;
     let walletEth;
 
+    const maxTx = 10;
+    const maxOnChainTx = 3;
   const tokenInitialAmount = 100;
   const {
       0: owner,
@@ -50,7 +50,8 @@ contract("Rollup", async (accounts) => {
       insVerifier = await Verifier.new();
 
       // Deploy Rollup test
-      insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address);
+      insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
+        maxTx, maxOnChainTx);
 
       walletEth = await ethers.Wallet.fromEncryptedJson(JSON.stringify(JSON.parse(fs.readFileSync(walletEthPathDefault, "utf8")).ethWallet), "foo");
       
