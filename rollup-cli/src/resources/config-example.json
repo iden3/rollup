@@ -1,8 +1,6 @@
 {
   "wallet": "./src/resources/wallet.json",
-  "walletBabyjub": "./src/resources/babyjubWallet.json",
   "operator": "http://127.0.0.1:9000",
-  "walletEth": "./src/resources/ethWallet.json",
   "address": "0x3E03394a9d383312091a9c30BCe1354Eef737664",
   "nodeEth": "http://localhost:8545",
   "abi": "./src/resources/rollupabi.js"
