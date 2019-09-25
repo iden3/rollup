@@ -22,12 +22,6 @@ async function depositOnTop(urlNodo, addressSC, balance, tokenId, walletEthJson,
         return new Promise ( function (resolve, reject){
 
             axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey.toString()}`).then(async function(response){
-
-                // function depositOnTop(
-                //   uint64 idBalanceTree,
-                //   uint128 loadAmount,
-                //   uint32 tokenId,
-                //   uint48 nonce
                 let receipt = await contractWithSigner.depositOnTop(response.data.value.id, balance, tokenId, overrides);//response.data.value.nonce,
                 resolve(receipt);
             })

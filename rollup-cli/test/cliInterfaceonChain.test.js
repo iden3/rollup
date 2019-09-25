@@ -5,7 +5,6 @@
 /* global BigInt */
 
 const chai = require("chai");
-const deposit= require("../src/actions/onchain/deposit.js");
 const depositOnTop= require("../src/actions/onchain/depositOnTop.js");
 const { withdraw }= require("../src/actions/onchain/withdraw.js");
 const { forceWithdraw }= require("../src/actions/onchain/forceWithdraw.js");
@@ -25,7 +24,8 @@ const RollupTest = artifacts.require("../../../../contracts/test/RollupTest");
 const TokenRollup = artifacts.require("../../../../contracts/test/TokenRollup");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
-
+const process = require("child_process");
+const config = "../src/resources/config.json";
 
 function buildInputSm(bb, beneficiary) {
     return {
@@ -76,6 +76,13 @@ contract("Rollup", async (accounts) => {
             
         await rollupDB.consolidate(block);
        
+
+        let actualConfig = {};
+        if (fs.existsSync(config)){
+            actualConfig = JSON.parse(fs.readFileSync(config, "utf8"));
+        }
+        actualConfig.address = insRollupTest.address;
+        fs.writeFileSync(config, JSON.stringify(actualConfig,null,1), "utf-8");
     }
     function checkBatchNumber(events) {
         events.forEach(elem => {
@@ -193,10 +200,20 @@ contract("Rollup", async (accounts) => {
        
         //expect(sentTx.logs[0].event).to.be.equal("Approval");
      
-        let resDeposit= await deposit.deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId, 
-            fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi);
+        const promise = new Promise (function(resolve){
+            let out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId}`);
+            out.stdout.on("data", (data) => {
+                console.log({data});
+                console.log(JSON.parse(data));
+                resolve(data);
+            });
+        });
+        await promise;
+        // let resDeposit= await deposit.deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId, 
+        //     fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi);
 
-        let receip = await resDeposit.wait();
+        //let receip = await resDeposit.wait();
+
         //console.log("holoo",receip.events.pop())
         //expect(resDeposit.logs[0].event).to.be.equal("Deposit");
 
@@ -209,8 +226,10 @@ contract("Rollup", async (accounts) => {
         await forgeBlock();
 
         // Forge block with deposit transaction
-        let event = receip.events.pop();
-        await forgeBlock([event]);
+
+        // let event = receip.events.pop();
+        //  await forgeBlock([event]);
+
         //await forgeBlock([resDeposit.logs[0]]);
         // create balance tree and add leaf
         

@@ -2,7 +2,7 @@ const ethers = require("ethers");
 const { BabyJubWallet } = require("../../../../rollup-utils/babyjub-wallet");
 const axios = require("axios");
 
-async function forceWithdrawV2(urlNodo, addressSC, balance, tokenId, walletEthJson, BabyjubJson, password, abi, UrlOperator)  {
+async function forceWithdraw(urlNodo, addressSC, balance, tokenId, walletEthJson, BabyjubJson, password, abi, UrlOperator)  {
 
     //console.log({urlNodo}, {addressSC}, {balance}, {tokenId}, {walletEthJson}, {BabyjubJson}, {password}, {abi})
     const provider = new ethers.providers.JsonRpcProvider(urlNodo);
@@ -47,7 +47,7 @@ async function forceWithdrawV2(urlNodo, addressSC, balance, tokenId, walletEthJs
 }
   
 module.exports = {
-    forceWithdrawV2
+    forceWithdraw
 };
 
   
