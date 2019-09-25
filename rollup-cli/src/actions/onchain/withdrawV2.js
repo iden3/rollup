@@ -34,6 +34,7 @@ async function withdraw(urlNodo, addressSC, balance, tokenId, walletEthJson, Bab
           //   uint32 tokenId,
           //   uint48 nonce
           
+          console.log({sibilings})
             let receipt = await contractWithSigner.withdraw(response.data.value.id, balance, tokenId, response.data.value.exitRoot,
                 response.data.value.nonce, pubKeyBabyjub, response.data.value.sibilings, overrides)
             resolve(receipt)

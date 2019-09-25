@@ -7,13 +7,14 @@
 const ethUtil = require("ethereumjs-util");
 const chai = require("chai");
 const { smt } = require("circomlib");
+const crypto = require("crypto");
 
 const { expect } = chai;
-const poseidonUnit = require("circomlib/src/poseidon_gencontract");
-const poseidonJs = require("circomlib/src/poseidon");
+const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
+const poseidonJs = require("../../node_modules/circomlib/src/poseidon.js");
 const utils = require("../../rollup-utils/rollup-utils");
 const treeUtils = require("../../rollup-utils/rollup-tree-utils");
-const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTest");
+const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTestV2");
 
 const MAX_LEVELS = 24;
 
@@ -302,7 +303,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayTokenIds.push(tokenId);
             const tokenIdHex = padZeroes(tokenId.toString("16"), 4);
             const tmpBuff = Buffer.from(tokenIdHex, "hex");
-            tokenIdsBuff = Buffer.concat([tmpBuff, tokenIdsBuff]);
+            tokenIdsBuff = Buffer.concat([tokenIdsBuff, tmpBuff]);
         }
         const tokenIdsBytes = `0x${tokenIdsBuff.toString("hex")}`;
 
@@ -312,7 +313,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayFee.push(fee);
             const feeHex = padZeroes(fee.toString("16"), 4);
             const tmpBuff = Buffer.from(feeHex, "hex");
-            feeBuff = Buffer.concat([tmpBuff, feeBuff]);
+            feeBuff = Buffer.concat([feeBuff, tmpBuff]);
         }
         const feeBytes = `0x${feeBuff.toString("hex")}`;
         // Build number of transactions buffer
@@ -323,7 +324,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayTx.push(rand);
             const nTxHex = padZeroes(rand.toString("16"), 4);
             const tmpBuff = Buffer.from(nTxHex, "hex");
-            nTxBuff = Buffer.concat([tmpBuff, nTxBuff]);
+            nTxBuff = Buffer.concat([nTxBuff, tmpBuff]);
         }
         const nTxBytes = `0x${nTxBuff.toString("hex")}`;
 
@@ -365,12 +366,12 @@ contract("RollupHelpers functions", (accounts) => {
         const nonce = 4;
         const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
         const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const ethAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
 
         const res = await insHelpers.buildTreeStateTest(amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), ethAddress, nonce);
+            Ay.toString(), withdrawAddress, nonce);
         
-        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, BigInt(ethAddress), nonce);
+        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, BigInt(withdrawAddress), nonce);
 
         expect(res[0]).to.be.equal(infoLeaf.elements.e0);
         expect(res[1]).to.be.equal(infoLeaf.elements.e1);
@@ -379,7 +380,7 @@ contract("RollupHelpers functions", (accounts) => {
         expect(res[4]).to.be.equal(infoLeaf.elements.e4);
 
         const resHash = await insHelpers.hashTreeStateTest(amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), ethAddress, nonce);
+            Ay.toString(), withdrawAddress, nonce);
         expect(BigInt(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
     });
 

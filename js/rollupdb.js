@@ -7,13 +7,17 @@ class RollupDB {
         this.db = db;
         this.lastBlock = lastBlock;
         this.stateRoot = stateRoot;
+        console.log({lastBlock});
+        console.log("hola123", this.lastBlock);
     }
 
     async buildBlock(maxNTx, nLevels) {
+        console.log(this);
         return new BlockBuilder(this.db, this.lastBlock+1, this.stateRoot, maxNTx, nLevels);
     }
 
     async consolidate(bb) {
+
         if (bb.blockNumber != this.lastBlock+1) {
             throw new Error("Updating the wrong block");
         }
@@ -40,11 +44,13 @@ class RollupDB {
 module.exports = async function(db) {
     const master = await db.get(0);
     if (!master) {
+        console.log("jaja");
         return new RollupDB(db, 0, bigInt(0));
     }
     const block = await db.get(master[0]);
     if (!block) {
         throw new Error("Database corrupted");
     }
+    console.log({master});
     return new RollupDB(db, master[0], block[0]);
 };
