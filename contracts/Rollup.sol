@@ -74,11 +74,22 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // Flag to determine if the mechanism to forge batch has been initialized
     bool initialized = false;
 
+    // Input snark definition
+    uint256 constant oldStateRootInput = 0;
+    uint256 constant newStateRootInput = 1;
+    uint256 constant newExitRootInput = 2;
+    uint256 constant onChainHashInput = 3;
+    uint256 constant offChainHashInput = 4;
+    uint256 constant feePlanCoinsInput = 5;
+    uint256 constant feePlanFeesInput = 6;
+    uint256 constant nTxperTokenInput = 7;
+
     /**
      * @dev Event called when any on-chain transaction has benn done
      * contains all data required for the operator to update balance tree
     */
-    event OnChainTx(uint batchNumber, bytes32 txData, uint128 loadAmount, address ethAddress, uint256 Ax, uint256 Ay);
+    event OnChainTx(uint batchNumber, bytes32 txData, uint128 loadAmount,
+        address ethAddress, uint256 Ax, uint256 Ay);
 
     /**
      * @dev Event called when a batch is forged
@@ -110,7 +121,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param _maxTx maximum rollup transactions, either on-chain or off-chain
      * @param _maxOnChainTx maximum rollup on-chain transactions
      */
-    constructor(address _verifier, address _poseidon, uint _maxTx, uint _maxOnChainTx) RollupHelpers(_poseidon) public {
+    constructor(address _verifier, address _poseidon, uint _maxTx,
+        uint _maxOnChainTx) RollupHelpers(_poseidon) public {
         verifier = VerifierInterface(_verifier);
         MAX_ONCHAIN_TX = _maxOnChainTx;
         MAX_TX = _maxTx;
@@ -220,7 +232,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
         // build txData for deposit on top
-        bytes32 txDataDepositOnTop = buildTxData(lastBalanceTreeIndex, idBalanceTree, uint16(loadAmount), tokenId, 0, 0, 0, true, true);
+        bytes32 txDataDepositOnTop = buildTxData(lastBalanceTreeIndex, idBalanceTree,
+            uint16(loadAmount), tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDepositOnTop), loadAmount, address(0), [uint(0), uint(0)], msg.value);
         lastBalanceTreeIndex++;
     }
@@ -271,7 +284,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(msg.sender == treeInfo[idBalanceTree].ethAddress, 'Sender does not match identifier balance tree');
         require(idBalanceTree < lastBalanceTreeIndex, 'identifier leaf does not exist on balance tree');
         // build txData for withdraw
-        bytes32 txDataWithdraw = buildTxData(idBalanceTree, 0, amount, treeInfo[idBalanceTree].tokenId, 0, 0, 0, true, false);
+        bytes32 txDataWithdraw = buildTxData(idBalanceTree, 0, amount, treeInfo[idBalanceTree].tokenId,
+            0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataWithdraw), 0, msg.sender, babyPubKey, msg.value);
     }
 
@@ -337,41 +351,34 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint[8] calldata input,
         bytes calldata compressedTxs
     ) external isForgeBatch {
-        // Public parameters of the circuit
-        // input[0] ==> old state root
-        // input[1] ==> new state root
-        // input[2] ==> new exit root
-        // input[3] ==> on chain hash
-        // input[4] ==> off chain hash
-        // input[5] ==> fee plan[0]
-        // input[6] ==> fee plan[1]
-        // input[7] ==> nTxperToken
-
         // Verify old state roots
-        require(bytes32(input[0]) == stateRoots[getStateDepth()], 'old state root does not match current state root');
+        require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
+            'old state root does not match current state root');
 
         // Verify on-chain hash
-        require(input[3] == miningOnChainTxsHash, 'on-chain hash does not match current filling on-chain hash');
+        require(input[onChainHashInput] == miningOnChainTxsHash,
+            'on-chain hash does not match current filling on-chain hash');
 
         // Verify all off-chain are committed on the public zk-snark input
         uint256 offChainTxHash = hashOffChainTx(compressedTxs, MAX_TX);
-        require(offChainTxHash == input[4], 'off chain tx does not match its public hash');
+        require(offChainTxHash == input[offChainHashInput],
+            'off chain tx does not match its public hash');
 
         // Verify zk-snark circuit
-        require(verifier.verifyProof(proofA, proofB, proofC, input) == true, 'zk-snark proof is not valid');
+        require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
+            'zk-snark proof is not valid');
 
         // Calculate fees and pay them
-        bytes32[2] memory feePlan = [bytes32(input[5]), bytes32(input[6])];
-        bytes32 nTxPerToken = bytes32(input[7]);
+        bytes32[2] memory feePlan = [bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])];
+        bytes32 nTxPerToken = bytes32(input[nTxperTokenInput]);
 
         for (uint i = 0; i < 16; i++) {
-            uint tokenId;
-            uint totalTokenFee;
-            (tokenId, totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
+            (uint tokenId, uint totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
             bytes32(nTxPerToken), i);
 
             if(totalTokenFee != 0) {
-                require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee), 'Fail ERC20 withdraw');
+                require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee),
+                    'Fail ERC20 withdraw');
             }
         }
 
