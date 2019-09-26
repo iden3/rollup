@@ -2,7 +2,7 @@ const ethers = require("ethers");
 const { BabyJubWallet } = require("../../../../rollup-utils/babyjub-wallet");
 const axios = require("axios");
 
-async function forceWithdraw(urlNodo, addressSC, balance, tokenId, walletEthJson, BabyjubJson, password, abi, UrlOperator)  {
+async function forceWithdraw(urlNodo, addressSC, balance, walletEthJson, BabyjubJson, password, abi, UrlOperator)  {
 
     const provider = new ethers.providers.JsonRpcProvider(urlNodo);
     let wallet =await ethers.Wallet.fromEncryptedJson(walletEthJson, password);
@@ -36,10 +36,8 @@ async function forceWithdraw(urlNodo, addressSC, balance, tokenId, walletEthJson
 
     }
     catch (error) {
-        console.log("error.... ", error); //fires as the contract reverted the payment
+        console.log("error.... ", error);
     }
-    
-    //uint16 depositAmount,uint16 tokenId, uint256[2] babyPubKey, address withdrawAddress
          
 }
   

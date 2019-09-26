@@ -24,7 +24,6 @@ app.post("/offchain/send", (req, res) => {
     };
     if (send.IdFrom === undefined || send.idTo === undefined || send.amount === undefined||send.sign ===undefined||send.nonce ===undefined
     ||send.coin ===undefined||send.userFee ===undefined) {
-        console.log(send.coin, send.userFee);
         res.sendStatus(500);
         console.log("NOPE");
     } else {

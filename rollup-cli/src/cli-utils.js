@@ -4,8 +4,8 @@ const { depositOnTop } = require("./actions/onchain/depositOnTop.js");
 const { withdraw } = require("./actions/onchain/withdraw.js");
 const { forceWithdraw } = require("./actions/onchain/forceWithdraw.js");
 
-async function sendTx(urlOperator, to, amount, walletBabyjub, passString) {
-    const response = await send(urlOperator, to, amount, walletBabyjub, passString);
+async function sendTx(urlOperator, to, amount, walletBabyjub, passString, tokenId, userFee) {
+    const response = await send(urlOperator, to, amount, walletBabyjub, passString, tokenId, userFee);
     console.log(JSON.stringify(response));
 }
 
@@ -27,8 +27,8 @@ async function withdrawTx(node, address, amount, tokenid, walletEth, passString,
     console.log(JSON.stringify(receip.events.pop()));
 }
 
-async function forceWithdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi, operator) {
-    const response = await forceWithdraw(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi, operator);
+async function forceWithdrawTx(node, address, amount, walletEth, passString, walletBabyjub, abi, operator) {
+    const response = await forceWithdraw(node, address, amount, walletEth, walletBabyjub, passString, abi, operator);
     const receip = await response.wait();
     console.log(JSON.stringify(receip.events.pop()));
 }

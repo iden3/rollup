@@ -62,6 +62,8 @@ offchainTx command
     Note: send to 0 makes a withdraw transaction
   --amount or -a <amount>
     Amount to send or withdraw
+  --fee <fee>
+
   --paramsTx <parameter file>
     Contains all necessary parameters to perform transacction
     Parameters would be different depending on transaction type
@@ -110,13 +112,6 @@ onchainTx command
     .alias("mn", "mnemonic")
     .alias("we", "walleteth")
     .alias("wbb", "walletbabyjub")
-// .alias('import')
-// .alias('address')
-// .alias('to')
-// .alias('from')
-// .alias('param')
-// .alias('v', 'value')
-// .alias('configjson')
     .epilogue("Rollup client cli tool");
 
 const pathName = (argv.path) ? argv.path : "nopath";
@@ -132,6 +127,7 @@ const param = (argv.param) ? argv.param : "noparam";
 const value = (argv.value) ? argv.value : "novalue";
 const configjson = (argv.paramsTx) ? argv.paramsTx : configJsonDefault;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : "notokenid";
+const userFee = argv.fee ? argv.fee : "nouserfee";
 
 (async () => {
     let actualConfig = {};
@@ -295,10 +291,6 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : "notokenid
                 } else if (amount === -1) {
                     console.log("It is necessary to specify amount\n\n");
                     throw new Error("No amount was submitted");
-                } else if (tokenId === "notokenid") {
-                    console.log(tokenId);
-                    console.log("It is necessary to specify token id\n\n");
-                    throw new Error("No token id was submitted");
                 } else if (actualConfig.nodeEth === undefined) {
                     console.log("It is necessary to specify the node with setparam command\n\n");
                     throw new Error("No node was submitted");
@@ -316,21 +308,34 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : "notokenid
                     const wallet = fs.readFileSync(actualConfig.wallet, "utf-8");
                     const walletEth = JSON.stringify(JSON.parse(wallet).ethWallet);
                     const walletBabyjub = JSON.stringify(JSON.parse(wallet).babyjubWallet);
-                    if (type.toUpperCase() === "DEPOSIT") {
-                        await depositTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi);
-                    } else {
+                    if (type.toUpperCase() === "FORCEWITHDRAW") {
                         if (actualConfig.operator === undefined) {
                             console.log("It is necessary to specify the operator url with setparam command\n\n");
                             throw new Error("No operator was submitted");
                         } else {
-                            if (type.toUpperCase() === "DEPOSITONTOP") {
-                                await depositOnTopTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi, actualConfig.operator);
-                            } else if (type.toUpperCase() === "WITHDRAW") {
-                                await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi, actualConfig.operator);
-                            } else if (type.toUpperCase() === "FORCEWITHDRAW") {
-                                await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi, actualConfig.operator);
+                            await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount, walletEth, passString, walletBabyjub, abi, actualConfig.operator);
+                        }
+                    } else {
+                        if (tokenId === "notokenid") {
+                            console.log(tokenId);
+                            console.log("It is necessary to specify token id\n\n");
+                            throw new Error("No token id was submitted");
+                        } else {
+                            if (type.toUpperCase() === "DEPOSIT") {
+                                await depositTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi);
                             } else {
-                                throw new Error("Invalid type");
+                                if (actualConfig.operator === undefined) {
+                                    console.log("It is necessary to specify the operator url with setparam command\n\n");
+                                    throw new Error("No operator was submitted");
+                                } else {
+                                    if (type.toUpperCase() === "DEPOSITONTOP") {
+                                        await depositOnTopTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi, actualConfig.operator);
+                                    } else if (type.toUpperCase() === "WITHDRAW") {
+                                        await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, walletEth, passString, walletBabyjub, abi, actualConfig.operator);
+                                    } else {
+                                        throw new Error("Invalid type");
+                                    }
+                                }
                             }
                         }
                     }
@@ -351,6 +356,12 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : "notokenid
                 } else if (to === "norecipient") {
                     console.log("It is necessary to specify recipient\n\n");
                     throw new Error("No recipient was submitted");
+                } else if (tokenId === "notokenid") {
+                    console.log("It is necessary to specify token id\n\n");
+                    throw new Error("No token id was submitted");
+                } else if (userFee === "nouserfee") {
+                    console.log("It is necessary to specify fee\n\n");
+                    throw new Error("No fee was submitted");
                 } else if (actualConfig.wallet === undefined) {
                     console.log("It is necessary to specify the wallet url with setparam command\n\n");
                     throw new Error("No wallet was submitted");
@@ -360,7 +371,7 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : "notokenid
                 } else {
                     const wallet = fs.readFileSync(actualConfig.wallet, "utf-8");
                     const walletBabyjub = JSON.stringify(JSON.parse(wallet).babyjubWallet);
-                    await sendTx(actualConfig.operator, to, amount, walletBabyjub, passString);
+                    await sendTx(actualConfig.operator, to, amount, walletBabyjub, passString, tokenId, userFee);
                 }
             } else {
                 throw new Error("Invalid type");

@@ -3,8 +3,7 @@ const axios = require("axios");
 
 function send(UrlOperator, idTo, amount, BabyjubJson, password, tokenId, userFee) {
 
-    let walletBaby = BabyJubWallet.fromEncryptedJson(BabyjubJson, password);
-  
+    let walletBaby = BabyJubWallet.fromEncryptedJson(BabyjubJson, password);  
 
     return new Promise (function (resolve, reject){
 
