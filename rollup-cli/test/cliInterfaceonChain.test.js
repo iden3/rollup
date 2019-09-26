@@ -77,12 +77,7 @@ contract("Rollup", async (accounts) => {
         await rollupDB.consolidate(block);
        
 
-        let actualConfig = {};
-        if (fs.existsSync(config)){
-            actualConfig = JSON.parse(fs.readFileSync(config, "utf8"));
-        }
-        actualConfig.address = insRollupTest.address;
-        fs.writeFileSync(config, JSON.stringify(actualConfig,null,1), "utf-8");
+      
     }
     function checkBatchNumber(events) {
         events.forEach(elem => {
@@ -143,6 +138,12 @@ contract("Rollup", async (accounts) => {
         abi = JSON.parse(fs.readFileSync(rollupabiPath, "utf8"));
         UrlOperator ="http://127.0.0.1:9000";
         addressSC= insRollupTest.address;
+        let actualConfig = {};
+        if (fs.existsSync(config)){
+            actualConfig = JSON.parse(fs.readFileSync(config, "utf8"));
+        }
+        actualConfig.address = insRollupTest.address;
+        fs.writeFileSync(config, JSON.stringify(actualConfig,null,1), "utf-8");
      
     });
 
@@ -203,12 +204,11 @@ contract("Rollup", async (accounts) => {
         const promise = new Promise (function(resolve){
             let out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId}`);
             out.stdout.on("data", (data) => {
-                console.log({data});
-                console.log(JSON.parse(data));
-                resolve(data);
+                console.log("eventajj",JSON.parse(data));
+                resolve(JSON.parse(data));
             });
         });
-        await promise;
+        let event = await promise;
         // let resDeposit= await deposit.deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId, 
         //     fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi);
 
@@ -228,7 +228,7 @@ contract("Rollup", async (accounts) => {
         // Forge block with deposit transaction
 
         // let event = receip.events.pop();
-        //  await forgeBlock([event]);
+        await forgeBlock([event]);
 
         //await forgeBlock([resDeposit.logs[0]]);
         // create balance tree and add leaf
@@ -257,8 +257,17 @@ contract("Rollup", async (accounts) => {
         let signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        let resDeposit= await depositOnTop.depositOnTop(web3.currentProvider.host, addressSC, onTopAmount, tokenId, 
-            fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi, UrlOperator);
+        // let resDeposit= await depositOnTop.depositOnTop(web3.currentProvider.host, addressSC, onTopAmount, tokenId, 
+        //     fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi, UrlOperator);
+
+        const promise = new Promise (function(resolve){
+            let out = process.exec(`cd ..; node cli.js onchaintx --type depositontop --pass ${password} --amount ${onTopAmount} --tokenid ${tokenId}`);
+            out.stdout.on("data", (data) => {
+                resolve(JSON.parse(data));
+            });
+        });
+        let event = await promise;
+
         //console.log({resDeposit})
 
         // Check token balances for id1 and rollup smart contract
@@ -266,10 +275,6 @@ contract("Rollup", async (accounts) => {
         const resId1 = await insTokenRollup.balanceOf(walletEth.address);
         expect(resRollup.toString()).to.be.equal("15");
         expect(resId1.toString()).to.be.equal("35");
-
-        let receip = await resDeposit.wait();
-
-        let event = receip.events.pop();
 
         await forgeBlock();
 
@@ -294,8 +299,16 @@ contract("Rollup", async (accounts) => {
         const tokenId = 0;
         // Should trigger error since id2 is the sender, does not match id1
 
-        const resForceWithdraw= await forceWithdraw(web3.currentProvider.host, addressSC, amount, tokenId,
-            fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi, UrlOperator);
+        // const resForceWithdraw= await forceWithdraw(web3.currentProvider.host, addressSC, amount, tokenId,
+        //     fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi, UrlOperator);
+
+        const promise = new Promise (function(resolve){
+            let out = process.exec(`cd ..; node cli.js onchaintx --type forcewithdraw --pass ${password} --amount ${amount} --tokenid ${tokenId}`);
+            out.stdout.on("data", (data) => {
+                resolve(JSON.parse(data));
+            });
+        });
+        let event = await promise;
 
             
         let walletBaby = await BabyJubWallet.fromEncryptedJson(babyjubJson, password);
@@ -303,10 +316,8 @@ contract("Rollup", async (accounts) => {
         // forge block force withdraw
     
         // Simulate exit tree to retrieve siblings
-        let receip = await resForceWithdraw.wait();
-
-        let event = receip.events.pop();
     
+        console.log({event});
         await forgeBlock();
     
         await forgeBlock([event]);
@@ -320,20 +331,20 @@ contract("Rollup", async (accounts) => {
         // Steps:
         // - Get data from 'exitTree'
         // - Transaction to withdraw amount indicated in previous step
-        const id = 1;
         const amount = 10;
-        const infoId = await exitTree.getIdInfo(id);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
         const tokenId = 0;
 
-        const leafId = infoId.foundObject;
-        // last block forged
-        const lastBlock = await insRollupTest.getStateDepth();//??? exit root???
-    
-        // Should trigger error since we are try get withdraw from different sender
-        console.log("hi", BigInt(lastBlock).toString(), leafId.tokenId.toString(),siblingsId);
-        await withdraw(web3.currentProvider.host, addressSC, amount, tokenId,
-            fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi, UrlOperator);
+       
+        // await withdraw(web3.currentProvider.host, addressSC, amount, tokenId,
+        //     fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi, UrlOperator);
+
+        const promise = new Promise (function(resolve){
+            let out = process.exec(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --amount ${amount} --tokenid ${tokenId}`);
+            out.stdout.on("data", (data) => {
+                resolve((data));
+            });
+        });
+        await promise;
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
