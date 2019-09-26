@@ -4,7 +4,6 @@ const axios = require("axios");
 
 async function forceWithdraw(urlNodo, addressSC, balance, tokenId, walletEthJson, BabyjubJson, password, abi, UrlOperator)  {
 
-    //console.log({urlNodo}, {addressSC}, {balance}, {tokenId}, {walletEthJson}, {BabyjubJson}, {password}, {abi})
     const provider = new ethers.providers.JsonRpcProvider(urlNodo);
     let wallet =await ethers.Wallet.fromEncryptedJson(walletEthJson, password);
     let walletBaby = await BabyJubWallet.fromEncryptedJson(BabyjubJson, password);
@@ -12,7 +11,6 @@ async function forceWithdraw(urlNodo, addressSC, balance, tokenId, walletEthJson
 
 
     wallet = wallet.connect(provider);
-    //let address = await wallet.getAddress()
     let contractWithSigner = new ethers.Contract(addressSC, abi, wallet);
     
     let overrides = {
@@ -26,7 +24,6 @@ async function forceWithdraw(urlNodo, addressSC, balance, tokenId, walletEthJson
 
             axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey.toString()}`).then(async function(response){
 
-                console.log("forcewithdraw", {pubKeyBabyjub});
                 let receipt = await contractWithSigner.forceWithdraw(response.data.value.id, balance, pubKeyBabyjub, overrides);
                 resolve(receipt);
             })

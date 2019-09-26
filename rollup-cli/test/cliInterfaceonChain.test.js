@@ -5,18 +5,13 @@
 /* global BigInt */
 
 const chai = require("chai");
-const depositOnTop= require("../src/actions/onchain/depositOnTop.js");
-const { withdraw }= require("../src/actions/onchain/withdraw.js");
-const { forceWithdraw }= require("../src/actions/onchain/forceWithdraw.js");
 const walletEthPathDefault="../src/resources/ethWallet.json";
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const walletBabyjubPathDefault="../src/resources/babyjubWallet.json";
 const { expect } = chai;
-const rollupabiPath = "../src/resources/rollupabi.json";
 const ethers = require("ethers");
 const fs = require("fs");
 const RollupTree = require("../../rollup-utils/rollup-tree");
-const utils = require("../../rollup-utils/utils");
 const rollupUtils = require("../../rollup-utils/rollup-utils.js");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const Verifier = artifacts.require("../../../../contracts/test/VerifierHelper");
@@ -106,10 +101,7 @@ contract("Rollup", async (accounts) => {
         4: providerfunds,
     } = accounts;
 
-    let addressSC;
     let password;
-    let abi;
-    let UrlOperator;
     let babyjubJson;
     before(async () => {
         // Deploy poseidon
@@ -135,9 +127,6 @@ contract("Rollup", async (accounts) => {
         babyjubJson= fs.readFileSync(walletBabyjubPathDefault, "utf8");
         exitTree = await RollupTree.newMemRollupTree();
         password = "foo";
-        abi = JSON.parse(fs.readFileSync(rollupabiPath, "utf8"));
-        UrlOperator ="http://127.0.0.1:9000";
-        addressSC= insRollupTest.address;
         let actualConfig = {};
         if (fs.existsSync(config)){
             actualConfig = JSON.parse(fs.readFileSync(config, "utf8"));
@@ -204,20 +193,18 @@ contract("Rollup", async (accounts) => {
         const promise = new Promise (function(resolve){
             let out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId}`);
             out.stdout.on("data", (data) => {
-                console.log("eventajj",JSON.parse(data));
                 resolve(JSON.parse(data));
             });
         });
         let event = await promise;
-        // let resDeposit= await deposit.deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId, 
-        //     fs.readFileSync(walletEthPathDefault, "utf8"), babyjubJson,password, abi);
 
-        //let receip = await resDeposit.wait();
-
-        //console.log("holoo",receip.events.pop())
-        //expect(resDeposit.logs[0].event).to.be.equal("Deposit");
-
-        // Check token balances for id1 and rollup smart contract
+        for (var key in event.args) {
+            if (event.args[key]._hex != undefined){
+                event.args[key] = event.args[key]._hex;
+            }
+        }
+        
+       
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
         expect(resRollup.toString()).to.be.equal("10");
@@ -268,9 +255,12 @@ contract("Rollup", async (accounts) => {
         });
         let event = await promise;
 
-        //console.log({resDeposit})
-
-        // Check token balances for id1 and rollup smart contract
+        for (var key in event.args) {
+            if (event.args[key]._hex != undefined){
+                event.args[key] = event.args[key]._hex;
+            }
+        }
+     
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId1 = await insTokenRollup.balanceOf(walletEth.address);
         expect(resRollup.toString()).to.be.equal("15");
@@ -310,14 +300,18 @@ contract("Rollup", async (accounts) => {
         });
         let event = await promise;
 
-            
+        for (var key in event.args) {
+            if (event.args[key]._hex != undefined){
+                event.args[key] = event.args[key]._hex;
+            }
+        }
+
         let walletBaby = await BabyJubWallet.fromEncryptedJson(babyjubJson, password);
         // forge block with no transactions
         // forge block force withdraw
     
         // Simulate exit tree to retrieve siblings
-    
-        console.log({event});
+
         await forgeBlock();
     
         await forgeBlock([event]);

@@ -3,7 +3,6 @@ const { BabyJubWallet } = require("../../../../rollup-utils/babyjub-wallet");
 
 async function deposit(urlNodo, addressSC, balance, tokenId, walletEthJson, BabyjubJson, password, abi)  {
 
-    //console.log({urlNodo}, {addressSC}, {balance}, {tokenId}, {walletEthJson}, {BabyjubJson}, {password}, {abi})
     const provider = new ethers.providers.JsonRpcProvider(urlNodo);
     let wallet =await ethers.Wallet.fromEncryptedJson(walletEthJson, password);
     let walletBaby = await BabyJubWallet.fromEncryptedJson(BabyjubJson, password);

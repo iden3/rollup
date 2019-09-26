@@ -12,23 +12,25 @@ async function sendTx(urlOperator, to, amount, walletBabyjub, passString) {
 async function depositTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi) {
     const response = await deposit(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi);
     const receip = await response.wait();
-    // console.log({events:receip.events.pop().args});
-    console.log(JSON.stringify(receip.events.pop().args));
+    console.log(JSON.stringify(receip.events.pop()));
 }
 
 async function depositOnTopTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi, operator) {
     const response = await depositOnTop(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi, operator);
-    console.log(JSON.stringify(response));
+    const receip = await response.wait();
+    console.log(JSON.stringify(receip.events.pop()));
 }
 
 async function withdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi, operator) {
     const response = await withdraw(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi, operator);
-    console.log(JSON.stringify(response));
+    const receip = await response.wait();
+    console.log(JSON.stringify(receip.events.pop()));
 }
 
 async function forceWithdrawTx(node, address, amount, tokenid, walletEth, passString, walletBabyjub, abi, operator) {
     const response = await forceWithdraw(node, address, amount, tokenid, walletEth, walletBabyjub, passString, abi, operator);
-    console.log(JSON.stringify(response));
+    const receip = await response.wait();
+    console.log(JSON.stringify(receip.events.pop()));
 }
 
 module.exports = {

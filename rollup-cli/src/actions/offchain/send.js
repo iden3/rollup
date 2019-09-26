@@ -3,7 +3,6 @@ const axios = require("axios");
 
 function send(UrlOperator, idTo, amount, BabyjubJson, password, tokenId, userFee) {
 
-    console.log({UrlOperator}, {idTo}, {amount}, {BabyjubJson}, {password});
     let walletBaby = BabyJubWallet.fromEncryptedJson(BabyjubJson, password);
   
 
@@ -12,14 +11,13 @@ function send(UrlOperator, idTo, amount, BabyjubJson, password, tokenId, userFee
         axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey.toString()}`).then(function(response){
 
             const transaction = {
-                IdFrom: response.data.value.id,//IdFrom,
+                IdFrom: response.data.value.id,
                 idTo: idTo,
                 coin: tokenId,
                 amount: amount,
                 nonce:response.data.value.nonce,
                 userFee: userFee
-            };// 3 parametros a 0 al final, firmar con otra funcion,
-            //cliente crea tree? ocn post? o hardcorded?
+            };
 
             let sign = walletBaby.signMessage(JSON.stringify(transaction));
 
