@@ -1,10 +1,10 @@
-const axios = require('axios');
-const { BabyJubWallet } = require('../../../../rollup-utils/babyjub-wallet');
+const { BabyJubWallet } = require("../../../../rollup-utils/babyjub-wallet");
+const axios = require("axios");
 
 function send(UrlOperator, idTo, amount, BabyjubJson, password, tokenId, userFee) {
 
     console.log({UrlOperator}, {idTo}, {amount}, {BabyjubJson}, {password});
-    let walletBaby = BabyJubWallet.fromEncryptedJson(BabyjubJson, password)
+    let walletBaby = BabyJubWallet.fromEncryptedJson(BabyjubJson, password);
   
 
     return new Promise (function (resolve, reject){
@@ -18,27 +18,27 @@ function send(UrlOperator, idTo, amount, BabyjubJson, password, tokenId, userFee
                 amount: amount,
                 nonce:response.data.value.nonce,
                 userFee: userFee
-            }// 3 parametros a 0 al final, firmar con otra funcion,
+            };// 3 parametros a 0 al final, firmar con otra funcion,
             //cliente crea tree? ocn post? o hardcorded?
 
             let sign = walletBaby.signMessage(JSON.stringify(transaction));
 
             axios.post(`${UrlOperator}/offchain/send`,{transaction,sign}).then(function(response){
-                resolve(response.status)
+                resolve(response.status);
             }) 
-            .catch(function (error) {
-                reject(error);
-              });
+                .catch(function (error) {
+                    reject(error);
+                });
 
         })
-        .catch(function (error) {
-            reject(error);
-          });
+            .catch(function (error) {
+                reject(error);
+            });
      
-    })
-      .catch((error) => {
-        reject(error);
-      });
-  });
+    });
+    
+
+
 }
+
 module.exports = { send };
