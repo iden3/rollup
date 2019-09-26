@@ -94,7 +94,7 @@ contract("Rollup", async (accounts) => {
     const nLevels = 24;
 
     const maxTx = 10;
-    const maxOnChainTx = 3;
+    const maxOnChainTx = 6;
     const tokenInitialAmount = 100;
     const {
         0: owner,
