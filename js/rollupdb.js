@@ -35,6 +35,22 @@ class RollupDB {
         this.lastBlock = bb.blockNumber;
         this.stateRoot = bb.stateTree.root;
     }
+
+    getLastBatchId(){
+
+    }
+
+    getStateById(id){
+
+    }
+
+    getStateByAxAy(AxAy){
+        
+    }
+
+    getStateByEthAddress(ethAddress){
+        
+    }
 }
 
 module.exports = async function(db) {

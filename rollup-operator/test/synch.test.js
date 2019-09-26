@@ -23,7 +23,7 @@ async function checkSynch(synch, opRollupDb){
     expect(totalSynched).to.be.equal(Number(100).toFixed(2));
     // Check database-synch matches database-op
     const tmpOpDb = opRollupDb.db.nodes;
-    const synchDb = await synch.getState();;
+    const synchDb = await synch.getState();
     expect(lodash.isEqual(tmpOpDb, synchDb)).to.be.equal(true);
 }
 
