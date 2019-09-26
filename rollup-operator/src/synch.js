@@ -1,6 +1,9 @@
 const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
-const rollupUtils = require("../../../rollup-utils/rollup-utils");
+const rollupUtils = require("../../rollup-utils/rollup-utils");
+const SMT = require("circomlib").SMT;
+const utils = require("../../js/utils");
+const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // global vars
@@ -10,15 +13,11 @@ const lastBatchKey = "last-state-batch";
 const eventOnChainKey = "onChain";
 const eventForgeBatchKey = "forgeBatch";
 const separator = "--";
-const TIMEOUT_ERROR = 3000;
+const TIMEOUT_ERROR = 5000;
 const TIMEOUT_NEXT_LOOP = 5000;
-const maxTx = 4;
+const maxTx = 10;
 const nLevels = 24;
 const bytesOffChainTx = 3*2 + 2;
-
-function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 class Synchronizer {
     constructor(db, treeDb, nodeUrl, rollupAddress, rollupABI, creationHash, ethAddress) {
@@ -43,6 +42,7 @@ class Synchronizer {
 
     async synchLoop() {
         this.creationBlock = 0;
+        this.totalSynch = 0;
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -63,9 +63,9 @@ class Synchronizer {
                     await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
                     lastSynchBlock = this.creationBlock;
                 }
-                
                 const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
-                const lastBatchSaved = await this.getLastBatch();
+                const lastBatchSaved = Number(await this.getLastBatch());
+                this.totalSynch = (currentBatchDepth == 0) ? Number(0).toFixed(2) : ((lastBatchSaved / currentBatchDepth) * 100).toFixed(2);
 
                 console.log(`current batch depth: ${currentBatchDepth}`);
                 console.log(`last batch saved: ${lastBatchSaved}`);
@@ -76,13 +76,18 @@ class Synchronizer {
                         fromBlock: lastSynchBlock + 1,
                         toBlock: targetBlockNumber,
                     });
-                    await this._updateEvents(logs, lastBatchSaved, currentBatchDepth, targetBlockNumber);
+                    let nextBatchSynched = currentBatchDepth;
+                    if (currentBatchDepth != targetBlockNumber){
+                        nextBatchSynched = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, targetBlockNumber);
+                    }
+                    await this._updateEvents(logs, lastBatchSaved, nextBatchSynched, targetBlockNumber);
                     console.log("Events synchronized correctly");
                 } else {
                     console.log("No batches has been forged");
                     // update last block synched
                     await this.db.insert(lastBlockKey, this._toString(currentBlock));
                 }
+                console.log(`Total Synched: ${this.totalSynch} %`);
                 console.log("******************************\n");
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
@@ -190,17 +195,22 @@ class Synchronizer {
         return txs;
     }
 
-    getState() {
+    async getState() {
         return this.treeDb.db.nodes;
     }
 
-    // async getIdInfo(id) {
-    //     const resFind = await this.smt.find(id);
-    //     if (resFind.found) {
-    //         resFind.foundObject = this._fromString(await this.leafDb.get(resFind.foundValue));
-    //     }
-    //     return resFind;
-    // }
+    async getIdInfo(id) {
+        const stateTree = new SMT(this.treeDb.db, this.treeDb.stateRoot);
+        const resFind = await stateTree.find(id);
+        if (resFind.found) {
+            return utils.array2state(await this.treeDb.db.get(resFind.foundValue));
+        }
+        return resFind;
+    }
+
+    async getSynchPercentage() {
+        return this.totalSynch;
+    }
 }
 
 module.exports = Synchronizer;

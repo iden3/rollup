@@ -1,55 +1,30 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require("chai");
 const { expect } = chai;
+const lodash = require("lodash");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const StakerManager = artifacts.require("../contracts/RollupPoS");
 const RollupTest = artifacts.require("../contracts/test/RollupTest");
-const Synchronizer = require("../src/synchronizer/synch");
+const Synchronizer = require("../src/synch");
 const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
-const rollupUtils = require("../../rollup-utils/rollup-utils");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
+const {timeout, buildInputSm, manageEvent } = require("../src/utils");
 
-function timeout(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function buildInputSm(bb) {
-    const feePlan = rollupUtils.buildFeeInputSm(bb.feePlan);
-    return [
-        bb.getInput().oldStRoot.toString(),
-        bb.getNewStateRoot().toString(),
-        bb.getNewExitRoot().toString(),
-        bb.getOnChainHash().toString(),
-        bb.getOffChainHash().toString(),
-        feePlan[0],
-        feePlan[1],
-        bb.getCountersOut().toString(),
-    ];
-}
-
-function manageEvent(event) {
-    if (event.event == "OnChainTx") {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
-        return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
-            amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.tokenId,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true
-        };
-    }
+async function checkSynch(synch, opRollupDb){
+    // Check fully synchronized
+    const totalSynched = await synch.getSynchPercentage();
+    expect(totalSynched).to.be.equal(Number(100).toFixed(2));
+    // Check database-synch matches database-op
+    const tmpOpDb = opRollupDb.db.nodes;
+    const synchDb = await synch.getState();;
+    expect(lodash.isEqual(tmpOpDb, synchDb)).to.be.equal(true);
 }
 
 contract("Synchronizer", (accounts) => {
@@ -71,20 +46,21 @@ contract("Synchronizer", (accounts) => {
     const {
         0: owner,
         1: id1,
-        2: synchAddress,
-        3: beneficiary,
+        2: id2,
+        3: synchAddress,
+        4: beneficiary,
     } = accounts;
 
     let synchDb;
     let synch;
 
     const maxTx = 10;
-    const maxOnChainTx = 3;
+    const maxOnChainTx = 5;
     const nLevels = 24;
     const tokenInitialAmount = 1000;
     const tokenId = 0;
 
-    // Operator databse
+    // Operator database
     let opDb;
     let opRollupDb;
 
@@ -98,11 +74,9 @@ contract("Synchronizer", (accounts) => {
     let insRollupTest;
     let insVerifier;
 
-    const pathDb = `${__dirname}/tmp`;
-
     let configSynch = {
-        pathTreeDb: pathDb,
-        pathSynchDb: `${pathDb}-synch`,
+        treeDb: undefined,
+        synchDb: undefined,
         ethNodeUrl: "http://localhost:8545",
         contractAddress: undefined,
         creationHash: undefined,
@@ -142,46 +116,91 @@ contract("Synchronizer", (accounts) => {
 
         // load forge batch mechanism ( not used in this test)
         await insRollupTest.loadForgeBatchMechanism(insStakerManager.address);
-
-        // load configuration synchronizer
-        configSynch.contractAddress = insRollupTest.address;
-        configSynch.creationHash = insRollupTest.transactionHash;
         
         // Init Synch Rollup databases
+        synchDb = new MemDb();
         db = new SMTMemDB();
         synchRollupDb = await RollupDB(db);
         // Init operator Rollup Database
         opDb = new SMTMemDB();
         opRollupDb = await RollupDB(opDb);
+
+        // load configuration synchronizer
+        configSynch.contractAddress = insRollupTest.address;
+        configSynch.creationHash = insRollupTest.transactionHash;
+        configSynch.treeDb = synchRollupDb;
+        configSynch.synchDb = synchDb;
     });
 
     it("manage rollup token", async () => { 
+        const amountDistribution = 100;
+
         await insRollupTest.addToken(insTokenRollup.address,
             { from: id1, value: web3.utils.toWei("1", "ether") });
-
+        await insTokenRollup.transfer(id2, amountDistribution, { from: id1 });
+        
         await insTokenRollup.approve(insRollupTest.address, tokenInitialAmount,
             { from: id1 });
+        await insTokenRollup.approve(insRollupTest.address, amountDistribution,
+            { from: id2 });
     });
 
     it("Should initialize synchronizer", async () => {
-        synchDb = new MemDb();
-        synch = new Synchronizer(synchDb, synchRollupDb, configSynch.ethNodeUrl,
+        synch = new Synchronizer(configSynch.synchDb, configSynch.treeDb, configSynch.ethNodeUrl,
             configSynch.contractAddress, configSynch.abi, configSynch.creationHash, configSynch.ethAddress);
-    });
-
-    it("Should add deposits and synchronize", async () => {
-        const loadAmount = 10;
-        const event = await insRollupTest.deposit(loadAmount, tokenId, id1,
-            [Ax, Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
-        await forgeBlock();
-        await forgeBlock([event.logs[0]]);
-    });
-
-    it("Should start synchronizer", async () => {
         synch.synchLoop();
     });
 
-    it("timeout test", async () => {
-        await timeout(10000);
+    it("Should add two deposits and synch", async () => {
+        const loadAmount = 10;
+        const events = [];
+        const event0 = await insRollupTest.deposit(loadAmount, tokenId, id1,
+            [Ax, Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
+        events.push(event0.logs[0]);
+        const event1 = await insRollupTest.deposit(loadAmount, tokenId, id2,
+            [Ax, Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
+        events.push(event1.logs[0]);
+        await forgeBlock();
+        await forgeBlock(events);
+        await timeout(12000);
+        await checkSynch(synch, opRollupDb);
+    });
+
+    it("Should add off-chain tx and synch", async () => {
+        const events = [];
+        events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 3});
+        await forgeBlock(events);
+        await timeout(12000);
+        await checkSynch(synch, opRollupDb);
+    });
+
+    it("Should add on-chain and off-chain tx and synch", async () => {
+        const events = [];
+        const toId = 1;
+        const onTopAmount = 10;
+        const tokenId = 0;
+        const event = await insRollupTest.depositOnTop(toId, onTopAmount, tokenId,
+            { from: id2, value: web3.utils.toWei("1", "ether") });
+        events.push(event.logs[0]);
+        events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 2});
+        events.push({event:"OffChainTx", fromId: 2, toId: 1, amount: 3});
+        await forgeBlock();
+        await forgeBlock(events);
+        await timeout(12000);
+        await checkSynch(synch, opRollupDb);
+    });
+
+    it("Should add bunch off-chain tx and synch", async () => {
+        let events = [];
+        const numBatchForged = 30;
+        for (let i = 0; i < numBatchForged; i++) {
+            events = [];
+            const from = (i % 2) ? 1 : 2;
+            const to = (i % 2) ? 2 : 1;
+            events.push({event:"OffChainTx", fromId: from, toId: to, amount: 1});
+            await forgeBlock(events);
+        }
+        await timeout(30000);
+        await checkSynch(synch, opRollupDb);
     });
 });
