@@ -274,7 +274,7 @@ describe('ONCHAINTX forceWithdraw', () => {
       expect(code).to.not.be.equal(0);
       done();
     });
-  }); */
+  }); 
 });
 
 describe("ONCHAINTX depositOnTop", () => {
