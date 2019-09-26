@@ -14,6 +14,7 @@ class RollupDB {
     }
 
     async consolidate(bb) {
+
         if (bb.blockNumber != this.lastBlock+1) {
             throw new Error("Updating the wrong block");
         }

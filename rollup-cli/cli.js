@@ -9,15 +9,15 @@ const {
   depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
 } = require('./src/cli-utils');
 
-const walletPathDefault = './src/resources/wallet.json';
-const walletEthPathDefault = './src/resources/ethWallet.json'; // /docs?
-const walletBabyjubPathDefault = './src/resources/babyjubWallet.json'; // /docs?
-const configJsonDefault = './src/resources/config.json'; // /docs?
+const walletPathDefault = "./src/resources/wallet.json";
+const walletEthPathDefault = "./src/resources/ethWallet.json"; // /docs?
+const walletBabyjubPathDefault = "./src/resources/babyjubWallet.json"; // /docs?
+const configJsonDefault = "./src/resources/config.json"; // /docs?
 
-const { version } = require('./package');
+const { version } = require("./package");
 const { argv } = require('yargs') // eslint-disable-line
-  .version(version)
-  .usage(`
+    .version(version)
+    .usage(`
 rollup-cli <command> <options>
 createkeys command
 =============
@@ -126,10 +126,10 @@ const type = (argv.type) ? argv.type : 'notype';
 const keytype = (argv.keytype) ? argv.keytype : 'nokeytype';
 const to = (argv.to || argv.to === 0) ? argv.to : 'norecipient';
 const amount = (argv.amount) ? argv.amount : -1;
-const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
-const importWallet = (argv.import) ? argv.import : 'noimport';
-const param = (argv.param) ? argv.param : 'noparam';
-const value = (argv.value) ? argv.value : 'novalue';
+const mnemonic = (argv.mnemonic) ? argv.mnemonic : "nomnemonic";
+const importWallet = (argv.import) ? argv.import : "noimport";
+const param = (argv.param) ? argv.param : "noparam";
+const value = (argv.value) ? argv.value : "novalue";
 const configjson = (argv.paramsTx) ? argv.paramsTx : configJsonDefault;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
 

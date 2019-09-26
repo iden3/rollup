@@ -2,8 +2,8 @@
  "wallet": "./src/resources/prova.json",
  "walletBabyjub": "./src/resources/prova.json",
  "operator": "http://127.0.0.1:9000",
- "walletEth": "./src/resources/prova.json",
- "address": "0x521ff2249349B8E9C4Fd6c526d6A65CDaaC2e1eA",
+ "walletEth": "./src/resources/ethWallet.json",
+ "address": "0x0F2093AA8b8C1E5Afc9AE57b4212Bfa15E7593e5",
  "nodeEth": "http://localhost:8545",
- "abi": "./src/resources/rollupabi.js"
+ "abi": "./src/resources/rollupabi.json"
 }
