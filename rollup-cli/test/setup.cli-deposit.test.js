@@ -1,12 +1,14 @@
-const chai = require('chai');
-const deposit= require('../src/actions/onchain/deposit.js');
+/* eslint-disable no-underscore-dangle */
+/* global artifacts */
+/* global contract */
+/* global web3 */
 
-const walletEthPathDefault="../src/resources/wallet.json"
+const chai = require("chai");
+const walletEthPathDefault="../src/resources/wallet.json";
 const { expect } = chai;
-const ethers = require('ethers');
-const fs = require('fs');
-
-const config = "../src/resources/config.json"
+const ethers = require("ethers");
+const fs = require("fs");
+const config = "../src/resources/config.json";
 
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const Verifier = artifacts.require("../../../../contracts/test/VerifierHelper");
