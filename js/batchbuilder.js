@@ -6,11 +6,12 @@ const assert = require("assert");
 const crypto = require("crypto");
 const bigInt = require("snarkjs").bigInt;
 const poseidon = require("circomlib").poseidon;
+const Constants = require("./constants");
 
-module.exports = class BlockBuilder {
-    constructor(db, blockNumber, root, maxNTx, nLevels) {
+module.exports = class BatchBuilder {
+    constructor(db, batchNumber, root, maxNTx, nLevels) {
         assert((nLevels % 8) == 0);
-        this.blockNumber = blockNumber;
+        this.batchNumber = batchNumber;
         this.maxNTx = maxNTx || 4;
         this.nLevels = nLevels;
         this.offChainTxs = [];
@@ -21,41 +22,6 @@ module.exports = class BlockBuilder {
         this.exitTree = new SMT(this.dbExit, bigInt(0));
         this.feePlan = [];
         this.counters = [];
-
-        this.input = {
-            oldStRoot: this.stateTree.root,
-            feePlanCoins: 0,
-            feePlanFees: 0,
-            txData: [],
-            rqTxData: [],
-            s: [],
-            r8x: [],
-            r8y: [],
-            loadAmount: [],
-            ethAddr: [],
-            ax: [],
-            ay: [],
-
-            ax1: [],
-            ay1: [],
-            amount1: [],
-            nonce1: [],
-            ethAddr1: [],
-            siblings1: [],
-            isOld0_1: [],
-            oldKey1: [],
-            oldValue1: [],
-
-            ax2: [],
-            ay2: [],
-            amount2: [],
-            nonce2: [],
-            ethAddr2: [],
-            siblings2: [],
-            isOld0_2: [],
-            oldKey2: [],
-            oldValue2: [],
-        };
     }
 
     _addNopTx() {
@@ -111,9 +77,9 @@ module.exports = class BlockBuilder {
 
     getOperatorFee(coin) {
         for (let i=0; i<this.feePlan.length; i++) {
-            if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[1]);
+            if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[i][1]);
         }
-        return bigInt[0];
+        return bigInt(0);
 
     }
 
@@ -220,7 +186,7 @@ module.exports = class BlockBuilder {
         newState1.amount = oldState1.amount.add(loadAmount).sub(effectiveAmount).sub(operatorFee);
         if (!tx.onChain) {
             newState1.nonce++;
-            this._incCounter(tx.coin);
+            if (!operatorFee.isZero()) this._incCounter(tx.coin);
         }
         const newState2 = Object.assign({}, oldState2);
         newState2.amount = oldState2.amount.add(effectiveAmount);
@@ -244,7 +210,26 @@ module.exports = class BlockBuilder {
             this.input.oldKey1[i]= res.isOld0 ? 0 : res.oldKey;
             this.input.oldValue1[i]= res.isOld0 ? 0 : res.oldValue;
 
-            await this.dbState.multiIns([[newValue, utils.state2array(newState1)]]);
+            const keyAxAy = Constants.DB_AxAy.add(this.input.ax[i]).add(this.input.ay[i]);
+            const keyEthAddr = Constants.DB_EthAddr.add(this.input.ethAddr[i]);
+            const lastVals = await this.dbState.multiGet([
+                keyAxAy,
+                keyEthAddr
+            ]);
+
+            if (!lastVals[0]) lastVals[0] = [];
+            lastVals[0].push(bigInt(tx.fromIdx));
+
+            if (!lastVals[1]) lastVals[1] = [];
+            lastVals[1].push(bigInt(tx.fromIdx));
+
+            await this.dbState.multiIns([
+                [newValue, utils.state2array(newState1)],
+                [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValue],
+                [keyAxAy, lastVals[0]],
+                [keyEthAddr, lastVals[1]]
+            ]);
+
         } else if (op1 == "UPDATE") {
             const newValue = utils.hashState(newState1);
 
@@ -266,7 +251,10 @@ module.exports = class BlockBuilder {
             this.input.oldValue1[i]= 0x1234;    // It should not matter
 
             await this.dbState.multiDel([resFind1.foundValue]);
-            await this.dbState.multiIns([[newValue, utils.state2array(newState1)]]);
+            await this.dbState.multiIns([
+                [newValue, utils.state2array(newState1)],
+                [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValue]
+            ]);
         }
 
         if (op2=="INSERT") {
@@ -336,7 +324,10 @@ module.exports = class BlockBuilder {
                 this.input.oldValue2[i]= 0x1234;    // It should not matter
 
                 await this.dbState.multiDel([resFind2.foundValue]);
-                await this.dbState.multiIns([[newValue, utils.state2array(newState2)]]);
+                await this.dbState.multiIns([
+                    [newValue, utils.state2array(newState2)],
+                    [Constants.DB_Idx.add(bigInt(tx.toIdx)), newValue]
+                ]);
             }
         } else if (op2=="NOP") {
             // State 2
@@ -365,13 +356,63 @@ module.exports = class BlockBuilder {
         const idx = getIdx(coin);
         if (idx <0) return;
         if (this.counters[idx]+1 >= ( (idx < 15) ? (1<<13) : (1<<16) ) ) {
-            throw new Error("Maximum TXs per coin in a block reached");
+            throw new Error("Maximum TXs per coin in a batch reached");
         }
         this.counters[idx]++;
     }
 
+    _buildFeePlan() {
+        const res = {
+            feePlanCoins: bigInt(0),
+            feePlanFees: bigInt(0)
+        };
+        for (let i=0; i<this.feePlan.length; i++) {
+            res.feePlanCoins = res.feePlanCoins.add( bigInt(this.feePlan[i][0]).shl(16*i) );
+            res.feePlanFees = res.feePlanFees.add( bigInt(this.feePlan[i][1]).shl(16*i) );
+        }
+        return res;
+    }
+
     async build() {
-        if (this.builded) throw new Error("Block already builded");
+
+        const {feePlanCoins, feePlanFees} = this._buildFeePlan();
+
+        this.input = {
+            oldStRoot: this.stateTree.root,
+            feePlanCoins: feePlanCoins,
+            feePlanFees: feePlanFees,
+            txData: [],
+            rqTxData: [],
+            s: [],
+            r8x: [],
+            r8y: [],
+            loadAmount: [],
+            ethAddr: [],
+            ax: [],
+            ay: [],
+
+            ax1: [],
+            ay1: [],
+            amount1: [],
+            nonce1: [],
+            ethAddr1: [],
+            siblings1: [],
+            isOld0_1: [],
+            oldKey1: [],
+            oldValue1: [],
+
+            ax2: [],
+            ay2: [],
+            amount2: [],
+            nonce2: [],
+            ethAddr2: [],
+            siblings2: [],
+            isOld0_2: [],
+            oldKey2: [],
+            oldValue2: [],
+        };
+
+        if (this.builded) throw new Error("Batch already builded");
         for (let i=0; i<this.offChainTxs.length; i++) {
             await this._addTx(this.offChainTxs[i]);
         }
@@ -385,22 +426,22 @@ module.exports = class BlockBuilder {
     }
 
     getInput() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
         return this.input;
     }
 
     getNewStateRoot() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
         return this.stateTree.root;
     }
 
     getNewExitRoot() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
         return this.exitTree.root;
     }
 
     getDataAvailable() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
 
         const bytes = [];
         function pushInt(n, size) {
@@ -417,7 +458,7 @@ module.exports = class BlockBuilder {
     }
 
     getOnChainHash() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
         const hash = poseidon.createHash(6, 8, 57);
 
         const firsOnChainTx = this.maxNTx - this.onChainTxs.length;
@@ -436,7 +477,7 @@ module.exports = class BlockBuilder {
     }
 
     getOffChainHash() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
         const txSize = (this.nLevels/8)*2+2;
         const data = this.getDataAvailable();
         const post = Buffer.alloc((this.maxNTx - (this.offChainTxs.length))*txSize);
@@ -452,7 +493,7 @@ module.exports = class BlockBuilder {
     }
 
     getCountersOut() {
-        if (!this.builded) throw new Error("Block must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
         let res = bigInt(0);
         for (let i=0; i<this.counters.length; i++) {
             res = res.add( bigInt(this.counters[i]).shl(16*i) );
@@ -461,9 +502,9 @@ module.exports = class BlockBuilder {
     }
 
     addTx(tx) {
-        if (this.builded) throw new Error("Block already builded");
+        if (this.builded) throw new Error("Batch already builded");
         if (this.onChainTxs.length + this.offChainTxs.length >= this.maxNTx) {
-            throw Error("Too many TX per block");
+            throw Error("Too many TX per batch");
         }
         if (tx.onChain) {
             this.onChainTxs.push(tx);
@@ -476,7 +517,7 @@ module.exports = class BlockBuilder {
         const feeF = utils.fix2float(fee);
         if (feeF == 0) return;
         if (this.feePlan.length >= 16) {
-            throw new Error("Maximum 16 coins per block");
+            throw new Error("Maximum 16 coins per batch");
         }
         if ((this.feePlan.length == 15)&&(coin >= 1<<13)) {
             throw new Error("Coin 16 muns be less than 2^13");

@@ -1,21 +1,23 @@
-const BlockBuilder = require("./blockbuilder");
+const BatchBuilder = require("./batchbuilder");
 const bigInt = require("snarkjs").bigInt;
+const Constants = require("./constants");
+const utils = require("./utils");
 
 class RollupDB {
 
-    constructor(db, lastBlock, stateRoot) {
+    constructor(db, lastBatch, stateRoot) {
         this.db = db;
-        this.lastBlock = lastBlock;
+        this.lastBatch = lastBatch;
         this.stateRoot = stateRoot;
     }
 
-    async buildBlock(maxNTx, nLevels) {
-        return new BlockBuilder(this.db, this.lastBlock+1, this.stateRoot, maxNTx, nLevels);
+    async buildBatch(maxNTx, nLevels) {
+        return new BatchBuilder(this.db, this.lastBatch+1, this.stateRoot, maxNTx, nLevels);
     }
 
     async consolidate(bb) {
-        if (bb.blockNumber != this.lastBlock+1) {
-            throw new Error("Updating the wrong block");
+        if (bb.batchNumber != this.lastBatch +1) {
+            throw new Error("Updating the wrong batch");
         }
         if (!bb.builded) {
             await bb.build();
@@ -29,22 +31,56 @@ class RollupDB {
         await this.db.multiIns([
             ...insertsState,
             ...insertsExit,
-            [ bb.blockNumber, [bb.stateTree.root, bb.exitTree.root]],
-            [ 0, this.lastBlock]
+            [ Constants.DB_Batch.add(bigInt(bb.batchNumber)), [bb.stateTree.root, bb.exitTree.root]],
+            [ Constants.DB_Master, this.lastBatch]
         ]);
-        this.lastBlock = this.blockNumber;
+        this.lastBatch = bb.batchNumber;
         this.stateRoot = bb.stateTree.root;
     }
+
+    async getStateByIdx(idx) {
+        const key = Constants.DB_Idx.add(bigInt(idx));
+        const valueState = await this.db.get(key);
+        const stateArray = await this.db.get(valueState);
+        if (!stateArray) return null;
+        return utils.array2state(stateArray);
+    }
+
+    async getStateByAxAy(ax, ay) {
+        const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x"+ay));
+
+        const idxs = await this.db.get(keyAxAy);
+        const promises = [];
+        for (let i=0; i<idxs.length; i++) {
+            promises.push(this.getStateByIdx(idxs[i]));
+        }
+
+        return Promise.all(promises);
+    }
+
+    async getStateByEthAddr(ethAddr) {
+        const keyEthAddr = Constants.DB_EthAddr.add(bigInt(ethAddr));
+
+        const idxs = await this.db.get(keyEthAddr);
+        const promises = [];
+        for (let i=0; i<idxs.length; i++) {
+            promises.push(this.getStateByIdx(idxs[i]));
+        }
+
+        return Promise.all(promises);
+    }
+
+
 }
 
 module.exports = async function(db) {
-    const master = await db.get(0);
+    const master = await db.get(Constants.DB_Master);
     if (!master) {
         return new RollupDB(db, 0, bigInt(0));
     }
-    const block = await db.get(master[0]);
-    if (!block) {
+    const batch = await db.get(Constants.DB_Batch.add(master[0]));
+    if (!batch) {
         throw new Error("Database corrupted");
     }
-    return new RollupDB(db, master[0], block[0]);
+    return new RollupDB(db, master[0], batch[0]);
 };

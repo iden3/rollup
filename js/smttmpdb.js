@@ -43,6 +43,14 @@ class SMTTmpDb {
         }
     }
 
+    async multiGet(keys) {
+        const promises = [];
+        for (let i=0; i<keys.length; i++) {
+            promises.push(this.get(keys[i]));
+        }
+        return await Promise.all(promises);
+    }
+
     async setRoot(rt) {
         this.root = rt;
     }
