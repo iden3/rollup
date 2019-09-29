@@ -1,0 +1,7 @@
+{
+  "ethNodeUrl": "ropsten.infura.io/v3/39753c9df15e15ee844e2c19a928bbc1",
+  "contractAddress": "0x4865811f5C899B249659096E06f26e00654507C3",
+  "abi": "0x4351e519b291B09e6a8DC66d06a0392759d724EA",
+  "walletPath": "/home/wallet.json",
+  "passWallet": "password"
+}

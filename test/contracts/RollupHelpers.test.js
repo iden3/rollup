@@ -10,11 +10,10 @@ const { smt } = require("circomlib");
 const crypto = require("crypto");
 
 const { expect } = chai;
-const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
-const poseidonJs = require("../../node_modules/circomlib/src/poseidon.js");
+const poseidonUnit = require("circomlib/src/poseidon_gencontract");
+const poseidonJs = require("circomlib/src/poseidon");
 const utils = require("../../rollup-utils/rollup-utils");
 const treeUtils = require("../../rollup-utils/rollup-tree-utils");
-const { multiHash } = require("../../rollup-utils/utils");
 const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTest");
 
 const MAX_LEVELS = 24;
@@ -276,57 +275,6 @@ contract("RollupHelpers functions", (accounts) => {
         expect(addressKeyHex).to.be.equal(res.toLowerCase());
     });
 
-    it("Get entry from deposit parameters", async () => {
-        const id = 1;
-        const amountDeposit = 2;
-        const tokenId = 3;
-        const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-        const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
-        const nonce = 4;
-
-        const res = await insHelpers.buildEntryDepositTest(id, amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), withdrawAddress, nonce);
-        const Entry1Hex = "0x0000000000e0fbce58cfaa72812103f003adce3f284fe5fc7c00030002000001";
-        const Entry2Hex = "0x0000000000000000000000000000000000000000000000000000000000000004";
-        const Entry3BigInt = BigInt(res[2]);
-        const Entry4BigInt = BigInt(res[3]);
-        const Entry5Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-        expect(res[0]).to.be.equal(Entry1Hex);
-        expect(res[1]).to.be.equal(Entry2Hex);
-        expect(Entry3BigInt.toString()).to.be.equal(Ax.toString());
-        expect(Entry4BigInt.toString()).to.be.equal(Ay.toString());
-        expect(res[4]).to.be.equal(Entry5Hex);
-    });
-
-    it("hash entry", async () => {
-        const id = 1;
-        const amountDeposit = 2;
-        const tokenId = 3;
-        const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-        const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
-        const nonce = 4;
-
-        const res = await insHelpers.hashEntryTest(id, amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), withdrawAddress, nonce);
-
-        const entryHash = "5802a85619c58a1826c079f172016d1df4bdd9544f5a237ef0fac0b5cc551b5";
-        expect(res.toString("hex")).to.be.equal(entryHash);
-
-        // Calculate hash through poseidon implemented in js
-        const e1 = BigInt("0x0000000000e0fbce58cfaa72812103f003adce3f284fe5fc7c00030002000001");
-        const e2 = BigInt("0x0000000000000000000000000000000000000000000000000000000000000004");
-        const e3 = BigInt("0x0000000000000004ebcfdda5c7d2000000000000000000000000000000000000");
-        const e4 = BigInt("0x0000000000000003289acffbb828e00000000000000000000000000000000000");
-        const e5 = BigInt("0x0000000000000000000000000000000000000000000000000000000000000000");
-
-        const hashJs = poseidonJs.createHash(6, 8, 57);
-        const resJs = hashJs([e1, e2, e3, e4, e5]);
-        expect(resJs.toString()).to.be.equal(res.toString());
-    });
-
     it("Get entry from fee plan", async () => {
         const tokenPlan = "0x4000000000000000000000000000000320000000000000000000000000000001";
         const feePlan = "0x8000000000000000000000000000000760000000000000000000000000000005";
@@ -345,29 +293,6 @@ contract("RollupHelpers functions", (accounts) => {
         expect(res[4]).to.be.equal(Entry5Hex);
     });
 
-    it("Get off-chain hash transactions", async () => {
-        const hashJs = poseidonJs.createHash(6, 8, 57);
-        // create bunch of tx
-        const numTx = 10;
-        let buffTotalTx = Buffer.alloc(0);
-        let hashTotal = 0;
-        for (let i = 0; i < numTx; i++) {
-            const fromBuff = Buffer.from(`00000${i}`, "hex");
-            const toBuff = Buffer.from(`00000${i}`, "hex");
-            const amoutBuff = Buffer.from(`000${i}`, "hex");
-            const txBuff = Buffer.concat([fromBuff, toBuff, amoutBuff]);
-            buffTotalTx = Buffer.concat([buffTotalTx, txBuff]);
-
-            // Caculate hash to check afterwards
-            const e1 = BigInt(`0x${txBuff.toString("hex")}`);
-            const hashTmp = hashJs([e1, 0, 0, 0, 0]);
-            hashTotal = hashJs([hashTotal, hashTmp]);
-        }
-        const bytesTx = `0x${buffTotalTx.toString("hex")}`;
-        const res = await insHelpers.hashOffChainTxTest(bytesTx);
-        expect(res.toString()).to.be.equal(hashTotal.toString());
-    });
-
     it("Calculate total fee per token", async () => {
         const totalTokens = 16;
         const arrayFee = [];
@@ -378,7 +303,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayTokenIds.push(tokenId);
             const tokenIdHex = padZeroes(tokenId.toString("16"), 4);
             const tmpBuff = Buffer.from(tokenIdHex, "hex");
-            tokenIdsBuff = Buffer.concat([tokenIdsBuff, tmpBuff]);
+            tokenIdsBuff = Buffer.concat([tmpBuff, tokenIdsBuff]);
         }
         const tokenIdsBytes = `0x${tokenIdsBuff.toString("hex")}`;
 
@@ -388,7 +313,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayFee.push(fee);
             const feeHex = padZeroes(fee.toString("16"), 4);
             const tmpBuff = Buffer.from(feeHex, "hex");
-            feeBuff = Buffer.concat([feeBuff, tmpBuff]);
+            feeBuff = Buffer.concat([tmpBuff, feeBuff]);
         }
         const feeBytes = `0x${feeBuff.toString("hex")}`;
         // Build number of transactions buffer
@@ -399,7 +324,7 @@ contract("RollupHelpers functions", (accounts) => {
             arrayTx.push(rand);
             const nTxHex = padZeroes(rand.toString("16"), 4);
             const tmpBuff = Buffer.from(nTxHex, "hex");
-            nTxBuff = Buffer.concat([nTxBuff, tmpBuff]);
+            nTxBuff = Buffer.concat([tmpBuff, nTxBuff]);
         }
         const nTxBytes = `0x${nTxBuff.toString("hex")}`;
 
@@ -412,61 +337,16 @@ contract("RollupHelpers functions", (accounts) => {
         }
     });
 
-    it("Get entry from exit leaf parameters", async () => {
-        const id = 1;
-        const amountDeposit = 2;
-        const token = 3;
-        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
-
-        const res = await insHelpers.buildEntryExitLeafTest(id, amountDeposit, token, withdrawAddress);
-        const Entry1Hex = "0x0000000000e0fbce58cfaa72812103f003adce3f284fe5fc7c00030002000001";
-        const Entry2Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        const Entry3Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        const Entry4Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        const Entry5Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-        expect(res[0]).to.be.equal(Entry1Hex);
-        expect(res[1]).to.be.equal(Entry2Hex);
-        expect(res[2]).to.be.equal(Entry3Hex);
-        expect(res[3]).to.be.equal(Entry4Hex);
-        expect(res[4]).to.be.equal(Entry5Hex);
-    });
-
-    it("Get entry balance tree leaf", async () => {
-        const amount = 1;
-        const token = 2;
-        const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-        const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
-        const nonce = 3;
-
-
-        const res = await insHelpers.buildEntryBalanceTreeTest(amount, token, Ax.toString(),
-            Ay.toString(), withdrawAddress, nonce);
-        const Entry1Hex = "0x0000000000000003e0fbce58cfaa72812103f003adce3f284fe5fc7c00020001";
-        const Entry2BigInt = BigInt(res[1]);
-        const Entry3BigInt = BigInt(res[2]);
-        const Entry4Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        const Entry5Hex = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-        expect(res[0]).to.be.equal(Entry1Hex);
-        expect(Entry2BigInt.toString()).to.be.equal(Ax.toString());
-        expect(Entry3BigInt.toString()).to.be.equal(Ay.toString());
-        expect(res[3]).to.be.equal(Entry4Hex);
-        expect(res[4]).to.be.equal(Entry5Hex);
-    });
-
-    it("Hash off chain tx v2", async () => {
+    it("Hash off chain tx", async () => {
         const maxTx = 4;  
         const offChainTx = 2;
-        const offChainTxLen = 10;
+        const offChainTxLen = 8;
         // create 2 offChain tx
-        const tx0 = utils.buildOffChainTx(2, 3, 10, 0);
-        const tx1 = utils.buildOffChainTx(7, 8, 100, 0);
+        const tx0 = utils.buildOffChainTx(2, 3, 10);
+        const tx1 = utils.buildOffChainTx(7, 8, 100);
         const buffTxOffChain = Buffer.concat([tx0, tx1]);
         
         const bytesTx = `0x${buffTxOffChain.toString("hex")}`;
-
         // Calculate hash
         const fillBuff = Buffer.alloc(offChainTxLen*(maxTx - offChainTx));
         const hashTotalBuff = Buffer.concat([buffTxOffChain, fillBuff]);
@@ -476,20 +356,8 @@ contract("RollupHelpers functions", (accounts) => {
             .digest("hex");
         const hashTotal = BigInt("0x" + hash) % r;
         // Calculate hash solidity
-        const res = await insHelpers.hashOffChainTxTestV2(bytesTx, 4);
+        const res = await insHelpers.hashOffChainTxTest(bytesTx, 4);
         expect(res.toString()).to.be.equal(hashTotal.toString());
-    });
-
-    it("multi hash", async () => {
-        const arrayElem = [BigInt(1), BigInt(2), BigInt(3), BigInt(4), BigInt(5), BigInt(6), BigInt(7)];
-
-        const resJs = multiHash(arrayElem);
-        const arraySm = [];
-        arrayElem.forEach(element => {
-            arraySm.push(element.toString());
-        });
-        const resSm = await insHelpers.testHashMulti(arraySm);
-        expect(resJs.toString()).to.be.equal(BigInt(resSm).toString());
     });
 
     it("Hash state rollup tree", async () => {
@@ -498,12 +366,12 @@ contract("RollupHelpers functions", (accounts) => {
         const nonce = 4;
         const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
         const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+        const ethAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
 
         const res = await insHelpers.buildTreeStateTest(amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), withdrawAddress, nonce);
+            Ay.toString(), ethAddress, nonce);
         
-        const infoLeaf = treeUtils.hashLeafValueV2(amountDeposit, tokenId, Ax, Ay, BigInt(withdrawAddress), nonce);
+        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, BigInt(ethAddress), nonce);
 
         expect(res[0]).to.be.equal(infoLeaf.elements.e0);
         expect(res[1]).to.be.equal(infoLeaf.elements.e1);
@@ -512,7 +380,7 @@ contract("RollupHelpers functions", (accounts) => {
         expect(res[4]).to.be.equal(infoLeaf.elements.e4);
 
         const resHash = await insHelpers.hashTreeStateTest(amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), withdrawAddress, nonce);
+            Ay.toString(), ethAddress, nonce);
         expect(BigInt(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
     });
 

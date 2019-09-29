@@ -27,7 +27,7 @@ contract RollupHelpers {
     bytes32 e6;
   }
 
-  uint constant bytesOffChainTx = 3*2 + 2 + 2;
+  uint constant bytesOffChainTx = 3*2 + 2;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
   /**
@@ -45,29 +45,6 @@ contract RollupHelpers {
    */
   function hashGeneric(uint256[] memory inputs) internal view returns (uint256){
     return insPoseidonUnit.poseidon(inputs);
-  }
-
-  /**
-   * @dev hash poseidon multi-input elements
-   * @param inputs input element array
-   * @return poseidon hash
-   */
-  function multiHash(uint256[] memory inputs) internal view returns (uint256){
-    uint lenInputs = inputs.length;
-    uint totalHash = 0;
-    for(uint i = 0; i < lenInputs; i += 5) {
-      uint256[] memory in5 = new uint256[](5);
-      for( uint j = 0; j < 5; j++) {
-        if(i + j < lenInputs) {
-          in5[j] = inputs[i + j];
-        } else {
-          in5[j] = 0;
-        }
-      }
-      uint256 tmpHash = hashGeneric(in5);
-      totalHash = (totalHash + tmpHash) % rField;
-    }
-    return totalHash;
   }
 
   /**
@@ -161,34 +138,6 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev Build entry for deposit on-chain transaction
-   * @param idBalanceTree ethereum address
-   * @param amountDeposit ethereum address
-   * @param tokenId ethereum address
-   * @param Ax ethereum address
-   * @param Ay ethereum address
-   * @param withdrawAddress ethereum address
-   * @param nonce ethereum address
-   * @return entry structure
-   */
-  function buildEntryDeposit(uint24 idBalanceTree, uint16 amountDeposit, uint16 tokenId,
-    uint256 Ax, uint256 Ay, address withdrawAddress, uint32 nonce)
-    internal pure returns (Entry memory entry) {
-
-    // build element 1
-    entry.e1 = bytes32(bytes3(idBalanceTree))>>(256 - 24);
-    entry.e1 |= bytes32(bytes2(amountDeposit))>>(256 - 16 - 24);
-    entry.e1 |= bytes32(bytes2(tokenId))>>(256 - 16 - 16 - 24);
-    entry.e1 |= bytes32(bytes20(withdrawAddress))>>(256 - 160 - 16 - 16 - 24);
-    // build element 2
-    entry.e2 |= bytes32(bytes4(nonce))>>(256 - 32);
-    // build element 3
-    entry.e3 = bytes32(Ax);
-    // build element 4
-    entry.e4 = bytes32(Ay);
-  }
-
-  /**
    * @dev build entry for fee plan
    * @param feePlan contains all fee plan data
    * @return entry structure
@@ -206,46 +155,6 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev build entry for the exit tree leaf
-   * @param id balnce tree identifier
-   * @param amount amunt to withdraw
-   * @param token token type
-   * @param withAddress withdraw address
-   * @return entry structure
-   */
-  function buildEntryExitLeaf(uint24 id, uint16 amount, uint16 token, address withAddress)
-    internal pure returns (Entry memory entry) {
-    // build element 1
-    entry.e1 = bytes32(bytes3(id)) >> (256 - 24);
-    entry.e1 |= bytes32(bytes2(amount)) >> (256 - 16 - 24);
-    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 16 - 24);
-    entry.e1 |= bytes32(bytes20(withAddress)) >> (256 - 160 - 16 - 16 - 24);
-  }
-
-  /**
-   * @dev build entry for the exit tree leaf
-   * @param amount amunt to withdraw
-   * @param token token type
-   * @param Ax x coordinate public key babyJub
-   * @param Ay y coordinate public key babyJub
-   * @param withAddress withdraw address
-   * @param nonce nonce parameter
-   * @return entry structure
-   */
-  function buildEntryBalanceTree(uint16 amount, uint16 token, uint256 Ax, uint Ay,
-    address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
-     // build element 1
-    entry.e1 = bytes32(bytes2(amount)) >> (256 - 16);
-    entry.e1 |= bytes32(bytes2(token)) >> (256 - 16 - 16);
-    entry.e1 |= bytes32(bytes20(withAddress)) >> (256 - 160 - 16 - 16);
-    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 160 - 16 - 16);
-    // build element 2
-    entry.e2 = bytes32(Ax);
-    // build element 3
-    entry.e3 = bytes32(Ay);
-  }
-
-  /**
    * @dev Calculate total fee amount for the beneficiary
    * @param tokenIds contains all token id (feePlan[0])
    * @param fees contains all fee plan data (feePlan[1])
@@ -255,12 +164,13 @@ contract RollupHelpers {
    */
   function calcTokenTotalFee(bytes32 tokenIds, bytes32 fees, bytes32 nTxToken, uint nToken)
     internal pure returns (uint, uint) {
+    uint ptr = 256 - ((nToken+1)*16);
     // get number of transaction depending on token
-    uint nTx = uint16(bytes2(nTxToken << nToken*16));
+    uint nTx = uint16(bytes2(nTxToken << ptr));
     // get fee depending on token
-    uint fee = uint16(bytes2(fees << nToken*16));
+    uint fee = uint16(bytes2(fees << ptr));
     // get token id
-    uint tokenId = uint16(bytes2(tokenIds << nToken*16));
+    uint tokenId = uint16(bytes2(tokenIds << ptr));
 
     return (tokenId, nTx*fee);
   }
@@ -270,34 +180,7 @@ contract RollupHelpers {
    * @param offChainTx off-chain transaction compressed format
    * @return hash of all off-chain transactions
    */
-  function hashOffChainTx(bytes memory offChainTx) internal view returns (uint256) {
-    Memory.Cursor memory c = Memory.read(offChainTx);
-    Entry memory entry;
-    uint256[] memory inputs = new uint256[](2);
-    uint256 hashTotal = 0;
-
-    while(!c.eof()) {
-      bytes3 from = c.readBytes3();
-      bytes3 to = c.readBytes3();
-      bytes2 amount = c.readBytes2();
-
-      entry.e1 = bytes32(amount)>>(256 - 16);
-      entry.e1 |= bytes32(to)>>(256 - 24 - 16);
-      entry.e1 |= bytes32(from)>>(256 - 24 - 24 - 16);
-
-      inputs[0] = hashTotal;
-      inputs[1] = hashEntry(entry);
-      hashTotal = hashGeneric(inputs);
-    }
-    return hashTotal;
-  }
-
-  /**
-   * @dev hash all off-chain transactions
-   * @param offChainTx off-chain transaction compressed format
-   * @return hash of all off-chain transactions
-   */
-  function hashOffChainTxV2(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
+  function hashOffChainTx(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
     bytes memory hashOffTx = new bytes(maxTx*bytesOffChainTx);
     Memory.Cursor memory c = Memory.read(offChainTx);
     uint ptr = 0;
@@ -315,15 +198,15 @@ contract RollupHelpers {
    * @param token token type
    * @param Ax x coordinate public key babyJub
    * @param Ay y coordinate public key babyJub
-   * @param withAddress withdraw address
+   * @param ethAddress ethereum address
    * @param nonce nonce parameter
    * @return entry structure
    */
-  function buildTreeState(uint16 amount, uint16 token, uint256 Ax, uint Ay,
-    address withAddress, uint32 nonce) internal pure returns (Entry memory entry) {
+  function buildTreeState(uint16 amount, uint32 token, uint256 Ax, uint Ay,
+    address ethAddress, uint48 nonce) internal pure returns (Entry memory entry) {
      // build element 1
-    entry.e1 = bytes32(bytes4(uint32(token))) >> (256 - 32);
-    entry.e1 |= bytes32(bytes4(nonce)) >> (256 - 32 - 32);
+    entry.e1 = bytes32(bytes4(token)) >> (256 - 32);
+    entry.e1 |= bytes32(bytes6(nonce)) >> (256 - 48 - 32);
     // build element 2
     entry.e2 = bytes32(uint256(amount));
     // build element 3
@@ -331,7 +214,7 @@ contract RollupHelpers {
     // build element 4
     entry.e4 = bytes32(Ay);
     // build element 5
-    entry.e5 = bytes32(bytes20(withAddress)) >> (256 - 160);
+    entry.e5 = bytes32(bytes20(ethAddress)) >> (256 - 160);
   }
 
   /**
@@ -348,22 +231,22 @@ contract RollupHelpers {
    * @return entry structure
    */
   function buildTxData(
-    uint24 fromId,
-    uint24 toId,
+    uint64 fromId,
+    uint64 toId,
     uint16 amount,
-    uint16 token,
-    uint32 nonce,
+    uint32 token,
+    uint48 nonce,
     uint16 maxFee,
     uint8 rqOffset,
     bool onChain,
     bool newAccount
     ) internal pure returns (bytes32 element) {
     // build element
-    element = bytes32(bytes8(uint64(fromId))) >> (256 - 64);
-    element |= bytes32(bytes8(uint64(toId))) >> (256 - 64 - 64);
+    element = bytes32(bytes8(fromId)) >> (256 - 64);
+    element |= bytes32(bytes8(toId)) >> (256 - 64 - 64);
     element |= bytes32(bytes2(amount)) >> (256 - 16 - 64 - 64);
-    element |= bytes32(bytes4(uint32(token))) >> (256 - 32 - 16 - 64 - 64);
-    element |= bytes32(bytes6(uint48(nonce))) >> (256 - 48 - 32 - 16 - 64 - 64);
+    element |= bytes32(bytes4(token)) >> (256 - 32 - 16 - 64 - 64);
+    element |= bytes32(bytes6(nonce)) >> (256 - 48 - 32 - 16 - 64 - 64);
     element |= bytes32(bytes2(maxFee)) >> (256 - 16 - 48 - 32 - 16 - 64 - 64);
 
     bytes1 last = bytes1(rqOffset) & 0x07;
@@ -378,7 +261,7 @@ contract RollupHelpers {
    * @param oldOnChainHash previous on chain hash
    * @param txData transaction data coded into a bytes32
    * @param loadAmount input amount
-   * @param withdrawAddress address to withdraw
+   * @param ethAddress address to withdraw
    * @param Ax x coordinate public key BabyJubJub
    * @param Ay y coordinate public key BabyJubJub
    * @return entry structure
@@ -387,7 +270,7 @@ contract RollupHelpers {
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
-    address withdrawAddress,
+    address ethAddress,
     uint256 Ax,
     uint256 Ay
     ) internal pure returns (Entry memory entry) {
@@ -398,7 +281,7 @@ contract RollupHelpers {
     // build element 3
     entry.e3 = bytes32(bytes16(loadAmount)) >> (256 - 128);
     // build element 4
-    entry.e4 = bytes32(bytes20(withdrawAddress)) >> (256 - 160);
+    entry.e4 = bytes32(bytes20(ethAddress)) >> (256 - 160);
     // build element 5
     entry.e5 = bytes32(Ax);
     // build element 6

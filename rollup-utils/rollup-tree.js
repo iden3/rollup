@@ -21,15 +21,15 @@ class RollupTree {
         return unstringifyBigInts(JSON.parse(val));
     }
 
-    async addId(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
-        const resDeposit = utils.hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce);
+    async addId(id, balance, tokenId, Ax, Ay, ethAddress, nonce) {
+        const resDeposit = utils.hashStateTree(balance, tokenId, Ax, Ay, ethAddress, nonce);
         await this.leafDb.insert(resDeposit.hash, this._toString(resDeposit.leafObj));
         const resInsert = await this.smt.insert(id, resDeposit.hash);
         return { hashValue: resDeposit.hash, proof: resInsert };
     }
 
-    async addIdExit(id, amount, tokenId, withdrawAddress) {
-        const resExit = utils.hashExitLeafValue(id, amount, tokenId, withdrawAddress);
+    async addIdExit(id, amount, tokenId, ethAddress) {
+        const resExit = utils.hashStateTree(id, amount, tokenId, ethAddress);
         await this.leafDb.insert(resExit.hash, this._toString(resExit.leafObj));
         const resInsert = await this.smt.insert(id, resExit.hash);
         return { hashValue: resExit.hash, proof: resInsert };
@@ -54,8 +54,8 @@ class RollupTree {
         }
         const leafValues = resFind.foundObject;
 
-        const resDeposit = utils.hashLeafValue(balance, leafValues.tokenId,
-            leafValues.Ax, leafValues.Ay, leafValues.withdrawAddress, leafValues.nonce + BigInt(1));
+        const resDeposit = utils.hashStateTree(balance, leafValues.tokenId,
+            leafValues.Ax, leafValues.Ay, leafValues.ethAddress, leafValues.nonce + BigInt(1));
         await this.leafDb.insert(resDeposit.hash, this._toString(resDeposit.leafObj));
         const resUpdate = await this.smt.update(id, resDeposit.hash);
         return { hashValue: resDeposit.hash, proof: resUpdate };

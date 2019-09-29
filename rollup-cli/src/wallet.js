@@ -1,142 +1,116 @@
+/* eslint-disable no-underscore-dangle */
+/* global BigInt */
+const { EthereumWallet, verifyEthereum } = require("../src/ethereum-wallet");
+const { BabyJubWallet, verifyBabyJub } = require("../../rollup-utils/babyjub-wallet");
+const utils = require("../../rollup-utils/rollup-utils");
+const eddsa = require("circomlib").eddsa;
+const { hash } = require("../../rollup-utils/utils");
 
-const ethers = require('ethers');
-const fs = require('fs');
-const bip39 = require('bip39');
-const Web3 = require('web3');
-const hdkey = require('hdkey');
+class Wallet {
+    constructor(ethWallet, babyjubWallet) {
+        this.ethWallet = ethWallet;
+        this.babyjubWallet = babyjubWallet;
+    }
 
-const web3 = new Web3();
-// const provider = new Web3.providers.HttpProvider("http://localhost:8545");
-// const web3 = new Web3(provider);
-const iden3 = require('../node_modules/iden3/index');
-const eddsa = iden3.crypto.eddsaBabyJub;
+    /**
+   * To create a random rollup wallet
+   */
+    static async createRandom() {
+        const ethWallet = EthereumWallet.createRandom();
+        const babyjubWallet = BabyJubWallet.createRandom();
+        return new Wallet(ethWallet, babyjubWallet);
+    }
 
-/**
- * Function to write a json file
- * @param {Object} txs - Data for json
- * @param {string} path - json path 
- */
-async function _writeFile(txs, path) {
-  await new Promise((resolve, reject) => {
-    fs.writeFile(path, JSON.stringify(txs), 'utf8', (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
+    /**
+   * To create a rollup wallet from mnemonic
+   * @param {String} mnemonic - mnemonic
+   */
+    static async fromMnemonic(mnemonic) {
+        const ethWallet = EthereumWallet.fromMnemonic(mnemonic);
+        const babyjubWallet = BabyJubWallet.fromMnemonic(mnemonic);
+        return new Wallet(ethWallet, babyjubWallet);
+    }
+
+    /**
+   * To import a rollup wallet from encrypted json
+   * @param {Object} wallet - wallet
+   * @param {String} pass - password 
+   */
+    static async fromEncryptedJson(wallet, pass) {
+        const eth = JSON.stringify(wallet.ethWallet);
+        const babyjub = JSON.stringify(wallet.babyjubWallet);
+        const ethWallet = await EthereumWallet.fromEncryptedJson(eth, pass);
+        const babyjubWallet = await BabyJubWallet.fromEncryptedJson(babyjub, pass);
+        return new Wallet(ethWallet, babyjubWallet);
+    }
+
+    /**
+   * To encrypt a wallet
+   * @param {String} pass - password 
+   */
+    async toEncryptedJson(pass) {
+        const eth = this.ethWallet;
+        const babyjub = this.babyjubWallet;
+        const encEthWallet = await eth.toEncryptedJson(pass);
+        const encBabyJubWallet = await babyjub.toEncryptedJson(pass);
+        return { ethWallet: JSON.parse(encEthWallet), babyjubWallet: JSON.parse(encBabyJubWallet) };
+    }
+
+    /**
+   * To sign message with ethereum keys
+   * @param {String} messageStr 
+   */
+    signMessageEthereum(messageStr) {
+        return this.ethWallet.signMessage(messageStr);
+    }
+    /**
+   * To sign message with babyjub keys
+   * @param {String} messageStr 
+   */
+    signMessageBabyJub(messageStr) {
+        return this.babyjubWallet.signMessage(messageStr);
+    }
+
+    signRollupTx(tx) {
+        const IDEN3_ROLLUP_TX = BigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
+        const data = utils.buildTxData(tx.fromIdx, tx.toIdx, tx.amount, tx.coin, tx.nonce,
+            tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount); //new account 1 deposit i deposit ontop   //onchain  1  offchain 0 //rqoffse 0 siempre
+        const h = hash([
+            IDEN3_ROLLUP_TX,
+            data,
+            tx.rqData || 0
+        ]);
+        const signature = eddsa.signPoseidon(this.babyjubWallet.privateKey.toString("hex"), h);
+        tx.r8x = signature.R8[0];
+        tx.r8y = signature.R8[1];
+        tx.s = signature.S;
+    } 
 }
 
 /**
- * Function to read a json file
- * @param {Object} path - json path
- * @returns {Object} - Data from json
+ * To verify ethereum signature
+ * @param {String} publicKey 
+ * @param {String} messStr 
+ * @param {String} signatureHex 
  */
-async function readFile(path) {
-  let info;
-  await new Promise((resolve) => {
-    fs.readFile(path, (err, data) => {
-      if (err) throw err;
-      info = data;
-      resolve(info);
-    });
-  });
-  return JSON.parse(info);
+function verifyMessageEthereum(publicKey, messStr, signatureHex) {
+    const verify = verifyEthereum(publicKey, messStr, signatureHex);
+    return verify;
 }
 
 /**
- * Function to decrypt encrypted private key
- * @param {Object} encPrivateKey - encrypted private key
- * @param {Object} pass - passphrase
- * @returns {Object} - decrypted private key
+ * To verify babyjub signature
+ * @param {String} pubKeyCompressHex 
+ * @param {String} msg 
+ * @param {String} signatureHex 
  */
-function decrypt(encPrivateKey, pass) {
-  const decPrivateKey = web3.eth.accounts.decrypt(encPrivateKey, pass);
-  return decPrivateKey;
-}
-
-/**
- * Function to write a ethereum wallet into json file
- * @param {Object} wallet - Ethereum wallet
- * @param {string} pass - Passphrase
- * @param {string} path - json path
- */
-async function _writeFileEthWallet(wallet, pass, path) {
-  const pubKey = wallet.signingKey.publicKey;
-  const encPrivateKey = web3.eth.accounts.encrypt(wallet.signingKey.privateKey, pass);
-  const obj = {};
-  obj.pubKey = pubKey;
-  obj.encPrivateKey = encPrivateKey;
-  obj.mnemonic = wallet.signingKey.mnemonic;
-  await _writeFile(obj, path);
-}
-
-/**
- * Function to write a babyjub wallet into json file
- * @param {Object} mnemonic
- * @param {string} pass - Passphrase
- * @param {string} path - json path
- */
-async function _writeFileBabyJubWallet(mnemonic, pass, path) {
-  const seed = bip39.mnemonicToSeedSync(mnemonic);
-  const root = hdkey.fromMasterSeed(seed);
-  const pathBaby = "m/44'/60'/0'/0/0/0";
-  const addrNode = root.derive(pathBaby);
-  const priv1 = addrNode._privateKey.toString('hex');
-  const privateKey = new eddsa.PrivateKey(addrNode._privateKey);
-  const publicKeyHex = privateKey.public().toString();
-  const obj = {};
-  obj.pubKey = '0x' + publicKeyHex;
-  obj.encPrivateKey = web3.eth.accounts.encrypt('0x' + priv1, pass);
-  obj.mnemonic = mnemonic;
-  await _writeFile(obj, path);
-}
-
-/**
- * Function to create ethereum wallet
- * @param {string} pass - Passphrase
- * @param {string} path - json path
- */
-async function createEth(pass, path) {
-  const mnemonic = bip39.generateMnemonic();
-  const wallet = ethers.Wallet.fromMnemonic(mnemonic);
-  await _writeFileEthWallet(wallet, pass, path);
-}
-
-/**
- * Function to import ethereum wallet
- * @param {menmonic} mnemonic
- * @param {string} pass - Passphrase
- * @param {string} path - json path
- */
-async function importEth(mnemonic, pass, path) {
-  const wallet = ethers.Wallet.fromMnemonic(mnemonic);
-  await _writeFileEthWallet(wallet, pass, path);
-}
-
-/**
- * Function to create babyjub wallet
- * @param {string} pass - Passphrase
- * @param {string} path - json path
- */
-async function createBabyJub(pass, path) {
-  const mnemonic = bip39.generateMnemonic();
-  await _writeFileBabyJubWallet(mnemonic, pass, path);
-}
-
-/**
- * Function to import babyjub wallet
- * @param {menmonic} mnemonic
- * @param {string} pass - Passphrase
- * @param {string} path - json path
- */
-async function importBabyJub(mnemonic, pass, path) {
-  await _writeFileBabyJubWallet(mnemonic, pass, path);
+function verifyMessageBabyJub(pubKeyCompressHex, msg, signatureHex) {
+    const verify = verifyBabyJub(pubKeyCompressHex, msg, signatureHex);
+    return verify;
 }
 
 module.exports = {
-  createEth,
-  importEth,
-  readFile,
-  createBabyJub,
-  importBabyJub,
-  decrypt,
+    Wallet,
+    verifyMessageBabyJub,
+    verifyMessageEthereum,
 };

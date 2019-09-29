@@ -2,6 +2,7 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
+/* global BigInt */
 
 const chai = require("chai");
 const RollupTree = require("../../rollup-utils/rollup-tree");
@@ -44,7 +45,7 @@ contract("Rollup", (accounts) => {
     } = accounts;
 
     before(async () => {
-    // Deploy poseidon
+        // Deploy poseidon
         const C = new web3.eth.Contract(poseidonUnit.abi);
         insPoseidonUnit = await C.deploy({ data: poseidonUnit.createCode() })
             .send({ gas: 2500000, from: owner });
@@ -216,6 +217,7 @@ contract("Rollup", (accounts) => {
         expect(resForge.logs[0].args.offChainTx).to.be.equal(compressedTxs);
 
         // Update on-chain hashes
+        // eslint-disable-next-line require-atomic-updates
         minningOnChainTest = BigInt(0).toString();
         fillingOnChainTest = BigInt(0).toString();
 

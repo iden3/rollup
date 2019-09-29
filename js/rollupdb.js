@@ -70,7 +70,9 @@ class RollupDB {
         return Promise.all(promises);
     }
 
-
+    getLastBatchId(){
+        return this.lastBatch;
+    }
 }
 
 module.exports = async function(db) {

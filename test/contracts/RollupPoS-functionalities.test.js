@@ -9,6 +9,9 @@ const chai = require("chai");
 const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 
+const abiDecoder = require("abi-decoder");
+abiDecoder.addABI(RollupPoS.abi);
+
 async function getEtherBalance(address) {
     let balance = await web3.eth.getBalance(address);
     balance = web3.utils.fromWei(balance, "ether");
@@ -200,7 +203,7 @@ contract("RollupPoS", (accounts) => {
             try {
                 await insRollupPoS.slash(eraSlot[5], { from: slashAddress });
             } catch (error) {
-                expect((error.message).includes("Batch has been commited and forged during this slot")).to.be.equal(true);
+                expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
             }
         });
 
@@ -221,15 +224,26 @@ contract("RollupPoS", (accounts) => {
             try {
                 await insRollupPoS.commitBatch(hashChain[7], compressedTxTest);
             } catch(error) {
-                expect((error.message).includes("hash revelead not match current commited hash")).to.be.equal(true);
+                expect((error.message).includes("hash revelead not match current committed hash")).to.be.equal(true);
             }
             // check commit bash
             const resCommit = await insRollupPoS.commitBatch(hashChain[8], compressedTxTest);
-            expect(resCommit.logs[0].event).to.be.equal("dataCommited");
+            expect(resCommit.logs[0].event).to.be.equal("dataCommitted");
             expect(resCommit.logs[0].args.slot.toString()).to.be.equal(eraSlot[3].toString());
             expect(resCommit.logs[0].args.blockNumber.toString()).to.be.equal(eraBlock[3].toString());
-            expect(resCommit.logs[0].args.compressedTx).to.be.equal(compressedTxTest);
-            // try to update data commited before without forging
+            // Get compressedTx from block number
+            // Since we are changing the block number for testing purposes
+            // we need to get 'block number' from 'receipt' instead of getting it from event
+            const transaction = await web3.eth.getTransactionFromBlock(resCommit.receipt.blockNumber);
+            const decodedData = abiDecoder.decodeMethod(transaction.input);
+            let inputRetrieved;
+            decodedData.params.forEach(elem => {
+                if (elem.name == "compressedTxs") {
+                    inputRetrieved = elem.value;
+                }
+            });
+            expect(resCommit.logs[0].args.compressedTx).to.be.equal(inputRetrieved);
+            // try to update data committed before without forging
             try {
                 await insRollupPoS.commitBatch(hashChain[8], compressedTxTest);
             } catch(error) {
@@ -237,19 +251,19 @@ contract("RollupPoS", (accounts) => {
             }
             
             // Forge batch
-            await insRollupPoS.forgeCommitedBatch(proofA, proofB, proofC, input);
+            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
 
-            // try to forge data where there is no data commited
+            // try to forge data where there is no data committed
             try {
-                await insRollupPoS.forgeCommitedBatch(proofA, proofB, proofC, input);
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
             } catch (error) {
-                expect((error.message).includes("There is no commited data")).to.be.equal(true);
+                expect((error.message).includes("There is no committed data")).to.be.equal(true);
             }
 
             // commit data just before deadline
             await insRollupPoS.setBlockNumber(eraBlock[3] + deadlineBlocks - 2);
             await insRollupPoS.commitBatch(hashChain[7], compressedTxTest);
-            await insRollupPoS.forgeCommitedBatch(proofA, proofB, proofC, input);
+            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
 
             // try to commit just after the deadline
             await insRollupPoS.setBlockNumber(eraBlock[3] + deadlineBlocks + 1);
@@ -265,16 +279,16 @@ contract("RollupPoS", (accounts) => {
             try {
                 await insRollupPoS.slash(eraSlot[3]);
             } catch(error) {
-                expect((error.message).includes("Batch has been commited and forged during this slot")).to.be.equal(true);
+                expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
             }
 
             // commit data before deadline, try to update it, not forge block and slash operator
             // commit and forge
             await insRollupPoS.commitBatch(hashChain[6], compressedTxTest);
-            await insRollupPoS.forgeCommitedBatch(proofA, proofB, proofC, input);
+            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
             // commit again but not forge
             await insRollupPoS.commitBatch(hashChain[5], compressedTxTest);
-            // move forward and try to update commited info
+            // move forward and try to update committed info
             await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot + deadlineBlocks);
             try {
                 await insRollupPoS.commitBatch(hashChain[5], compressedTxTest);
@@ -284,11 +298,11 @@ contract("RollupPoS", (accounts) => {
             // move formward next slot without forging
             await insRollupPoS.setBlockNumber(eraBlock[3] + 2*blocksPerSlot);
             // slash operator despite a block has been forged
-            // but it commited data and has not forge commited data
+            // but it committed data and has not forge committed data
             try {
                 await insRollupPoS.slash(eraSlot[3]);
             } catch(error) {
-                expect((error.message).includes("Batch has been commited and forged during this slot")).to.be.equal(true);
+                expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
             }
             await insRollupPoS.slash(eraSlot[3] + 1);
             // move forward and be sure that there are no operators

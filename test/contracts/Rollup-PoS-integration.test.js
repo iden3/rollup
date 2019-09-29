@@ -6,18 +6,19 @@
 /* global BigInt */
 
 const chai = require("chai");
-const RollupTree = require("../../rollup-utils/rollup-tree");
 const rollupUtils = require("../../rollup-utils/rollup-utils.js");
-const utils = require("../../rollup-utils/utils.js");
 const timeTravel = require("./helpers/timeTravel.js");
 
 const { expect } = chai;
 const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
-
+const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const Rollup = artifacts.require("../contracts/Rollup");
+
+const RollupDB = require("../../js/rollupdb");
+const SMTMemDB = require("circomlib/src/smt_memdb");
 
 async function getEtherBalance(address) {
     let balance = await web3.eth.getBalance(address);
@@ -25,18 +26,49 @@ async function getEtherBalance(address) {
     return Number(balance);
 }
 
+function buildInputSm(bb) {
+    const feePlan = rollupUtils.buildFeeInputSm(bb.feePlan);
+    return [
+        bb.getInput().oldStRoot.toString(),
+        bb.getNewStateRoot().toString(),
+        bb.getNewExitRoot().toString(),
+        bb.getOnChainHash().toString(),
+        bb.getOffChainHash().toString(),
+        feePlan[0],
+        feePlan[1],
+        bb.getCountersOut().toString(),
+    ];
+}
+
+function manageEvent(event) {
+    if (event.event == "OnChainTx") {
+        const txData = rollupUtils.decodeTxData(event.args.txData);
+        return {
+            fromIdx: txData.fromId,
+            toIdx: txData.toId,
+            amount: txData.amount,
+            loadAmount: BigInt(event.args.loadAmount),
+            coin: txData.tokenId,
+            ax: BigInt(event.args.Ax).toString(16),
+            ay: BigInt(event.args.Ay).toString(16),
+            ethAddress: BigInt(event.args.ethAddress).toString(),
+            onChain: true
+        };
+    }
+}
+
 contract("Rollup - RollupPoS", (accounts) => {
+    
     const {
         0: owner,
         1: id1,
-        2: withdrawAddress,
+        2: ethAddress,
         3: tokenList,
         4: operator1,
     } = accounts;
 
-    let balanceTree;
-    let fillingOnChainTest;
-    let minningOnChainTest;
+    let db;
+    let rollupDB;
 
     const tokenId = 0;
 
@@ -46,9 +78,15 @@ contract("Rollup - RollupPoS", (accounts) => {
     const blockPerEra = slotPerEra * blocksPerSlot;
     const amountToStake = 2;
 
-    // BabyJub public key
-    const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-    const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
+    const maxTx = 10;
+    const maxOnChainTx = 3;
+    const nLevels = 24;
+
+    // BabyJubjub public key
+    const mnemonic = "urban add pulse prefer exist recycle verb angle sell year more mosquito";
+    const wallet = BabyJubWallet.fromMnemonic(mnemonic);
+    const Ax = wallet.publicKey[0].toString();
+    const Ay = wallet.publicKey[1].toString();
 
     // tokenRollup initial amount
     const tokenInitialAmount = 50;
@@ -59,6 +97,7 @@ contract("Rollup - RollupPoS", (accounts) => {
     let insRollupPoS;
     let insRollup;
     let insVerifier;
+    let eventTmp;
 
     before(async () => {
     // Deploy poseidon
@@ -73,19 +112,21 @@ contract("Rollup - RollupPoS", (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, { from: owner });
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx,
+            { from: owner });
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address);
-
-        // Init balance tree
-        balanceTree = await RollupTree.newMemRollupTree();
 
         // Create hash chain for the operator
         hashChain.push(web3.utils.keccak256(initialMsg));
         for (let i = 1; i < 5; i++) {
             hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
         }
+
+        // init rollup database
+        db = new SMTMemDB();
+        rollupDB = await RollupDB(db);
     });
 
     it("Initialization", async () => {
@@ -101,36 +142,11 @@ contract("Rollup - RollupPoS", (accounts) => {
     });
 
     it("Deposit", async () => {
-        const depositAmount = 10;
-        await insTokenRollup.approve(insRollup.address, depositAmount, { from: id1 });
+        const loadAmount = 10;
+        await insTokenRollup.approve(insRollup.address, loadAmount, { from: id1 });
 
-        const resDeposit = await insRollup.deposit(depositAmount, tokenId, [Ax.toString(), Ay.toString()],
-            withdrawAddress, { from: id1, value: web3.utils.toWei("1", "ether") });
-
-        // Get event 'Deposit' data
-        const resId = BigInt(resDeposit.logs[0].args.idBalanceTree);
-        const resDepositAmount = BigInt(resDeposit.logs[0].args.depositAmount);
-        const resTokenId = BigInt(resDeposit.logs[0].args.tokenId);
-        const resAx = BigInt(resDeposit.logs[0].args.Ax);
-        const resAy = BigInt(resDeposit.logs[0].args.Ay);
-        const resWithdrawAddress = BigInt(resDeposit.logs[0].args.withdrawAddress);
-
-        // create balance tree and add leaf
-        balanceTree = await RollupTree.newMemRollupTree();
-        await balanceTree.addId(resId, resDepositAmount,
-            resTokenId, resAx, resAy, resWithdrawAddress, BigInt(0));
-
-        // Calculate Deposit hash given the events triggered
-        const calcFilling = rollupUtils.hashDeposit(resId, resDepositAmount, resTokenId, resAx,
-            resAy, resWithdrawAddress, BigInt(0));
-
-        // calculate filling on chain hash by the operator
-        let fillingOnChainTxsHash = BigInt(0);
-        fillingOnChainTxsHash = utils.hash([fillingOnChainTxsHash, calcFilling]);
-
-        // Update on-chain hashes
-        fillingOnChainTest = fillingOnChainTxsHash.toString();
-        minningOnChainTest = 0;
+        eventTmp = await insRollup.deposit(loadAmount, tokenId, ethAddress,
+            [Ax, Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
     });
 
     it("Forge batches by operator PoS", async () => {
@@ -148,53 +164,26 @@ contract("Rollup - RollupPoS", (accounts) => {
         currentBlock = await web3.eth.getBlockNumber();
 
         // build inputs
-        const oldStateRoot = BigInt(0).toString();
-        let newStateRoot = BigInt(0).toString();
-        const newExitRoot = BigInt(0).toString();
-        const onChainHash = BigInt(0).toString();
-        const feePlan = [BigInt(0).toString(), BigInt(0).toString()];
-        const nTxPerToken = BigInt(0).toString();
-
-        const offChainTx = rollupUtils.createOffChainTx(1);
-        const offChainHash = offChainTx.hashOffChain.toString();
-        const compressedTxs = offChainTx.bytesTx;
-
-        let inputs = [
-            oldStateRoot,
-            newStateRoot,
-            newExitRoot,
-            onChainHash,
-            offChainHash,
-            feePlan[0],
-            feePlan[1],
-            nTxPerToken,
-        ];
+        const block = await rollupDB.buildBlock(maxTx, nLevels);
+        await block.build();
+        const inputs = buildInputSm(block);
 
         // Check balances
         const balOpBeforeForge = await getEtherBalance(operator1);
         // Forge genesis batch by operator 1
-        await insRollupPoS.forgeBatchPoS(hashChain[3], proofA, proofB,
-            proofC, inputs, compressedTxs, { from: operator1 });
-        // Update on-chain hashes
-        minningOnChainTest = fillingOnChainTest;
-        fillingOnChainTest = BigInt(0).toString();
+        await insRollupPoS.commitBatch(hashChain[3], `0x${block.getDataAvailable().toString("hex")}`);
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs);
 
-        // build inputs
-        newStateRoot = await balanceTree.getRoot();
-        inputs = [
-            oldStateRoot,
-            newStateRoot.toString(),
-            newExitRoot,
-            minningOnChainTest,
-            offChainHash,
-            feePlan[0],
-            feePlan[1],
-            nTxPerToken,
-        ];
+        // Bulid inputs
+        const block1 = await rollupDB.buildBlock(maxTx, nLevels);
+        const tx = manageEvent(eventTmp.logs[0]);
+        block1.addTx(tx);
+        await block1.build();
+        const inputs1 = buildInputSm(block1);
 
         // Forge batch by operator 1
-        await insRollupPoS.forgeBatchPoS(hashChain[2], proofA, proofB,
-            proofC, inputs, compressedTxs, { from: operator1 });
+        await insRollupPoS.commitBatch(hashChain[2], `0x${block1.getDataAvailable().toString("hex")}`);
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1);
 
         // Check balances
         const balOpAfterForge = await getEtherBalance(operator1);

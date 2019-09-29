@@ -18,7 +18,9 @@
  *
  */
 
-require("dotenv").config();
+const pathEnvironmentFile = `${__dirname}/config.env`;
+require("dotenv").config({ path: pathEnvironmentFile});
+
 const HDWalletProvider = require("truffle-hdwallet-provider");
 // const infuraKey = "fj4jll3k.....";
 //

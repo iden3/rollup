@@ -80,7 +80,6 @@ module.exports = class BatchBuilder {
             if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[i][1]);
         }
         return bigInt(0);
-
     }
 
     async _addTx(tx) {
