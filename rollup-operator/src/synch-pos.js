@@ -1,0 +1,176 @@
+const Web3 = require("web3");
+const { timeout } = require("../src/utils");
+const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
+
+// global vars
+const blocksPerSlot = 100;
+const slotsPerEra = 20;
+const blocksNextInfo = blocksPerSlot*slotsPerEra; // 2 eras
+const TIMEOUT_ERROR = 5000;
+const TIMEOUT_NEXT_LOOP = 5000;
+
+// db keys
+const lastBlockKey = "last-block-synch-pos";
+const lastEraKey = "last-era-synch";
+const opCreateKey = "operator-create";
+const opRemoveKey = "operator-remove";
+const opListKey = "operator-list";
+const separator = "--";
+
+
+class SynchPoS {
+    constructor(db, nodeUrl, rollupPoSAddress, rollupPoSABI, creationHash, ethAddress) {
+        this.db = db;
+        this.nodeUrl = nodeUrl;
+        this.rollupPoSAddress = rollupPoSAddress;
+        this.creationHash = creationHash;
+        this.ethAddress = ethAddress;
+        this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
+        this.contractPoS = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
+        this.winners = [];
+    }
+
+    _toString(val) {
+        return JSON.stringify(stringifyBigInts(val));
+    }
+
+    _fromString(val) {
+        return unstringifyBigInts(JSON.parse(val));
+    }
+
+    async synchLoop() {
+        this.genesisBlock = 0;
+        if (this.creationHash) {
+            this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
+                .call({from: this.ethAddress}));
+            const creationTx = await this.web3.eth.getTransaction(this.creationHash);
+            this.creationBlock = creationTx.blockNumber;
+        }
+
+        // eslint-disable-next-line no-constant-condition
+        while(true) {
+            try {
+                // get last block synched and current blockchain block
+                let lastSynchEra = await this.getLastSynchEra();
+                const currentBlock = await this.web3.eth.getBlockNumber();
+                console.log("******************************");
+                console.log(`genesis block: ${this.genesisBlock}`);
+                console.log(`last synchronized era: ${lastSynchEra}`);
+                console.log(`current block number: ${currentBlock}`);
+
+                const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
+                if (currentBlock > blockNextUpdate){
+                    const logs = await this.contractPoS.getPastEvents("allEvents", {
+                        fromBlock: lastSynchEra ? (blockNextUpdate - blocksNextInfo) : this.creationBlock,
+                        toBlock: blockNextUpdate - 1,
+                    });
+                    // Update operators
+                    await this._updateOperators(logs, lastSynchEra);
+                    // update raffle winners
+                    await this._updateWinners(lastSynchEra);
+                    // update era
+                    await this.db.insert(lastEraKey, this._toString(lastSynchEra + 1));
+                    console.log(`Synchronized era ${lastSynchEra+1} correctly`);
+                }
+                console.log("******************************\n");
+                await timeout(TIMEOUT_NEXT_LOOP);
+            } catch (e) {
+                console.error(`Message error: ${e.message}`);
+                console.error(`Error in loop: ${e.stack}`);
+                await timeout(TIMEOUT_ERROR);
+            }
+        }
+    }
+
+    async _updateOperators(logs, era) {
+        // save operators on database
+        logs.forEach((elem, index )=> {
+            this._saveOperators(elem, index, era);
+        });
+        // update list operators
+        this._updateListOperators(era);
+    }
+
+    async _saveOperators(event, index, era) {
+        if (event.event == "createOperatorLog") {
+            await this.db.insert(`${opCreateKey}${separator}${era+2}${separator}${index}`,
+                this._toString(event.returnValues));
+        } else if(event.event == "removeOperatorLog") {
+            await this.db.insert(`${opRemoveKey}${separator}${era+2}${separator}${index}`,
+                this._toString(event.returnValues));
+        }
+    }
+
+    async _updateListOperators(era) {
+        // Add operators
+        const keysAddOp = await this.db.listKeys(`${opCreateKey}${separator}${era}`);
+        for (const opKey of keysAddOp) {
+            const opValue = this._fromString(await this.db.get(opKey));
+            await this.db.insert(`${opListKey}${separator}${opValue.operatorId}`,
+                this._toString(opValue));
+        }
+        // Remove operators
+        const keysRemoveOp = await this.db.listKeys(`${opRemoveKey}${separator}${era}`);
+        for (const opKey of keysRemoveOp) {
+            const opValue = this._fromString(await this.db.get(opKey));
+            await this.db.delete(`${opListKey}${separator}${opValue.operatorId}`);
+        }
+    }
+
+    async _updateWinners(eraUpdate) {
+        // update next era winners
+        for (let i = 0; i < 2*slotsPerEra; i++){
+            if(eraUpdate && (i < slotsPerEra)){
+                this.winners.shift(); // remove first era winners
+            } else {
+                const slot = slotsPerEra*eraUpdate + i;
+                let winner;
+                try {
+                    winner = await this.contractPoS.methods.getRaffleWinner(slot)
+                        .call({from: this.ethAddress});
+                } catch (error) {
+                    if ((error.message).includes("Must be stakers")) winner = -1;
+                }
+                this.winners.push(Number(winner));
+            }
+        } 
+    }
+
+    async getLastSynchBlock() {
+        return this._fromString(await this.db.getOrDefault(lastBlockKey, this.genesisBlock.toString()));
+    }
+
+    async getLastSynchEra() {
+        return this._fromString(await this.db.getOrDefault(lastEraKey, "0"));
+    }
+
+    async getCurrentSlot(){
+        const currentSlot = await this.contractPoS.methods.currentSlot()
+            .call({from: this.ethAddress});
+        return currentSlot;
+    }
+
+    async getCurrentEra(){
+        const currentEra = await this.contractPoS.methods.currentEra()
+            .call({from: this.ethAddress});
+        return currentEra;
+    }
+
+    async getOperators(){
+        const arrayOps = [];
+        const listOps = await this.db.listKeys(`${opListKey}${separator}`);
+        for (const op of listOps) arrayOps.push(this._fromString(await this.db.get(op)));
+        return arrayOps;
+    }
+
+    async getOperatorById(opId){
+        return this._fromString(await this.db.getOrDefault(`${opListKey}${separator}${opId}`, ""));
+    }
+
+    async getRaffleWinners(){
+        return this.winners;
+    }
+
+}
+
+module.exports = SynchPoS;

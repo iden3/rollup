@@ -15,12 +15,14 @@ const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
-const {timeout, buildInputSm, manageEvent } = require("../src/utils");
+const { timeout, buildInputSm, manageEvent } = require("../src/utils");
 
 async function checkSynch(synch, opRollupDb){
     // Check fully synchronized
     const totalSynched = await synch.getSynchPercentage();
     expect(totalSynched).to.be.equal(Number(100).toFixed(2));
+    const isSynched = await synch.isSynched();
+    expect(isSynched).to.be.equal(true);
     // Check database-synch matches database-op
     const tmpOpDb = opRollupDb.db.nodes;
     const synchDb = await synch.getState();
@@ -188,6 +190,27 @@ contract("Synchronizer", (accounts) => {
         await forgeBlock(events);
         await timeout(12000);
         await checkSynch(synch, opRollupDb);
+    });
+
+    it("Should get off-chain tx by batch", async () => {
+        // get off-chain tx forge in batch 3
+        const res0 = await synch.getOffChainTxByBatch(2);
+        expect(res0[0].fromIdx.toString()).to.be.equal("1");
+        expect(res0[0].toIdx.toString()).to.be.equal("2");
+        expect(res0[0].amount.toString()).to.be.equal("3");
+
+        // get off-chain tx forged in batch 5
+        const res1 = await synch.getOffChainTxByBatch(4);
+        // Should retrieve two off-chain tx
+        expect(res1.length).to.be.equal(2);
+        // tx 0
+        expect(res1[0].fromIdx.toString()).to.be.equal("1");
+        expect(res1[0].toIdx.toString()).to.be.equal("2");
+        expect(res1[0].amount.toString()).to.be.equal("2");
+        // tx1
+        expect(res1[1].fromIdx.toString()).to.be.equal("2");
+        expect(res1[1].toIdx.toString()).to.be.equal("1");
+        expect(res1[1].amount.toString()).to.be.equal("3");
     });
 
     it("Should add bunch off-chain tx and synch", async () => {

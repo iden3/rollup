@@ -1,23 +1,23 @@
 const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
 const rollupUtils = require("../../rollup-utils/rollup-utils");
-const SMT = require("circomlib").SMT;
-const utils = require("../../js/utils");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // global vars
+const TIMEOUT_ERROR = 5000;
+const TIMEOUT_NEXT_LOOP = 5000;
+const maxTx = 10;
+const nLevels = 24;
+const bytesOffChainTx = 3*2 + 2;
+
+// db keys
 const lastBlockKey = "last-block-synch";
 const stateRootKey = "last-state-root";
 const lastBatchKey = "last-state-batch";
 const eventOnChainKey = "onChain";
 const eventForgeBatchKey = "forgeBatch";
 const separator = "--";
-const TIMEOUT_ERROR = 5000;
-const TIMEOUT_NEXT_LOOP = 5000;
-const maxTx = 10;
-const nLevels = 24;
-const bytesOffChainTx = 3*2 + 2;
 
 class Synchronizer {
     constructor(db, treeDb, nodeUrl, rollupAddress, rollupABI, creationHash, ethAddress) {
@@ -199,16 +199,18 @@ class Synchronizer {
         return this.treeDb.db.nodes;
     }
 
-    async getInfoById(id) {
-        const stateTree = new SMT(this.treeDb.db, this.treeDb.stateRoot);
-        const resFind = await stateTree.find(id);
-        if (resFind.found) {
-            return utils.array2state(await this.treeDb.db.get(resFind.foundValue));
-        }
-        return resFind;
+    async getStateById(id) {
+        return this.treeDb.getStateById(id);
     }
 
-    // TODO: insert tmp database with ( PubKey --> infoLeaf )
+    async getStateByAxAy(AxAy) {
+        return this.treeDb.getStateByAxAy(AxAy);
+    }
+
+    async getStateByEthAddress(ethAddress) {
+        return this.treeDb.getStateByEthAddress(ethAddress);
+    }
+
     async getInfoByPubKey(pubKey) {
         const findAx = bigInt(pubKey[0]).toString(16);
         const findAy = bigInt(pubKey[1]).toString(16);
@@ -231,7 +233,34 @@ class Synchronizer {
     }
 
     async getBlockBuilder() {
-        return (await this.treeDb.buildBlock(maxTx, nLevels));
+        const bb = await this.treeDb.buildBlock(maxTx, nLevels);
+        const currentBlock = await this.web3.eth.getBlockNumber();
+        const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
+        // add on-chain txs
+        const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${currentBatchDepth-1}`);
+        for (const key of keysOnChain) bb.addTx(this._getTxOnChain(this._fromString(await this.db.get(key))));
+        return bb;
+    }
+
+    async getOffChainTxByBatch(numBatch) {
+        const res = [];
+        // add off-chain tx
+        const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${numBatch}`);
+        for (const key of keysForge) {
+            const tmp = this._fromString(await this.db.get(key));
+            const offChainTxs = await this._getTxOffChain(tmp);
+            for (const tx of offChainTxs) res.push(tx);
+        }
+        return res;
+    }
+
+    async isSynched() {
+        if (this.totalSynch != Number(100).toFixed(2)) return false;
+        const currentBlock = await this.web3.eth.getBlockNumber();
+        const currentBatch = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
+        const lastBatchSaved = Number(await this.getLastBatch());
+        if (lastBatchSaved < currentBatch) return false;
+        return true;
     }
 }
 
