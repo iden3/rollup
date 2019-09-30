@@ -164,7 +164,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         currentBlock = await web3.eth.getBlockNumber();
 
         // build inputs
-        const block = await rollupDB.buildBlock(maxTx, nLevels);
+        const block = await rollupDB.buildBatch(maxTx, nLevels);
         await block.build();
         const inputs = buildInputSm(block);
 
@@ -175,7 +175,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs);
 
         // Bulid inputs
-        const block1 = await rollupDB.buildBlock(maxTx, nLevels);
+        const block1 = await rollupDB.buildBatch(maxTx, nLevels);
         const tx = manageEvent(eventTmp.logs[0]);
         block1.addTx(tx);
         await block1.build();

@@ -9,7 +9,7 @@ const TIMEOUT_NEXT_LOOP = 5000;
 
 
 
-class StakerManager {
+class OperatorManager {
     constructor(nodeUrl, contractAddress, abi){
         this.wallet = undefined;
         this.opId = undefined;
@@ -94,7 +94,7 @@ class StakerManager {
         return false;
     }
 
-    async stakeLoop() {
+    async opManagerLoop() {
         // eslint-disable-next-line no-constant-condition
         while(true) {
             try {
@@ -117,4 +117,4 @@ class StakerManager {
     }
 }
 
-module.exports = StakerManager;
+module.exports = OperatorManager;

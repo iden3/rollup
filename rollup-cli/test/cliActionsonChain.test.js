@@ -54,7 +54,7 @@ contract("Rollup", async (accounts) => {
 
     async function forgeBlock(events = undefined) {
        
-        const block = await rollupDB.buildBlock(maxTx, nLevels);
+        const block = await rollupDB.buildBatch(maxTx, nLevels);
         if (events) {
             events.forEach(elem => {
                 block.addTx(manageEvent(elem));

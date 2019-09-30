@@ -30,7 +30,6 @@ contract("Synchronizer PoS", async (accounts) => {
     let genesisBlock;
 
     let configSynchPoS = {
-        treeDb: undefined,
         synchDb: undefined,
         ethNodeUrl: "http://localhost:8545",
         contractAddress: undefined,

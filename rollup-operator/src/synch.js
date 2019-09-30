@@ -145,7 +145,7 @@ class Synchronizer {
     }
 
     async _updateTree(offChain, onChain) {
-        const block = await this.treeDb.buildBlock(maxTx, nLevels);
+        const block = await this.treeDb.buildBatch(maxTx, nLevels);
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event);
             for (const tx of offChainTxs) block.addTx(tx);
@@ -200,15 +200,16 @@ class Synchronizer {
     }
 
     async getStateById(id) {
-        return this.treeDb.getStateById(id);
+        return this.treeDb.getStateByIdx(id);
     }
 
-    async getStateByAxAy(AxAy) {
-        return this.treeDb.getStateByAxAy(AxAy);
+    // ax, ay encoded as hexadecimal string (whitout '0x')
+    async getStateByAxAy(ax, ay) {
+        return this.treeDb.getStateByAxAy(ax, ay);
     }
 
-    async getStateByEthAddress(ethAddress) {
-        return this.treeDb.getStateByEthAddress(ethAddress);
+    async getStateByEthAddr(ethAddress) {
+        return this.treeDb.getStateByEthAddr(ethAddress);
     }
 
     async getInfoByPubKey(pubKey) {
@@ -232,8 +233,8 @@ class Synchronizer {
         return this.totalSynch;
     }
 
-    async getBlockBuilder() {
-        const bb = await this.treeDb.buildBlock(maxTx, nLevels);
+    async getBatchBuilder() {
+        const bb = await this.treeDb.buildBatch(maxTx, nLevels);
         const currentBlock = await this.web3.eth.getBlockNumber();
         const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
         // add on-chain txs
