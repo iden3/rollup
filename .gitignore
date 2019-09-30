@@ -72,3 +72,5 @@ rollup-cli/src/wallet-rollup-cli.json
 
 # vscode configuration
 .vscode
+rollup-cli/tools/resourcesBot/
+rollup-cli/tools/walletSlash.json

@@ -1,6 +1,6 @@
 # Rollup-cli Bot
 
-Automatice creation of wallets with ethers and tokens, along with doing transactions onchain and offchain
+Automatic creation of wallets with ethers and tokens, along with making transactions onchain and offchain
 
 
 ## Table of Contents
@@ -8,14 +8,14 @@ Automatice creation of wallets with ethers and tokens, along with doing transact
 [TOC]
 
 ### Commands:
-- createwallets: Create, fund and save the wallets in files with encripted JSON format. 
+- createwallets: Create, fund and save the wallets in files with encrypted JSON format. 
 - deposit: Every wallet does a deposit Tx
-- send: Every wallet does a send Tx. Some Tx will be unvalid randomly
+- send: Every wallet does a send Tx. Some Tx will be wrong randomly
 - doall: Make the three options above
 
 
 ### Previous configuration:
-It's necessari a configBot.json like this one:
+It's necessary a `configBot.json` like this one:
 ```
 {
  "walletFunder": "../tools/resourcesBot/walletFunder.json",
@@ -28,14 +28,14 @@ It's necessari a configBot.json like this one:
 }
 
 The walletFunder must be an account with tokens and funds. 
-In order to test this, the user can use the bot.test.js wich creates in ganache an account with funds and tokens.
+In order to test this, the user can use the bot.test.js which creates in ganache an account with funds and tokens.
 ```
 ### Options:
 
 - wallets `[-w | --wallets] <amount of wallets to create> `
 Default: 4 
 - mnemonic `[-mn | --mnemonic] <mnemonic 12 words>` 
-If no mnemonic submited the wallets will be create randomly
+If no mnemonic submitted the wallets will be create randomly
 - deposit `[-d | --deposits] <amount of deposits every wallet will make>`
 Default: 1
 - send    `[-s | --sends] <amount of sends every wallet will make>`
@@ -52,15 +52,18 @@ Default: 1
 
 ##  Examples
 
-```
+
 Create 5 wallets with a mnemonic: 
+```
 node bot.js createwallets --wallets 5 --mnemonic "radar blur cabbage chef fix engine embark joy scheme fiction master release"
 ```
+
+Every wallet does 2 offchain send transactions:
 ```
-Every wallet does 2 offchain send transactions: 
 node bot.js send --sends 2 
 ```
-```
+
 Every wallet does 2 onchain deposit transactions: 
-node bot.js send --deposits 2 
+```
+node bot.js deposit --deposits 2 
 ```

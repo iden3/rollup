@@ -1,12 +1,12 @@
-const chai = require("chai");
-const Db = require("../src/db");
+const chai = require('chai');
+const Db = require('../src/db');
 
 const { expect } = chai;
 
-describe("[memory database]", () => {
+describe('[memory database]', () => {
     let dataBase;
 
-    it("Check databse key - values", () => {
+    it('Check databse key - values', () => {
         dataBase = new Db();
         for (let i = 0; i < 10; i++) {
             const key = `key-${i}`;
@@ -21,7 +21,7 @@ describe("[memory database]", () => {
         }
     });
 
-    it("export and import database", () => {
+    it('export and import database', () => {
         const dbObj = dataBase.exportObj();
 
         const newdB = Db.newFromObj(dbObj);
@@ -33,14 +33,14 @@ describe("[memory database]", () => {
         }
     });
 
-    it("Clear single key", () => {
-        const singleKey = "key-3";
+    it('Clear single key', () => {
+        const singleKey = 'key-3';
         dataBase.delete(singleKey);
         const value = dataBase.get(singleKey);
         expect(value).to.be.equal(null);
     });
 
-    it("Clear full database", () => {
+    it('Clear full database', () => {
         dataBase.deleteAll();
         for (let i = 0; i < 10; i++) {
             const key = `key-${i}`;

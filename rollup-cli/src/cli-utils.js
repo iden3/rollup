@@ -1,8 +1,9 @@
-const { send } = require("./actions/offchain/send.js");
-const { deposit } = require("./actions/onchain/deposit.js");
-const { depositOnTop } = require("./actions/onchain/depositOnTop.js");
-const { withdraw } = require("./actions/onchain/withdraw.js");
-const { forceWithdraw } = require("./actions/onchain/forceWithdraw.js");
+/* eslint-disable no-console */
+const { send } = require('./actions/offchain/send.js');
+const { deposit } = require('./actions/onchain/deposit.js');
+const { depositOnTop } = require('./actions/onchain/depositOnTop.js');
+const { withdraw } = require('./actions/onchain/withdraw.js');
+const { forceWithdraw } = require('./actions/onchain/forceWithdraw.js');
 
 async function sendTx(urlOperator, to, amount, wallet, passString, tokenId, userFee) {
     const response = await send(urlOperator, to, amount, wallet, passString, tokenId, userFee);

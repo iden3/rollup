@@ -1,4 +1,4 @@
-const ethers = require("ethers");
+const ethers = require('ethers');
 
 class EthereumWallet {
     /**
@@ -13,13 +13,14 @@ class EthereumWallet {
         this.publicKey = wallet.signingKey.publicKey;
         this.publicKeyCompressed = wallet.signingKey.keyPair.compressedPublicKey;
     }
+
     /**
    * Create a new wallet from mnemonic
    * @param {String} mnemonic
    * @returns {Object} wallet
    */
-    static fromMnemonic(mnemonic, index= 0) {
-        let path = `m/44'/60'/1'/0/${index}`;
+    static fromMnemonic(mnemonic, index = 0) {
+        const path = `m/44'/60'/1'/0/${index}`;
         return new EthereumWallet(ethers.Wallet.fromMnemonic(mnemonic, path));
     }
 

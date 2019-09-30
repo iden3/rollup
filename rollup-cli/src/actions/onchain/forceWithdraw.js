@@ -1,76 +1,57 @@
-const ethers = require("ethers");
-const axios = require("axios");
-const { Wallet } = require("../../wallet.js");
-
+/* eslint-disable no-restricted-syntax */
+const ethers = require('ethers');
+const axios = require('axios');
+const { Wallet } = require('../../wallet.js');
 
 /**
- * @dev Withdraw balance from identifier balance tree
+ * @dev on-chain transaction to build a leaf on exit tree
  * @param urlNode URL of the ethereum node
- * @param addressSC Rollup address
- * @param walletJson From this one can obtain the ethAddress and BabyPubKey
- * @param password For desencrypt the Wallet
- * @param abi abi of Rollup Contract
- * @param UrlOperator URl from Operator
- * @params_for_TxforceWithdraw :
-    * @param idBalanceTree account identifier on the balance tree which will do the withdraw
-    * @param amount total amount coded as float 16 bits
-    * @param babyPubKey public key babyjubjub represented as point (Ax, Ay)
+ * @param addressSC rollup address
+ * @param balance amount to transfer to the leaf of exit tree
+ * @param tokenId token type identifier
+ * @param walletJson from this one can obtain the ethAddress and babyPubKey
+ * @param password for decrypt the Wallet
+ * @param abi abi of rollup contract
+ * @param UrlOperator URl from operator
  */
-
-async function forceWithdraw(urlNode, addressSC, balance, tokenId, walletJson, password, abi, UrlOperator)  {
-
-    let walletRollup= await Wallet.fromEncryptedJson(walletJson, password);
+async function forceWithdraw(urlNode, addressSC, balance, tokenId, walletJson, password, abi, UrlOperator) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
-    let walletBaby = walletRollup.babyjubWallet;
-
+    const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
-    let pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()] ;
-
-
+    const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
     walletEth = walletEth.connect(provider);
-    let contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
-    
-    let overrides = {
+    const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
+    const overrides = {
         gasLimit: 800000,
-        value: ethers.utils.parseEther("1.0"),
+        value: ethers.utils.parseEther('0.11'), // 0.1 minimum fee for onchian Tx
     };
-   
 
-    try{
-        return new Promise ( function (resolve, reject){
-
-            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`).then(async function(response){
-
-                let coorectLeaf = [];
-                for ( let leaf of response.data){
-                    if (leaf.tokenId ==tokenId){
-                        coorectLeaf = leaf;
+    try {
+        return new Promise(((resolve, reject) => {
+            axios.get(`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`)
+                .then(async (response) => {
+                    let correctLeaf = [];
+                    for (const leaf of response.data) {
+                        if (leaf.tokenId === tokenId) {
+                            correctLeaf = leaf;
+                        }
                     }
-                }
-          
-                if (coorectLeaf == []){
-                    reject("There're no leafs with this wallet (babyjub) and this tokenID");
-                }
-
-                let receipt = await contractWithSigner.forceWithdraw(coorectLeaf.id, balance, pubKeyBabyjub, overrides);
-                resolve(receipt);
-            })
-        
-                .catch(function (error) {
+                    if (correctLeaf === []) {
+                        reject(new Error("There're no leafs with this wallet (babyjub) and this tokenID"));
+                    }
+                    const receipt = await contractWithSigner.forceWithdraw(correctLeaf.id, balance, pubKeyBabyjub, overrides);
+                    resolve(receipt);
+                })
+                .catch((error) => {
                     reject(error);
                 });
-     
-        });
-
+        }));
+    } catch (error) {
+        return ('error.... ', error);
     }
-    catch (error) {
-        console.log("error.... ", error);
-    }
-         
 }
-  
-module.exports = {
-    forceWithdraw
-};
 
-  
+module.exports = {
+    forceWithdraw,
+};
