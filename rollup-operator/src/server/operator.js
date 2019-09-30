@@ -89,15 +89,30 @@ posSynch = new SynchPoS(posDb, synchPoSConfig.ethNodeUrl, synchPoSConfig.contrac
     synchPoSConfig.abi, synchPoSConfig.creationHash, synchPoSConfig.ethAddress);
 posSynch.synchLoop();
 
+//////////////////////
+///// OPERATOR MANAGER
+//////////////////////
+
+const opManager = new OperatorManager(synchPoSConfig.ethNodeUrl,
+    synchPoSConfig.contractAddress, synchPoSConfig.abi, opManagerConfig.debug);
+
+if (opManagerConfig.debug) {
+    opManager.loadWallet(opManagerConfig.wallet);
+} else {
+    const wallet = fs.readFileSync(opManagerConfig.wallet);
+    opManager.loadWallet(wallet, opManagerConfig.pass);
+}
+
+
+///////////////////////
+///// POOL OFF-CHAIN TX
+///////////////////////
+const pool = new Pool(poolConfig.maxtTx);
+
 ////////////////////
 ///// LOOP MANAGER
 ///////////////////
 
-function startLoopManager() {
-    opManager.opManagerLoop()
-        .catch((err) => console.error(`Staker error: ${err.stack}`));
-    
-}
 
 // TODO:
 // When operator is registered:
@@ -110,21 +125,6 @@ function startLoopManager() {
 // send commited data to PoS
 // poll server pool to get proof when it is ready
 // forge commited data to PoS        
-
-
-
-///////////////////////
-///// POOL OFF-CHAIN TX
-///////////////////////
-const pool = new Pool(poolConfig.maxtTx);
-
-///////////////////
-///// STAKE MANAGER
-///////////////////
-// const opManager = new OperatorManager(synchPoSConfig.ethNodeUrl,
-//     synchPoSConfig.contractAddress, synchPoSConfig.abi);
-
-// opManager.loadWallet(opManagerConfig.wallet, opManagerConfig.pass);
 
 ////////////////////
 ///// SERVER CONFIG
@@ -207,7 +207,6 @@ app.post("/register/:hash/:stake", async (req, res) => {
     const rndHash = req.params.hash;
     const stakeValue = req.params.stake;
     await opManager.register(rndHash, stakeValue);
-    startLoopManager();
     res.sendStatus(200);
 });
 

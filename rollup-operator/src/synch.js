@@ -212,23 +212,6 @@ class Synchronizer {
         return this.treeDb.getStateByEthAddr(ethAddress);
     }
 
-    async getInfoByPubKey(pubKey) {
-        const findAx = bigInt(pubKey[0]).toString(16);
-        const findAy = bigInt(pubKey[1]).toString(16);
-        let id = 1;
-        let infoId;
-        let found = false;
-        let endId = false;
-        while (!found || !endId ) {
-            infoId = this.getInfoById(id);
-            if ( (infoId.ax == findAx) && (infoId.ay == findAy) ) found = true;
-            if( infoId.found == false) endId = true;
-            id += 1;
-        }
-        if(endId) return [];
-        return infoId;
-    }
-
     async getSynchPercentage() {
         return this.totalSynch;
     }

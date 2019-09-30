@@ -13,6 +13,20 @@ const { timeout } = require("../src/utils");
 
 contract("Synchronizer PoS", async (accounts) => {
 
+    async function checkSlot(slots) {
+        const currentEra = await synchPoS.getCurrentEra();
+        for (let i = 0; i < 2*slotPerEra; i++) {
+            const slotNum = slotPerEra*currentEra + i;
+            expect(slotNum).to.be.equal(slots[i]);   
+        }
+    }
+
+    async function checkFullSynch(){
+        await timeout(6000);
+        const isSynched = await synchPoS.isSynched();
+        expect(isSynched).to.be.equal(true);
+    }
+
     const {
         0: synchAddress,
     } = accounts;
@@ -74,6 +88,7 @@ contract("Synchronizer PoS", async (accounts) => {
         await timeout(11000);
         let winners = await synchPoS.getRaffleWinners();
         expect(winners.length).to.be.equal(40);
+        await checkSlot(await synchPoS.getSlotWinners());
         // expect no winners for era 0 and era 1
         for(const winner of winners) expect(winner).to.be.equal(-1);
         await timeTravel.addBlocks(blockPerEra); // era 1
@@ -84,6 +99,8 @@ contract("Synchronizer PoS", async (accounts) => {
             if (i < winners.length/2) expect(winners[i]).to.be.equal(-1);
             else expect(winners[i]).to.be.equal(operators[0].idOp);
         }
+        await checkSlot(await synchPoS.getSlotWinners());
+        await checkFullSynch();
     });
 
     it("Should get operators list", async () => {
@@ -107,15 +124,18 @@ contract("Synchronizer PoS", async (accounts) => {
             if (i < winners.length/2) expect(winners[i]).to.be.equal(operators[0].idOp);
             else expect(winners[i]).to.be.equal(-1);
         }
+        await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 4
         await timeout(11000);
         winners = await synchPoS.getRaffleWinners();
         // expect no winners for era 4 and era 5
         for(const winner of winners) expect(winner).to.be.equal(-1);
+        await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 5
         await timeout(11000);
         const listOperators = await synchPoS.getOperators();
         expect(listOperators.length).to.be.equal(0);
+        await checkFullSynch();
     });
 
     it("Should add several operators and synch", async () => {
@@ -133,11 +153,13 @@ contract("Synchronizer PoS", async (accounts) => {
             if (i < winners.length/2) expect(winners[i]).to.be.equal(-1);
             else expect(winners[i]).to.be.within(1, numOp2Add);
         }
+        await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 7
         await timeout(11000);
         winners = await synchPoS.getRaffleWinners();
         // expect winner for era 6 and winner for era 7
         for(const winner of winners) expect(winner).to.be.within(1, numOp2Add);
+        await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 8
         await timeout(11000);
         const listOperators = await synchPoS.getOperators();
@@ -145,5 +167,6 @@ contract("Synchronizer PoS", async (accounts) => {
             const opId = Number(opInfo.operatorId);
             expect(operators[opId].address.toString()).to.be.equal(opInfo.controllerAddress);
         }
+        await checkFullSynch();
     });
 });

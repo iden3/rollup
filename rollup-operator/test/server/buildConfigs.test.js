@@ -11,13 +11,15 @@ const path = require("path");
 
 const configPath = path.join(__dirname, "../config/rollup-synch-config-test.json");
 const configPathPoS = path.join(__dirname, "../config/pos-synch-config-test.json");
+const configPathOpManager = path.join(__dirname, "../config/op-manager-config-test.json");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
 contract("Operator Server", (accounts) => {
     const {
         0: owner,
         1: id1,
-        3: synchAddress,
+        2: synchAddress,
+        77: debugAddress,
     } = accounts;
 
     const maxTx = 10;
@@ -76,6 +78,15 @@ contract("Operator Server", (accounts) => {
             abi: RollupPoS.abi,
         };
         fs.writeFileSync(configPathPoS, JSON.stringify(config));
+    });
+
+    it("Should create operator manager config file", async () => {
+        const config = {
+            wallet: undefined,
+            pass: undefined,
+            ganacheAddress: debugAddress,
+        };
+        fs.writeFileSync(configPathOpManager, JSON.stringify(config));
     });
 
     it("Should expose data to run server test", async () => {
