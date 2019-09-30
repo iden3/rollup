@@ -32,7 +32,7 @@ async function checkSynch(synch, opRollupDb){
 contract("Synchronizer", (accounts) => {
     
     async function forgeBlock(events = undefined) {
-        const block = await opRollupDb.buildBlock(maxTx, nLevels);
+        const block = await opRollupDb.buildBatch(maxTx, nLevels);
         if (events) {
             events.forEach(elem => {
                 block.addTx(manageEvent(elem));
@@ -166,6 +166,36 @@ contract("Synchronizer", (accounts) => {
         await forgeBlock(events);
         await timeout(12000);
         await checkSynch(synch, opRollupDb);
+    });
+
+    it("Should retrieve balance tree indormation", async () => {
+        const axStr = wallet.publicKey[0].toString("16");
+        const ayStr = wallet.publicKey[1].toString("16");
+        // get info by Id
+        const resId = await synch.getStateById(1);
+        // check leaf info matches deposit
+        expect(resId.ax).to.be.equal(axStr);
+        expect(resId.ay).to.be.equal(ayStr);
+        expect(resId.ethAddress).to.be.equal(id1.toString().toLowerCase());
+
+        // get leafs info by AxAy
+        const resAxAy = await synch.getStateByAxAy(axStr, ayStr);
+        // check leaf info matches deposits
+        expect(resAxAy.length).to.be.equal(2);
+        expect(resAxAy[0].ethAddress).to.be.equal(id1.toString().toLowerCase());
+        expect(resAxAy[1].ethAddress).to.be.equal(id2.toString().toLowerCase());
+
+        // get leaf info by ethAddress
+        const resEthAddress = await synch.getStateByEthAddr(id1.toString());
+        // check leaf info matches deposit
+        expect(resEthAddress[0].ax).to.be.equal(axStr);
+        expect(resEthAddress[0].ay).to.be.equal(ayStr);
+
+        // get leaf info by ethAddress
+        const resEthAddress2 = await synch.getStateByEthAddr(id2.toString());
+        // check leaf info matches deposit
+        expect(resEthAddress2[0].ax).to.be.equal(axStr);
+        expect(resEthAddress2[0].ay).to.be.equal(ayStr);
     });
 
     it("Should add off-chain tx and synch", async () => {

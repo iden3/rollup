@@ -1,12 +1,12 @@
 const Web3 = require("web3");
 const { timeout } = require("../src/utils");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // global vars
 const blocksPerSlot = 100;
 const slotsPerEra = 20;
 const blocksNextInfo = blocksPerSlot*slotsPerEra; // 2 eras
-const TIMEOUT_ERROR = 5000;
+const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
 
 // db keys
@@ -28,6 +28,8 @@ class SynchPoS {
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.contractPoS = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         this.winners = [];
+        this.slots = [];
+        this.operators = {};
     }
 
     _toString(val) {
@@ -40,6 +42,7 @@ class SynchPoS {
 
     async synchLoop() {
         this.genesisBlock = 0;
+        this.totalSynch = 0;
         if (this.creationHash) {
             this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
                 .call({from: this.ethAddress}));
@@ -53,11 +56,14 @@ class SynchPoS {
                 // get last block synched and current blockchain block
                 let lastSynchEra = await this.getLastSynchEra();
                 const currentBlock = await this.web3.eth.getBlockNumber();
+                const currentEra = await this.getCurrentEra();
                 console.log("******************************");
                 console.log(`genesis block: ${this.genesisBlock}`);
                 console.log(`last synchronized era: ${lastSynchEra}`);
+                console.log(`current era: ${currentEra}`);
                 console.log(`current block number: ${currentBlock}`);
 
+                this.totalSynch = ((lastSynchEra / (currentEra + 1)) * 100).toFixed(2);
                 const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
                 if (currentBlock > blockNextUpdate){
                     const logs = await this.contractPoS.getPastEvents("allEvents", {
@@ -72,6 +78,7 @@ class SynchPoS {
                     await this.db.insert(lastEraKey, this._toString(lastSynchEra + 1));
                     console.log(`Synchronized era ${lastSynchEra+1} correctly`);
                 }
+                console.log(`Total Synched: ${this.totalSynch} %`);
                 console.log("******************************\n");
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
@@ -93,7 +100,7 @@ class SynchPoS {
 
     async _saveOperators(event, index, era) {
         if (event.event == "createOperatorLog") {
-            await this.db.insert(`${opCreateKey}${separator}${era+2}${separator}${index}`,
+            await this.db.insert(`${opCreateKey}${separator}${era}${separator}${index}`,
                 this._toString(event.returnValues));
         } else if(event.event == "removeOperatorLog") {
             await this.db.insert(`${opRemoveKey}${separator}${era+2}${separator}${index}`,
@@ -106,24 +113,27 @@ class SynchPoS {
         const keysAddOp = await this.db.listKeys(`${opCreateKey}${separator}${era}`);
         for (const opKey of keysAddOp) {
             const opValue = this._fromString(await this.db.get(opKey));
-            await this.db.insert(`${opListKey}${separator}${opValue.operatorId}`,
-                this._toString(opValue));
+            this.operators[opValue.operatorId.toString()] = opValue;
+            // await this.db.insert(`${opListKey}${separator}${opValue.operatorId}`,
+            //     this._toString(opValue));
         }
         // Remove operators
         const keysRemoveOp = await this.db.listKeys(`${opRemoveKey}${separator}${era}`);
         for (const opKey of keysRemoveOp) {
             const opValue = this._fromString(await this.db.get(opKey));
-            await this.db.delete(`${opListKey}${separator}${opValue.operatorId}`);
+            delete this.operators[opValue.operatorId.toString()];
+            // await this.db.delete(`${opListKey}${separator}${opValue.operatorId}`);
         }
     }
 
     async _updateWinners(eraUpdate) {
         // update next era winners
         for (let i = 0; i < 2*slotsPerEra; i++){
+            const slot = slotsPerEra*eraUpdate + i;
             if(eraUpdate && (i < slotsPerEra)){
                 this.winners.shift(); // remove first era winners
+                this.slots.shift();
             } else {
-                const slot = slotsPerEra*eraUpdate + i;
                 let winner;
                 try {
                     winner = await this.contractPoS.methods.getRaffleWinner(slot)
@@ -132,6 +142,7 @@ class SynchPoS {
                     if ((error.message).includes("Must be stakers")) winner = -1;
                 }
                 this.winners.push(Number(winner));
+                this.slots.push(slot);
             }
         } 
     }
@@ -147,30 +158,38 @@ class SynchPoS {
     async getCurrentSlot(){
         const currentSlot = await this.contractPoS.methods.currentSlot()
             .call({from: this.ethAddress});
-        return currentSlot;
+        return Number(currentSlot);
     }
 
     async getCurrentEra(){
         const currentEra = await this.contractPoS.methods.currentEra()
             .call({from: this.ethAddress});
-        return currentEra;
+        return Number(currentEra);
     }
 
     async getOperators(){
-        const arrayOps = [];
-        const listOps = await this.db.listKeys(`${opListKey}${separator}`);
-        for (const op of listOps) arrayOps.push(this._fromString(await this.db.get(op)));
-        return arrayOps;
+        return this.operators;
     }
 
     async getOperatorById(opId){
-        return this._fromString(await this.db.getOrDefault(`${opListKey}${separator}${opId}`, ""));
+        return this.operators[(bigInt(opId).toString())];
     }
 
     async getRaffleWinners(){
         return this.winners;
     }
 
+    async getSlotWinners(){
+        return this.slots;
+    }
+
+    async isSynched() {
+        if (this.totalSynch != Number(100).toFixed(2)) return false;
+        const currentEra = await this.getCurrentEra();
+        const lastEraSaved = Number(await this.getLastSynchEra());
+        if (lastEraSaved <= currentEra) return false;
+        return true;
+    }
 }
 
 module.exports = SynchPoS;
