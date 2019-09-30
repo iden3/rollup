@@ -1,12 +1,12 @@
 const Web3 = require("web3");
 const { timeout } = require("../src/utils");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // global vars
 const blocksPerSlot = 100;
 const slotsPerEra = 20;
 const blocksNextInfo = blocksPerSlot*slotsPerEra; // 2 eras
-const TIMEOUT_ERROR = 5000;
+const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
 
 // db keys
@@ -29,6 +29,7 @@ class SynchPoS {
         this.contractPoS = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         this.winners = [];
         this.slots = [];
+        this.operators = {};
     }
 
     _toString(val) {
@@ -99,7 +100,7 @@ class SynchPoS {
 
     async _saveOperators(event, index, era) {
         if (event.event == "createOperatorLog") {
-            await this.db.insert(`${opCreateKey}${separator}${era+2}${separator}${index}`,
+            await this.db.insert(`${opCreateKey}${separator}${era}${separator}${index}`,
                 this._toString(event.returnValues));
         } else if(event.event == "removeOperatorLog") {
             await this.db.insert(`${opRemoveKey}${separator}${era+2}${separator}${index}`,
@@ -112,14 +113,16 @@ class SynchPoS {
         const keysAddOp = await this.db.listKeys(`${opCreateKey}${separator}${era}`);
         for (const opKey of keysAddOp) {
             const opValue = this._fromString(await this.db.get(opKey));
-            await this.db.insert(`${opListKey}${separator}${opValue.operatorId}`,
-                this._toString(opValue));
+            this.operators[opValue.operatorId.toString()] = opValue;
+            // await this.db.insert(`${opListKey}${separator}${opValue.operatorId}`,
+            //     this._toString(opValue));
         }
         // Remove operators
         const keysRemoveOp = await this.db.listKeys(`${opRemoveKey}${separator}${era}`);
         for (const opKey of keysRemoveOp) {
             const opValue = this._fromString(await this.db.get(opKey));
-            await this.db.delete(`${opListKey}${separator}${opValue.operatorId}`);
+            delete this.operators[opValue.operatorId.toString()];
+            // await this.db.delete(`${opListKey}${separator}${opValue.operatorId}`);
         }
     }
 
@@ -165,14 +168,11 @@ class SynchPoS {
     }
 
     async getOperators(){
-        const arrayOps = [];
-        const listOps = await this.db.listKeys(`${opListKey}${separator}`);
-        for (const op of listOps) arrayOps.push(this._fromString(await this.db.get(op)));
-        return arrayOps;
+        return this.operators;
     }
 
     async getOperatorById(opId){
-        return this._fromString(await this.db.getOrDefault(`${opListKey}${separator}${opId}`, ""));
+        return this.operators[(bigInt(opId).toString())];
     }
 
     async getRaffleWinners(){
