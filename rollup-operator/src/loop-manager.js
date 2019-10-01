@@ -1,11 +1,14 @@
 const { timeout } = require("../src/utils");
 
 // global vars
+const SLOT_DEADLINE = 80;
+
 const state = {
     SYNCHRONIZING: 0,
     NOT_REGISTER: 1,
     REGISTER: 2,
-    BUILDING: 3,
+    WAIT_FORGE: 3,
+    BUILDING: 4,
 };
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 10000;
@@ -16,13 +19,14 @@ class LoopManager{
         this.posSynch = posSynch;
         this.poolTx = poolTx;
         this.opManager = opManager;
+        this.registerId = [];
+        this.blockToStartForge = 0;
         this.state = state.SYNCHRONIZING;
     }
 
     async loopManager(){
         // eslint-disable-next-line no-constant-condition
         while(true) {
-            this.opId = undefined;
             try {
                 const isSynch = await this._fullySynch();
                 switch(this.state) {
@@ -38,7 +42,15 @@ class LoopManager{
                 
                 case state.REGISTER: // Check if operator is the winner
                     if (!isSynch) this.state = state.SYNCHRONIZING;
-                    if (await this._checkWinner()) this.state = state.REGISTER;
+                    if (await this._checkWinner()) this.state = state.WAIT_FORGE;
+                    break;
+                
+                case state.WAIT_FORGE: // wait until block to forge is achieved 
+                    if (await this._checkWaiting()) this.state = state.BUILDING;
+                    break;
+
+                case state.BUILDING: // Start build batch
+                    await this._buildBatch();
                     break;
                 }
 
@@ -51,20 +63,40 @@ class LoopManager{
     }
 
     async _checkRegister() {
-        let isRegister;
         const opAddress = this.opManager.wallet.address;
         const listOpRegistered = this.posSynch.getOperators();
-        for (const opInfo of listOpRegistered) 
+        await this._purgeRegisterOperators(listOpRegistered);
+        for (const opInfo of Object.values(listOpRegistered)) {
             if (opInfo.controllerAddress == opAddress.toString()) {
-                isRegister == true;
-                this.opId = Number(opInfo.operatorId);
+                const opId = Number(opInfo.operatorId);
+                if (!this.registerId.includes(opId))
+                    this.registerId.push(Number(opInfo.operatorId));
             }
-        return isRegister;
+        }
+        return this.registerId.length ? true : false;
+    }
+
+    async _purgeRegisterOperators(listOpRegistered) {
+        // Delete active operators that are no longer registered
+        for (const index in this.registerId) {
+            const opId = this.registerId[index];
+            if( !(opId.toString() in listOpRegistered))
+                this.registerId.splice(index, 1);
+        }
     }
 
     async _checkWinner() {
         const winners = this.posSynch.getRaffleWinners();
-        
+        const slots = this.posSynch.getSlotWinners();
+        for(const index in winners){
+            const opWinner = winners[index];
+            if (this.registerId.includes(opWinner)){ // my turn to forge a batch
+                // get block from which operator has to forge batches
+                const block = this.posSynch.getBlockBySlot(slots[index] - 1);
+                this.blockToStartForge = block + SLOT_DEADLINE;
+            }
+        }
+        return this.blockToStartForge ? true : false ;
     }
 
     async _fullySynch() {
@@ -73,6 +105,17 @@ class LoopManager{
         // check PoS is fully synched
         const posSynched = await this.rollupSynch.isSynched();
         return ( rollupSynched & posSynched );
+    }
+
+    async _checkWaiting() {
+        const currentBlock = await this.posSynch.getCurrentBlock();
+        return this.blockToStartForge > currentBlock; 
+    }
+
+    async _buildBatch() {
+        const bb = await this.rollupSynch.getBatchBuilder();
+        const batchBuild = await this.poolTx.fillBatch(bb);
+        const inputs = batchBuild.getInput();
     }
 }
 

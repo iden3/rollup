@@ -14,7 +14,7 @@ const lastBlockKey = "last-block-synch-pos";
 const lastEraKey = "last-era-synch";
 const opCreateKey = "operator-create";
 const opRemoveKey = "operator-remove";
-const opListKey = "operator-list";
+// const opListKey = "operator-list";
 const separator = "--";
 
 
@@ -181,6 +181,14 @@ class SynchPoS {
 
     async getSlotWinners(){
         return this.slots;
+    }
+
+    async getBlockBySlot(numSlot){
+        return (this.genesisBlock + numSlot*blocksPerSlot);
+    }
+
+    async getCurrentBlock() {
+        return await this.web3.eth.getBlockNumber();
     }
 
     async isSynched() {
