@@ -62,7 +62,7 @@ module.exports = class RollupAccount {
         const h = hash([
             IDEN3_ROLLUP_TX,
             data,
-            tx.rqData || 0
+            tx.rqTxData || 0
         ]);
 
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);

@@ -46,6 +46,7 @@ describe("Rollup run 4 null TX", function () {
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
+
     it("Should create 4 empty TXs", async () => {
 
         // Start a new state
@@ -394,7 +395,6 @@ describe("Rollup run 4 null TX", function () {
     });
     it("Should check batch with invalid order", async () => {
     });
-
 });
 
 

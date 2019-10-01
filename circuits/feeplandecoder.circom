@@ -18,7 +18,7 @@ template FeePlanDecoder() {
     component b2nFees[16];
     component b2nCoins[16];
     for (i=0; i<16; i++) {
-        nb = i<15 ? 15 : 13;
+        nb = i<15 ? 16 : 13;
         b2nFees[i] = Bits2Num(nb);
         b2nCoins[i] = Bits2Num(nb);
         for (j=0; j<nb; j++) {

@@ -60,7 +60,7 @@ template BalancesUpdater() {
     feeGE.in[0] <== userFee;
     feeGE.in[1] <== operatorsFee;
 
-    feeOk <== feeGE.out;
+    feeOk <== feeGE.out + (1-feeApplies) - feeGE.out*(1-feeApplies);     // Is greater or does not apply
     limitsOk <== n2bSender.out[192];
 
     txOk <== feeOk * limitsOk;

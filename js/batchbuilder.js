@@ -9,16 +9,17 @@ const poseidon = require("circomlib").poseidon;
 const Constants = require("./constants");
 
 module.exports = class BatchBuilder {
-    constructor(db, batchNumber, root, maxNTx, nLevels) {
+    constructor(rollupDB, batchNumber, root, maxNTx, nLevels) {
         assert((nLevels % 8) == 0);
+        this.rollupDB = rollupDB;
         this.batchNumber = batchNumber;
         this.maxNTx = maxNTx || 4;
         this.nLevels = nLevels;
         this.offChainTxs = [];
         this.onChainTxs = [];
-        this.dbState = new SMTTmpDb(db);
+        this.dbState = new SMTTmpDb(rollupDB.db);
         this.stateTree = new SMT(this.dbState, root);
-        this.dbExit = new SMTTmpDb(db);
+        this.dbExit = new SMTTmpDb(rollupDB.db);
         this.exitTree = new SMT(this.dbExit, bigInt(0));
         this.feePlan = [];
         this.counters = [];

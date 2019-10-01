@@ -82,6 +82,7 @@ function buildTxData(tx) {
     return res;
 }
 
+
 function state2array(st) {
     const data = bigInt(st.coin).add( bigInt(st.nonce).shl(32) );
     return [

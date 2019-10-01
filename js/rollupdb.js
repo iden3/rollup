@@ -12,7 +12,7 @@ class RollupDB {
     }
 
     async buildBatch(maxNTx, nLevels) {
-        return new BatchBuilder(this.db, this.lastBatch+1, this.stateRoot, maxNTx, nLevels);
+        return new BatchBuilder(this, this.lastBatch+1, this.stateRoot, maxNTx, nLevels);
     }
 
     async consolidate(bb) {
@@ -42,6 +42,7 @@ class RollupDB {
         const key = Constants.DB_Idx.add(bigInt(idx));
         const valueState = await this.db.get(key);
         const stateArray = await this.db.get(valueState);
+        stateArray.idx=idx;
         if (!stateArray) return null;
         return utils.array2state(stateArray);
     }
