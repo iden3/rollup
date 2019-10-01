@@ -4,19 +4,22 @@
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
-const StakerManager = artifacts.require("../contracts/RollupPoS");
+const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const RollupTest = artifacts.require("../contracts/test/RollupTest");
 const fs = require("fs");
 const path = require("path");
 
-const configPath = path.join(__dirname, "../config/synch-config-test.json");
+const configPath = path.join(__dirname, "../config/rollup-synch-config-test.json");
+const configPathPoS = path.join(__dirname, "../config/pos-synch-config-test.json");
+const configPathOpManager = path.join(__dirname, "../config/op-manager-config-test.json");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
-contract("Synchronizer", (accounts) => {
+contract("Operator Server", (accounts) => {
     const {
         0: owner,
         1: id1,
-        3: synchAddress,
+        2: synchAddress,
+        77: debugAddress,
     } = accounts;
 
     const maxTx = 10;
@@ -25,7 +28,7 @@ contract("Synchronizer", (accounts) => {
 
     let insPoseidonUnit;
     let insTokenRollup;
-    let insStakerManager;
+    let insRollupPoS;
     let insRollupTest;
     let insVerifier;
 
@@ -46,13 +49,13 @@ contract("Synchronizer", (accounts) => {
             maxTx, maxOnChainTx);
 
         // Deploy Staker manager
-        insStakerManager = await StakerManager.new(insRollupTest.address);
+        insRollupPoS = await RollupPoS.new(insRollupTest.address);
 
         // load forge batch mechanism ( not used in this test)
-        await insRollupTest.loadForgeBatchMechanism(insStakerManager.address);
+        await insRollupTest.loadForgeBatchMechanism(insRollupPoS.address);
     });
 
-    it("Should create config file", async () => {
+    it("Should create rollup synch config file", async () => {
         const config = {
             syncDb: undefined,
             treeDb: undefined,
@@ -65,10 +68,32 @@ contract("Synchronizer", (accounts) => {
         fs.writeFileSync(configPath, JSON.stringify(config));
     });
 
+    it("Should create pos synch config file", async () => {
+        const config = {
+            syncDb: undefined,
+            ethNodeUrl:"http://localhost:8545",
+            contractAddress: insRollupPoS.address,
+            creationHash: insRollupPoS.transactionHash,
+            ethAddress: synchAddress,
+            abi: RollupPoS.abi,
+        };
+        fs.writeFileSync(configPathPoS, JSON.stringify(config));
+    });
+
+    it("Should create operator manager config file", async () => {
+        const config = {
+            wallet: undefined,
+            pass: undefined,
+            ganacheAddress: debugAddress,
+        };
+        fs.writeFileSync(configPathOpManager, JSON.stringify(config));
+    });
+
     it("Should expose data to run server test", async () => {
         const testConfig = {
             rollupAddress: insRollupTest.address,
             tokenAddress: insTokenRollup.address,
+            posAddress: insRollupPoS.address,
         };
         fs.writeFileSync(configTestPath, JSON.stringify(testConfig));
     });

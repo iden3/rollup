@@ -6,6 +6,7 @@ const chai = require("chai");
 const { expect } = chai;
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const RollupTest = artifacts.require("../contracts/test/RollupTest");
+const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
 const path = require("path");
 const { unstringifyBigInts } = require("snarkjs");
@@ -22,7 +23,7 @@ const serverUrl = "http://127.0.0.1:9000";
 contract("Synchronizer", (accounts) => {
 
     async function forgeBlock(events = undefined) {
-        const block = await opRollupDb.buildBlock(maxTx, nLevels);
+        const block = await opRollupDb.buildBatch(maxTx, nLevels);
         if (events) {
             events.forEach(elem => {
                 block.addTx(manageEvent(elem));
@@ -55,6 +56,7 @@ contract("Synchronizer", (accounts) => {
 
     let insTokenRollup;
     let insRollupTest;
+    let insRollupPoS;
 
     // Operator database
     let opDb;
@@ -75,6 +77,8 @@ contract("Synchronizer", (accounts) => {
         insTokenRollup = await TokenRollup.at(configTest.tokenAddress);
         // Load Rollup
         insRollupTest = await RollupTest.at(configTest.rollupAddress);
+        // Load rollup PoS
+        insRollupPoS = await RollupPoS.at(configTest.posAddress);
 
         // Init operator Rollup Database
         opDb = new SMTMemDB();

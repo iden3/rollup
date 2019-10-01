@@ -58,7 +58,7 @@ function manageEvent(event) {
 contract("Rollup", (accounts) => { 
 
     async function forgeBlock(events = undefined) {
-        const block = await rollupDB.buildBlock(maxTx, nLevels);
+        const block = await rollupDB.buildBatch(maxTx, nLevels);
         if (events) {
             events.forEach(elem => {
                 block.addTx(manageEvent(elem));
@@ -383,7 +383,7 @@ contract("Rollup", (accounts) => {
             userFee: 1
         };
         rollupUtils.signRollupTx(wallet, tx);
-        const block = await rollupDB.buildBlock(maxTx, nLevels);
+        const block = await rollupDB.buildBatch(maxTx, nLevels);
         block.addTx(tx);
         // Add fee
         block.addCoin(0, 1);

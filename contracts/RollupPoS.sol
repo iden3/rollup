@@ -610,7 +610,7 @@ contract RollupPoS {
     }
 
     /**
-     * @dev Retrieve the first block number for a gicen slot
+     * @dev Retrieve the first block number for a given slot
      * @param slot slot number
      * @return block number
      */
