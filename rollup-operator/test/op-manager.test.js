@@ -5,7 +5,15 @@
 const chai = require("chai");
 const ethers = require("ethers");
 const { expect } = chai;
+
+const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
+const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
+const Rollup = artifacts.require("../contracts/Rollup");
+
+const abiDecoder = require("abi-decoder");
+abiDecoder.addABI(Rollup.abi);
+
 const OperatorManager = require("../src/operator-manager");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 
@@ -17,10 +25,22 @@ contract("Operator Manager", async (accounts) => {
         return Number(balance);
     }
 
-    const addressRollupTest = "0x0000000000000000000000000000000000000001";
+    const {
+        0: owner,
+        1: id1,
+        2: tokenList,
+    } = accounts;
+
     const debug = true;
     const amountToStake = 2;
+    const maxTx = 10;
+    const maxOnChainTx = 5;
+
+    let insPoseidonUnit;
     let insRollupPoS;
+    let insRollup;
+    let insVerifier;
+
     let opManager;
     let wallet;
     let genesisBlock;
@@ -45,8 +65,25 @@ contract("Operator Manager", async (accounts) => {
     };
 
     before(async () => {
-        // Deploy token test
-        insRollupPoS = await RollupPoS.new(addressRollupTest);
+        // Deploy poseidon
+        const C = new web3.eth.Contract(poseidonUnit.abi);
+        insPoseidonUnit = await C.deploy({ data: poseidonUnit.createCode() })
+            .send({ gas: 2500000, from: owner });
+
+        // Deploy Verifier
+        insVerifier = await Verifier.new();
+
+        // Deploy Rollup test
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx,
+            { from: owner });
+
+        // Deploy Staker manager
+        insRollupPoS = await RollupPoS.new(insRollup.address);
+
+        // Add forge batch mechanism
+        await insRollup.loadForgeBatchMechanism(insRollupPoS.address, { from: owner });
+        
+        // get genesis block
         genesisBlock = Number(await insRollupPoS.genesisBlock());
         // load config synch PoS
         configSynchPoS.contractAddress = insRollupPoS.address;
@@ -86,10 +123,12 @@ contract("Operator Manager", async (accounts) => {
     });
 
     it("Should commit data", async () => {
-        const compressedTxTest = "0x010203040506070809";
+        const compressedTxTest = "0x";
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
         await opManager.commit(hashChain[8], compressedTxTest);
+        await timeTravel.addBlocks(10); // era 2
+        await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
         const logs = await insRollupPoS.getPastEvents("allEvents", {
             fromBlock: 0,
             toBlock: "latest",

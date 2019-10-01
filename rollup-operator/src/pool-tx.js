@@ -21,7 +21,7 @@ class Pool {
 
     async fillBatch(bb) {
         // Simulate test to fill batch builder
-        await timeout(3000);
+        await timeout(1000);
         await bb.build();
         return bb;
     }

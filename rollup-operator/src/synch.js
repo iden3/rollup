@@ -64,8 +64,7 @@ class Synchronizer {
                     lastSynchBlock = this.creationBlock;
                 }
                 const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
-                const lastBatchSaved = Number(await this.getLastBatch());
-                this.totalSynch = (currentBatchDepth == 0) ? Number(0).toFixed(2) : ((lastBatchSaved / currentBatchDepth) * 100).toFixed(2);
+                let lastBatchSaved = Number(await this.getLastBatch());
 
                 console.log(`current batch depth: ${currentBatchDepth}`);
                 console.log(`last batch saved: ${lastBatchSaved}`);
@@ -87,6 +86,8 @@ class Synchronizer {
                     // update last block synched
                     await this.db.insert(lastBlockKey, this._toString(currentBlock));
                 }
+                lastBatchSaved = Number(await this.getLastBatch());
+                this.totalSynch = (currentBatchDepth == 0) ? Number(100).toFixed(2) : ((lastBatchSaved / currentBatchDepth) * 100).toFixed(2);
                 console.log(`Total Synched: ${this.totalSynch} %`);
                 console.log("******************************\n");
                 await timeout(TIMEOUT_NEXT_LOOP);

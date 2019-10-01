@@ -66,6 +66,7 @@ app.get("/status", async (req, res) => {
 app.post("/cancel", async (req, res) => {
     if (currentState == state.PENDING) isCancel = true;
     currentState = state.IDLE;
+    console.log("Reset server");
     res.sendStatus(200);
 });
 
@@ -74,4 +75,3 @@ const server = app.listen(port, "127.0.0.1", () => {
     const address = server.address().address;
     console.log(`Server proof running on http://${address}:${port}`);
 });
-// res.json({ username: 'Flavio' })

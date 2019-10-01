@@ -63,7 +63,6 @@ class SynchPoS {
                 console.log(`current era: ${currentEra}`);
                 console.log(`current block number: ${currentBlock}`);
 
-                this.totalSynch = ((lastSynchEra / (currentEra + 1)) * 100).toFixed(2);
                 const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
                 if (currentBlock > blockNextUpdate){
                     const logs = await this.contractPoS.getPastEvents("allEvents", {
@@ -78,12 +77,14 @@ class SynchPoS {
                     await this.db.insert(lastEraKey, this._toString(lastSynchEra + 1));
                     console.log(`Synchronized era ${lastSynchEra+1} correctly`);
                 }
+                lastSynchEra = await this.getLastSynchEra();
+                this.totalSynch = ((lastSynchEra / (currentEra + 1)) * 100).toFixed(2);
                 console.log(`Total Synched: ${this.totalSynch} %`);
                 console.log("******************************\n");
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
-                console.error(`Message error: ${e.message}`);
-                console.error(`Error in loop: ${e.stack}`);
+                // console.error(`Message error: ${e.message}`);
+                // console.error(`Error in loop: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }

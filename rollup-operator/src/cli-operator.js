@@ -10,8 +10,8 @@ class CliOperator {
         return axios.post(`${this.url}/register/${stake}`);
     }
 
-    unregister(id) {
-        return axios.post(`${this.url}/unregister/${id}`);
+    unregister(opId) {
+        return axios.post(`${this.url}/unregister/${opId}`);
     }
 
     withdraw(opId) {

@@ -1,5 +1,3 @@
-/* global BigInt */
-/* global web3 */
 const pathEnvironmentFile = `${__dirname}/config.env`;
 require("dotenv").config({ path: pathEnvironmentFile});
 const MemDb = require("../../../rollup-utils/mem-db");
@@ -8,27 +6,15 @@ const SMTMemDB = require("circomlib/src/smt_memdb");
 const RollupDB = require("../../../js/rollupdb");
 const fs = require("fs");
 const { stringifyBigInts } = require("snarkjs");
-const crypto = require("crypto");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
 const Pool = require("../pool-tx");
 const OperatorManager = require("../operator-manager");
+const CliServerProof = require("../cli-proof-server");
+const LoopManager = require("../loop-manager");
 
 // Global vars
-
-// Default hash chain
-const hashChainLength = 1000;
-const hashChain = [];
-const initialMsg = crypto.randomBytes(32).toString("hex");
-hashChain.push(web3.utils.keccak256(initialMsg));
-for (let i = 1; i < hashChainLength; i++) {
-    hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
-}
-// Current hash chain
-let pHashChain = hashChainLength - 1;
-
-
 
 // load rollup synch configuration file
 let synchRollupConfig;
@@ -125,24 +111,21 @@ if (opManagerConfig.debug) {
 ///////////////////////
 ///// POOL OFF-CHAIN TX
 ///////////////////////
-const pool = new Pool(poolConfig.maxtTx);
+const pool = new Pool(poolConfig.maxTx);
+
+////////////////////////
+/////CLIENT PROOF SERVER
+////////////////////////
+const cliServerProof = new CliServerProof(process.env.URL_SERVER_PORT);
+
 
 ////////////////////
 ///// LOOP MANAGER
 ///////////////////
-
-
-// TODO:
-// When operator is registered:
-// start loop tracking raffle winner
-// store global variable 'operatorId'
-// when raffle winner matched operatorId:
-// run automatically:
-// get maxTx from pool
-// build block & witness and send it to server proof
-// send commited data to PoS
-// poll server pool to get proof when it is ready
-// forge commited data to PoS        
+const loopManager = new LoopManager(rollupSynch, posSynch, pool, 
+    opManager, cliServerProof);
+       
+loopManager.startLoop();
 
 ////////////////////
 ///// SERVER CONFIG
@@ -183,13 +166,6 @@ app.get("/state", async (req, res) => {
     res.send(stringifyBigInts(state));
 });
 
-///////////////////
-///// API PoS Synch
-///////////////////
-
-
-
-
 ///////////////////////////
 ///// API Pool off-chain Tx
 ///////////////////////////
@@ -202,30 +178,12 @@ app.post("/offchain/send", async (req, res) => {
 ///////////////
 ///// API ADMIN
 ///////////////
-app.post("/forge/:numTx", async (req, res) => {
-    const numTx = req.params.id;
-    const txsToForge = pool.getTxToForge(numTx);
-    const bb = await rollupSynch.getBatchBuilder();
-    for (const tx of txsToForge) bb.addTx(tx);
-    await bb.build();
-    const input = bb.getInput();
-    // Generate witness from input
-    // Send witness to Server --> server will answer with an 'uuid' to do polling
-    // - get 'uuid'
-    // - poll this 'uuid' to get state of proof: 'NotSend', 'Pending', 'Ready'
-    // - get proof is state is 'Ready'
-    const rnd = Math.floor(Math.random() * 100000);
-    res.send(rnd);
-});
-
-////////////////////////
-///// API STAKER MANAGER
-////////////////////////
 app.post("/register/:stake", async (req, res) => {
     const stakeValue = req.params.stake;
-    await opManager.register(hashChain[pHashChain], stakeValue);
-    pHashChain--;
-    res.sendStatus(200);
+    const resManager = await loopManager.register(stakeValue);
+    if (resManager) res.sendStatus(200);
+    else res.status(500).send("Register cannot be done");
+    
 });
 
 app.post("/unregister", async (req, res) => {
