@@ -14,6 +14,7 @@ const state = {
     FINISHED: 3,
 };
 let currentState = state.IDLE;
+let isCancel = false;
 
 let timeoutProof;
 if( process.argv[2] == undefined) timeoutProof = 5000;
@@ -27,8 +28,18 @@ const testProof = {
 };
 
 async function genProof() {
-    await timeout(timeoutProof);
-    currentState = state.FINISHED;
+    const numLoops = timeoutProof / 1000;
+    const loopTimeout = timeoutProof / numLoops;
+    for (let i = 0; i < numLoops; i++) {
+        if (!isCancel) await timeout(loopTimeout);
+        else break;
+    }
+    // await timeout(timeoutProof);
+    if(!isCancel) currentState = state.FINISHED;
+    else {
+        isCancel = false;
+        console.log("CANCEL PROOF GENERATION");
+    }
 }
 ///// Server configuration
 const app = express();
@@ -53,6 +64,7 @@ app.get("/status", async (req, res) => {
 });
 
 app.post("/cancel", async (req, res) => {
+    if (currentState == state.PENDING) isCancel = true;
     currentState = state.IDLE;
     res.sendStatus(200);
 });
