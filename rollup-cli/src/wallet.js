@@ -25,9 +25,9 @@ class Wallet {
    * To create a rollup wallet from mnemonic
    * @param {String} mnemonic - mnemonic
    */
-    static async fromMnemonic(mnemonic) {
-        const ethWallet = EthereumWallet.fromMnemonic(mnemonic);
-        const babyjubWallet = BabyJubWallet.fromMnemonic(mnemonic);
+    static async fromMnemonic(mnemonic, index= 0) {
+        const ethWallet = EthereumWallet.fromMnemonic(mnemonic, index);
+        const babyjubWallet = BabyJubWallet.fromMnemonic(mnemonic, index);
         return new Wallet(ethWallet, babyjubWallet);
     }
 

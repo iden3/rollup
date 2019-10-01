@@ -41,8 +41,20 @@ async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, pa
     try{
         return new Promise ( function (resolve, reject){
 
-            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey.toString()}`).then(async function(response){
-                let receipt = await contractWithSigner.depositOnTop(response.data.value.id, balance, tokenId, overrides);//response.data.value.nonce,
+            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`).then(async function(response){
+
+                let coorectLeaf = [];
+                for ( let leaf of response.data){
+                    if (leaf.tokenId ==tokenId){
+                        coorectLeaf = leaf;
+                    }
+                }
+          
+                if (coorectLeaf == []){
+                    reject("There're no leafs with this wallet (babyjub) and this tokenID");
+                }
+            
+                let receipt = await contractWithSigner.depositOnTop(coorectLeaf.id, balance, tokenId, overrides);//response.data.value.nonce,
                 resolve(receipt);
             })
                 .catch(function (error) {

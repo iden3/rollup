@@ -41,10 +41,22 @@ async function withdraw(urlNode, addressSC, balance, tokenId, walletJson, passwo
     try{
         return new Promise ( function (resolve, reject){
 
-            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey.toString()}`).then(async function(response){
+            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`).then(async function(response){
+
+                let coorectLeaf = [];
+                for ( let leaf of response.data){
+                    if (leaf.tokenId ==tokenId){
+                        coorectLeaf = leaf;
+                    }
+                }
+          
+                if (coorectLeaf == []){
+                    reject("There're no leafs with this wallet (babyjub) and this tokenID");
+                }
+
   
-                let receipt = await contractWithSigner.withdraw(response.data.value.id, balance, tokenId, response.data.value.exitRoot,
-                    response.data.value.nonce, pubKeyBabyjub, response.data.value.sibilings);
+                let receipt = await contractWithSigner.withdraw(coorectLeaf.id, balance, tokenId, coorectLeaf.exitRoot,
+                    coorectLeaf.nonce, pubKeyBabyjub, coorectLeaf.sibilings);
                 resolve(receipt);
             }) 
                 .catch(function (error) {

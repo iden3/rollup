@@ -18,8 +18,9 @@ class EthereumWallet {
    * @param {String} mnemonic
    * @returns {Object} wallet
    */
-    static fromMnemonic(mnemonic) {
-        return new EthereumWallet(ethers.Wallet.fromMnemonic(mnemonic));
+    static fromMnemonic(mnemonic, index= 0) {
+        let path = `m/44'/60'/1'/0/${index}`;
+        return new EthereumWallet(ethers.Wallet.fromMnemonic(mnemonic, path));
     }
 
     /**

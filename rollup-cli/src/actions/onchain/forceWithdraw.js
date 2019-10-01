@@ -17,7 +17,7 @@ const { Wallet } = require("../../wallet.js");
     * @param babyPubKey public key babyjubjub represented as point (Ax, Ay)
  */
 
-async function forceWithdraw(urlNode, addressSC, balance, walletJson, password, abi, UrlOperator)  {
+async function forceWithdraw(urlNode, addressSC, balance, tokenId, walletJson, password, abi, UrlOperator)  {
 
     let walletRollup= await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
@@ -39,9 +39,20 @@ async function forceWithdraw(urlNode, addressSC, balance, walletJson, password, 
     try{
         return new Promise ( function (resolve, reject){
 
-            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey.toString()}`).then(async function(response){
+            axios.get (`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`).then(async function(response){
 
-                let receipt = await contractWithSigner.forceWithdraw(response.data.value.id, balance, pubKeyBabyjub, overrides);
+                let coorectLeaf = [];
+                for ( let leaf of response.data){
+                    if (leaf.tokenId ==tokenId){
+                        coorectLeaf = leaf;
+                    }
+                }
+          
+                if (coorectLeaf == []){
+                    reject("There're no leafs with this wallet (babyjub) and this tokenID");
+                }
+
+                let receipt = await contractWithSigner.forceWithdraw(coorectLeaf.id, balance, pubKeyBabyjub, overrides);
                 resolve(receipt);
             })
         

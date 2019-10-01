@@ -8,6 +8,7 @@ const chai = require("chai");
 const deposit= require("../src/actions/onchain/deposit.js");
 const depositOnTop= require("../src/actions/onchain/depositOnTop.js");
 const { withdraw }= require("../src/actions/onchain/withdraw.js");
+const { buildInputSm } = require("../../rollup-operator/src/utils");
 const { forceWithdraw }= require("../src/actions/onchain/forceWithdraw.js");
 const walletPathDefault="../src/resources/wallet.json";
 const { Wallet } = require("../src/wallet.js");
@@ -25,18 +26,22 @@ const TokenRollup = artifacts.require("../../../../contracts/test/TokenRollup");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 
+const abiDecoder = require("abi-decoder");
+abiDecoder.addABI(RollupTest.abi);
 
-function buildInputSm(bb, beneficiary) {
+const proofA = ["0", "0"];
+const proofB = [["0", "0"], ["0", "0"]];
+const proofC = ["0", "0"];
+
+
+function buildFullInputSm(bb, beneficiary) {
+    const input = buildInputSm(bb);
     return {
-        oldStateRoot: bb.getInput().oldStRoot.toString(),
-        newStateRoot: bb.getNewStateRoot().toString(),
-        newExitRoot: bb.getNewExitRoot().toString(),
-        onChainHash: bb.getOnChainHash().toString(),
-        feePlan: bb.feePlan.length ? bb.feePlan : [0, 0],
-        compressedTx: `0x${bb.getDataAvailable().toString("hex")}`,
-        offChainHash: bb.getOffChainHash().toString(),
-        nTxPerToken: bb.getCountersOut().toString(),
-        beneficiary: beneficiary
+        beneficiary: beneficiary,
+        proofA,
+        proofB,
+        proofC,
+        input,
     };
 }
 
@@ -56,6 +61,7 @@ function manageEvent(event) {
         };
     }
 }
+
 contract("Rollup", async (accounts) => {
 
     async function forgeBlock(events = undefined) {
@@ -68,10 +74,9 @@ contract("Rollup", async (accounts) => {
         }
         await block.build();
         
-        const inputSm = buildInputSm(block, beneficiary);
-        await insRollupTest.forgeBatchTest(inputSm.oldStateRoot, inputSm.newStateRoot, inputSm.newExitRoot,
-            inputSm.onChainHash, inputSm.feePlan, inputSm.compressedTx, inputSm.offChainHash, inputSm.nTxPerToken,
-            inputSm.beneficiary);
+        const inputSm = buildFullInputSm(block, beneficiary);
+        await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+            inputSm.proofB, inputSm.proofC, inputSm.input);
             
         await rollupDB.consolidate(block);
        
@@ -79,7 +84,7 @@ contract("Rollup", async (accounts) => {
     function checkBatchNumber(events) {
         events.forEach(elem => {
             const eventBatch = BigInt(elem.args.batchNumber); 
-            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(rollupDB.lastBlock).toString());
+            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(rollupDB.lastBatch).toString());
         });
     }
     let insPoseidonUnit;
@@ -259,8 +264,9 @@ contract("Rollup", async (accounts) => {
         // - it creates an exit root, it is created
            
         const amount = 10;
+        const tokenId = 0;
 
-        const resForceWithdraw= await forceWithdraw(web3.currentProvider.host, addressSC, amount,
+        const resForceWithdraw= await forceWithdraw(web3.currentProvider.host, addressSC, amount, tokenId,
             walletJson, password, abi, UrlOperator);
 
         // forge block with no transactions

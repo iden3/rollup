@@ -27,8 +27,8 @@ async function withdrawTx(node, address, amount, tokenid, wallet, passString, ab
     console.log(JSON.stringify(receip.events.pop()));
 }
 
-async function forceWithdrawTx(node, address, amount, wallet, passString, abi, operator) {
-    const response = await forceWithdraw(node, address, amount, wallet, passString, abi, operator);
+async function forceWithdrawTx(node, address, amount, tokenid, wallet, passString, abi, operator) {
+    const response = await forceWithdraw(node, address, amount, tokenid, wallet, passString, abi, operator);
     const receip = await response.wait();
     console.log(JSON.stringify(receip.events.pop()));
 }

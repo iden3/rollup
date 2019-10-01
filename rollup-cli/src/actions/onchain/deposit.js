@@ -32,7 +32,7 @@ async function deposit(urlNode, addressSC, balance, tokenId, walletJson, passwor
     
     let overrides = {
         gasLimit: 800000,
-        value: ethers.utils.parseEther("1.0"),
+        value: ethers.utils.parseEther("0.11"),
     };
     
     try{

@@ -19,18 +19,24 @@ const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const process = require("child_process");
 const config = "../src/resources/config.json";
+const { buildInputSm } = require("../../rollup-operator/src/utils");
 
-function buildInputSm(bb, beneficiary) {
+const abiDecoder = require("abi-decoder");
+abiDecoder.addABI(RollupTest.abi);
+
+const proofA = ["0", "0"];
+const proofB = [["0", "0"], ["0", "0"]];
+const proofC = ["0", "0"];
+
+
+function buildFullInputSm(bb, beneficiary) {
+    const input = buildInputSm(bb);
     return {
-        oldStateRoot: bb.getInput().oldStRoot.toString(),
-        newStateRoot: bb.getNewStateRoot().toString(),
-        newExitRoot: bb.getNewExitRoot().toString(),
-        onChainHash: bb.getOnChainHash().toString(),
-        feePlan: bb.feePlan.length ? bb.feePlan : [0, 0],
-        compressedTx: `0x${bb.getDataAvailable().toString("hex")}`,
-        offChainHash: bb.getOffChainHash().toString(),
-        nTxPerToken: bb.getCountersOut().toString(),
-        beneficiary: beneficiary
+        beneficiary: beneficiary,
+        proofA,
+        proofB,
+        proofC,
+        input,
     };
 }
 
@@ -62,10 +68,9 @@ contract("Rollup", async (accounts) => {
         }
         await block.build();
         
-        const inputSm = buildInputSm(block, beneficiary);
-        await insRollupTest.forgeBatchTest(inputSm.oldStateRoot, inputSm.newStateRoot, inputSm.newExitRoot,
-            inputSm.onChainHash, inputSm.feePlan, inputSm.compressedTx, inputSm.offChainHash, inputSm.nTxPerToken,
-            inputSm.beneficiary);
+        const inputSm = buildFullInputSm(block, beneficiary);
+        await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+            inputSm.proofB, inputSm.proofC, inputSm.input);
             
         await rollupDB.consolidate(block);
        
@@ -75,7 +80,7 @@ contract("Rollup", async (accounts) => {
     function checkBatchNumber(events) {
         events.forEach(elem => {
             const eventBatch = BigInt(elem.args.batchNumber); 
-            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(rollupDB.lastBlock).toString());
+            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(rollupDB.lastBatch).toString());
         });
     }
     let insPoseidonUnit;
@@ -287,9 +292,10 @@ contract("Rollup", async (accounts) => {
         // - forge blocks to include force withdraw
         // - it creates an exit root, it is created
         const amount = 10;
+        const tokenId = 0;
         // Should trigger error since id2 is the sender, does not match id1
         const promise = new Promise (function(resolve){
-            let out = process.exec(`cd ..; node cli.js onchaintx --type forcewithdraw --pass ${password} --amount ${amount} `);
+            let out = process.exec(`cd ..; node cli.js onchaintx --type forcewithdraw --pass ${password} --amount ${amount} --tokenid ${tokenId}`);
             out.stdout.on("data", (data) => {
                 resolve(JSON.parse(data));
             });

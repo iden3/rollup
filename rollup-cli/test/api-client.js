@@ -13,28 +13,18 @@ app.use(bodyParser.json());
 
 
 app.post("/offchain/send", (req, res) => {
-    const send = {
-        fromIdx: req.body.transaction.fromIdx,
-        toIdx: req.body.transaction.toIdx,
-        coin: req.body.transaction.coin,
-        amount: req.body.transaction.amount,
-        nonce: req.body.transaction.nonce,
-        userFee: req.body.transaction.userFee,
-        r8x: req.body.transaction.r8x,
-        r8y: req.body.transaction.r8y,
-        s: req.body.transaction.s
-    };
-    if (send.fromIdx === undefined || send.toIdx === undefined || send.amount === undefined||send.r8x ===undefined||send.nonce ===undefined
-    ||send.coin ===undefined||send.userFee ===undefined) {
+    const transaction = req.body.transaction;
+
+    if (transaction.fromIdx === undefined || transaction.toIdx === undefined || transaction.amount === undefined||transaction.r8x ===undefined||transaction.nonce ===undefined
+    ||transaction.coin ===undefined||transaction.userFee ===undefined) {
         res.sendStatus(500);
     } else {
         res.sendStatus(200);
     }
 });
 
-
-app.get("/offchain/info/:AxAy", async (req, res) => {
-    if (req.params.AxAy !==undefined)
+app.get("/offchain/info/:Ax/:Ay", async (req, res) => {
+    if (req.params.Ax !==undefined&& req.params.Ax !==undefined)
     {
         let  walletEth = await ethers.Wallet.fromEncryptedJson(fs.readFileSync(walletEthPathDefault, "utf8"), "foo");
         let exitTree = await RollupTree.newMemRollupTree();
@@ -45,9 +35,7 @@ app.get("/offchain/info/:AxAy", async (req, res) => {
         const infoId = await exitTree.getIdInfo(1);
         const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
        
-        console.log({siblingsId});
-        console.log("OK");
-        res.send({value: {tokenid:0, balance:10, Ax:3, Ay:4, ethaddress:5, nonce:0, id:1, exitRoot: 6, sibilings: siblingsId }}); //from 1, nonce 0, test depositOnTop
+        res.send([{tokenId:0, balance:10, Ax:3, Ay:4, ethaddress:5, nonce:0, id:1, exitRoot: 6, sibilings: siblingsId },{tokenId:1, balance:10, Ax:3, Ay:4, ethaddress:5, nonce:0, id:2, exitRoot: 6, sibilings: siblingsId }]); //from 1, nonce 0, test depositOnTop
     }
 
 });

@@ -315,7 +315,7 @@ const userFee = argv.fee ? argv.fee : "nouserfee";
                     const abi = JSON.parse(fs.readFileSync(actualConfig.abi, "utf-8"));
                     const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, "utf-8"));
                     if (type.toUpperCase() === "FORCEWITHDRAW") {
-                        await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount, wallet, passString, abi, actualConfig.operator);
+                        await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, wallet, passString, abi, actualConfig.operator);
                     } else if (type.toUpperCase() === "DEPOSIT") {
                         await depositTx(actualConfig.nodeEth, actualConfig.address, amount, tokenId, wallet, passString, abi);
                     } else if (type.toUpperCase() === "DEPOSITONTOP") {
@@ -386,6 +386,7 @@ function checkparamsOnchain(type, actualConfig) {
     case "FORCEWITHDRAW":
         checkparam(passString, "nopassphrase", "passphrase");
         checkparam(amount, -1, "amount");
+        checkparam(tokenId, "notokenid", "token ID");
         checkparam(actualConfig.nodeEth, undefined, "node (with setparam command)");
         checkparam(actualConfig.address, undefined, "contract address (with setparam command)");
         checkparam(actualConfig.abi, undefined, "abi path (with setparam command)");
