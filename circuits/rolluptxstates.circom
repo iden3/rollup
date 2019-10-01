@@ -54,7 +54,7 @@ template RollupTXStates() {
     // newAccount MUST be 0 if it an offChain Tx
     (1-onChain)*newAccount === 0;
 
-    s1 <== onChain*isLoadAmount; // The first Processor is in insert
+    s1 <== onChain*newAccount; // The first Processor is in insert
 
     s2 <== isExit*(1-isAmount2) // The second Processor is initialized
 

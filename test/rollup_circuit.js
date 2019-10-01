@@ -8,32 +8,8 @@ const SMTMemDB = require("circomlib").SMTMemDB;
 const fs = require("fs");
 const RollupAccount = require("../js/rollupaccount");
 const RollupDB = require("../js/rollupdb");
-
+const checkBatch = require("./helpers/checkbatch");
 const assert = chai.assert;
-
-function checkBatch(circuit, w, bb) {
-    const newStateRoot = w[circuit.getSignalIdx("main.newStRoot")];
-/*    console.log(newStateRoot.toString());
-    const v=bb.getNewStateRoot();
-    console.log(v);
-*/    assert(newStateRoot.equals(bb.getNewStateRoot()));
-
-
-    const newExitRoot = w[circuit.getSignalIdx("main.newExitRoot")];
-/*    console.log(newExitRoot.toString());
-    const v2=bb.getNewExitRoot();
-    console.log(v2);
-*/    assert(newExitRoot.equals(bb.getNewExitRoot()));
-
-    const onChainHash = w[circuit.getSignalIdx("main.onChainHash")];
-    assert(onChainHash.equals(bb.getOnChainHash()));
-
-    const offChainHash = w[circuit.getSignalIdx("main.offChainHash")];
-    assert(offChainHash.equals(bb.getOffChainHash()));
-
-    const countersOut = w[circuit.getSignalIdx("main.countersOut")];
-    assert(countersOut.equals(bb.getCountersOut()));
-}
 
 describe("Rollup run 4 null TX", function () {
     let circuit;
@@ -41,8 +17,8 @@ describe("Rollup run 4 null TX", function () {
     this.timeout(100000);
 
     before( async() => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
-        // const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
+        // const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
@@ -365,6 +341,33 @@ describe("Rollup run 4 null TX", function () {
 
         const s5 = await rollupDB.getStateByEthAddr(account2.ethAddress);
         assert.deepEqual(s5[0], s2_2);
+    });
+
+    it("Should create 1 deposit of 0 amount", async () => {
+
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(4, 8);
+
+        const account1 = new RollupAccount(1);
+
+        bb.addTx({
+            fromIdx: 1,
+            loadAmount: 0,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+
+        await bb.build();
+        const input = bb.getInput();
+
+        const w = circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+
+        checkBatch(circuit, w, bb);
     });
     it("Should create 2 deposits and then a normal offchain transfer", async () => {
 

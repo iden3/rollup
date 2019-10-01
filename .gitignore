@@ -1,3 +1,7 @@
+# Debug files
+test/circuits/circuit.json
+test.txt
+
 # Logs
 logs
 *.log

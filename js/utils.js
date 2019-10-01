@@ -82,6 +82,13 @@ function buildTxData(tx) {
     return res;
 }
 
+function txRoundValues(tx) {
+    tx.amountF = fix2float(tx.amount);
+    tx.amount = float2fix(tx.amountF);
+    tx.userFeeF = fix2float(tx.userFee);
+    tx.userFee = float2fix(tx.userFeeF);
+}
+
 
 function state2array(st) {
     const data = bigInt(st.coin).add( bigInt(st.nonce).shl(32) );
@@ -119,3 +126,4 @@ module.exports.float2fix = float2fix;
 module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
+module.exports.txRoundValues = txRoundValues;
