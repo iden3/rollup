@@ -1,5 +1,6 @@
 const bigInt = require("snarkjs").bigInt;
 const poseidon = require("circomlib").poseidon;
+const eddsa = require("circomlib").eddsa;
 
 function float2fix(fl) {
     const m = (fl & 0x3FF);
@@ -120,6 +121,31 @@ function hashState(st) {
     return hash(state2array(st));
 }
 
+function verifyTxSig(tx) {
+    try {
+        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
+        const data = buildTxData(tx);
+        const hash = poseidon.createHash(6, 8, 57);
+
+        const h = hash([
+            IDEN3_ROLLUP_TX,
+            data,
+            tx.rqTxData || 0
+        ]);
+
+        const signature = {
+            R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
+            S: bigInt(tx.s)
+        };
+
+        const pubKey = [ bigInt("0x" + tx.ax), bigInt("0x" + tx.ay)];
+
+        return eddsa.verifyPoseidon(h, signature, pubKey);
+    } catch(E) {
+        return false;
+    }
+}
+
 module.exports.buildTxData = buildTxData;
 module.exports.fix2float = fix2float;
 module.exports.float2fix = float2fix;
@@ -127,3 +153,4 @@ module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
+module.exports.verifyTxSig = verifyTxSig;

@@ -69,5 +69,7 @@ module.exports = class RollupAccount {
         tx.r8x = signature.R8[0];
         tx.r8y = signature.R8[1];
         tx.s = signature.S;
+        tx.ax = this.ax;
+        tx.ay = this.ay;
     }
 };

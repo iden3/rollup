@@ -93,17 +93,30 @@ class TXPool {
     async addTx(_tx) {
         const tx = _tx;
         // Roun amounts
+        utils.txRoundValues(tx);
         tx.amount = utils.float2fix(utils.fix2float(tx.amount));
         tx.userFee = utils.float2fix(utils.fix2float(tx.userFee));
         tx.timestamp = (new Date()).getTime();
+
+        const tmpState = new TmpState(this.rollupDB);
+
+        if (tmpState.canProcess(tx) == "NO") {
+            console.log("Invalid TX");
+            return false;
+        }
+
+        if (!utils.verifyTxSig(tx)) {
+            console.log("Invalid Signature");
+            return false;
+        }
+
         tx.slot=this._allocateFreeSlot();
-        utils.txRoundValues(tx);
         if (tx.slot == -1) {
             await this.purge();
             tx.slot=this._allocateFreeSlot();
             if (tx.slot == -1) {
                 console.log("TX Pool Full");
-                return;  // If all slots are full, just ignore the TX.
+                return false;  // If all slots are full, just ignore the TX.
             }
         }
         this.txs.push(tx);
