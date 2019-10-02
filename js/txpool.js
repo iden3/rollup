@@ -11,19 +11,28 @@ class TXPool {
             maxSlots,               // Absolute maximum number of TXs in the pool
             executableSlots,        // Max num of Executable TX in the pool
             nonExecutableSlots      // Max num of Non Executable TX in the pool
+            timeout                 // ms to keep a tx
         }
 
 
      */
 
     constructor(rollupDB, conversion, cfg) {
+        this.MASK256 = bigInt(1).shl(256).sub(bigInt(1));
+        cfg = cfg || {};
+        this.maxSlots = cfg.maxSlots || 64;
+        this.executableSlots = cfg.executableSlots || 16;
+        this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
+        this.tieout = 3*3600*1000;
+
         this.rollupDB = rollupDB;
         this.txs = [];
-        this.cfg = cfg || {maxSlots: 64, executableSlots: 16, nonExecutableSlots: 4};
-        this.slotsMap = Array( Math.floor((this.cfg.maxSlots-1)/32) +1).fill(0);
-        this.updateSlotsPending = false;
+        this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
         this.conversion = conversion || {};
-        this.MaxCoins = 16;
+        this.MaxCoins = 15; // We don't use the last slot to avoid problems.
+
+        this._updateSlots = this._genUpdateSlots();
+        this.purge = this._genPurge();
     }
 
     async _load() {
@@ -31,16 +40,16 @@ class TXPool {
         if (slots) {
             this.slotsMap = slots.map( s => s.toJSNumber() );
         } else {
-            this.slotsMap =Array( Math.floor((this.cfg.maxSlots-1)/32) +1).fill(0);
+            this.slotsMap =Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
         }
 
         const slotKeys = [];
         for (let i = 0; i<this.slotsMap.length; i++) {
-            if (!this.slotsMap[i]) continue;
-            for (let j=0; j<32; j++) {
-                if (this.slotsMap[i] & (1 << j)) {
-                    if (i*32+j<this.cfg.maxSlots) {
-                        slotKeys.push(Constants.DB_TxPollTx.add(i*32+j));
+            if (this.slotsMap[i].isZero()) continue;
+            for (let j=0; j<256; j++) {
+                if (!this.slotsMap[i].and(bigInt(1).shl(j)).isZero()) {
+                    if (i*256+j<this.maxSlots) {
+                        slotKeys.push(Constants.DB_TxPollTx.add(i*256+j));
                     }
                 }
             }
@@ -91,7 +100,7 @@ class TXPool {
     }
 
     async addTx(_tx) {
-        const tx = _tx;
+        const tx = Object.assign({}, _tx);
         // Roun amounts
         utils.txRoundValues(tx);
         tx.amount = utils.float2fix(utils.fix2float(tx.amount));
@@ -121,27 +130,26 @@ class TXPool {
         }
         this.txs.push(tx);
 
-        this.updateSlotsPending = true;
         await this.rollupDB.db.multiIns([
             [Constants.DB_TxPollTx.add(bigInt(tx.slot)), this._tx2Array(tx)]
         ]);
-        await this._updateSlotsIfPending();
+        await this._updateSlots();
         return tx.slot;
     }
 
     _allocateFreeSlot() {
         let i = 0;
         for (i=0; i<this.slotsMap.length; i++) {
-            if (this.slotsMap[i] != 0xFFFFFFFF) {
+            if (!this.slotsMap[i].equals( this.MASK256 ) ) {
                 let r = 0;
                 let s = this.slotsMap[i];
-                while (s & 1) {
-                    s = s >> 1;
+                while (!s.and(bigInt(1)).isZero()) {
+                    s = s.shr(1);
                     r ++;
                 }
-                this.slotsMap[i] = this.slotsMap[i] | (1 << r);
-                if ((i*32+r) < this.cfg.maxSlots) {
-                    return i*32+r;
+                this.slotsMap[i] = this.slotsMap[i].add(bigInt(1).shl(r));
+                if ((i*256+r) < this.maxSlots) {
+                    return i*256+r;
                 } else {
                     return -1;
                 }
@@ -150,18 +158,69 @@ class TXPool {
         return -1;
     }
 
+    _isSlotAllocated(s) {
+        return !this.slotsMap[Math.floor(s/256)].and(bigInt(1).shl(s%256)).isZero();
+    }
+
     _freeSlot(s) {
-        this.slotsMap[Math.floor(s/32)] = this.slotsMap[Math.floor(s/32)] ^ (1 << (s%32));
+        if (this._isSlotAllocated(s)) {
+            this.slotsMap[Math.floor(s/256)] = this.slotsMap[Math.floor(s/256)].sub(bigInt(1).shl(s%256));
+        }
     }
 
-    async _updateSlotsIfPending() {
-        if (!this.updateSlotsPending) return;
-        this.updateSlotsPending = false;
-        await this.rollupDB.db.multiIns([
-            [Constants.DB_TxPoolSlotsMap, [...this.slotsMap]]
-        ]);
+    /*
+
+    */
+    _genUpdateSlots()  {
+        let pCurrent = null, pNext =null;
+
+        const doUpdateSlots = async () => {
+            await this.rollupDB.db.multiIns([
+                [Constants.DB_TxPoolSlotsMap, [...this.slotsMap]]
+            ]);
+            pCurrent = pNext;
+            pNext = null;
+        };
+        return () => {
+            if (!pCurrent) {
+                pCurrent = doUpdateSlots();
+                return pCurrent;
+            }
+            if (!pNext) {
+                pNext = pCurrent.then( doUpdateSlots );
+                return pNext;
+            }
+            return pNext;
+        };
     }
 
+    _genPurge()  {
+        let pCurrent = null;
+        let nPurge =0;
+
+        const doPurge = async () => {
+            // console.log("Start purge ", nPurge);
+            await this._classifyTxs();
+
+            for (let i=this.txs.length-1; i>=0; i--) {
+                if (this.txs[i].removed) {
+                    this._freeSlot(this.txs[i].slot);
+                    this.txs.splice(i, 1);
+                }
+            }
+
+            await this._updateSlots();
+            pCurrent = null;
+            // console.log("End puge ", nPurge);
+            nPurge++;
+        };
+        return () => {
+            if (!pCurrent) {
+                pCurrent = doPurge();
+            }
+            return pCurrent;
+        };
+    }
 
     async _classifyTxs() {
 
@@ -169,10 +228,16 @@ class TXPool {
 
         const tmpState = new TmpState(this.rollupDB);
 
+        const now = (new Date()).getTime();
         // Arrange the TX by Index and by Nonce
         const byIdx = {};
         for (let i=0; i<this.txs.length; i++) {
             const tx = this.txs[i];
+            if (tx.removed) continue;
+            if (tx.timestamp < now - this.timeout*1000) {
+                tx.removed = true;
+                continue;
+            }
             const st = await tmpState.getState(tx.fromIdx);
             if (tx.nonce < st.nonce) {
                 tx.removed = true;
@@ -185,8 +250,10 @@ class TXPool {
         }
 
         // Split the TXs between indexes and Nonces
-        const notAvTxs ={};
-        const avTxs = {};
+        let notAvTxs ={};
+        let avTxs = {};
+        let nAv=0;
+        let nNotAv=0;
         for (let i in byIdx) {
             tmpState.reset();
             const st = await tmpState.getState(i);
@@ -207,6 +274,7 @@ class TXPool {
                             notAvTxs[i] = notAvTxs[i] || [];
                             notAvTxs[i][n] = notAvTxs[i][n] || [];
                             tx.queue = "NAV";
+                            nNotAv ++;
                             notAvTxs[i][n].push(tx);
                         } else {
                             assert(0, "Unreachable code");
@@ -217,6 +285,7 @@ class TXPool {
                         avTxs[i] = avTxs[i] || [];
                         avTxs[i][n]=possibleTxs.pop();
                         avTxs[i][n].queue = "AV";
+                        nAv++;
                         // Pick the best ones and remove the others.
                         for (let t in possibleTxs) possibleTxs[t].removed=true;
                         // Remove not available txs with lower fee
@@ -224,6 +293,7 @@ class TXPool {
                             for (let t in notAvTxs[i][n]) {
                                 if (notAvTxs[i][n][t].normalizedFee <= avTxs[i][n].normalizedFee) {
                                     notAvTxs[i][n][t].removed = true;
+                                    nNotAv --;
                                 }
                             }
                         }
@@ -249,34 +319,47 @@ class TXPool {
                         notAvTxs[i][n] = notAvTxs[i][n] || [];
                         tx.queue = "NAV";
                         notAvTxs[i][n].push(tx);
+                        nNotAv ++;
                     }
                     brokenSequence = true;
                 }
             }
         }
 
-    }
+        // console.log("Available: "+nAv);
+        // console.log("Not Available: "+nNotAv);
 
-    async purge() {
-        if (this.purging) return;
-        this.purging = true;
+        if (nAv>this.executableSlots) {
+            for (let idx in avTxs) {
+                avTxs[idx] = [].concat(Object.values(avTxs[idx]));
+            }
+            avTxs = [].concat(...Object.values(avTxs));
+            avTxs.sort( (a,b) => {
+                return b.adjustedFee - a.adjustedFee;
+            });
+            for (let i=0; i<nAv-this.executableSlots; i++) {
+                avTxs[avTxs.length -i-1].removed = true;
+            }
 
-        await this._classifyTxs();
+        }
 
-        // TODO remove Unavailable queue
-        // TODO remove not available queue
-
-        for (let i=this.txs.length-1; i>=0; i--) {
-            if (this.txs[i].removed) {
-                this._freeSlot(this.txs[i].slot);
-                this.txs.splice(i, 1);
-                this.updateSlotsPending = true;
+        if (nNotAv>this.nonExecutableSlots) {
+            for (let idx in notAvTxs) {
+                notAvTxs[idx] = [].concat(...Object.values(notAvTxs[idx]));
+                notAvTxs[idx].sort( (a,b) => (b.adjustedFee - a.adjustedFee));
+                for (let i=0; i<notAvTxs[idx].length; i++) notAvTxs[idx][i].pos = i;
+            }
+            notAvTxs = [].concat(...Object.values(notAvTxs));
+            notAvTxs.sort( (a,b) => {
+                if (a.pos > b.pos) return 1;
+                if (a.pos < b.pos) return -1;
+                return b.adjustedFee - a.adjustedFee;
+            });
+            for (let i=0; i<nNotAv-this.nonExecutableSlots; i++) {
+                notAvTxs[notAvTxs.length -i-1].removed = true;
             }
         }
-        this._updateSlotsIfPending();
 
-        await this._updateSlotsIfPending();
-        this.purging = false;
     }
 
     _calculateNormalizedFees() {
