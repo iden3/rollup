@@ -21,8 +21,9 @@ module.exports = class BatchBuilder {
         this.stateTree = new SMT(this.dbState, root);
         this.dbExit = new SMTTmpDb(rollupDB.db);
         this.exitTree = new SMT(this.dbExit, bigInt(0));
-        this.feePlan = [];
-        this.counters = [];
+        this.feePlan = Array(16).fill([0, bigInt(0)]);
+        this.counters = Array(16).fill(0);
+        this.nCoins = 0;
     }
 
     _addNopTx() {
@@ -46,6 +47,7 @@ module.exports = class BatchBuilder {
         this.input.ethAddr[i]= 0;
         this.input.ax[i]= 0;
         this.input.ay[i]= 0;
+        this.input.step[i] = 0;
 
         // State 1
         this.input.ax1[i]= 0;
@@ -54,7 +56,7 @@ module.exports = class BatchBuilder {
         this.input.nonce1[i]= 0;
         this.input.ethAddr1[i]= 0;
         this.input.siblings1[i] = [];
-        for (let j=0; j<8; j++) {
+        for (let j=0; j<this.nLevels+1; j++) {
             this.input.siblings1[i][j]= 0;
         }
         this.input.isOld0_1[i]= 0;
@@ -68,7 +70,7 @@ module.exports = class BatchBuilder {
         this.input.nonce2[i]= 0;
         this.input.ethAddr2[i]= 0;
         this.input.siblings2[i] = [];
-        for (let j=0; j<8; j++) {
+        for (let j=0; j<this.nLevels+1; j++) {
             this.input.siblings2[i][j]= 0;
         }
         this.input.isOld0_2[i]= 0;
@@ -76,9 +78,16 @@ module.exports = class BatchBuilder {
         this.input.oldValue2[i]= 0;
     }
 
-    getOperatorFee(coin) {
+    getOperatorFee(coin, step) {
+        let s = step || 0;
         for (let i=0; i<this.feePlan.length; i++) {
-            if (this.feePlan[i][0] == coin) return utils.float2fix(this.feePlan[i][1]);
+            if (this.feePlan[i][0] == coin) {
+                if (s==0) {
+                    return this.feePlan[i][1];
+                } else {
+                    s--;
+                }
+            }
         }
         return bigInt(0);
     }
@@ -151,7 +160,7 @@ module.exports = class BatchBuilder {
         if (tx.onChain) {
             operatorFee = bigInt(0);
         } else {
-            operatorFee = this.getOperatorFee(tx.coin);
+            operatorFee = this.getOperatorFee(tx.coin, tx.step);
         }
 
         let effectiveAmount = amount;
@@ -181,12 +190,13 @@ module.exports = class BatchBuilder {
         this.input.ax[i]= bigInt("0x" +oldState1.ax);
         this.input.ay[i]= bigInt("0x" +oldState1.ay);
 
+        this.input.step[i] = ((!tx.inChain) && tx.step) ? 1 : 0;
 
         const newState1 = Object.assign({}, oldState1);
         newState1.amount = oldState1.amount.add(loadAmount).sub(effectiveAmount).sub(operatorFee);
         if (!tx.onChain) {
             newState1.nonce++;
-            if (!operatorFee.isZero()) this._incCounter(tx.coin);
+            this._incCounter(tx.coin, this.input.step[i]);
         }
         const newState2 = Object.assign({}, oldState2);
         newState2.amount = oldState2.amount.add(effectiveAmount);
@@ -197,7 +207,7 @@ module.exports = class BatchBuilder {
 
             const res = await this.stateTree.insert(tx.fromIdx, newValue);
             let siblings = res.siblings;
-            while (siblings.length<this.nLevels) siblings.push(bigInt(0));
+            while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
             // State 1
             this.input.ax1[i]= 0x1234;      // It should not matter
@@ -235,7 +245,7 @@ module.exports = class BatchBuilder {
 
             const res = await this.stateTree.update(tx.fromIdx, newValue);
             let siblings = res.siblings;
-            while (siblings.length<this.nLevels) siblings.push(bigInt(0));
+            while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
             // State 1
             this.input.ax1[i]= bigInt("0x" + oldState1.ax);      // It should not matter
@@ -265,7 +275,7 @@ module.exports = class BatchBuilder {
                 throw new Error("Invalid Exit account");
             }
             let siblings = res.siblings;
-            while (siblings.length<this.nLevels) siblings.push(bigInt(0));
+            while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
             // State 1
             this.input.ax2[i]= 0x1234;      // It should not matter
@@ -286,7 +296,7 @@ module.exports = class BatchBuilder {
 
                 const res = await this.exitTree.update(tx.fromIdx, newValue);
                 let siblings = res.siblings;
-                while (siblings.length<this.nLevels) siblings.push(bigInt(0));
+                while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
                 // State 2
                 this.input.ax2[i]= bigInt("0x" + oldState2.ax);      // It should not matter
@@ -308,7 +318,7 @@ module.exports = class BatchBuilder {
 
                 const res = await this.stateTree.update(tx.toIdx, newValue);
                 let siblings = res.siblings;
-                while (siblings.length<this.nLevels) siblings.push(bigInt(0));
+                while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
                 // State 2
                 this.input.ax2[i]= bigInt("0x" + oldState2.ax);      // It should not matter
@@ -337,7 +347,7 @@ module.exports = class BatchBuilder {
             this.input.nonce2[i]= 0;
             this.input.ethAddr2[i]= 0;
             this.input.siblings2[i] = [];
-            for (let j=0; j<8; j++) {
+            for (let j=0; j<this.nLevels+1; j++) {
                 this.input.siblings2[i][j]= 0;
             }
             this.input.isOld0_2[i]= 0;
@@ -346,14 +356,21 @@ module.exports = class BatchBuilder {
         }
     }
 
-    _incCounter(coin) {
-        const getIdx = (coin) => {
+    _incCounter(coin, step) {
+        const getIdx = (coin, step) => {
+            let s = step;
             for (let i=0; i<this.feePlan.length; i++) {
-                if (this.feePlan[i][0] == coin) return i;
+                if (this.feePlan[i][0] == coin) {
+                    if (s==0) {
+                        return i;
+                    } else {
+                        s--;
+                    }
+                }
             }
             return -1;
         };
-        const idx = getIdx(coin);
+        const idx = getIdx(coin, step);
         if (idx <0) return;
         if (this.counters[idx]+1 >= ( (idx < 15) ? (1<<13) : (1<<16) ) ) {
             throw new Error("Maximum TXs per coin in a batch reached");
@@ -367,10 +384,23 @@ module.exports = class BatchBuilder {
             feePlanFees: bigInt(0)
         };
         for (let i=0; i<this.feePlan.length; i++) {
+            const feeF = utils.fix2float(this.feePlan[i][1]);
             res.feePlanCoins = res.feePlanCoins.add( bigInt(this.feePlan[i][0]).shl(16*i) );
-            res.feePlanFees = res.feePlanFees.add( bigInt(this.feePlan[i][1]).shl(16*i) );
+            res.feePlanFees = res.feePlanFees.add( bigInt(feeF).shl(16*i) );
         }
         return res;
+    }
+
+    optimizeSteps() {
+        for (let i=0; i<this.offChainTxs.length; i++) {
+            const tx = this.offChainTxs[i];
+            tx.step=0;
+            while (this.getOperatorFee(tx.coin, tx.step).greater(tx.userFee)) tx.step++;
+        }
+        for (let i=0; i<this.onChainTxs.length; i++) {
+            const tx = this.onChainTxs[i];
+            tx.step=0;
+        }
     }
 
     async build() {
@@ -390,6 +420,7 @@ module.exports = class BatchBuilder {
             ethAddr: [],
             ax: [],
             ay: [],
+            step: [],
 
             ax1: [],
             ay1: [],
@@ -443,18 +474,22 @@ module.exports = class BatchBuilder {
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
-        const bytes = [];
+        // Fill with initial steps padded to the byte with zeros
+        const bytes = Array( Math.ceil(this.maxNTx/8) ).fill(0);
+        for (let i=0; i<this.offChainTxs.length; i++) {
+            const tx = this.offChainTxs[i];
+            if (tx.step) bytes[ Math.floor(i/8)] |= (0x80 >> (i%8));
+            pushInt(tx.fromIdx, this.nLevels/8);
+            pushInt(tx.toIdx, this.nLevels/8);
+            pushInt(utils.fix2float(tx.amount), 2);
+        }
+        return Buffer.from(bytes);
+
         function pushInt(n, size) {
             for (let i=0; i<size; i++) {
                 bytes.push((n >> ((size-1-i)*8))&0xFF);
             }
         }
-        for (let i=0; i<this.offChainTxs.length; i++) {
-            pushInt(this.offChainTxs[i].fromIdx, this.nLevels/8);
-            pushInt(this.offChainTxs[i].toIdx, this.nLevels/8);
-            pushInt(utils.fix2float(this.offChainTxs[i].amount), 2);
-        }
-        return Buffer.from(bytes);
     }
 
     getOnChainHash() {
@@ -514,16 +549,18 @@ module.exports = class BatchBuilder {
     }
 
     addCoin(coin, fee) {
-        const feeF = utils.fix2float(fee);
-        if (feeF == 0) return;
-        if (this.feePlan.length >= 16) {
+        const roundedFee = utils.float2fix(utils.fix2float(fee));
+        if (roundedFee.isZero()) return;
+
+        this.nCoins
+
+        if (this.nCoins >= 16) {
             throw new Error("Maximum 16 coins per batch");
         }
-        if ((this.feePlan.length == 15)&&(coin >= 1<<13)) {
+        if ((this.nCoins == 15)&&(coin >= 1<<13)) {
             throw new Error("Coin 16 muns be less than 2^13");
         }
-        this.feePlan.push([coin, feeF]);
-        this.counters.push(0);
+        this.feePlan[this.nCoins] = [coin, roundedFee];
     }
 
 

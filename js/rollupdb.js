@@ -44,7 +44,7 @@ class RollupDB {
         const stateArray = await this.db.get(valueState);
         if (!stateArray) return null;
         const st = utils.array2state(stateArray);
-        st.idx=idx;
+        st.idx=Number(idx);
         return st;
     }
 

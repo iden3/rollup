@@ -39,11 +39,13 @@ template RollupTx(nLevels) {
     signal input r8x;
     signal input r8y;
 
-    // For ENTRY TX
+    // For InChain TX
     signal input loadAmount;
     signal input ethAddr;
     signal input ax;
     signal input ay;
+
+    signal input step;
 
     // State 1
     signal input ax1;
@@ -51,7 +53,7 @@ template RollupTx(nLevels) {
     signal input amount1;
     signal input nonce1;
     signal input ethAddr1;
-    signal input siblings1[nLevels];
+    signal input siblings1[nLevels+1];
     // Required for inserts and delete
     signal input isOld0_1;                     // 1
     signal input oldKey1;
@@ -63,7 +65,7 @@ template RollupTx(nLevels) {
     signal input amount2;
     signal input nonce2;
     signal input ethAddr2;
-    signal input siblings2[nLevels];
+    signal input siblings2[nLevels+1];
     // Required for inserts and delete
     signal input isOld0_2;                     // 1
     signal input oldKey2;
@@ -91,6 +93,7 @@ template RollupTx(nLevels) {
         feeSelector.feePlanFee[i] <== feePlanFee[i];
     }
     feeSelector.coin <== coin;
+    feeSelector.step <== step;
 
 //  states
 ///////////
@@ -250,7 +253,7 @@ template RollupTx(nLevels) {
     balancesUpdater.oldStAmountRecieiver <== amount2;
     balancesUpdater.amount <== amount;
     balancesUpdater.userFee <== userFee;
-    balancesUpdater.operatorsFee <== feeSelector.operatorsFee;
+    balancesUpdater.operatorFee <== feeSelector.operatorFee;
     balancesUpdater.onChain <== onChain;
     balancesUpdater.countersIn <== countersIn;
     balancesUpdater.countersBase <== feeSelector.countersBase;
@@ -281,9 +284,9 @@ template RollupTx(nLevels) {
 
 // processor1
 /////////////////
-    component processor1 = SMTProcessor(nLevels) ;
+    component processor1 = SMTProcessor(nLevels+1) ;
     processor1.oldRoot <== oldStRoot;
-    for (i=0; i<nLevels; i++) {
+    for (i=0; i<nLevels+1; i++) {
         processor1.siblings[i] <== siblings1[i];
     }
     processor1.oldKey <== s1OldKey.out;
@@ -303,9 +306,9 @@ template RollupTx(nLevels) {
 
 // processor2
 /////////////////
-    component processor2 = SMTProcessor(nLevels) ;
+    component processor2 = SMTProcessor(nLevels+1) ;
     processor2.oldRoot <== s3.out;
-    for (i=0; i<nLevels; i++) {
+    for (i=0; i<nLevels+1; i++) {
         processor2.siblings[i] <== siblings2[i];
     }
     processor2.oldKey <== s2OldKey.out;

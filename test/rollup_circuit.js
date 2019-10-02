@@ -11,24 +11,27 @@ const RollupDB = require("../js/rollupdb");
 const checkBatch = require("./helpers/checkbatch");
 const assert = chai.assert;
 
-describe("Rollup run 4 null TX", function () {
+const NTX = 4;
+const NLEVELS = 8;
+
+describe("Rollup Basic circuit TXs", function () {
     let circuit;
 
     this.timeout(100000);
 
     before( async() => {
-        // const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
-        const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
+        const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        // const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
 
-    it("Should create 4 empty TXs", async () => {
+    it("Should create empty TXs", async () => {
 
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         await bb.build();
         const input = bb.getInput();
@@ -42,7 +45,7 @@ describe("Rollup run 4 null TX", function () {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const account1 = new RollupAccount(1);
 
@@ -68,7 +71,7 @@ describe("Rollup run 4 null TX", function () {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const account1 = new RollupAccount(1);
 
@@ -108,7 +111,7 @@ describe("Rollup run 4 null TX", function () {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const account1 = new RollupAccount(1);
         const account2 = new RollupAccount(2);
@@ -141,7 +144,7 @@ describe("Rollup run 4 null TX", function () {
 
         await rollupDB.consolidate(bb);
 
-        const bb2 = await rollupDB.buildBatch(4, 8);
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx = {
             fromIdx: 1,
@@ -167,7 +170,7 @@ describe("Rollup run 4 null TX", function () {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const account1 = new RollupAccount(1);
         const account2 = new RollupAccount(2);
@@ -200,7 +203,7 @@ describe("Rollup run 4 null TX", function () {
 
         await rollupDB.consolidate(bb);
 
-        const bb2 = await rollupDB.buildBatch(4, 8);
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx = {
             fromIdx: 1,
@@ -221,11 +224,11 @@ describe("Rollup run 4 null TX", function () {
         const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
         checkBatch(circuit, w2, bb2);
     });
-    it("Should bet states correctly", async () => {
+    it("Should get states correctly", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const account1 = new RollupAccount(1);
         const account2 = new RollupAccount(2);
@@ -284,7 +287,7 @@ describe("Rollup run 4 null TX", function () {
         assert.equal(s2.coin, 1);
         assert.equal(s2.nonce, 0);
 
-        const bb2 = await rollupDB.buildBatch(4, 8);
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx = {
             fromIdx: 1,
@@ -348,7 +351,7 @@ describe("Rollup run 4 null TX", function () {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const account1 = new RollupAccount(1);
 

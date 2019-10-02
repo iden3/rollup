@@ -84,9 +84,11 @@ template FeeSelectorStep() {
     signal input currentFeeIn;
     signal input feePlanFee;
     signal input counterBaseIn;
+    signal input stepIn;
     signal output isSelectedOut;
     signal output currentFeeOut;
     signal output counterBaseOut;
+    signal output stepOut;
 
     component isEqual = IsEqual();
     isEqual.in[0] <== coin;
@@ -99,12 +101,18 @@ template FeeSelectorStep() {
     mux1.c[0] <== currentFeeIn;
     mux1.c[1] <== feePlanFee;
 
-    // mux1.s <== (1 - isSelectedIn)*isEqual.out
-    mux1.s <== isEqual.out - isSelectedIsEqual
+    component isStep0 = IsZero();
+    isStep0.in <== stepIn;
+
+    // isEqual.out && (!isSelected) && (step == 0)
+    signal matchAndCounter0;
+    matchAndCounter0 <== (isEqual.out - isSelectedIsEqual)*isStep0.out;
+    mux1.s <== matchAndCounter0;
 
     currentFeeOut <== mux1.out;
 
-    isSelectedOut <== isSelectedIn + isEqual.out - isSelectedIsEqual;
+    // isSelectedIn || matchAndCounter0
+    isSelectedOut <== isSelectedIn + matchAndCounter0 - isSelectedIn*matchAndCounter0;
 
     component mux2 = Mux1();
     mux2.c[0] <== counterBaseIn*(1<<16);
@@ -112,13 +120,15 @@ template FeeSelectorStep() {
     mux2.s <== isSelectedOut;
     mux2.out ==> counterBaseOut;
 
+    stepOut <== stepIn - isEqual.out;
 }
 
 template FeeSelector() {
     signal input coin;
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
-    signal output operatorsFee;
+    signal input step;
+    signal output operatorFee;
     signal output countersBase;
 
     component stp[16];
@@ -129,16 +139,18 @@ template FeeSelector() {
             stp[i].isSelectedIn <== 0;
             stp[i].currentFeeIn <== 0;
             stp[i].counterBaseIn <== 1;
+            stp[i].stepIn <== step;
         } else {
             stp[i].isSelectedIn <== stp[i-1].isSelectedOut;
             stp[i].currentFeeIn <== stp[i-1].currentFeeOut;
             stp[i].counterBaseIn <== stp[i-1].counterBaseOut;
+            stp[i].stepIn <== stp[i-1].stepOut;
         }
         stp[i].coin <== coin;
         stp[i].feePlanCoin <== feePlanCoin[i];
         stp[i].feePlanFee <== feePlanFee[i];
     }
 
-    operatorsFee <== stp[15].currentFeeOut;
+    operatorFee <== stp[15].currentFeeOut;
     countersBase <== stp[15].counterBaseOut * stp[15].isSelectedOut;
 }

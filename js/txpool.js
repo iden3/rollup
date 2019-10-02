@@ -71,7 +71,7 @@ class TXPool {
         res.fromIdx = extract(d0, 0, 64);
         res.toIdx = extract(d0, 64, 64);
         res.amount = utils.float2fix(extract(d0, 128, 16));
-        res.coin = utils.float2fix(extract(d0, 144, 16));
+        res.coin = extract(d0, 144, 16);
         res.nonce = extract(d0, 176, 16);
         res.userFee = utils.float2fix(extract(d0, 224, 16));
         res.rqOffset = extract(d0, 240, 3);
@@ -92,6 +92,9 @@ class TXPool {
 
     async addTx(_tx) {
         const tx = _tx;
+        // Roun amounts
+        tx.amount = utils.float2fix(utils.fix2float(tx.amount));
+        tx.userFee = utils.float2fix(utils.fix2float(tx.userFee));
         tx.timestamp = (new Date()).getTime();
         tx.slot=this._allocateFreeSlot();
         utils.txRoundValues(tx);
@@ -423,6 +426,8 @@ class TXPool {
         for (let i=0; i<forgedTxs.length; i++) {
             bb.addTx(forgedTxs[i]);
         }
+
+        bb.optimizeSteps();
 
         await bb.build();
 

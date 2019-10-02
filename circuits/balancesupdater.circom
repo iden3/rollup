@@ -20,7 +20,7 @@ template BalancesUpdater() {
     signal input amount;
     signal input loadAmount;
     signal input userFee;
-    signal input operatorsFee;
+    signal input operatorFee;
     signal input onChain;
     signal input nop;
     signal input countersIn;
@@ -48,7 +48,7 @@ template BalancesUpdater() {
 
     feeApplies <== (1-onChain)*(1-nop);  // Fee applies only on onChainTx and is not a NOP
 
-    appliedFee <== operatorsFee*feeApplies;
+    appliedFee <== operatorFee*feeApplies;
 
     effectiveLoadAmount <== loadAmount*onChain;
     effectiveAmount1 <== amount*(1-nop);
@@ -58,7 +58,7 @@ template BalancesUpdater() {
 
     // Fee offered by the user must be greater that the operators demanded
     feeGE.in[0] <== userFee;
-    feeGE.in[1] <== operatorsFee;
+    feeGE.in[1] <== operatorFee;
 
     feeOk <== feeGE.out + (1-feeApplies) - feeGE.out*(1-feeApplies);     // Is greater or does not apply
     limitsOk <== n2bSender.out[192];

@@ -18,8 +18,8 @@ describe("Rollup run 4 null TX", function () {
     this.timeout(100000);
 
     before( async() => {
-        // const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
-        const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
+        const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        // const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });

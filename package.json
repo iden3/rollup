@@ -45,7 +45,7 @@
     "blake-hash": "^1.1.0",
     "chai": "^4.2.0",
     "circom": "0.0.34",
-    "circomlib": "0.0.17",
+    "circomlib": "0.0.19",
     "dotenv": "^8.1.0",
     "elliptic": "^6.5.1",
     "ethereumjs-util": "^6.1.0",

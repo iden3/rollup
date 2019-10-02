@@ -26,6 +26,7 @@ template Rollup(nTx, nLevels) {
     signal private input ethAddr[nTx];
     signal private input ax[nTx];
     signal private input ay[nTx];
+    signal private input step[nTx];
 
     // State 1
     signal private input ax1[nTx];
@@ -33,7 +34,7 @@ template Rollup(nTx, nLevels) {
     signal private input amount1[nTx];
     signal private input nonce1[nTx];
     signal private input ethAddr1[nTx];
-    signal private input siblings1[nTx][nLevels];
+    signal private input siblings1[nTx][nLevels+1];
     // Required for inserts and delete
     signal private input isOld0_1[nTx];
     signal private input oldKey1[nTx];
@@ -45,7 +46,7 @@ template Rollup(nTx, nLevels) {
     signal private input amount2[nTx];
     signal private input nonce2[nTx];
     signal private input ethAddr2[nTx];
-    signal private input siblings2[nTx][nLevels];
+    signal private input siblings2[nTx][nLevels+1];
     // Required for inserts and delete
     signal private input isOld0_2[nTx];
     signal private input oldKey2[nTx];
@@ -68,10 +69,15 @@ template Rollup(nTx, nLevels) {
     }
 
     var nDataAvailabilityBitsPerTx;
-    nDataAvailabilityBitsPerTx = (nLevels*2+16)
-    component offChainHasher = Sha256(nDataAvailabilityBitsPerTx*nTx);
+    nDataAvailabilityBitsPerTx = (nLevels*2+16);
 
-    component decodeTx[nTx]
+    var nPad = nTx - (nTx\8*8);
+    component offChainHasher = Sha256(nTx + nPad + nDataAvailabilityBitsPerTx*nTx);
+    for (i=nTx; i<nTx+nPad; i++) {
+        offChainHasher.in[i] <== 0;
+    }
+
+    component decodeTx[nTx];
     component Tx[nTx];
 
     // First decode the TX data
@@ -92,8 +98,12 @@ template Rollup(nTx, nLevels) {
         decodeTx[i].ax <== ax[i];
         decodeTx[i].ay <== ay[i];
         for (j=0; j<nLevels*2+16; j++) {
-            offChainHasher.in[i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
+            offChainHasher.in[nTx + nPad + i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
         }
+        offChainHasher.in[i] <== step[i];
+
+        // Ensure step is binary
+        step[i]*(1-step[i]) === 0;
     }
 
     for (i=0; i<nTx; i++) {
@@ -126,13 +136,15 @@ template Rollup(nTx, nLevels) {
         Tx[i].ax <== ax[i];
         Tx[i].ay <== ay[i];
 
+        Tx[i].step <== step[i];
+
         // State 1
         Tx[i].ax1 <== ax1[i];
         Tx[i].ay1 <== ay1[i];
         Tx[i].amount1 <== amount1[i];
         Tx[i].nonce1 <== nonce1[i];
         Tx[i].ethAddr1 <== ethAddr1[i];
-        for (j=0; j<nLevels; j++) {
+        for (j=0; j<nLevels+1; j++) {
             Tx[i].siblings1[j] <== siblings1[i][j]
         }
         Tx[i].isOld0_1 <== isOld0_1[i];
@@ -146,7 +158,7 @@ template Rollup(nTx, nLevels) {
         Tx[i].amount2 <== amount2[i];
         Tx[i].nonce2 <== nonce2[i];
         Tx[i].ethAddr2 <== ethAddr2[i];
-        for (j=0; j<nLevels; j++) {
+        for (j=0; j<nLevels+1; j++) {
             Tx[i].siblings2[j] <== siblings2[i][j]
         }
         Tx[i].isOld0_2 <== isOld0_2[i];
