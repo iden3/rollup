@@ -9,7 +9,6 @@ interface RollupInterface {
     uint[2] calldata proofA,
     uint[2][2] calldata proofB,
     uint[2] calldata proofC,
-    uint[8] calldata input,
-    bytes calldata compressedTxs
+    uint[8] calldata input
   ) external;
 }

@@ -8,6 +8,8 @@ const chai = require("chai");
 
 const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
+const RollupDB = require("../../js/rollupdb");
+const SMTMemDB = require("circomlib/src/smt_memdb");
 
 const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupPoS.abi);
@@ -33,6 +35,8 @@ contract("RollupPoS", (accounts) => {
     } = accounts;
 
     let insRollupPoS;
+    const url = "localhost";
+    const maxTx = 10;
 
     const addressRollupTest = "0x0000000000000000000000000000000000000001";
     const operators = [];
@@ -45,6 +49,8 @@ contract("RollupPoS", (accounts) => {
     const blocksPerSlot = blockPerEra / slotPerEra;
     const deadlineBlocks = 80;
     let amountToStake = 2;
+    let db;
+    let rollupDB;
 
     const initialMsg = "rollup";
     hashChain.push(web3.utils.keccak256(initialMsg));
@@ -54,7 +60,7 @@ contract("RollupPoS", (accounts) => {
 
     before(async () => {
     // Deploy token test
-        insRollupPoS = await RollupPoS.new(addressRollupTest);
+        insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
         // Initialization
         // fill with first block of each era
         const genesisBlockNum = await insRollupPoS.genesisBlock();
@@ -69,13 +75,44 @@ contract("RollupPoS", (accounts) => {
         }
         // set first era block
         await insRollupPoS.setBlockNumber(eraBlock[0]);
+        // Init rollup Db
+        db = new SMTMemDB();
+        rollupDB = await RollupDB(db);
     });
 
     describe("functionalities", () => {
+
+        it("Should init rollup Db with two deposits", async () => {
+            const maxTx = 10;
+            const nLevels = 24;
+            const bb = await rollupDB.buildBatch(maxTx, nLevels);
+            bb.addTx({
+                fromIdx: 1,
+                loadAmount: 1000,
+                coin: 0,
+                ax: 0,
+                ay: 0,
+                ethAddress: 0,
+                onChain: true
+            });
+    
+            bb.addTx({
+                fromIdx: 2,
+                loadAmount: 2000,
+                coin: 0,
+                ax: 0,
+                ay: 0,
+                ethAddress: 0,
+                onChain: true
+            });
+            await bb.build();
+            await rollupDB.consolidate(bb);
+        });
+
         it("add operator", async () => {
             let initBalOp = await getEtherBalance(operators[0].address);
             // add operator 0 with eStake = 4
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             const balOpAdd = await getEtherBalance(operators[0].address);
             expect(Math.ceil(balOpAdd)).to.be.equal(Math.ceil(initBalOp) - 2);
@@ -109,7 +146,7 @@ contract("RollupPoS", (accounts) => {
             const initBalance = await getEtherBalance(beneficiaryAddress);
             await insRollupPoS.setBlockNumber(eraBlock[5]);
             // add operator 1 with eStake = 4
-            await insRollupPoS.addOperatorWithDifferentBeneficiary(beneficiaryAddress, hashChain[9],
+            await insRollupPoS.addOperatorWithDifferentBeneficiary(beneficiaryAddress, hashChain[9], url,
                 { from: operators[1].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[6]);
             await insRollupPoS.removeOperator(1, { from: operators[1].address });
@@ -126,7 +163,7 @@ contract("RollupPoS", (accounts) => {
             const initBalBeneficiary = await getEtherBalance(beneficiaryAddress);
             await insRollupPoS.setBlockNumber(eraBlock[8]);
             // add operator 2 with stakerAddress commiting 2 ether
-            await insRollupPoS.addOperatorRelay(operators[2].address, beneficiaryAddress, hashChain[9],
+            await insRollupPoS.addOperatorRelay(operators[2].address, beneficiaryAddress, hashChain[9], url,
                 { from: relayStaker, value: web3.utils.toWei(amountToStake.toString(), "ether") });
 
             const balanceRelay0 = await getEtherBalance(relayStaker);
@@ -161,9 +198,9 @@ contract("RollupPoS", (accounts) => {
             const initBalOp = await getEtherBalance(operators[0].address);
             const initBalanceSlash = await getEtherBalance(slashAddress);
             // reset rollup PoS
-            insRollupPoS = await RollupPoS.new(addressRollupTest);
+            insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             try {
@@ -194,7 +231,7 @@ contract("RollupPoS", (accounts) => {
             expect(Math.ceil(initBalanceSlash) + 0.1 * amountToStake).to.be.equal(Math.ceil(balSlash));
 
             // Add operator again
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[6]);
             // simulate operator has forge a batch
@@ -208,15 +245,28 @@ contract("RollupPoS", (accounts) => {
         });
 
         it("commit and forge batch", async () => {
-            const compressedTxTest = "0x010203040506070809";
+            const nLevels = 24;
+            const maxTx = 10;
+            // non-empty off-chain tx with 10 maxTx
+            const tx = {
+                fromIdx: 1,
+                toIdx: 2,
+                amount: 50,
+            };
+            const bb = await rollupDB.buildBatch(maxTx, nLevels);
+            await bb.addTx(tx);
+            await bb.build();
+            const compressedTxTest = await bb.getDataAvailable();
+            const hashOffChain = await bb.getOffChainHash().toString();
+
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", "0", "0", "0", "0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0"];
             // reset rollup PoS
-            insRollupPoS = await RollupPoS.new(addressRollupTest);
+            insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             await insRollupPoS.setBlockNumber(eraBlock[3]);
@@ -226,11 +276,10 @@ contract("RollupPoS", (accounts) => {
             } catch(error) {
                 expect((error.message).includes("hash revelead not match current committed hash")).to.be.equal(true);
             }
-            // check commit bash
+            // check commit hash
             const resCommit = await insRollupPoS.commitBatch(hashChain[8], compressedTxTest);
             expect(resCommit.logs[0].event).to.be.equal("dataCommitted");
-            expect(resCommit.logs[0].args.slot.toString()).to.be.equal(eraSlot[3].toString());
-            expect(resCommit.logs[0].args.blockNumber.toString()).to.be.equal(eraBlock[3].toString());
+            expect(resCommit.logs[0].args.hashOffChain.toString()).to.be.equal(hashOffChain);
             // Get compressedTx from block number
             // Since we are changing the block number for testing purposes
             // we need to get 'block number' from 'receipt' instead of getting it from event
@@ -238,11 +287,11 @@ contract("RollupPoS", (accounts) => {
             const decodedData = abiDecoder.decodeMethod(transaction.input);
             let inputRetrieved;
             decodedData.params.forEach(elem => {
-                if (elem.name == "compressedTxs") {
+                if (elem.name == "compressedTx") {
                     inputRetrieved = elem.value;
                 }
             });
-            expect(resCommit.logs[0].args.compressedTx).to.be.equal(inputRetrieved);
+            expect(`0x${compressedTxTest.toString("hex")}`).to.be.equal(inputRetrieved);
             // try to update data committed before without forging
             try {
                 await insRollupPoS.commitBatch(hashChain[8], compressedTxTest);
@@ -316,9 +365,9 @@ contract("RollupPoS", (accounts) => {
 
         it("slash operator with no commitment data", async () => {
             // reset rollup PoS
-            insRollupPoS = await RollupPoS.new(addressRollupTest);
+            insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             await insRollupPoS.setBlockNumber(eraBlock[3]);
@@ -328,7 +377,7 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
             // balance after slash operator
             const balSlash = await getEtherBalance(slashAddress);
-            expect(Math.ceil(initBalSlash) + 0.1 * amountToStake).to.be.equal(Math.ceil(balSlash));
+            expect((0.1 * amountToStake).toFixed(1)).to.be.equal((balSlash - initBalSlash).toFixed(1));
             // Assure no operators after slashing
             await insRollupPoS.setBlockNumber(eraBlock[5]);
             try {

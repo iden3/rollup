@@ -176,23 +176,6 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev hash all off-chain transactions
-   * @param offChainTx off-chain transaction compressed format
-   * @return hash of all off-chain transactions
-   */
-  function hashOffChainTx(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
-    bytes memory hashOffTx = new bytes(maxTx*bytesOffChainTx);
-    Memory.Cursor memory c = Memory.read(offChainTx);
-    uint ptr = 0;
-    while(!c.eof()) {
-      bytes1 iTx = c.readBytes1();
-      hashOffTx[ptr] = iTx;
-      ptr++;
-    }
-    return uint256(sha256(hashOffTx)) % rField;
-  }
-
-  /**
    * @dev build entry for the exit tree leaf
    * @param amount amunt
    * @param token token type

@@ -16,6 +16,8 @@ contract("RollupPoS", (accounts) => {
     } = accounts;
 
     let insRollupPoS;
+    const maxTx = 10;
+    const url = "localhost";
 
     const addressRollupTest = "0x0000000000000000000000000000000000000001";
     const operators = [];
@@ -34,7 +36,7 @@ contract("RollupPoS", (accounts) => {
 
     before(async () => {
     // Deploy token test
-        insRollupPoS = await RollupPoS.new(addressRollupTest);
+        insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
         // Check ganache provider
         let balance = await web3.eth.getBalance(owner);
         balance = web3.utils.fromWei(balance.toString(), "ether");
@@ -66,10 +68,10 @@ contract("RollupPoS", (accounts) => {
 
         it("add 2 operators", async () => {
             // add operator 0 with eStake = 4
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei("4", "ether") });
             // add operator 1 with eStake = 4
-            await insRollupPoS.addOperator(hashChain[9],
+            await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[1].address, value: web3.utils.toWei("2", "ether") });
             // move to era 2, where there are two operators
             await insRollupPoS.setBlockNumber(eraBlock[2]);
@@ -92,12 +94,12 @@ contract("RollupPoS", (accounts) => {
             const numOp2Add = 12;
             const numOp2Remove = 8;
             // restart smart contract
-            insRollupPoS = await RollupPoS.new(addressRollupTest);
+            insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             // set first era block
             await insRollupPoS.setBlockNumber(eraBlock[0]);
             // Add operators
             for (let i = 0; i < numOp2Add; i++) {
-                await insRollupPoS.addOperator(hashChain[9],
+                await insRollupPoS.addOperator(hashChain[9], url,
                     { from: operators[i].address, value: web3.utils.toWei("2", "ether") });
                 raffleWinner.push(4 * i);
             }
@@ -128,12 +130,12 @@ contract("RollupPoS", (accounts) => {
             for (let i = 0; i < numOp2Add; i++) {
                 raffleWinner = [];
                 // restart smart contract
-                insRollupPoS = await RollupPoS.new(addressRollupTest);
+                insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
                 // set first era block
                 await insRollupPoS.setBlockNumber(eraBlock[0]);
                 // add numOp2Add operators with eStake = 4
                 for (let n = 0; n < numOp2Add; n++) {
-                    await insRollupPoS.addOperator(hashChain[9],
+                    await insRollupPoS.addOperator(hashChain[9], url,
                         { from: operators[n].address, value: web3.utils.toWei("2", "ether") });
                     raffleWinner.push(4 * n);
                 }
@@ -164,10 +166,10 @@ contract("RollupPoS", (accounts) => {
             raffleWinner = [];
             const numOp2Add = 18;
             const op2Remove = [4, 9, 11, 16];
-            insRollupPoS = await RollupPoS.new(addressRollupTest);
+            insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
             for (let i = 0; i < numOp2Add; i++) {
-                await insRollupPoS.addOperator(hashChain[9],
+                await insRollupPoS.addOperator(hashChain[9], url,
                     { from: operators[i].address, value: web3.utils.toWei("2", "ether") });
                 raffleWinner.push(4 * i);
             }

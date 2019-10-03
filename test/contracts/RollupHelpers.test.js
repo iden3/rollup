@@ -7,7 +7,6 @@
 const ethUtil = require("ethereumjs-util");
 const chai = require("chai");
 const { smt } = require("circomlib");
-const crypto = require("crypto");
 
 const { expect } = chai;
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
@@ -335,29 +334,6 @@ contract("RollupHelpers functions", (accounts) => {
             expect(resSm["0"].toString()).to.be.equal(arrayTokenIds[i].toString());
             expect(resSm["1"].toString()).to.be.equal(resJs.toString());
         }
-    });
-
-    it("Hash off chain tx", async () => {
-        const maxTx = 4;  
-        const offChainTx = 2;
-        const offChainTxLen = 8;
-        // create 2 offChain tx
-        const tx0 = utils.buildOffChainTx(2, 3, 10);
-        const tx1 = utils.buildOffChainTx(7, 8, 100);
-        const buffTxOffChain = Buffer.concat([tx0, tx1]);
-        
-        const bytesTx = `0x${buffTxOffChain.toString("hex")}`;
-        // Calculate hash
-        const fillBuff = Buffer.alloc(offChainTxLen*(maxTx - offChainTx));
-        const hashTotalBuff = Buffer.concat([buffTxOffChain, fillBuff]);
-        const r = BigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-        const hash = crypto.createHash("sha256")
-            .update(hashTotalBuff)
-            .digest("hex");
-        const hashTotal = BigInt("0x" + hash) % r;
-        // Calculate hash solidity
-        const res = await insHelpers.hashOffChainTxTest(bytesTx, 4);
-        expect(res.toString()).to.be.equal(hashTotal.toString());
     });
 
     it("Hash state rollup tree", async () => {

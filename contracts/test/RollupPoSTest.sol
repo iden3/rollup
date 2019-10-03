@@ -4,7 +4,7 @@ import "../RollupPoS.sol";
 
 contract RollupPoSTest is RollupPoS {
 
-    constructor( address _rollup) RollupPoS(_rollup) public {}
+    constructor( address _rollup, uint256 _maxTx) RollupPoS(_rollup, _maxTx) public {}
 
     uint public blockNumber;
 
@@ -92,14 +92,17 @@ contract RollupPoSTest is RollupPoS {
     }
 
     function forgeCommittedBatch(
-        uint[2] calldata proofA,
-        uint[2][2] calldata proofB,
-        uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external {
+        uint[2] memory proofA,
+        uint[2][2] memory proofB,
+        uint[2] memory proofC,
+        uint[8] memory input
+    ) public {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+        // Check input off-chain hash matches hash commited
+        require(commitSlot[slot].offChainHash == input[4],
+            'hash off chain input does not match hash commited');
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
         // update previous hash committed by the operator

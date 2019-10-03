@@ -1,10 +1,14 @@
 pragma solidity ^0.5.1;
 import './RollupInterface.sol';
+import './lib/RollupPoSHelpers.sol';
 
-contract RollupPoS {
+contract RollupPoS is RollupPoSHelpers{
 
     // Rollup smart contract address
     RollupInterface rollupInterface;
+
+    // maximum rollup transacction: either off-chain or on-chain transactions
+    uint MAX_TX;
 
     uint32 constant BLOCKS_PER_SLOT = 100;
     uint constant SLOT_DEADLINE = 80;
@@ -65,7 +69,7 @@ contract RollupPoS {
     /**
      * @dev Event called when an operator is added to the staker tree
      */
-    event createOperatorLog(address controllerAddress, uint operatorId);
+    event createOperatorLog(address controllerAddress, uint operatorId, string url);
 
     /**
      * @dev Event called when an operator is removed from the staker tree
@@ -75,7 +79,7 @@ contract RollupPoS {
     /**
      * @dev Event called when an operator commits data before forging it
      */
-    event dataCommitted(uint32 slot, uint blockNumber);
+    event dataCommitted(uint256 hashOffChain);
 
     /**
      * @dev RollupPoS constructor
@@ -83,10 +87,11 @@ contract RollupPoS {
      * Initializes raffle for first era
      * @param _rollup rollup main smart contract address
      */
-    constructor(address _rollup) public {
+    constructor(address _rollup, uint256 _maxTx) public {
         require(_rollup != address(0),'Address 0 inserted');
         rollupInterface = RollupInterface(_rollup);
         genesisBlock = getBlockNumber() + 1000;
+        MAX_TX = _maxTx;
         // Initialize first raffle
         raffles[0] = Raffle(
             0,
@@ -253,7 +258,13 @@ contract RollupPoS {
      * @param value amount staked
      * @return index operator
      */
-    function doAddOperator(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash, uint128 value) private returns(uint) {
+    function doAddOperator(
+        address controllerAddress,
+        address payable beneficiaryAddress,
+        bytes32 rndHash,
+        uint128 value,
+        string memory url
+    ) private returns(uint) {
         operators.push(Operator(value, 0, controllerAddress, beneficiaryAddress, rndHash));
         uint32 idOp = uint32(operators.length)-1;
         uint32 updateEra = currentEra() + 2;
@@ -283,7 +294,7 @@ contract RollupPoS {
         raffle.activeStake += eStake;
         raffle.historicStake += eStake;
         raffle.seedRnd = bytes8(keccak256(abi.encodePacked(raffle.seedRnd, rndHash)));
-        emit createOperatorLog(controllerAddress, idOp);
+        emit createOperatorLog(controllerAddress, idOp, url);
         return idOp;
     }
 
@@ -293,9 +304,9 @@ contract RollupPoS {
      * @param rndHash hash committed by the operator
      * @return index operator
      */
-    function addOperator(bytes32 rndHash) external payable returns(uint) {
+    function addOperator(bytes32 rndHash, string calldata url) external payable returns(uint) {
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
-        return doAddOperator(msg.sender, msg.sender, rndHash, uint128(msg.value));
+        return doAddOperator(msg.sender, msg.sender, rndHash, uint128(msg.value), url);
     }
 
     /**
@@ -306,9 +317,13 @@ contract RollupPoS {
      * @param rndHash hash committed by the operator
      * @return index operator
      */
-    function addOperatorWithDifferentBeneficiary(address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
+    function addOperatorWithDifferentBeneficiary(
+        address payable beneficiaryAddress,
+        bytes32 rndHash,
+        string calldata url
+    ) external payable returns(uint) {
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
-        return doAddOperator(msg.sender, beneficiaryAddress, rndHash, uint128(msg.value));
+        return doAddOperator(msg.sender, beneficiaryAddress, rndHash, uint128(msg.value), url);
     }
 
     /**
@@ -320,10 +335,15 @@ contract RollupPoS {
      * @param rndHash hash committed by the operator
      * @return index operator
      */
-    function addOperatorRelay(address controllerAddress, address payable beneficiaryAddress, bytes32 rndHash) external payable returns(uint) {
+    function addOperatorRelay(
+        address controllerAddress,
+        address payable beneficiaryAddress,
+        bytes32 rndHash,
+        string calldata url
+    ) external payable returns(uint) {
         // Add a third party staker, do not need signature
         require(msg.value >= MIN_STAKE, 'Ether send not enough to enter raffle');
-        return doAddOperator(controllerAddress, beneficiaryAddress, rndHash, uint128(msg.value));
+        return doAddOperator(controllerAddress, beneficiaryAddress, rndHash, uint128(msg.value), url);
     }
 
     /**
@@ -551,7 +571,7 @@ contract RollupPoS {
     struct commitData {
         bytes32 previousHash;
         bool committed;
-        bytes compressedTx;
+        uint256 offChainHash;
     }
 
     /**
@@ -561,8 +581,8 @@ contract RollupPoS {
      */
     function commitBatch(
         bytes32 previousRndHash,
-        bytes calldata compressedTx
-    ) external {
+        bytes memory compressedTx
+    ) public {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
@@ -576,9 +596,9 @@ contract RollupPoS {
         require(commitSlot[slot].committed == false, 'there is data which is not forged');
         // Store data committed
         commitSlot[slot].committed = true;
-        commitSlot[slot].compressedTx = compressedTx;
+        commitSlot[slot].offChainHash = hashOffChainTx(compressedTx, MAX_TX);
         commitSlot[slot].previousHash = previousRndHash;
-        emit dataCommitted(slot, getBlockNumber());
+        emit dataCommitted(commitSlot[slot].offChainHash);
     }
 
     /**
@@ -590,23 +610,38 @@ contract RollupPoS {
      * @param input public zk-snark inputs
      */
     function forgeCommittedBatch(
-        uint[2] calldata proofA,
-        uint[2][2] calldata proofB,
-        uint[2] calldata proofC,
-        uint[8] calldata input
-     ) external {
+        uint[2] memory proofA,
+        uint[2][2] memory proofB,
+        uint[2] memory proofC,
+        uint[8] memory input
+     ) public {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+        // Check input off-chain hash matches hash commited
+        require(commitSlot[slot].offChainHash == input[4],
+            'hash off chain input does not match hash commited');
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
-        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, commitSlot[slot].compressedTx);
+        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input);
         // update previous hash committed by the operator
         op.rndHash = commitSlot[slot].previousHash;
         // clear committed data
         commitSlot[slot].committed = false;
         // one block has been forged in this slot
         fullFilled[slot] = true;
+    }
+
+    function commitAndForge(
+        bytes32 previousRndHash,
+        bytes calldata compressedTx,
+        uint[2] calldata proofA,
+        uint[2][2] calldata proofB,
+        uint[2] calldata proofC,
+        uint[8] calldata input
+    ) external {
+        commitBatch(previousRndHash, compressedTx);
+        forgeCommittedBatch(proofA, proofB, proofC, input);
     }
 
     /**

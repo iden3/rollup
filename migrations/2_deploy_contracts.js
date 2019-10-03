@@ -24,7 +24,7 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(Rollup, Verifier.address, insPoseidonUnit._address,
         maxTx, maxOnChainTx);
     // console.log("Rollup address:" + Rollup.address);
-    await deployer.deploy(RollupPoS, Rollup.address);
+    await deployer.deploy(RollupPoS, Rollup.address, maxTx);
     // console.log("RollupPoS address:" + RollupPoS.address);
     // load forge batch mechanism
     const insRollup = await Rollup.deployed();

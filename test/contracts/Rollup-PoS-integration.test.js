@@ -20,6 +20,10 @@ const Rollup = artifacts.require("../contracts/Rollup");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 
+const abiDecoder = require("abi-decoder");
+abiDecoder.addABI(RollupPoS.abi);
+abiDecoder.addABI(Rollup.abi);
+
 async function getEtherBalance(address) {
     let balance = await web3.eth.getBalance(address);
     balance = web3.utils.fromWei(balance, "ether");
@@ -81,6 +85,7 @@ contract("Rollup - RollupPoS", (accounts) => {
     const maxTx = 10;
     const maxOnChainTx = 3;
     const nLevels = 24;
+    const url = "localhost";
 
     // BabyJubjub public key
     const mnemonic = "urban add pulse prefer exist recycle verb angle sell year more mosquito";
@@ -116,7 +121,7 @@ contract("Rollup - RollupPoS", (accounts) => {
             { from: owner });
 
         // Deploy Staker manager
-        insRollupPoS = await RollupPoS.new(insRollup.address);
+        insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
 
         // Create hash chain for the operator
         hashChain.push(web3.utils.keccak256(initialMsg));
@@ -137,7 +142,7 @@ contract("Rollup - RollupPoS", (accounts) => {
             { from: tokenList, value: web3.utils.toWei("1", "ether") });
 
         // Add operator to PoS
-        await insRollupPoS.addOperator(hashChain[4],
+        await insRollupPoS.addOperator(hashChain[4], url,
             { from: operator1, value: web3.utils.toWei(amountToStake.toString(), "ether") });
     });
 
@@ -174,7 +179,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         await insRollupPoS.commitBatch(hashChain[3], `0x${block.getDataAvailable().toString("hex")}`);
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs);
 
-        // Bulid inputs
+        // Build inputs
         const block1 = await rollupDB.buildBatch(maxTx, nLevels);
         const tx = manageEvent(eventTmp.logs[0]);
         block1.addTx(tx);
@@ -184,9 +189,43 @@ contract("Rollup - RollupPoS", (accounts) => {
         // Forge batch by operator 1
         await insRollupPoS.commitBatch(hashChain[2], `0x${block1.getDataAvailable().toString("hex")}`);
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1);
-
         // Check balances
         const balOpAfterForge = await getEtherBalance(operator1);
         expect(Math.ceil(balOpBeforeForge) + 1).to.be.equal(Math.ceil(balOpAfterForge));
+
+        // Retrieve off-chain data forged
+        // Step1: Get block number from 'ForgeBatch' event triggered by Rollup.sol
+        const logs = await insRollup.getPastEvents("ForgeBatch", {
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+        const blockNumber = logs[1].returnValues.blockNumber; // get last event
+        // Step2: Get transaction, which was called by the RollupPoS
+        const transaction = await web3.eth.getTransactionFromBlock(blockNumber, 0);
+        // Step3: Get off-chain hash commited by the user
+        const decodedData = abiDecoder.decodeMethod(transaction.input);
+        let inputRetrieved;
+        decodedData.params.forEach(elem => {
+            if (elem.name == "input") {
+                inputRetrieved = elem.value;
+            }
+        });
+        const offChainHashCommited = inputRetrieved[4];
+        // // Step4: Check all events triggered by the RollupPos 'dataCommited'
+        const logs2 = await insRollupPoS.getPastEvents("dataCommitted", {
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+        // find event that matches offChainHashCommited and read its input data
+        let txHash;
+        logs2.forEach(elem => {
+            if (elem.returnValues.hashOffChain == offChainHashCommited) {
+                txHash = elem.transactionHash;
+            }
+        });
+        const resTx = await web3.eth.getTransaction(txHash);
+        const decodedData2 = abiDecoder.decodeMethod(resTx.input);
+        expect(decodedData2.params[1].value).to.be.
+            equal(`0x${block1.getDataAvailable().toString("hex")}`);
     });
 });
