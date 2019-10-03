@@ -552,16 +552,13 @@ module.exports = class BatchBuilder {
         const roundedFee = utils.float2fix(utils.fix2float(fee));
         if (roundedFee.isZero()) return;
 
-        this.nCoins
-
         if (this.nCoins >= 16) {
             throw new Error("Maximum 16 coins per batch");
         }
         if ((this.nCoins == 15)&&(coin >= 1<<13)) {
-            throw new Error("Coin 16 muns be less than 2^13");
+            throw new Error("Coin 16 must be less than 2^13");
         }
         this.feePlan[this.nCoins] = [coin, roundedFee];
+        this.nCoins = this.nCoins + 1;
     }
-
-
 };

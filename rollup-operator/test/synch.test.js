@@ -168,7 +168,7 @@ contract("Synchronizer", (accounts) => {
         await checkSynch(synch, opRollupDb);
     });
 
-    it("Should retrieve balance tree indormation", async () => {
+    it("Should retrieve balance tree information", async () => {
         const axStr = wallet.publicKey[0].toString("16");
         const ayStr = wallet.publicKey[1].toString("16");
         // get info by Id

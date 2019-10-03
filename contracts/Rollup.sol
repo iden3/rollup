@@ -341,15 +341,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param proofB zk-snark input
      * @param proofC zk-snark input
      * @param input public zk-snark inputs
-     * @param compressedTxs data availability to maintain balance tree
     */
     function forgeBatch(
         address payable beneficiaryAddress,
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input,
-        bytes calldata compressedTxs
+        uint[8] calldata input
     ) external isForgeBatch {
         // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
@@ -358,11 +356,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
             'on-chain hash does not match current filling on-chain hash');
-
-        // Verify all off-chain are committed on the public zk-snark input
-        uint256 offChainTxHash = hashOffChainTx(compressedTxs, MAX_TX);
-        require(offChainTxHash == input[offChainHashInput],
-            'off chain tx does not match its public hash');
 
         // Verify zk-snark circuit
         require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
