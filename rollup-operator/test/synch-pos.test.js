@@ -31,6 +31,7 @@ contract("Synchronizer PoS", async (accounts) => {
         0: synchAddress,
     } = accounts;
 
+    const maxTx = 10;
     const slotPerEra = 20;
     const blocksPerSlot = 100;
     const blockPerEra = slotPerEra * blocksPerSlot;
@@ -54,7 +55,7 @@ contract("Synchronizer PoS", async (accounts) => {
 
     before(async () => {
         // Deploy token test
-        insRollupPoS = await RollupPoS.new(addressRollupTest);
+        insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
         genesisBlock = Number(await insRollupPoS.genesisBlock());
         // Init synch db
         synchDb = new MemDb();
@@ -67,7 +68,7 @@ contract("Synchronizer PoS", async (accounts) => {
         // fill 10 addresses for operators
         const numOp = 10;
         for (let i = 0; i < numOp; i++) {
-            operators.push({address: accounts[i+1], idOp: i});
+            operators.push({address: accounts[i+1], idOp: i, url: `localhost:900${i}`});
         }
     });
 
@@ -79,7 +80,7 @@ contract("Synchronizer PoS", async (accounts) => {
 
     it("Should Add operator and synch", async () => {
         // Add operator
-        await insRollupPoS.addOperator(rndHash,
+        await insRollupPoS.addOperator(rndHash, operators[0].url,
             { from: operators[0].address, value: web3.utils.toWei("2", "ether") });
         // move forward block number to allow the operator to forge a batch
         let currentBlock = await web3.eth.getBlockNumber();
@@ -90,6 +91,8 @@ contract("Synchronizer PoS", async (accounts) => {
         let listOperators = await synchPoS.getOperators();
         expect(listOperators[operators[0].idOp.toString()].controllerAddress)
             .to.be.equal(operators[0].address.toString());
+        expect(listOperators[operators[0].idOp.toString()].url)
+            .to.be.equal(operators[0].url);
         let winners = await synchPoS.getRaffleWinners();
         expect(winners.length).to.be.equal(40);
         await checkSlot(await synchPoS.getSlotWinners());
@@ -135,11 +138,11 @@ contract("Synchronizer PoS", async (accounts) => {
         // Add operators
         const numOp2Add = 5;
         for (let i = 0; i < numOp2Add; i++) {
-            await insRollupPoS.addOperator(rndHash,
+            await insRollupPoS.addOperator(rndHash, operators[i+1].url,
                 { from: operators[i+1].address, value: web3.utils.toWei("2", "ether") });
         }
         await timeTravel.addBlocks(blockPerEra); // era 6
-        await timeout(11000);
+        await timeout(13000);
         let winners = await synchPoS.getRaffleWinners();
         // expect no winner for era 5 and winner for era 6
         for(let i = 0; i < winners.length; i++) {
@@ -148,22 +151,25 @@ contract("Synchronizer PoS", async (accounts) => {
         }
         await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 7
-        await timeout(11000);
+        await timeout(20000);
         winners = await synchPoS.getRaffleWinners();
         // expect winner for era 6 and winner for era 7
         for(const winner of winners) expect(winner).to.be.within(1, numOp2Add);
         await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 8
-        await timeout(11000);
+        await timeout(13000);
         const listOperators = await synchPoS.getOperators();
         for (let i = 0; i < numOp2Add; i++ ) {
             const value = listOperators[operators[i+1].idOp.toString()];
             expect(value.controllerAddress).to.be.
                 equal(operators[i+1].address.toString());
+            expect(value.url).to.be.equal(operators[i+1].url);
         }
         const opIdInfo = await synchPoS.getOperatorById(1);
         expect(opIdInfo.controllerAddress).to.be.
             equal(operators[1].address.toString());
+        expect(opIdInfo.url).to.be.
+            equal(operators[1].url);
         await checkFullSynch();
     });
 });

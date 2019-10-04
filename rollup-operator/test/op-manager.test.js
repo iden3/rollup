@@ -11,11 +11,15 @@ const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const Rollup = artifacts.require("../contracts/Rollup");
 
+const RollupDB = require("../../js/rollupdb");
+const SMTMemDB = require("circomlib/src/smt_memdb");
+
 const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(Rollup.abi);
 
 const OperatorManager = require("../src/operator-manager");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
+const { buildInputSm } = require("../src/utils");
 
 contract("Operator Manager", async (accounts) => { 
 
@@ -27,14 +31,15 @@ contract("Operator Manager", async (accounts) => {
 
     const {
         0: owner,
-        1: id1,
-        2: tokenList,
     } = accounts;
 
+    let db;
+    let rollupDB;
     const debug = true;
     const amountToStake = 2;
     const maxTx = 10;
     const maxOnChainTx = 5;
+    const nLevels = 24;
 
     let insPoseidonUnit;
     let insRollupPoS;
@@ -53,6 +58,8 @@ contract("Operator Manager", async (accounts) => {
 
     const hashChain = [];
     const initialMsg = "rollup";
+    const url = "localhost";
+    
     hashChain.push(web3.utils.keccak256(initialMsg));
     for (let i = 1; i < 10; i++) {
         hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
@@ -78,7 +85,7 @@ contract("Operator Manager", async (accounts) => {
             { from: owner });
 
         // Deploy Staker manager
-        insRollupPoS = await RollupPoS.new(insRollup.address);
+        insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
 
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoS.address, { from: owner });
@@ -96,6 +103,10 @@ contract("Operator Manager", async (accounts) => {
             eraBlock.push(i * blockPerEra + Number(genesisBlock) + 1);
             eraSlot.push(i * slotPerEra);
         }
+
+        // init rollup database
+        db = new SMTMemDB();
+        rollupDB = await RollupDB(db);
     });
 
     it("Should initialize operator manager", async () => {
@@ -108,7 +119,7 @@ contract("Operator Manager", async (accounts) => {
     });
 
     it("Should register operator", async () => {
-        const res = await opManager.register(hashChain[9], amountToStake);
+        const res = await opManager.register(hashChain[9], amountToStake, url);
         const currentBlock = await web3.eth.getBlockNumber();
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
         await insRollupPoS.setBlockNumber(eraBlock[0]); // era 0 smart contract test
@@ -122,37 +133,78 @@ contract("Operator Manager", async (accounts) => {
         expect(logs[0].returnValues.controllerAddress).to.be.equal(wallet.address);
     });
 
-    it("Should commit data", async () => {
-        const compressedTxTest = "0x";
-        await timeTravel.addBlocks(blockPerEra); // era 2
-        await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
-        await opManager.commit(hashChain[8], compressedTxTest);
-        await timeTravel.addBlocks(10); // era 2
-        await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
-        const logs = await insRollupPoS.getPastEvents("allEvents", {
-            fromBlock: 0,
-            toBlock: "latest",
-        });
-        expect(logs[1].returnValues.blockNumber.toString()).to.be.equal(eraBlock[2].toString());
-    });
-
-    it("Should forge commit data", async () => {
+    it("Should first commit data and then forge it", async () => {
         const proofA = ["0", "0"];
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
-        const input = ["0", "0", "0", "0", "0", "0", "0", "0"];
+        const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        await batch.build();
+        const input = await buildInputSm(batch);
+
+        await timeTravel.addBlocks(blockPerEra); // era 2
+        await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
+        await opManager.commit(hashChain[8], `0x${batch.getDataAvailable().toString("hex")}`);
+        await timeTravel.addBlocks(10); // era 2
+        await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
+        const logs = await insRollupPoS.getPastEvents("dataCommitted", {
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+        let found = false;
+        logs.forEach(elem => {
+            if (elem.returnValues.hashOffChain == input[4].toString()) {
+                found = true;
+            }
+        });
+        expect(found).to.be. equal(true);
         const res = await opManager.forge(proofA, proofB, proofC, input);
         expect(res.status).to.be.equal(true);
     });
 
-    it("Should unregister operator", async () => {
-        const res = await opManager.unregister(0);
-        expect(res.status).to.be.equal(true);
-        const logs = await insRollupPoS.getPastEvents("allEvents", {
+    it("Should commit and forge", async () => {
+        const proofA = ["0", "0"];
+        const proofB = [["0", "0"], ["0", "0"]];
+        const proofC = ["0", "0"];
+        const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        await batch.build();
+        const input = await buildInputSm(batch);
+        const commitData = `0x${batch.getDataAvailable().toString("hex")}`;
+
+        await timeTravel.addBlocks(blockPerEra); // era 2
+        await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
+        const res = await opManager.commitAndForge(hashChain[7], commitData, proofA,
+            proofB, proofC, input);
+        await timeTravel.addBlocks(10); // era 2
+        await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
+        const logs = await insRollupPoS.getPastEvents("dataCommitted", {
             fromBlock: 0,
             toBlock: "latest",
         });
-        expect(logs[2].returnValues.controllerAddress).to.be.equal(wallet.address);
+        let found = false;
+        logs.forEach(elem => {
+            if (elem.returnValues.hashOffChain == input[4].toString()) {
+                found = true;
+            }
+        });
+        expect(found).to.be. equal(true);
+        expect(res.status).to.be.equal(true);
+    });
+
+    it("Should unregister operator", async () => {
+        const opIdToRemove = 0;
+        const res = await opManager.unregister(opIdToRemove);
+        expect(res.status).to.be.equal(true);
+        const logs = await insRollupPoS.getPastEvents("removeOperatorLog", {
+            fromBlock: 0,
+            toBlock: "latest",
+        });
+        let controllerAddress;
+        logs.forEach(elem => {
+            if (elem.returnValues.operatorId == opIdToRemove.toString()) {
+                controllerAddress = elem.returnValues.controllerAddress; 
+            }
+        });
+        expect(controllerAddress).to.be.equal(wallet.address);
     });
 
     it("Should withdraw operator", async () => {

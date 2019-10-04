@@ -8,7 +8,7 @@ const lodash = require("lodash");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
-const StakerManager = artifacts.require("../contracts/RollupPoS");
+const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const RollupTest = artifacts.require("../contracts/test/RollupTest");
 const Synchronizer = require("../src/synch");
 const MemDb = require("../../rollup-utils/mem-db");
@@ -16,6 +16,7 @@ const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const { timeout, buildInputSm, manageEvent } = require("../src/utils");
+const timeTravel = require("../../test/contracts/helpers/timeTravel");
 
 async function checkSynch(synch, opRollupDb){
     // Check fully synchronized
@@ -40,8 +41,9 @@ contract("Synchronizer", (accounts) => {
         }
         await block.build();
         const inputSm = buildInputSm(block, beneficiary);
-        const compressedTx = `0x${block.getDataAvailable().toString("hex")}`;
-        await insRollupTest.forgeBatch(beneficiary, proofA, proofB, proofC, inputSm, compressedTx);
+        ptr = ptr - 1;
+        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${block.getDataAvailable().toString("hex")}`,
+            proofA, proofB, proofC, inputSm);
         await opRollupDb.consolidate(block);
     }
 
@@ -51,6 +53,7 @@ contract("Synchronizer", (accounts) => {
         2: id2,
         3: synchAddress,
         4: beneficiary,
+        5: op1,
     } = accounts;
 
     let synchDb;
@@ -61,7 +64,14 @@ contract("Synchronizer", (accounts) => {
     const nLevels = 24;
     const tokenInitialAmount = 1000;
     const tokenId = 0;
+    const url = "localhost";
+    const hashChain = [];
+    let ptr = 0;
+    const initialMsg = "rollup";
 
+    const slotPerEra = 20;
+    const blocksPerSlot = 100;
+    const blockPerEra = slotPerEra * blocksPerSlot;
     // Operator database
     let opDb;
     let opRollupDb;
@@ -72,7 +82,7 @@ contract("Synchronizer", (accounts) => {
 
     let insPoseidonUnit;
     let insTokenRollup;
-    let insStakerManager;
+    let insRollupPoS;
     let insRollupTest;
     let insVerifier;
 
@@ -84,6 +94,8 @@ contract("Synchronizer", (accounts) => {
         creationHash: undefined,
         ethAddress: synchAddress,
         abi: RollupTest.abi,
+        contractPoS: undefined,
+        posAbi: RollupPoS.abi,
     }; 
 
     // BabyJubjub public key
@@ -114,10 +126,10 @@ contract("Synchronizer", (accounts) => {
             maxTx, maxOnChainTx);
 
         // Deploy Staker manager
-        insStakerManager = await StakerManager.new(insRollupTest.address);
+        insRollupPoS = await RollupPoS.new(insRollupTest.address, maxTx);
 
-        // load forge batch mechanism ( not used in this test)
-        await insRollupTest.loadForgeBatchMechanism(insStakerManager.address);
+        // load forge batch mechanism
+        await insRollupTest.loadForgeBatchMechanism(insRollupPoS.address);
         
         // Init Synch Rollup databases
         synchDb = new MemDb();
@@ -128,10 +140,28 @@ contract("Synchronizer", (accounts) => {
         opRollupDb = await RollupDB(opDb);
 
         // load configuration synchronizer
+        configSynch.contractPoS = insRollupPoS.address;
         configSynch.contractAddress = insRollupTest.address;
         configSynch.creationHash = insRollupTest.transactionHash;
         configSynch.treeDb = synchRollupDb;
         configSynch.synchDb = synchDb;
+
+        // Add operator
+        // Create hash chain for the operator
+        hashChain.push(web3.utils.keccak256(initialMsg));
+        for (let i = 1; i < 100; i++) {
+            hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
+            ptr = i;
+        }
+        // Add operator to PoS
+        const amountToStake = 2;
+        await insRollupPoS.addOperator(hashChain[ptr], url,
+            { from: op1, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+
+        // move forward block number to allow the operator to forge a batch
+        let currentBlock = await web3.eth.getBlockNumber();
+        const genesisBlock = await insRollupPoS.genesisBlock();
+        await timeTravel.addBlocks(genesisBlock - currentBlock); // era 0
     });
 
     it("manage rollup token", async () => { 
@@ -145,15 +175,18 @@ contract("Synchronizer", (accounts) => {
             { from: id1 });
         await insTokenRollup.approve(insRollupTest.address, amountDistribution,
             { from: id2 });
+        await timeTravel.addBlocks(blockPerEra); // era 1
     });
 
     it("Should initialize synchronizer", async () => {
         synch = new Synchronizer(configSynch.synchDb, configSynch.treeDb, configSynch.ethNodeUrl,
-            configSynch.contractAddress, configSynch.abi, configSynch.creationHash, configSynch.ethAddress);
+            configSynch.contractAddress, configSynch.abi, configSynch.contractPoS,
+            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress);
         synch.synchLoop();
     });
 
     it("Should add two deposits and synch", async () => {
+        await timeTravel.addBlocks(blockPerEra); // era 2 --> operator can forge a batch
         const loadAmount = 10;
         const events = [];
         const event0 = await insRollupTest.deposit(loadAmount, tokenId, id1,
@@ -164,7 +197,7 @@ contract("Synchronizer", (accounts) => {
         events.push(event1.logs[0]);
         await forgeBlock();
         await forgeBlock(events);
-        await timeout(12000);
+        await timeout(16000);
         await checkSynch(synch, opRollupDb);
     });
 

@@ -5,7 +5,7 @@ const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 // global vars
 const blocksPerSlot = 100;
 const slotsPerEra = 20;
-const blocksNextInfo = blocksPerSlot*slotsPerEra; // 2 eras
+const blocksNextInfo = blocksPerSlot*slotsPerEra; 
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
 
@@ -115,15 +115,12 @@ class SynchPoS {
         for (const opKey of keysAddOp) {
             const opValue = this._fromString(await this.db.get(opKey));
             this.operators[opValue.operatorId.toString()] = opValue;
-            // await this.db.insert(`${opListKey}${separator}${opValue.operatorId}`,
-            //     this._toString(opValue));
         }
         // Remove operators
         const keysRemoveOp = await this.db.listKeys(`${opRemoveKey}${separator}${era}`);
         for (const opKey of keysRemoveOp) {
             const opValue = this._fromString(await this.db.get(opKey));
             delete this.operators[opValue.operatorId.toString()];
-            // await this.db.delete(`${opListKey}${separator}${opValue.operatorId}`);
         }
     }
 
