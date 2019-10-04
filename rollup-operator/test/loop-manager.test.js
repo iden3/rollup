@@ -3,19 +3,16 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 // This test assumes 'server-proof' is running locally on port 10001
 
 const chai = require("chai");
 const ethers = require("ethers");
-const rollupUtils = require("../../rollup-utils/rollup-utils.js");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
 
 const { expect } = chai;
 const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
-const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
@@ -86,7 +83,7 @@ contract("Loop Manager", async (accounts) => {
             { from: owner });
 
         // Deploy Staker manager
-        insRollupPoS = await RollupPoS.new(insRollup.address);
+        insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
 
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoS.address, { from: owner });
@@ -117,11 +114,14 @@ contract("Loop Manager", async (accounts) => {
             creationHash: insRollup.transactionHash,
             ethAddress: rollupSynchAddress,
             abi: Rollup.abi,
+            rollupPoSAddress: insRollupPoS.address,
+            rollupPoSABI: RollupPoS.abi,
         };
         
         rollupSynch = new RollupSynch(configRollupSynch.synchDb, configRollupSynch.treeDb,
-            configRollupSynch.ethNodeUrl, configRollupSynch.contractAddress,
-            configRollupSynch.abi, configRollupSynch.creationHash, configRollupSynch.ethAddress);
+            configRollupSynch.ethNodeUrl, configRollupSynch.contractAddress, configRollupSynch.abi,
+            configRollupSynch.rollupPoSAddress, configRollupSynch.rollupPoSABI, 
+            configRollupSynch.creationHash, configRollupSynch.ethAddress);
         
         // Init PoS Synch
         const synchPoSDb = new MemDb();
@@ -163,7 +163,8 @@ contract("Loop Manager", async (accounts) => {
     });
 
     it("Should register operator", async () => {
-        const res = await loopManager.register(2);
+        const url = "localhost";
+        const res = await loopManager.register(2, url);
         expect(res).to.be.equal(true);
         const currentBlock = await web3.eth.getBlockNumber();
         const genesisBlock = posSynch.genesisBlock;
@@ -173,8 +174,9 @@ contract("Loop Manager", async (accounts) => {
         // check address operator is in list operators
         let found = false;
         for (const opInfo of Object.values(listOperators)){
-            if (opInfo.controllerAddress == wallet.address.toString())
+            if (opInfo.controllerAddress == wallet.address.toString()){
                 found = true;
+            }
         }
         expect(found).to.be.equal(true);
     });
@@ -191,5 +193,30 @@ contract("Loop Manager", async (accounts) => {
 
     it("Should forge another empty block", async () => {
         await timeout(30000);
+    });
+
+    describe("State check", () => {
+        let opId;
+        it("Should get operator id", async () => {
+            const listOperators = await posSynch.getOperators();
+            for (const opInfo of Object.values(listOperators)){
+                if (opInfo.controllerAddress == wallet.address.toString()){
+                    opId = Number(opInfo.operatorId);
+                    break;
+                }
+            }
+        });
+
+        it("Should win all the raffles", async () => {
+            let winners = await posSynch.getRaffleWinners();
+            for(let i = 0; i < winners.length; i++) {
+                expect(winners[i]).to.be.equal(opId);
+            }
+        });
+
+        it("Should forge at least one batch", async () => {
+            const lastBatch = await rollupSynch.getLastBatch();
+            expect(lastBatch).to.be.above(0);
+        });
     });
 });

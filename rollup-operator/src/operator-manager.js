@@ -20,14 +20,14 @@ class OperatorManager {
         }
     }
 
-    async register(rndHash, stakeValue) {
+    async register(rndHash, stakeValue, url) {
         if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             value: this.web3.utils.toHex(this.web3.utils.toWei(stakeValue.toString(), "ether")),
-            data: this.rollupPoS.methods.addOperator(rndHash).encodeABI()
+            data: this.rollupPoS.methods.addOperator(rndHash, url).encodeABI()
         };
         const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
         return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
@@ -72,6 +72,18 @@ class OperatorManager {
             to: this.posAddress,
             gasLimit: this.gasLimit,
             data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input).encodeABI()
+        };
+        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+    }
+
+    async commitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
+        const tx = {
+            from:  this.wallet.address,
+            to: this.posAddress,
+            gasLimit: this.gasLimit,
+            data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
+                proofA, proofB, proofC, input).encodeABI()
         };
         const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
         return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);

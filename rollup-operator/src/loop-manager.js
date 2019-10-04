@@ -94,8 +94,8 @@ class LoopManager{
             }}
     }
 
-    async register(stake) {
-        const res = await this.opManager.register(hashChain[this.pHashChain], stake);
+    async register(stake, url) {
+        const res = await this.opManager.register(hashChain[this.pHashChain], stake, url);
         if (res.status) this.pHashChain--;
         return res.status;
     }
