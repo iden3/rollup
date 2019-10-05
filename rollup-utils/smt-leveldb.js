@@ -62,4 +62,5 @@ async function newLevelDbEmptyTree(pathDb, prefix) {
 
 module.exports = {
     newLevelDbEmptyTree,
+    SMTLevelDb
 };

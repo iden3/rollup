@@ -1,17 +1,8 @@
-const { timeout, buildInputSm } = require("../src/utils");
-const crypto = require("crypto"); 
+const { timeout, buildInputSm } = require("../src/utils"); 
 const web3 = require("web3");
 const { stringifyBigInts } = require("snarkjs");
 
 // global vars
-const hashChainLength = 1000;
-const hashChain = [];
-const initialMsg = crypto.randomBytes(32).toString("hex");
-hashChain.push(web3.utils.keccak256(initialMsg));
-for (let i = 1; i < hashChainLength; i++) {
-    hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
-}
-
 const SLOT_DEADLINE = 80;
 
 const stateServer = {
@@ -47,7 +38,8 @@ class LoopManager{
         this.flagWaiting = false;
         this.state = state.SYNCHRONIZING;
         // Current hash chain
-        this.pHashChain = hashChainLength - 1;
+        this.hashChain = [];
+        this.pHashChain = 0;
     }
 
     async startLoop(){
@@ -88,14 +80,24 @@ class LoopManager{
                 }
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
-                // console.error(`Message error: ${e.message}`);
-                // console.error(`Error in loop: ${e.stack}`);
+                console.error(`Message error: ${e.message}`);
+                console.error(`Error in loop: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }}
     }
 
+    // seed encoded as an string
+    async loadSeedHashChain(seed){
+        const hashChainLength = 1000;
+        this.hashChain.push(web3.utils.keccak256(seed));
+        for (let i = 1; i < hashChainLength; i++) {
+            this.hashChain.push(web3.utils.keccak256(this.hashChain[i - 1]));
+        }
+        this.pHashChain = hashChainLength - 1;
+    }
+
     async register(stake, url) {
-        const res = await this.opManager.register(hashChain[this.pHashChain], stake, url);
+        const res = await this.opManager.register(this.hashChain[this.pHashChain], stake, url);
         if (res.status) this.pHashChain--;
         return res.status;
     }
@@ -195,7 +197,7 @@ class LoopManager{
             let resCommit;
             if (this.commited) resCommit = true;
             else {
-                const res = await this.opManager.commit(hashChain[this.pHashChain], commitData);
+                const res = await this.opManager.commit(this.hashChain[this.pHashChain], commitData);
                 resCommit = res.status;
             }
             if (resCommit) { // try again if no data is commited

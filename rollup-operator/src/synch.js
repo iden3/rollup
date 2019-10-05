@@ -14,15 +14,23 @@ const blocksPerSlot = 100;
 
 // db keys
 const lastBlockKey = "last-block-synch";
-const stateRootKey = "last-state-root";
 const lastBatchKey = "last-state-batch";
 const eventOnChainKey = "onChain";
 const eventForgeBatchKey = "forgeBatch";
 const separator = "--";
 
 class Synchronizer {
-    constructor(db, treeDb, nodeUrl, rollupAddress, rollupABI,
-        rollupPoSAddress, rollupPoSABI, creationHash, ethAddress) {
+    constructor(
+        db,
+        treeDb,
+        nodeUrl,
+        rollupAddress,
+        rollupABI,
+        rollupPoSAddress,
+        rollupPoSABI,
+        creationHash,
+        ethAddress
+    ) {
         this.db = db;
         this.nodeUrl = nodeUrl;
         this.rollupAddress = rollupAddress;
@@ -106,10 +114,6 @@ class Synchronizer {
 
     async getLastSynchBlock() {
         return this._fromString(await this.db.getOrDefault(lastBlockKey, this.creationBlock.toString()));
-    }
-
-    async getBatchRoot(numBatch) {
-        return this._fromString(await this.db.getOrDefault(`${stateRootKey}${separator}${numBatch}`, "0"));
     }
 
     async getLastBatch(){
