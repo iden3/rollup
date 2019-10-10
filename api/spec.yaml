@@ -1,0 +1,441 @@
+openapi: 3.0.1
+
+# TODOs:
+#   - Add authentication and authorization
+#   - Add meta: ToS, License, Contact info, ...
+
+info:
+  version: '0.0.1'
+  title: 'Rollup'
+  description: 'API design to be implemented by the operators and potentially other service providers such as block explorers and wallets. Ideally this reference will be implemented by the different components of a operator.'
+servers:
+# Added by API Auto Mocking Plugin
+  - description: Local development server
+    url: http://localhost:8080
+
+paths:
+  /stats:
+    get:
+      tags:
+      - Explorer
+      summary: Get general metrics of the rollup.
+      description: Returns various statistics that refelct the state of the rollup
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/rollupStats'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+
+  /transaction/{id}:
+    get:
+      tags:
+      - Explorer
+      summary: Get a specific transactions.
+      description: Returns the transaction identified by id.
+      parameters:
+      - name: id
+        in: path
+        description: ID of the transaction to return
+        required: true
+        schema:
+          $ref: '#/components/schemas/transactionId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/transaction'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+
+  /transactions:
+    get:
+      tags:
+      - Explorer
+      summary: Query for transactions.
+      description: Returns an array of transactions based on the query parameters. If no parameter are porvided, this endpoint will return the most recent transactions.
+      parameters:
+      - name: address
+        in: query
+        description: If this parameter is porvided, all the returned transactions will have this value as sender or receiver.
+        required: false
+        schema:
+          $ref: '#/components/schemas/bigInt'
+      - name: from
+        in: query
+        description: If this parameter is porvided, all the returned transactions will have this value as sender.
+        required: false
+        schema:
+          $ref: '#/components/schemas/bigInt'
+      - name: to
+        in: query
+        description: If this parameter is porvided, all the returned transactions will have this value as receiver.
+        required: false
+        schema:
+          $ref: '#/components/schemas/bigInt'
+      - name: block
+        in: query
+        description: If this parameter is porvided, all the returned transactions will have this value as block id.
+        required: false
+        schema:
+          $ref: '#/components/schemas/bigInt'
+      - name: fromId
+        in: query
+        description: If this parameter is porvided, all the returned transactions will be previous to the the transaction identified by the provided value. Use to retrieve older transactions that were not included in a query, as in pagination.
+        required: false
+        schema:
+          $ref: '#/components/schemas/bigInt'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/transactions'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+
+  /operator/{id}:
+    get:
+      tags:
+      - Explorer
+      summary: Get an operator information.
+      description: Return an operator that matches the id.
+      parameters:
+      - name: id
+        in: path
+        description: ID of the operator to return
+        required: true
+        schema:
+          $ref: '#/components/schemas/operatorId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/operator'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+
+  /operator/list:
+    get:
+      tags:
+      - Explorer
+      summary: Get all the operators id's.
+      description: Returns an array of all the registered operator id's
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/operatorIds'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+
+  /operator/stats:
+    get:
+      tags:
+      - Explorer
+      summary: Get all the operators id's.
+      description: Returns an array of all the registered operator id's
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/operatorStats'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+
+components:
+  schemas:
+    bigInt:
+      type: string
+      pattern: '^0x[a-fA-F0-9]{40}$'
+      example: "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133"
+
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+    transactionId:
+      $ref: '#/components/schemas/bigInt'
+
+    transaction:
+      type: object
+      description: Off chain transaction, specific ammount of tokens (to be) transfered from one address to another.
+      properties:
+      # TODO: CHECK transaction PROPERTIES
+        id:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Identifier of the transaction
+        from:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Address of the sender
+        to:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Address of the receiver
+        tokenId:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the token that will be sent
+        ammount:
+          type: number
+          description: Amount of tokens of type tokenId to be transacted
+          minimum: 0
+          example: 123
+        fee:
+          type: number
+          description: Amount of tokens to be payed to the operator as reward for including the transaction in a mined batch.
+          minimum: 0
+          example: 2
+      required:
+        - from
+        - to
+        - tokenId
+        - ammount
+        - fee
+
+    transactions:
+      type: array
+      description: Array of transactions
+      items:
+        $ref: '#/components/schemas/transaction'
+
+    operatorId:
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+      description: Id of an operator
+
+    operator:
+      type: object
+      description: Service porvider, it receives transactions and mine them into the rollup. The rollup works using a Proof of Stake, so the operator will have to deposit Ether in order to be chosen.
+      properties:
+        id:
+          $ref: '#/components/schemas/operatorId'
+        endpoint:
+          type: string
+          description: HTTP endpoint that holds the operator API
+          pattern: '^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|(((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?))$'
+          example: https://operator.iden3.io
+        stake:
+          type: number
+          description: Amount of Ether deposited by the operator in order to be electable for mining slots.
+          minimum: 0
+          example: 649
+        activeSince:
+          description: The moment the operator became available
+          type: string
+          format: date-time
+        avgUptime:
+          type: number
+          description: Average uptime of this operator, expressed in percentage (0..1).
+          minimum: 0
+          maximum: 1
+          example: 0.9856
+        minedTransactions:
+          type: number
+          description: Amount of transactions mined into batches by this operator.
+          minimum: 0
+          example: 35497
+        minedBatches:
+          type: number
+          description: Amount of batches mined this operator.
+          minimum: 0
+          example: 35497
+        batchRatio:
+          type: number
+          description: Ratio of mined batches, mined batches / batches in which the operator was electable for mining.
+          minimum: 0
+          maximum: 1
+          example: 0.9856
+
+    operatorIds:
+      type: array
+      items:
+        $ref: '#/components/schemas/operatorId'
+
+    operatorStats:
+      type: object
+      description: Set of aggregated metrics from the active operators in the rollup
+      properties:
+        avgFee:
+          type: number
+          description: Average fee payed to the operators for the transactions.
+          minimum: 0
+          example: 0.000036
+        totalFee:
+          type: number
+          description: Total fee payed to the operators for all the transactions.
+          minimum: 0
+          example: 85672.897634
+        totalStake:
+          type: number
+          description: Total amount of Ether deposited by the currently active operators in order to be electable for mining slots.
+          minimum: 0
+          example: 6349.387
+        avgUptime:
+          type: number
+          description: Average uptime of the currently registered operators, expressed in percentage (0..1).
+          minimum: 0
+          maximum: 1
+          example: 0.9856
+      required:
+        - avgFee
+        - totalFee
+        - stake
+        - avgUptime
+
+    batch:
+      type: object
+      description: Mining units of the rollup, a batch encapsulate a limited ammount of transactions. Think of it as the blocks of a blockchain.
+      properties:
+        id:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the batch
+        operatorId:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the operator that mined / will mine the batch
+        transactions:
+          allOf:
+          - $ref: '#/components/schemas/transactions'
+          description: List of transactions mined on the batch
+        slotId:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the slot where this batch is included
+        eraId:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the era where this batch is included
+      required:
+        - id
+        - operatorId
+        - transactions
+        - slotId
+        - eraId
+
+    slot:
+      type: object
+      description: Set of consecutive batches mined by a single operator. Slots are preasigned to operators. In a single slot the operator can add as many batches as wished. However if the asigned operator doesn't mine any block, it will be penalized.
+      properties:
+        id:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the slot
+        batches:
+          type: array
+          description: batches mined in this slot
+          items:
+            $ref: '#/components/schemas/batch'
+        eraId:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the era where this slot is included
+      required:
+        - id
+        - batches
+        - eraId
+
+    era:
+      type: object
+      # TODO: inprove description
+      description: Set of consecutive slots.
+      properties:
+        id:
+          allOf:
+          - $ref: '#/components/schemas/bigInt'
+          description: Id of the era
+        slots:
+          type: array
+          description: batches that form part of this era
+          items:
+            $ref: '#/components/schemas/slot'
+      required:
+        - id
+        - slots
+
+    rollupStats:
+      type: object
+      properties:
+        currentEra:
+          allOf:
+          - $ref: '#/components/schemas/era'
+          description: Active era, the era where the current slot is included and the next batches will be mined into.
+        scheduledSlots:
+          type: array
+          description: Future slots that already have an asigned operator
+          items:
+            $ref: '#/components/schemas/slot'
+        totalOperators:
+          type: integer
+          description: Number of active operators in the rollup.
+          minimum: 0
+          example: 23
+        stake:
+          type: number
+          description: Total ammount of Ether deposited by the operators.
+          minimum: 0
+          example: 756349.8734
+        totalTransactions:
+          type: integer
+          description: Total ammount of transactions occured in the rollup.
+          minimum: 0
+          example: 908757
+        activeSince:
+          description: The moment the rollup became available
+          type: string
+          format: date-time
+      required:
+        - avgFee
+        - totalFee
+        - stake
+        - avgUptime
+        - totalUptime
+        - activeSince
+
+  responses:
+    Error:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
