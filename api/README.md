@@ -45,7 +45,7 @@ When changes to spec.yaml are made, the generated code should be updated, withou
 ## Run the API server
 
 1. Run the server: `cd api/server && npm start & cd ../..`
-2. You can interact with the server at http://localhost:8080. Additionaly, you can import the endpoints at Postman as a collection (In postman: import -> path/to/repoDirectory/doc/api/rollup.yaml) or use the interactive documentation at http://localhost:8080/docs
+2. The server will be listening at http://localhost:8080. To easily test changes, the specification can be imported in [Postman](https://www.getpostman.com/) as a collection (In postman: import -> path/to/repoDirectory/api/spec.yaml).
 3. To stop the server: `kill -9 $(lsof -t -i:8080)`
 
 
@@ -59,8 +59,6 @@ In order to offer access to the API documentation to consumers and developers, [
 2. `docker run --rm --name swagger-ui -d -p 80:8080 -e SWAGGER_JSON=/doc/spec.yaml -v ${PWD}/api:/doc swaggerapi/swagger-ui`
 3. Use your browser: http://localhost:80
 4. To stop the server: `docker kill swagger-ui`
-
-- The API server itself hosts the documentation at URLofTheAPI.server/docs (Refer to Run the API server section)
 
 - Publish the doc on [swagger hub](https://app.swaggerhub.com/apis/rollupJuniors/Rollup)
 
