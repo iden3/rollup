@@ -4,6 +4,28 @@ var utils = require('../utils/writer.js');
 var onError = require('../utils/errorManager.js').onError;
 var Explorer = require('../service/ExplorerService');
 
+module.exports.getBatchById = function getBatchById (req, res, next) {
+  var id = req.swagger.params['id'].value;
+  Explorer.getBatchById(id)
+    .then(function (response) {
+      utils.writeJson(res, response);
+    })
+    .catch(function (err) {
+      onError(err, req, res);
+    });
+};
+
+module.exports.getEraById = function getEraById (req, res, next) {
+  var id = req.swagger.params['id'].value;
+  Explorer.getEraById(id)
+    .then(function (response) {
+      utils.writeJson(res, response);
+    })
+    .catch(function (err) {
+      onError(err, req, res);
+    });
+};
+
 module.exports.getOperatorById = function getOperatorById (req, res, next) {
   var id = req.swagger.params['id'].value;
   Explorer.getOperatorById(id)

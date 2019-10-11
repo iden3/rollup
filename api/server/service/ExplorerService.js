@@ -2,6 +2,81 @@
 
 
 /**
+ * Get a specific batch.
+ * Returns the batch identified by id.
+ *
+ * id batchId ID of the transaction to return
+ * returns batch
+ **/
+exports.getBatchById = function(id) {
+  return new Promise(function(resolve, reject) {
+    var examples = {};
+    examples['application/json'] = {
+      "id" : "0x0000050a2cbAbA54Ec6426065223B652b8b39133",
+      "operatorId" : "0x0000000000bAbA54Ec6426065223B652b8b39133",
+      "transactions" : [ {
+        "id" : "0x1116B50a2cbAbA54Ec6426065223B652b8b39133",
+        "from" : "0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133",
+        "to" : "0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133",
+        "tokenId" : "0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133",
+        "ammount" : 133,
+        "fee" : 2
+      } ],
+      "slotId" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39133",
+      "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+    };
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
+      notImplemented: true,
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
+  });
+}
+
+
+/**
+ * Get a specific era.
+ * Returns the era identified by id.
+ *
+ * id eraId ID of the era to return
+ * returns era
+ **/
+exports.getEraById = function(id) {
+  return new Promise(function(resolve, reject) {
+    var examples = {};
+    examples['application/json'] = {
+      "id" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133",
+      "slots" : [ {
+        "id" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39133",
+        "batches" : [ {
+          "id" : "0x0000050a2cbAbA54Ec6426065223B652b8b39133",
+          "operatorId" : "0x0000000000bAbA54Ec6426065223B652b8b39133",
+          "transactions" : [ {
+            "id" : "0x1116B50a2cbAbA54Ec6426065223B652b8b39133",
+            "from" : "0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133",
+            "to" : "0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133",
+            "tokenId" : "0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133",
+            "ammount" : 133,
+            "fee" : 2
+          } ],
+          "slotId" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39133",
+          "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+        } ],
+        "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+      } ]
+    };
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
+      notImplemented: true,
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
+  });
+}
+
+
+/**
  * Get an operator information.
  * Return an operator that matches the id.
  *
@@ -145,10 +220,10 @@ exports.getTransactionById = function(id) {
   return new Promise(function(resolve, reject) {
     var examples = {};
     examples['application/json'] = {
-      "id" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "from" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "to" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "tokenId" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "id" : "0xAAA6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "from" : "0xBBB6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "to" : "0xCCC6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "tokenId" : "0xDDD6B50a2cbAbA54Ec6426065223B652b8b39133",
       "ammount" : 133,
       "fee" : 2
     };
@@ -176,17 +251,17 @@ exports.getTransactions = function(address,from,to,block,fromId) {
   return new Promise(function(resolve, reject) {
     var examples = {};
     examples['application/json'] = [ {
-      "id" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "from" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "to" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "tokenId" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "id" : "0xAAA6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "from" : "0xBBB6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "to" : "0xCCC6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "tokenId" : "0xDDD6B50a2cbAbA54Ec6426065223B652b8b39133",
       "ammount" : 133,
       "fee" : 2
     }, {
-      "id" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "from" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "to" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-      "tokenId" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "id" : "0xAAA6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "from" : "0xBBB6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "to" : "0xCCC6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "tokenId" : "0xDDD6B50a2cbAbA54Ec6426065223B652b8b39133",
       "ammount" : 133,
       "fee" : 2
     }

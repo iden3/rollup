@@ -35,6 +35,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
       x-swagger-router-controller: Explorer
   /transaction/{id}:
     get:
@@ -153,6 +159,138 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
+      x-swagger-router-controller: Explorer
+  /batch/{id}:
+    get:
+      tags:
+      - Explorer
+      summary: Get a specific batch.
+      description: Returns the batch identified by id.
+      operationId: getBatchById
+      parameters:
+      - name: id
+        in: path
+        description: ID of the transaction to return
+        required: true
+        style: simple
+        explode: false
+        schema:
+          $ref: '#/components/schemas/batchId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/batch'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
+      x-swagger-router-controller: Explorer
+  /slot/{id}:
+    get:
+      tags:
+      - Explorer
+      summary: Get a specific slot.
+      description: Returns the slot identified by id.
+      operationId: getSlotById
+      parameters:
+      - name: id
+        in: path
+        description: ID of the slot to return
+        required: true
+        style: simple
+        explode: false
+        schema:
+          $ref: '#/components/schemas/slotId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/slot'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
+      x-swagger-router-controller: Explorer
+  /era/{id}:
+    get:
+      tags:
+      - Explorer
+      summary: Get a specific era.
+      description: Returns the era identified by id.
+      operationId: getEraById
+      parameters:
+      - name: id
+        in: path
+        description: ID of the era to return
+        required: true
+        style: simple
+        explode: false
+        schema:
+          $ref: '#/components/schemas/eraId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/era'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_401'
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
       x-swagger-router-controller: Explorer
   /operator/{id}:
     get:
@@ -189,6 +327,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
       x-swagger-router-controller: Explorer
   /operator/list:
     get:
@@ -216,6 +360,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
       x-swagger-router-controller: Explorer
   /operator/stats:
     get:
@@ -243,6 +393,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
       x-swagger-router-controller: Explorer
 components:
   schemas:
@@ -251,7 +407,25 @@ components:
       type: string
       example: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
     transactionId:
-      $ref: '#/components/schemas/bigInt'
+      description: Id of a transaction
+      example: 0x7776B50a2cbAbA54Ec6426065223B652b8b39122
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+    batchId:
+      description: Id of a batch
+      example: 0x8886B50a2cbAbA54Ec6426065223B652b8b39122
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+    slotId:
+      description: Id of a slot
+      example: 0x9996B50a2cbAbA54Ec6426065223B652b8b39122
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+    eraId:
+      description: Id of a transaction
+      example: 0x6666B50a2cbAbA54Ec6426065223B652b8b39122
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
     transaction:
       required:
       - ammount
@@ -291,10 +465,10 @@ components:
       description: Off chain transaction, specific ammount of tokens (to be) transfered
         from one address to another.
       example:
-        id: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
-        from: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
-        to: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
-        tokenId: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
+        id: 0xAAA6B50a2cbAbA54Ec6426065223B652b8b39133
+        from: 0xBBB6B50a2cbAbA54Ec6426065223B652b8b39133
+        to: 0xCCC6B50a2cbAbA54Ec6426065223B652b8b39133
+        tokenId: 0xDDD6B50a2cbAbA54Ec6426065223B652b8b39133
         ammount: 133
         fee: 2
     transactions:

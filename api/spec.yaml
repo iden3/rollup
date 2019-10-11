@@ -32,6 +32,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         500:
           $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
 
   /transaction/{id}:
     get:
@@ -110,6 +112,92 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         500:
           $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
+          
+  /batch/{id}:
+    get:
+      operationId: getBatchById
+      tags:
+      - Explorer
+      summary: Get a specific batch.
+      description: Returns the batch identified by id.
+      parameters:
+      - name: id
+        in: path
+        description: ID of the transaction to return
+        required: true
+        schema:
+          $ref: '#/components/schemas/batchId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/batch'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
+          
+  /slot/{id}:
+    get:
+      operationId: getSlotById
+      tags:
+      - Explorer
+      summary: Get a specific slot.
+      description: Returns the slot identified by id.
+      parameters:
+      - name: id
+        in: path
+        description: ID of the slot to return
+        required: true
+        schema:
+          $ref: '#/components/schemas/slotId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/slot'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
+          
+  /era/{id}:
+    get:
+      operationId: getEraById
+      tags:
+      - Explorer
+      summary: Get a specific era.
+      description: Returns the era identified by id.
+      parameters:
+      - name: id
+        in: path
+        description: ID of the era to return
+        required: true
+        schema:
+          $ref: '#/components/schemas/eraId'
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/era'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        500:
+          $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
 
   /operator/{id}:
     get:
@@ -136,6 +224,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         500:
           $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
 
   /operator/list:
     get:
@@ -155,6 +245,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         500:
           $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
 
   /operator/stats:
     get:
@@ -174,6 +266,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         500:
           $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
 
 components:
   schemas:
@@ -183,7 +277,28 @@ components:
       example: "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133"
 
     transactionId:
-      $ref: '#/components/schemas/bigInt'
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+      description: Id of a transaction
+      example: '0x7776B50a2cbAbA54Ec6426065223B652b8b39122'
+
+    batchId:
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+      description: Id of a batch
+      example: '0x8886B50a2cbAbA54Ec6426065223B652b8b39122'
+
+    slotId:
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+      description: Id of a slot
+      example: '0x9996B50a2cbAbA54Ec6426065223B652b8b39122'
+
+    eraId:
+      allOf:
+      - $ref: '#/components/schemas/bigInt'
+      description: Id of a transaction
+      example: '0x6666B50a2cbAbA54Ec6426065223B652b8b39122'
 
     transaction:
       type: object
@@ -217,10 +332,10 @@ components:
           minimum: 0
           example: 2
       example:
-        id: '0x63F6B50a2cbAbA54Ec6426065223B652b8b39133'
-        from: '0x63F6B50a2cbAbA54Ec6426065223B652b8b39133'
-        to: '0x63F6B50a2cbAbA54Ec6426065223B652b8b39133'
-        tokenId: '0x63F6B50a2cbAbA54Ec6426065223B652b8b39133'
+        id: '0xAAA6B50a2cbAbA54Ec6426065223B652b8b39133'
+        from: '0xBBB6B50a2cbAbA54Ec6426065223B652b8b39133'
+        to: '0xCCC6B50a2cbAbA54Ec6426065223B652b8b39133'
+        tokenId: '0xDDD6B50a2cbAbA54Ec6426065223B652b8b39133'
         ammount: 133
         fee: 2
       
