@@ -28,19 +28,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_401'
         500:
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_500'
       x-swagger-router-controller: Explorer
   /transaction/{id}:
     get:
       tags:
       - Explorer
-      summary: Get a specific transactions.
+      summary: Get a specific transaction.
       description: Returns the transaction identified by id.
       operationId: transactionIdGET
       parameters:
@@ -64,13 +64,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_401'
         500:
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_500'
+        501:
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_501'
       x-swagger-router-controller: Explorer
   /transactions:
     get:
@@ -140,13 +146,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_401'
         500:
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_500'
       x-swagger-router-controller: Explorer
   /operator/{id}:
     get:
@@ -176,13 +182,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_401'
         500:
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_500'
       x-swagger-router-controller: Explorer
   /operator/list:
     get:
@@ -203,13 +209,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_401'
         500:
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_500'
       x-swagger-router-controller: Explorer
   /operator/stats:
     get:
@@ -230,13 +236,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_401'
         500:
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/error'
+                $ref: '#/components/schemas/inline_response_500'
       x-swagger-router-controller: Explorer
 components:
   schemas:
@@ -244,16 +250,6 @@ components:
       pattern: ^0x[a-fA-F0-9]{40}$
       type: string
       example: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
-    error:
-      required:
-      - code
-      - message
-      type: object
-      properties:
-        code:
-          type: string
-        message:
-          type: string
     transactionId:
       $ref: '#/components/schemas/bigInt'
     transaction:
@@ -569,16 +565,65 @@ components:
             operatorId: ""
           id: ""
           eraId: ""
+    inline_response_401:
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+          example: INPUT_VALIDATION_ERROR
+        message:
+          type: string
+          example: Incorrect value for \"id\" at paths,/transaction/{id},get,parameters,0,schema.
+    inline_response_500:
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+          example: UNKNOWN_ERROR
+        message:
+          type: string
+          example: This is emabarrasing, something went wrong while processing your
+            request. Try again later, if the rror persist please contact support.
+    inline_response_501:
+      required:
+      - code
+      - message
+      type: object
+      properties:
+        code:
+          type: string
+          example: FEATURE_NOT_IMPLEMENTED_YET
+        message:
+          type: string
+          example: This feature is not fully implemented yet. You can use the mockup
+            data provided in this response but keep in mind that the values are reandomly
+            generated.
+        mockup:
+          type: object
+          example:
+            thisObject: Sould be equal to the 200 response object
   responses:
     Error:
       description: Internal server error
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/error'
+            $ref: '#/components/schemas/inline_response_500'
     Unauthorized:
       description: Unauthorized
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/error'
+            $ref: '#/components/schemas/inline_response_401'
+    NotImplemented:
+      description: Not Implemented
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/inline_response_501'

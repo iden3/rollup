@@ -36,7 +36,7 @@ paths:
     get:
       tags:
       - Explorer
-      summary: Get a specific transactions.
+      summary: Get a specific transaction.
       description: Returns the transaction identified by id.
       parameters:
       - name: id
@@ -56,6 +56,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         500:
           $ref: '#/components/responses/Error'
+        501:
+          $ref: '#/components/responses/NotImplemented'
 
   /transactions:
     get:
@@ -173,17 +175,6 @@ components:
       type: string
       pattern: '^0x[a-fA-F0-9]{40}$'
       example: "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133"
-
-    error:
-      type: object
-      properties:
-        code:
-          type: string
-        message:
-          type: string
-      required:
-        - code
-        - message
 
     transactionId:
       $ref: '#/components/schemas/bigInt'
@@ -432,10 +423,51 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/error'
+            type: object
+            properties:
+              code:
+                type: string
+                example: UNKNOWN_ERROR
+              message:
+                type: string
+                example: This is emabarrasing, something went wrong while processing your request. Try again later, if the rror persist please contact support.
+            required:
+            - code
+            - message
     Unauthorized:
       description: Unauthorized
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/error'
+            type: object
+            properties:
+              code:
+                type: string
+                example: INPUT_VALIDATION_ERROR
+              message:
+                type: string
+                example: Incorrect value for \"id\" at paths,/transaction/{id},get,parameters,0,schema.
+            required:
+            - code
+            - message
+    NotImplemented:
+      description: Not Implemented
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: FEATURE_NOT_IMPLEMENTED_YET
+              message:
+                type: string
+                example: This feature is not fully implemented yet. You can use the mockup data provided in this response but keep in mind that the values are reandomly generated.
+              mockup:
+                type: object
+                example: 
+                  thisObject: 'Sould be equal to the 200 response object'
+                         
+            required:
+            - code
+            - message
