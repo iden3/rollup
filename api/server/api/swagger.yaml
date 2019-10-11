@@ -101,7 +101,7 @@ paths:
         style: form
         explode: true
         schema:
-          $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/address'
       - name: from
         in: query
         description: If this parameter is porvided, all the returned transactions
@@ -110,7 +110,7 @@ paths:
         style: form
         explode: true
         schema:
-          $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/address'
       - name: to
         in: query
         description: If this parameter is porvided, all the returned transactions
@@ -119,27 +119,18 @@ paths:
         style: form
         explode: true
         schema:
-          $ref: '#/components/schemas/bigInt'
-      - name: block
+          $ref: '#/components/schemas/address'
+      - name: fromBatch
         in: query
         description: If this parameter is porvided, all the returned transactions
-          will have this value as block id.
-        required: false
-        style: form
-        explode: true
-        schema:
-          $ref: '#/components/schemas/bigInt'
-      - name: fromId
-        in: query
-        description: If this parameter is porvided, all the returned transactions
-          will be previous to the the transaction identified by the provided value.
+          will have been mined in the indicated batch (fromBatch) or older batches.
           Use to retrieve older transactions that were not included in a query, as
           in pagination.
         required: false
         style: form
         explode: true
         schema:
-          $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/batchId'
       responses:
         200:
           description: successful operation
@@ -371,8 +362,8 @@ paths:
     get:
       tags:
       - Explorer
-      summary: Get all the operators id's.
-      description: Returns an array of all the registered operator id's
+      summary: Get aggregated metrics of the operators.
+      description: Returns an object containing a set of metrics from the operators
       operationId: getOperatorStats
       responses:
         200:
@@ -402,30 +393,36 @@ paths:
       x-swagger-router-controller: Explorer
 components:
   schemas:
-    bigInt:
+    address:
       pattern: ^0x[a-fA-F0-9]{40}$
       type: string
-      example: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
+      description: Etherum address
+      example: 0x7776B50a2cbAbA54Ec6426065223B652b8b39122
+    tokenId:
+      pattern: ^0x[a-fA-F0-9]{40}$
+      type: string
+      description: Token identifier
+      example: 0x7776B50a2cbAbA54Ec6426065223B652b8b39122
     transactionId:
+      pattern: ^0x[a-fA-F0-9]{40}$
+      type: string
       description: Id of a transaction
       example: 0x7776B50a2cbAbA54Ec6426065223B652b8b39122
-      allOf:
-      - $ref: '#/components/schemas/bigInt'
     batchId:
+      pattern: ^0x[a-fA-F0-9]{40}$
+      type: string
       description: Id of a batch
       example: 0x8886B50a2cbAbA54Ec6426065223B652b8b39122
-      allOf:
-      - $ref: '#/components/schemas/bigInt'
     slotId:
+      pattern: ^0x[a-fA-F0-9]{40}$
+      type: string
       description: Id of a slot
       example: 0x9996B50a2cbAbA54Ec6426065223B652b8b39122
-      allOf:
-      - $ref: '#/components/schemas/bigInt'
     eraId:
+      pattern: ^0x[a-fA-F0-9]{40}$
+      type: string
       description: Id of a transaction
       example: 0x6666B50a2cbAbA54Ec6426065223B652b8b39122
-      allOf:
-      - $ref: '#/components/schemas/bigInt'
     transaction:
       required:
       - ammount
@@ -436,21 +433,13 @@ components:
       type: object
       properties:
         id:
-          description: Identifier of the transaction
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/transactionId'
         from:
-          description: Address of the sender
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/address'
         to:
-          description: Address of the receiver
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/address'
         tokenId:
-          description: Id of the token that will be sent
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/tokenId'
         ammount:
           minimum: 0
           type: number
@@ -477,10 +466,10 @@ components:
       items:
         $ref: '#/components/schemas/transaction'
     operatorId:
+      pattern: ^0x[a-fA-F0-9]{40}$
+      type: string
       description: Id of an operator
       example: 0x44F6B50a2cbAbA54Ec6426065223B652b8b39122
-      allOf:
-      - $ref: '#/components/schemas/bigInt'
     operator:
       type: object
       properties:
@@ -577,26 +566,15 @@ components:
       type: object
       properties:
         id:
-          description: Id of the batch
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/batchId'
         operatorId:
-          description: Id of the operator that mined / will mine the batch
-          example: 0x1111150a2cbAbA54Ec6426065223B652b8b39133
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/operatorId'
         transactions:
-          description: List of transactions mined on the batch
-          allOf:
-          - $ref: '#/components/schemas/transactions'
+          $ref: '#/components/schemas/transactionId'
         slotId:
-          description: Id of the slot where this batch is included
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/slotId'
         eraId:
-          description: Id of the era where this batch is included
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/eraId'
       description: Mining units of the rollup, a batch encapsulate a limited ammount
         of transactions. Think of it as the blocks of a blockchain.
       example:
@@ -619,18 +597,14 @@ components:
       type: object
       properties:
         id:
-          description: Id of the slot
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/slotId'
         batches:
           type: array
           description: batches mined in this slot
           items:
             $ref: '#/components/schemas/batch'
         eraId:
-          description: Id of the era where this slot is included
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/eraId'
       description: Set of consecutive batches mined by a single operator. Slots are
         preasigned to operators. In a single slot the operator can add as many batches
         as wished. However if the asigned operator doesn't mine any block, it will
@@ -657,9 +631,7 @@ components:
       type: object
       properties:
         id:
-          description: Id of the era
-          allOf:
-          - $ref: '#/components/schemas/bigInt'
+          $ref: '#/components/schemas/eraId'
         slots:
           type: array
           description: batches that form part of this era
