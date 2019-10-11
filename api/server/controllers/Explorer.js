@@ -1,6 +1,7 @@
 'use strict';
 
 var utils = require('../utils/writer.js');
+var onError = require('../utils/errorManager.js').onError;
 var Explorer = require('../service/ExplorerService');
 
 module.exports.operatorIdGET = function operatorIdGET (req, res, next) {
@@ -9,8 +10,8 @@ module.exports.operatorIdGET = function operatorIdGET (req, res, next) {
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (err) {
+      onError(err, req, res);
     });
 };
 
@@ -19,8 +20,8 @@ module.exports.operatorListGET = function operatorListGET (req, res, next) {
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (err) {
+      onError(err, req, res);
     });
 };
 
@@ -29,8 +30,8 @@ module.exports.operatorStatsGET = function operatorStatsGET (req, res, next) {
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (err) {
+      onError(err, req, res);
     });
 };
 
@@ -39,8 +40,8 @@ module.exports.statsGET = function statsGET (req, res, next) {
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (err) {
+      onError(err, req, res);
     });
 };
 
@@ -50,8 +51,8 @@ module.exports.transactionIdGET = function transactionIdGET (req, res, next) {
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (err) {
+      onError(err, req, res);
     });
 };
 
@@ -65,7 +66,7 @@ module.exports.transactionsGET = function transactionsGET (req, res, next) {
     .then(function (response) {
       utils.writeJson(res, response);
     })
-    .catch(function (response) {
-      utils.writeJson(res, response);
+    .catch(function (err) {
+      onError(err, req, res);
     });
 };

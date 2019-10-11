@@ -132,7 +132,7 @@ exports.statsGET = function() {
 
 
 /**
- * Get a specific transactions.
+ * Get a specific transaction.
  * Returns the transaction identified by id.
  *
  * id transactionId ID of the transaction to return
@@ -140,20 +140,18 @@ exports.statsGET = function() {
  **/
 exports.transactionIdGET = function(id) {
   return new Promise(function(resolve, reject) {
-    var examples = {};
-    examples['application/json'] = {
-  "tokenId" : "",
-  "fee" : 2,
-  "from" : "",
-  "id" : "",
-  "to" : "",
-  "ammount" : 123
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
-    }
+    reject ({
+      notImplemented: true,
+      mockup: {
+        tokenId:  "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+        fee:      2,
+        from:     "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+        id:       "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+        to:       "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+        ammount:  123
+      }
+    });
+    // return resolve(transactionObject);
   });
 }
 
@@ -194,4 +192,3 @@ exports.transactionsGET = function(address,from,to,block,fromId) {
     }
   });
 }
-

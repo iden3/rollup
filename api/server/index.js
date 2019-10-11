@@ -8,6 +8,7 @@ var app = require('connect')();
 var oas3Tools = require('oas3-tools');
 var jsyaml = require('js-yaml');
 var serverPort = 8080;
+var onError = require('./utils/errorManager.js').onError;
 
 // swaggerRouter configuration
 var options = {
@@ -36,10 +37,7 @@ oas3Tools.initializeMiddleware(swaggerDoc, function (middleware) {
   app.use(middleware.swaggerUi());
 
   // Custom error handler
-  app.use(function onerror(err, req, res, next) {
-    // TODO: format response according to doc (code & message)
-    console.log(err)
-  });
+  app.use(onError);
 
   // Start the server
   http.createServer(app).listen(serverPort, function () {
