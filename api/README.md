@@ -40,7 +40,7 @@ When changes to spec.yaml are made, the generated code should be updated, withou
 0. Install Docker (if you don't have it already)
 1. `docker pull swaggerapi/swagger-codegen-cli-v3:3.0.11`
 2. Export code in nodejs-server language: `docker run --rm --name swagger-codegen -v ${PWD}/api:/local swaggerapi/swagger-codegen-cli-v3:3.0.11 generate -i /local/spec.yaml -l nodejs-server -o /local/codegen` ***Note that you can use other languages, for instance to generate client code***
-3. Check differences between fresh generated code (api/codegen) and current server code (api/code). It's recommended to use a diff tool such as [Meld](http://meldmerge.org/) to see changes and merge them. *If permission errors are thrown, run:* `sudo chown -R $USER api/codegen`
+3. Check differences between fresh generated code (api/codegen) and current server code (api/code). It's recommended to use a diff tool such as [Meld](http://meldmerge.org/) to see changes and merge them. In general the changing parts are: api/swagger.yaml (take all the changes from the codegen version), files under the controller directory (only take the function definitions and inputs from codegen), files under the service directory (only take the function definitions and the example values in case the logic is not implemented yet and inputs from codegen) *If permission errors are thrown, run:* `sudo chown -R $USER api/codegen`
 
 ## Run the API server
 
@@ -63,3 +63,7 @@ In order to offer access to the API documentation to consumers and developers, [
 - The API server itself hosts the documentation at URLofTheAPI.server/docs (Refer to Run the API server section)
 
 - Publish the doc on [swagger hub](https://app.swaggerhub.com/apis/rollupJuniors/Rollup)
+
+## Deploy
+
+TBD

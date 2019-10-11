@@ -4,9 +4,9 @@ var utils = require('../utils/writer.js');
 var onError = require('../utils/errorManager.js').onError;
 var Explorer = require('../service/ExplorerService');
 
-module.exports.operatorIdGET = function operatorIdGET (req, res, next) {
+module.exports.getOperatorById = function getOperatorById (req, res, next) {
   var id = req.swagger.params['id'].value;
-  Explorer.operatorIdGET(id)
+  Explorer.getOperatorById(id)
     .then(function (response) {
       utils.writeJson(res, response);
     })
@@ -15,8 +15,8 @@ module.exports.operatorIdGET = function operatorIdGET (req, res, next) {
     });
 };
 
-module.exports.operatorListGET = function operatorListGET (req, res, next) {
-  Explorer.operatorListGET()
+module.exports.getOperatorList = function getOperatorList (req, res, next) {
+  Explorer.getOperatorList()
     .then(function (response) {
       utils.writeJson(res, response);
     })
@@ -25,8 +25,8 @@ module.exports.operatorListGET = function operatorListGET (req, res, next) {
     });
 };
 
-module.exports.operatorStatsGET = function operatorStatsGET (req, res, next) {
-  Explorer.operatorStatsGET()
+module.exports.getOperatorStats = function getOperatorStats (req, res, next) {
+  Explorer.getOperatorStats()
     .then(function (response) {
       utils.writeJson(res, response);
     })
@@ -35,8 +35,8 @@ module.exports.operatorStatsGET = function operatorStatsGET (req, res, next) {
     });
 };
 
-module.exports.statsGET = function statsGET (req, res, next) {
-  Explorer.statsGET()
+module.exports.getStats = function getStats (req, res, next) {
+  Explorer.getStats()
     .then(function (response) {
       utils.writeJson(res, response);
     })
@@ -45,9 +45,9 @@ module.exports.statsGET = function statsGET (req, res, next) {
     });
 };
 
-module.exports.transactionIdGET = function transactionIdGET (req, res, next) {
+module.exports.getTransactionById = function getTransactionById (req, res, next) {
   var id = req.swagger.params['id'].value;
-  Explorer.transactionIdGET(id)
+  Explorer.getTransactionById(id)
     .then(function (response) {
       utils.writeJson(res, response);
     })
@@ -56,13 +56,13 @@ module.exports.transactionIdGET = function transactionIdGET (req, res, next) {
     });
 };
 
-module.exports.transactionsGET = function transactionsGET (req, res, next) {
+module.exports.getTransactions = function getTransactions (req, res, next) {
   var address = req.swagger.params['address'].value;
   var from = req.swagger.params['from'].value;
   var to = req.swagger.params['to'].value;
   var block = req.swagger.params['block'].value;
   var fromId = req.swagger.params['fromId'].value;
-  Explorer.transactionsGET(address,from,to,block,fromId)
+  Explorer.getTransactions(address,from,to,block,fromId)
     .then(function (response) {
       utils.writeJson(res, response);
     })

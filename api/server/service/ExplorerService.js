@@ -8,24 +8,25 @@
  * id operatorId ID of the operator to return
  * returns operator
  **/
-exports.operatorIdGET = function(id) {
+exports.getOperatorById = function(id) {
   return new Promise(function(resolve, reject) {
     var examples = {};
     examples['application/json'] = {
-  "stake" : 649,
-  "minedBatches" : 35497,
-  "endpoint" : "https://operator.iden3.io",
-  "activeSince" : "2000-01-23T04:56:07.000+00:00",
-  "batchRatio" : 0.9856,
-  "minedTransactions" : 35497,
-  "id" : "",
-  "avgUptime" : 0.9856
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
-    }
+      "id" : "0x55F6B50a2cbAbA54Ec6426065223B652b8b39111",
+      "endpoint" : "http://operator.iden3.io",
+      "stake" : 649,
+      "activeSince" : "2019-10-11T14:04:01.067Z",
+      "avgUptime" : 0.9856,
+      "minedTransactions" : 35497,
+      "minedBatches" : 35497,
+      "batchRatio" : 0.9857
+    };
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
+      notImplemented: true,
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
   });
 }
 
@@ -36,15 +37,16 @@ exports.operatorIdGET = function(id) {
  *
  * returns operatorIds
  **/
-exports.operatorListGET = function() {
+exports.getOperatorList = function() {
   return new Promise(function(resolve, reject) {
     var examples = {};
-    examples['application/json'] = [ "", "" ];
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
-    }
+    examples['application/json'] = [ "0x44F6B50a2cbAbA54Ec6426065223B652b8b39122", "0x44F6B50a2cbAbA54Ec6426065223B652b8b39122" ];
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
+      notImplemented: true,
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
   });
 }
 
@@ -55,20 +57,21 @@ exports.operatorListGET = function() {
  *
  * returns operatorStats
  **/
-exports.operatorStatsGET = function() {
+exports.getOperatorStats = function() {
   return new Promise(function(resolve, reject) {
     var examples = {};
     examples['application/json'] = {
-  "avgFee" : 0.000036,
-  "totalFee" : 85672.897634,
-  "totalStake" : 6349.387,
-  "avgUptime" : 0.9856
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
-    }
+      "avgFee" : 0.000036,
+      "totalFee" : 85672.897634,
+      "totalStake" : 6349.387,
+      "avgUptime" : 0.9856
+    };
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
+      notImplemented: true,
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
   });
 }
 
@@ -79,54 +82,54 @@ exports.operatorStatsGET = function() {
  *
  * returns rollupStats
  **/
-exports.statsGET = function() {
+exports.getStats = function() {
   return new Promise(function(resolve, reject) {
     var examples = {};
     examples['application/json'] = {
-  "stake" : 756349.8734,
-  "totalTransactions" : 908757,
-  "activeSince" : "2000-01-23T04:56:07.000+00:00",
-  "totalOperators" : 23,
-  "currentEra" : "",
-  "scheduledSlots" : [ {
-    "batches" : [ {
-      "slotId" : "",
-      "id" : "",
-      "eraId" : "",
-      "transactions" : "",
-      "operatorId" : ""
-    }, {
-      "slotId" : "",
-      "id" : "",
-      "eraId" : "",
-      "transactions" : "",
-      "operatorId" : ""
-    } ],
-    "id" : "",
-    "eraId" : ""
-  }, {
-    "batches" : [ {
-      "slotId" : "",
-      "id" : "",
-      "eraId" : "",
-      "transactions" : "",
-      "operatorId" : ""
-    }, {
-      "slotId" : "",
-      "id" : "",
-      "eraId" : "",
-      "transactions" : "",
-      "operatorId" : ""
-    } ],
-    "id" : "",
-    "eraId" : ""
-  } ]
-};
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
-    }
+      "currentEra" : {
+        "id" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133",
+        "slots" : [ {
+          "id" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39133",
+          "batches" : [ {
+            "id" : "0x0000050a2cbAbA54Ec6426065223B652b8b39133",
+            "operatorId" : "0x0000000000bAbA54Ec6426065223B652b8b39133",
+            "transactions" : [ {
+              "id" : "0x1116B50a2cbAbA54Ec6426065223B652b8b39133",
+              "from" : "0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133",
+              "to" : "0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133",
+              "tokenId" : "0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133",
+              "ammount" : 133,
+              "fee" : 2
+            } ],
+            "slotId" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39133",
+            "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+          } ],
+          "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+        } ]
+      },
+      "scheduledSlots" : [ {
+        "id" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39134",
+        "batches" : [ {
+          "id" : "0x0000050a2cbAbA54Ec6426065223B652b8b39133",
+          "operatorId" : "0x0000000000bAbA54Ec6426065223B652b8b39133",
+          "transactions" : [ ],
+          "slotId" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39134",
+          "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+        } ],
+        "slotId" : "0x5556B50a2cbAbA54Ec6426065223B652b8b39133",
+        "eraId" : "0x6666B50a2cbAbA54Ec6426065223B652b8b39133"
+      } ],
+      "totalOperators" : 23,
+      "stake" : 756349.8734,
+      "totalTransactions" : 908757,
+      "activeSince" : "2019-10-11T14:45:21.500Z"
+    };
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
+      notImplemented: true,
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
   });
 }
 
@@ -138,21 +141,23 @@ exports.statsGET = function() {
  * id transactionId ID of the transaction to return
  * returns transaction
  **/
-exports.transactionIdGET = function(id) {
+exports.getTransactionById = function(id) {
   return new Promise(function(resolve, reject) {
-    reject ({
+    var examples = {};
+    examples['application/json'] = {
+      "id" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "from" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "to" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "tokenId" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "ammount" : 133,
+      "fee" : 2
+    };
+    // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+    reject({
       notImplemented: true,
-      mockup: {
-        tokenId:  "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-        fee:      2,
-        from:     "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-        id:       "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-        to:       "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
-        ammount:  123
-      }
-    });
-    // return resolve(transactionObject);
-  });
+      mockup: examples[Object.keys(examples)[0]]
+    })
+    // return resolve(answer);
 }
 
 
@@ -167,28 +172,29 @@ exports.transactionIdGET = function(id) {
  * fromId bigInt If this parameter is porvided, all the returned transactions will be previous to the the transaction identified by the provided value. Use to retrieve older transactions that were not included in a query, as in pagination. (optional)
  * returns transactions
  **/
-exports.transactionsGET = function(address,from,to,block,fromId) {
+exports.getTransactions = function(address,from,to,block,fromId) {
   return new Promise(function(resolve, reject) {
     var examples = {};
     examples['application/json'] = [ {
-  "tokenId" : "",
-  "fee" : 2,
-  "from" : "",
-  "id" : "",
-  "to" : "",
-  "ammount" : 123
-}, {
-  "tokenId" : "",
-  "fee" : 2,
-  "from" : "",
-  "id" : "",
-  "to" : "",
-  "ammount" : 123
-} ];
-    if (Object.keys(examples).length > 0) {
-      resolve(examples[Object.keys(examples)[0]]);
-    } else {
-      resolve();
+      "id" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "from" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "to" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "tokenId" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "ammount" : 133,
+      "fee" : 2
+    }, {
+      "id" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "from" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "to" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "tokenId" : "0x63F6B50a2cbAbA54Ec6426065223B652b8b39133",
+      "ammount" : 133,
+      "fee" : 2
     }
-  });
-}
+  ];
+  // RETURNING A MOCKUP, NOT IMPLEMENTED YET
+  reject({
+    notImplemented: true,
+    mockup: examples[Object.keys(examples)[0]]
+  })
+  // return resolve(answer);
+})

@@ -15,7 +15,7 @@ paths:
       - Explorer
       summary: Get general metrics of the rollup.
       description: Returns various statistics that refelct the state of the rollup
-      operationId: statsGET
+      operationId: getStats
       responses:
         200:
           description: successful operation
@@ -42,7 +42,7 @@ paths:
       - Explorer
       summary: Get a specific transaction.
       description: Returns the transaction identified by id.
-      operationId: transactionIdGET
+      operationId: getTransactionById
       parameters:
       - name: id
         in: path
@@ -85,7 +85,7 @@ paths:
       summary: Query for transactions.
       description: Returns an array of transactions based on the query parameters.
         If no parameter are porvided, this endpoint will return the most recent transactions.
-      operationId: transactionsGET
+      operationId: getTransactions
       parameters:
       - name: address
         in: query
@@ -160,7 +160,7 @@ paths:
       - Explorer
       summary: Get an operator information.
       description: Return an operator that matches the id.
-      operationId: operatorIdGET
+      operationId: getOperatorById
       parameters:
       - name: id
         in: path
@@ -196,7 +196,7 @@ paths:
       - Explorer
       summary: Get all the operators id's.
       description: Returns an array of all the registered operator id's
-      operationId: operatorListGET
+      operationId: getOperatorList
       responses:
         200:
           description: successful operation
@@ -223,7 +223,7 @@ paths:
       - Explorer
       summary: Get all the operators id's.
       description: Returns an array of all the registered operator id's
-      operationId: operatorStatsGET
+      operationId: getOperatorStats
       responses:
         200:
           description: successful operation
@@ -291,12 +291,12 @@ components:
       description: Off chain transaction, specific ammount of tokens (to be) transfered
         from one address to another.
       example:
-        tokenId: ""
+        id: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
+        from: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
+        to: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
+        tokenId: 0x63F6B50a2cbAbA54Ec6426065223B652b8b39133
+        ammount: 133
         fee: 2
-        from: ""
-        id: ""
-        to: ""
-        ammount: 123
     transactions:
       type: array
       description: Array of transactions
@@ -304,6 +304,7 @@ components:
         $ref: '#/components/schemas/transaction'
     operatorId:
       description: Id of an operator
+      example: 0x44F6B50a2cbAbA54Ec6426065223B652b8b39122
       allOf:
       - $ref: '#/components/schemas/bigInt'
     operator:
@@ -315,13 +316,11 @@ components:
           pattern: ^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|(((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?))$
           type: string
           description: HTTP endpoint that holds the operator API
-          example: https://operator.iden3.io
         stake:
           minimum: 0
           type: number
           description: Amount of Ether deposited by the operator in order to be electable
             for mining slots.
-          example: 649
         activeSince:
           type: string
           description: The moment the operator became available
@@ -331,36 +330,32 @@ components:
           minimum: 0
           type: number
           description: Average uptime of this operator, expressed in percentage (0..1).
-          example: 0.9856
         minedTransactions:
           minimum: 0
           type: number
           description: Amount of transactions mined into batches by this operator.
-          example: 35497
         minedBatches:
           minimum: 0
           type: number
           description: Amount of batches mined this operator.
-          example: 35497
         batchRatio:
           maximum: 1
           minimum: 0
           type: number
           description: Ratio of mined batches, mined batches / batches in which the
             operator was electable for mining.
-          example: 0.9856
       description: Service porvider, it receives transactions and mine them into the
         rollup. The rollup works using a Proof of Stake, so the operator will have
         to deposit Ether in order to be chosen.
       example:
+        id: 0x55F6B50a2cbAbA54Ec6426065223B652b8b39111
+        endpoint: http://operator.iden3.io
         stake: 649
-        minedBatches: 35497
-        endpoint: https://operator.iden3.io
-        activeSince: 2000-01-23T04:56:07.000+00:00
-        batchRatio: 0.9856
-        minedTransactions: 35497
-        id: ""
+        activeSince: 2019-10-11T14:04:01.067Z
         avgUptime: 0.9856
+        minedTransactions: 35497
+        minedBatches: 35497
+        batchRatio: 0.9857
     operatorIds:
       type: array
       items:
@@ -377,28 +372,24 @@ components:
           minimum: 0
           type: number
           description: Average fee payed to the operators for the transactions.
-          example: 0.000036
         totalFee:
           minimum: 0
           type: number
           description: Total fee payed to the operators for all the transactions.
-          example: 85672.897634
         totalStake:
           minimum: 0
           type: number
           description: Total amount of Ether deposited by the currently active operators
             in order to be electable for mining slots.
-          example: 6349.387
         avgUptime:
           maximum: 1
           minimum: 0
           type: number
           description: Average uptime of the currently registered operators, expressed
             in percentage (0..1).
-          example: 0.9856
       description: Set of aggregated metrics from the active operators in the rollup
       example:
-        avgFee: 0.000036
+        avgFee: 3.6E-5
         totalFee: 85672.897634
         totalStake: 6349.387
         avgUptime: 0.9856
@@ -417,6 +408,7 @@ components:
           - $ref: '#/components/schemas/bigInt'
         operatorId:
           description: Id of the operator that mined / will mine the batch
+          example: 0x1111150a2cbAbA54Ec6426065223B652b8b39133
           allOf:
           - $ref: '#/components/schemas/bigInt'
         transactions:
@@ -434,11 +426,17 @@ components:
       description: Mining units of the rollup, a batch encapsulate a limited ammount
         of transactions. Think of it as the blocks of a blockchain.
       example:
-        slotId: ""
-        id: ""
-        eraId: ""
-        transactions: ""
-        operatorId: ""
+        id: 0x0000050a2cbAbA54Ec6426065223B652b8b39133
+        operatorId: 0x0000000000bAbA54Ec6426065223B652b8b39133
+        transactions:
+        - id: 0x1116B50a2cbAbA54Ec6426065223B652b8b39133
+          from: 0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133
+          to: 0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133
+          tokenId: 0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133
+          ammount: 133
+          fee: 2
+        slotId: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
+        eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
     slot:
       required:
       - batches
@@ -464,19 +462,20 @@ components:
         as wished. However if the asigned operator doesn't mine any block, it will
         be penalized.
       example:
+        id: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
         batches:
-        - slotId: ""
-          id: ""
-          eraId: ""
-          transactions: ""
-          operatorId: ""
-        - slotId: ""
-          id: ""
-          eraId: ""
-          transactions: ""
-          operatorId: ""
-        id: ""
-        eraId: ""
+        - id: 0x0000050a2cbAbA54Ec6426065223B652b8b39133
+          operatorId: 0x0000000000bAbA54Ec6426065223B652b8b39133
+          transactions:
+          - id: 0x1116B50a2cbAbA54Ec6426065223B652b8b39133
+            from: 0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133
+            to: 0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133
+            tokenId: 0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133
+            ammount: 133
+            fee: 2
+          slotId: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
+          eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+        eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
     era:
       required:
       - id
@@ -493,6 +492,23 @@ components:
           items:
             $ref: '#/components/schemas/slot'
       description: Set of consecutive slots.
+      example:
+        id: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+        slots:
+        - id: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
+          batches:
+          - id: 0x0000050a2cbAbA54Ec6426065223B652b8b39133
+            operatorId: 0x0000000000bAbA54Ec6426065223B652b8b39133
+            transactions:
+            - id: 0x1116B50a2cbAbA54Ec6426065223B652b8b39133
+              from: 0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133
+              to: 0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133
+              tokenId: 0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133
+              ammount: 133
+              fee: 2
+            slotId: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
+            eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+          eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
     rollupStats:
       required:
       - activeSince
@@ -533,38 +549,36 @@ components:
           description: The moment the rollup became available
           format: date-time
       example:
+        currentEra:
+          id: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+          slots:
+          - id: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
+            batches:
+            - id: 0x0000050a2cbAbA54Ec6426065223B652b8b39133
+              operatorId: 0x0000000000bAbA54Ec6426065223B652b8b39133
+              transactions:
+              - id: 0x1116B50a2cbAbA54Ec6426065223B652b8b39133
+                from: 0xaAa6B50a2cbAbA54Ec6426065223B652b8b39133
+                to: 0xbBb6B50a2cbAbA54Ec6426065223B652b8b39133
+                tokenId: 0xcCc6B50a2cbAbA54Ec6426065223B652b8b39133
+                ammount: 133
+                fee: 2
+              slotId: 0x5556B50a2cbAbA54Ec6426065223B652b8b39133
+              eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+            eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+        scheduledSlots:
+        - id: 0x5556B50a2cbAbA54Ec6426065223B652b8b39134
+          batches:
+          - id: 0x0000050a2cbAbA54Ec6426065223B652b8b39133
+            operatorId: 0x0000000000bAbA54Ec6426065223B652b8b39133
+            transactions: []
+            slotId: 0x5556B50a2cbAbA54Ec6426065223B652b8b39134
+            eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+          eraId: 0x6666B50a2cbAbA54Ec6426065223B652b8b39133
+        totalOperators: 23
         stake: 756349.8734
         totalTransactions: 908757
-        activeSince: 2000-01-23T04:56:07.000+00:00
-        totalOperators: 23
-        currentEra: ""
-        scheduledSlots:
-        - batches:
-          - slotId: ""
-            id: ""
-            eraId: ""
-            transactions: ""
-            operatorId: ""
-          - slotId: ""
-            id: ""
-            eraId: ""
-            transactions: ""
-            operatorId: ""
-          id: ""
-          eraId: ""
-        - batches:
-          - slotId: ""
-            id: ""
-            eraId: ""
-            transactions: ""
-            operatorId: ""
-          - slotId: ""
-            id: ""
-            eraId: ""
-            transactions: ""
-            operatorId: ""
-          id: ""
-          eraId: ""
+        activeSince: 2019-10-11T14:45:21.500Z
     inline_response_401:
       required:
       - code
