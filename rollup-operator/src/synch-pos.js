@@ -10,7 +10,6 @@ const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
 
 // db keys
-const lastBlockKey = "last-block-synch-pos";
 const lastEraKey = "last-era-synch";
 const opCreateKey = "operator-create";
 const opRemoveKey = "operator-remove";
@@ -19,7 +18,14 @@ const separator = "--";
 
 
 class SynchPoS {
-    constructor(db, nodeUrl, rollupPoSAddress, rollupPoSABI, creationHash, ethAddress) {
+    constructor(
+        db,
+        nodeUrl,
+        rollupPoSAddress,
+        rollupPoSABI,
+        creationHash,
+        ethAddress
+    ) {
         this.db = db;
         this.nodeUrl = nodeUrl;
         this.rollupPoSAddress = rollupPoSAddress;
@@ -143,10 +149,6 @@ class SynchPoS {
                 this.slots.push(slot);
             }
         } 
-    }
-
-    async getLastSynchBlock() {
-        return this._fromString(await this.db.getOrDefault(lastBlockKey, this.genesisBlock.toString()));
     }
 
     async getLastSynchEra() {

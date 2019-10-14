@@ -35,7 +35,6 @@ contract("Operator Manager", async (accounts) => {
 
     let db;
     let rollupDB;
-    const debug = true;
     const amountToStake = 2;
     const maxTx = 10;
     const maxOnChainTx = 5;
@@ -111,7 +110,7 @@ contract("Operator Manager", async (accounts) => {
 
     it("Should initialize operator manager", async () => {
         opManager = new OperatorManager(configSynchPoS.ethNodeUrl,
-            configSynchPoS.contractAddress, configSynchPoS.abi, debug);
+            configSynchPoS.contractAddress, configSynchPoS.abi);
     });
 
     it("Should load wallet [debug mode]", async () => {

@@ -1,0 +1,17 @@
+{
+  "rollup" : {
+    "synchDb": "/home/synch-db",
+    "treeDb": "/home/tree-db",
+    "address": "0x4865811f5C899B249659096E06f26e00654507C3",
+    "abi": "abi_object",
+    "creationHash": "cab6144879d51312fd532604028d838ff6573f5e1dd5ef3691a183515ff37969"
+  },
+  "rollupPoS" : {
+    "synchDb": "/home/pos-db",
+    "address": "0x769afbf9765f6ea956a9bc976aeba97867aeb087",
+    "abi": "abi_object",
+    "creationHash": "9876af65976bca97atcbcta9767976a9btctbc9a76tceebca976t2364afacb9a7c6"
+  }, 
+  "ethNodeUrl": "ropsten.infura.io/v3/39753c9df15e15ee844e2c19a928bbc1",
+  "ethAddressCaller": "0x100a38D3c4C77Aa8C38e5089208a6E4C992c5C6B"
+}

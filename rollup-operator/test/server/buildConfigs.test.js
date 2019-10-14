@@ -5,21 +5,18 @@ const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
-const RollupTest = artifacts.require("../contracts/test/RollupTest");
+const Rollup = artifacts.require("../contracts/test/Rollup");
 const fs = require("fs");
 const path = require("path");
 
-const configPath = path.join(__dirname, "../config/rollup-synch-config-test.json");
-const configPathPoS = path.join(__dirname, "../config/pos-synch-config-test.json");
-const configPathOpManager = path.join(__dirname, "../config/op-manager-config-test.json");
+const configSynchPath = path.join(__dirname, "../config/synch-config-test.json");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
 contract("Operator Server", (accounts) => {
     const {
         0: owner,
         1: id1,
-        2: synchAddress,
-        77: debugAddress,
+        2: callerAddress,
     } = accounts;
 
     const maxTx = 10;
@@ -29,7 +26,7 @@ contract("Operator Server", (accounts) => {
     let insPoseidonUnit;
     let insTokenRollup;
     let insRollupPoS;
-    let insRollupTest;
+    let insRollup;
     let insVerifier;
 
     before(async () => {
@@ -45,53 +42,40 @@ contract("Operator Server", (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
             maxTx, maxOnChainTx);
 
         // Deploy Staker manager
-        insRollupPoS = await RollupPoS.new(insRollupTest.address);
+        insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
 
-        // load forge batch mechanism ( not used in this test)
-        await insRollupTest.loadForgeBatchMechanism(insRollupPoS.address);
+        // load forge batch mechanism
+        await insRollup.loadForgeBatchMechanism(insRollupPoS.address);
     });
 
     it("Should create rollup synch config file", async () => {
         const config = {
-            syncDb: undefined,
-            treeDb: undefined,
+            rollup: {
+                synchDb: undefined,
+                treeDb: undefined,
+                address: insRollup.address,
+                abi: Rollup.abi,
+                creationHash: insRollup.transactionHash,
+            },
+            rollupPoS: {
+                synchDb: undefined,
+                address: insRollupPoS.address,
+                abi: RollupPoS.abi,
+                creationHash: insRollupPoS.transactionHash,
+            },
             ethNodeUrl:"http://localhost:8545",
-            contractAddress: insRollupTest.address,
-            creationHash: insRollupTest.transactionHash,
-            ethAddress: synchAddress,
-            abi: RollupTest.abi,
+            ethAddressCaller: callerAddress,
         };
-        fs.writeFileSync(configPath, JSON.stringify(config));
-    });
-
-    it("Should create pos synch config file", async () => {
-        const config = {
-            syncDb: undefined,
-            ethNodeUrl:"http://localhost:8545",
-            contractAddress: insRollupPoS.address,
-            creationHash: insRollupPoS.transactionHash,
-            ethAddress: synchAddress,
-            abi: RollupPoS.abi,
-        };
-        fs.writeFileSync(configPathPoS, JSON.stringify(config));
-    });
-
-    it("Should create operator manager config file", async () => {
-        const config = {
-            wallet: undefined,
-            pass: undefined,
-            ganacheAddress: debugAddress,
-        };
-        fs.writeFileSync(configPathOpManager, JSON.stringify(config));
+        fs.writeFileSync(configSynchPath, JSON.stringify(config));
     });
 
     it("Should expose data to run server test", async () => {
         const testConfig = {
-            rollupAddress: insRollupTest.address,
+            rollupAddress: insRollup.address,
             tokenAddress: insTokenRollup.address,
             posAddress: insRollupPoS.address,
         };

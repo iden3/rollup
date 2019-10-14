@@ -139,9 +139,8 @@ contract("Loop Manager", async (accounts) => {
             configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress);
         
         // Init operator manager
-        const debug = true;
         opManager = new OperatorManager(configSynchPoS.ethNodeUrl,
-            configSynchPoS.contractAddress, configSynchPoS.abi, debug);
+            configSynchPoS.contractAddress, configSynchPoS.abi);
         await opManager.loadWallet(wallet);
         
         // Init Pool
@@ -155,6 +154,9 @@ contract("Loop Manager", async (accounts) => {
         // Init loop Manager
         loopManager = new LoopManager(rollupSynch, posSynch, poolTx, 
             opManager, cliServerProof);
+
+        const seedMsg = "rollup";
+        await loopManager.loadSeedHashChain(seedMsg);
                
         // Init loops    
         loopManager.startLoop();

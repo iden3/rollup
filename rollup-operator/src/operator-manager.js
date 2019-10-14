@@ -1,23 +1,17 @@
-const ethers = require("ethers");
 const Web3 = require("web3");
 
 class OperatorManager {
-    constructor(nodeUrl, contractAddress, abi, debug = false){
+    constructor(nodeUrl, contractAddress, abi){
         this.wallet = {};
         this.nodeUrl = nodeUrl;
         this.posAddress = contractAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.rollupPoS = new this.web3.eth.Contract(abi, this.posAddress);
-        this.debug = debug;
         this.gasLimit = 5000000;
     }
 
-    async loadWallet(wallet, pass) {
-        if(this.debug) {
-            this.wallet = wallet;
-        } else {
-            this.wallet = await ethers.Wallet.fromEncryptedJson(wallet, pass);
-        }
+    async loadWallet(wallet) {
+        this.wallet = wallet;
     }
 
     async register(rndHash, stakeValue, url) {
@@ -34,6 +28,7 @@ class OperatorManager {
     }
 
     async unregister(opId) {
+        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
@@ -45,6 +40,7 @@ class OperatorManager {
     }
 
     async withdraw(opId) {
+        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
@@ -56,6 +52,7 @@ class OperatorManager {
     }
 
     async commit(prevHash, compressedTx) {
+        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
@@ -67,6 +64,7 @@ class OperatorManager {
     }
 
     async forge(proofA, proofB, proofC, input) {
+        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
@@ -78,6 +76,7 @@ class OperatorManager {
     }
 
     async commitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
+        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
