@@ -1,8 +1,0 @@
-{
-  "synchDb": "/home/bro/Documents/iden3/RollUp/rollup/rollup-operator/src/server/pos",
-  "ethNodeUrl": "ropsten.infura.io/v3/39753c9df15e15ee844e2c19a928bbc1",
-  "contractAddress": "0x4865811f5C899B249659096E06f26e00654507C3",
-  "abi": "0x4351e519b291B09e6a8DC66d06a0392759d724EA",
-  "creationHash": "cab6144879d51312fd532604028d838ff6573f5e1dd5ef3691a183515ff37969",
-  "ethAddress": "0x100a38D3c4C77Aa8C38e5089208a6E4C992c5C6B"
-}
