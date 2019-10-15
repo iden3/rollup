@@ -108,7 +108,7 @@ paths:
           $ref: '#/components/responses/Error'
         501:
           $ref: '#/components/responses/NotImplemented'
-          
+
   /batch/{id}:
     get:
       operationId: getBatchById
@@ -136,7 +136,7 @@ paths:
           $ref: '#/components/responses/Error'
         501:
           $ref: '#/components/responses/NotImplemented'
-          
+
   /slot/{id}:
     get:
       operationId: getSlotById
@@ -164,7 +164,7 @@ paths:
           $ref: '#/components/responses/Error'
         501:
           $ref: '#/components/responses/NotImplemented'
-          
+
   /era/{id}:
     get:
       operationId: getEraById
@@ -265,19 +265,19 @@ paths:
 
 components:
   schemas:
-  
+
     address:
       type: string
       pattern: '^0x[a-fA-F0-9]{40}$'
       description: Etherum address
       example: '0x7776B50a2cbAbA54Ec6426065223B652b8b39122'
-      
+
     tokenId:
       type: string
       pattern: '^0x[a-fA-F0-9]{40}$'
       description: Token identifier
       example: '0x7776B50a2cbAbA54Ec6426065223B652b8b39122'
-      
+
     transactionId:
       type: string
       pattern: '^0x[a-fA-F0-9]{40}$'
@@ -332,7 +332,7 @@ components:
         tokenId: '0xDDD6B50a2cbAbA54Ec6426065223B652b8b39133'
         ammount: 133
         fee: 2
-      
+
       required:
         - from
         - to
@@ -351,7 +351,7 @@ components:
       pattern: '^0x[a-fA-F0-9]{40}$'
       description: Id of an operator
       example: '0x44F6B50a2cbAbA54Ec6426065223B652b8b39122'
-      
+
 
     operator:
       type: object
@@ -435,7 +435,7 @@ components:
         totalFee: 85672.897634
         totalStake: 6349.387
         avgUptime: 0.9856
-        
+
 
     batch:
       type: object
@@ -469,7 +469,7 @@ components:
             fee: 2
         slotId: '0x5556B50a2cbAbA54Ec6426065223B652b8b39133'
         eraId: '0x6666B50a2cbAbA54Ec6426065223B652b8b39133'
-        
+
 
     slot:
       type: object
@@ -503,7 +503,7 @@ components:
             slotId: '0x5556B50a2cbAbA54Ec6426065223B652b8b39133'
             eraId: '0x6666B50a2cbAbA54Ec6426065223B652b8b39133'
         eraId: '0x6666B50a2cbAbA54Ec6426065223B652b8b39133'
-        
+
 
     era:
       type: object
@@ -537,7 +537,7 @@ components:
                 slotId: '0x5556B50a2cbAbA54Ec6426065223B652b8b39133'
                 eraId: '0x6666B50a2cbAbA54Ec6426065223B652b8b39133'
             eraId: '0x6666B50a2cbAbA54Ec6426065223B652b8b39133'
-        
+
 
     rollupStats:
       type: object
@@ -608,7 +608,7 @@ components:
         stake: 756349.8734
         totalTransactions: 908757
         activeSince: '2019-10-11T14:45:21.500Z'
-        
+
 
   responses:
     Error:
@@ -658,9 +658,9 @@ components:
                 example: This feature is not fully implemented yet. You can use the mockup data provided in this response but keep in mind that the values are reandomly generated.
               mockup:
                 type: object
-                example: 
+                example:
                   thisObject: 'Sould be equal to the 200 response object'
-                         
+
             required:
             - code
             - message
