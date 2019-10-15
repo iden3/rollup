@@ -29,14 +29,20 @@ Also, it provides two api:
 - http POST `/offchain/send`
   - sends off-chain transaction to operator pool
 
-- http GET `/info/:id`
+- http GET `/info/id/:id`
   - get current balance tree state of `id`
   
-- http GET `/info/:Ax/:Ay`
+- http GET `/info/axay/:Ax/:Ay`
   - get current balance tree state of all entries with `Ax:Ay`
 
-- http GET `/info/:ethAddress`
+- http GET `/info/ethaddress/:ethAddress`
   - get current balance tree state of all entries with `ethAddress`
+
+- http GET `/general`
+  - get general information about the `operator`
+
+- http GET `/info/operators`
+  - get list of avaulable operators
 
 # Modules in detail
 ## Operator Manager

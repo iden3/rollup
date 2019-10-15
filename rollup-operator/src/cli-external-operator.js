@@ -19,11 +19,19 @@ class CliExternalOperator {
     }
 
     state() {
-        return axios.post(`${this.url}/state`);
+        return axios.get(`${this.url}/state`);
     }
 
-    sebdOffChainTx(tx) {
+    sendOffChainTx(tx) {
         return axios.post(`${this.url}/offchain/send`, tx);
+    }
+
+    getGeneralInfo() {
+        return axios.get(`${this.url}/info/general`);
+    }
+
+    getOperatorsList() {
+        return axios.get(`${this.url}/info/operators`);
     }
 }
 

@@ -71,41 +71,40 @@ contract("Operator", (accounts) => {
         walletOpEnc = await walletOp.encrypt(passphrase);
     });
 
-    it("Should load operator wallet", async () => {
-        await cliAdminOp.loadWallet(walletOpEnc, passphrase);
+    it("Should get empty operator list", async () => { 
+        const res = await cliExternalOp.getOperatorsList();
+        expect(Object.keys(res.data).length).to.be.equal(0);
     });
 
-    it("Should register operator", async () => {
+    it("Should load and register operator", async () => {
         const stake = 2;
-        const url = "localhost";
-        const seed = "rollup"; 
+        const url = urlExternalOp;
+        const seed = "rollup";
+
+        await cliAdminOp.loadWallet(walletOpEnc, passphrase); 
         await cliAdminOp.register(stake, url, seed);
     });
 
-    it("Should move to era 2", async () => {
-        const genesisBlock = Number(await insRollupPoS.genesisBlock());
-        let currentBlock = await web3.eth.getBlockNumber();
-        await addBlocks(genesisBlock - currentBlock + 1); // move to era 0
-        await timeout(5000); // wait time to add all blocks
-        await addBlocks(blockPerEra); // move to era 1
-        await timeout(5000); // wait time to add all blocks
-        await addBlocks(blockPerEra); // move to era 2
-        await timeout(5000); // wait time to add all blocks
+    it("Should get general information", async () => { 
+        const res = await cliExternalOp.getGeneralInfo();
+        expect(res.data).to.not.be.equal(undefined);
+
+        const blockGenesis = res.data.posSynch.genesisBlock;
+        const currentBlock = res.data.currentBlock;
+        await addBlocks(blockGenesis - currentBlock + 1); // move to era 0
+        await timeout(20000); // time to synch
     });
 
-    it("Should forge at least one batch", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getGeneralInfo();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 0) {
-                batchForged = true;
+    it("Should get one operator", async () => { 
+        const res = await cliExternalOp.getOperatorsList();
+        const listOperators = res.data;
+        let found = false;
+        for (const opInfo of Object.values(listOperators)){
+            if (opInfo.controllerAddress == walletOp.address.toString()){
+                found = true;
                 break;
-            } 
-            await timeout(10000);
-            counter += 1;
+            }
         }
-        expect(batchForged).to.be.equal(true);
+        expect(found).to.be.equal(true);
     });
 });

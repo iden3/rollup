@@ -171,7 +171,7 @@ contract("Loop Manager", async (accounts) => {
         const currentBlock = await web3.eth.getBlockNumber();
         const genesisBlock = posSynch.genesisBlock;
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
-        await timeout(20000);
+        await timeout(10000);
         const listOperators = await posSynch.getOperators();
         // check address operator is in list operators
         let found = false;
@@ -185,16 +185,16 @@ contract("Loop Manager", async (accounts) => {
 
     it("Should wait until operator turns", async () => {
         await timeTravel.addBlocks(blockPerEra); // era 1
-        await timeout(20000);
+        await timeout(10000);
     });
 
     it("Should forge genesis block", async () => {
         await timeTravel.addBlocks(blockPerEra); // era 2
-        await timeout(30000);
+        await timeout(10000);
     });
 
     it("Should forge another empty block", async () => {
-        await timeout(30000);
+        await timeout(20000);
     });
 
     describe("State check", () => {

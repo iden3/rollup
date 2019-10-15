@@ -1,11 +1,17 @@
+const fs = require("fs");
 const ethers = require("ethers");
-const MemDb = require("../../../rollup-utils/mem-db");
-const LevelDb = require("../../../rollup-utils/level-db");
+const morgan = require("morgan");
+const winston = require("winston");
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
 const RollupDB = require("../../../js/rollupdb");
-const fs = require("fs");
 const { stringifyBigInts } = require("snarkjs");
+const MemDb = require("../../../rollup-utils/mem-db");
+const LevelDb = require("../../../rollup-utils/level-db");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
@@ -14,9 +20,22 @@ const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
 const LoopManager = require("../loop-manager");
 
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
+// config winston
+var options = {
+    console: {
+        level: "verbose",
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple(),
+        )
+    },
+};
+
+const logger = winston.createLogger({
+    transports: [
+        new winston.transports.Console(options.console)
+    ]
+});
 
 // load environment data
 const pathEnvironmentFile = `${__dirname}/config.env`;
@@ -37,7 +56,7 @@ let posDb;
 let posSynch;
 
 if (synchConfig.rollupPoS.synchDb == undefined) {
-    console.log("Start PoS synch with memory database");
+    logger.info("Start PoS synch with memory database");
     posDb = new MemDb();
 } else {
     posDb = new LevelDb(synchConfig.rollupPoS.synchDb);
@@ -118,6 +137,28 @@ async function mainLoad() {
 
 mainLoad();
 
+async function getGeneralInfo() {
+    const generalInfo = {};
+    generalInfo["posSynch"] = {};
+    generalInfo["rollupSynch"] = {};
+
+    generalInfo.currentBlock = await posSynch.getCurrentBlock();
+
+    generalInfo["posSynch"].isSynched = await posSynch.isSynched();
+    generalInfo["posSynch"].synch = await posSynch.getSynchPercentage();
+    generalInfo["posSynch"].genesisBlock = await posSynch.genesisBlock;
+    generalInfo["posSynch"].lastEraSynch = await posSynch.getLastSynchEra();
+    generalInfo["posSynch"].currentEra = await posSynch.getCurrentEra();
+    generalInfo["posSynch"].currentSlot = await posSynch.getCurrentSlot();
+
+    generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
+    generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
+    generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
+    generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+
+    return generalInfo;
+}
+
 /////////////
 ///// SERVERS
 /////////////
@@ -126,6 +167,7 @@ mainLoad();
 const appAdmin = express();
 appAdmin.use(bodyParser.json());
 appAdmin.use(cors());
+appAdmin.use(morgan("dev"));
 const portAdmin = process.env.OPERATOR_PORT_ADMIN;
 
 appAdmin.post("/loadwallet", async (req, res) => {
@@ -159,36 +201,47 @@ appAdmin.post("/withdraw/:opId", async (req, res) => {
 
 const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
     const address = serverAdmin.address().address;
-    console.log(`Server admin running on http://${address}:${portAdmin}`);
+    logger.info(`Server admin running on http://${address}:${portAdmin}`);
 });
 
 ///// API EXTERNAL
 const appExternal = express();
 appExternal.use(bodyParser.json());
 appExternal.use(cors());
+appExternal.use(morgan("dev"));
 const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
 
-appExternal.get("/infoid/id/:id", async (req, res) => {
+appExternal.get("/info/id/:id", async (req, res) => {
     const info = await rollupSynch.getStateById(req.params.id);
     res.send(stringifyBigInts(info));
 });
-
-appExternal.get("/infoaxay/axay/:Ax/:Ay", async (req, res) => {
+ 
+appExternal.get("/info/axay/:Ax/:Ay", async (req, res) => {
     const Ax = req.params.Ax;
     const Ay = req.params.Ay;
     const info = await rollupSynch.getStateByAxAy(Ax, Ay);
-    res.send(stringifyBigInts(info));
+    res.status(200).json(stringifyBigInts(info));
 });
 
 appExternal.get("/info/ethaddress/:ethAddress", async (req, res) => {
     const ethAddress = req.params.ethAddress;
     const info = await rollupSynch.getStateByEthAddr(ethAddress);
-    res.send(stringifyBigInts(info));
+    res.status(200).json(stringifyBigInts(info));
 });
 
 appExternal.get("/state", async (req, res) => {
     const state = await rollupSynch.getState();
-    res.send(stringifyBigInts(state));
+    res.status(200).json(stringifyBigInts(state));
+});
+
+appExternal.get("/info/general", async (req, res) => {
+    const generalInfo = await getGeneralInfo(); 
+    res.status(200).json(generalInfo);
+});
+
+appExternal.get("/info/operators", async (req, res) => {
+    const operatorList = await posSynch.getOperators();
+    res.status(200).json(stringifyBigInts(operatorList));
 });
 
 appExternal.post("/offchain/send", async (req, res) => {
@@ -197,7 +250,7 @@ appExternal.post("/offchain/send", async (req, res) => {
     res.sendStatus(200);
 });
 
-const serverExternal = appAdmin.listen(portExternal, "127.0.0.1", () => {
+const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {
     const address = serverExternal.address().address;
-    console.log(`Server external running on http://${address}:${portExternal}`);
+    logger.info(`Server external running on http://${address}:${portExternal}`);
 });
