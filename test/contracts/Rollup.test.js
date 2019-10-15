@@ -235,7 +235,7 @@ contract("Rollup", (accounts) => {
 
         // forge batch with no transactions
         await forgeBatch();
-
+        
         // forge batch two deposits
         await forgeBatch([resDepositId2.logs[0], resDepositId3.logs[0]]);
 
@@ -254,14 +254,14 @@ contract("Rollup", (accounts) => {
         const amount = 8;
         // Should trigger error since id2 is the sender, does not match id1
         try {
-            await insRollupTest.forceWithdraw(from, amount, [Ax, Ay],
+            await insRollupTest.forceWithdraw(from, amount,
                 { from: id2, value: web3.utils.toWei("1", "ether") });
         }
         catch (error) {
             expect((error.message).includes("Sender does not match identifier balance tree")).to.be.equal(true);
         }
 
-        const resForceWithdraw = await insRollupTest.forceWithdraw(from, amount, [Ax, Ay],
+        const resForceWithdraw = await insRollupTest.forceWithdraw(from, amount,
             { from: id1, value: web3.utils.toWei("1", "ether") });
 
         // forge batch with no transactions
@@ -270,8 +270,8 @@ contract("Rollup", (accounts) => {
         await forgeBatch([resForceWithdraw.logs[0]]);
 
         // Simulate exit tree to retrieve siblings
-        await exitTree.addId(1, amount, 0, BigInt(Ax), BigInt(Ay), BigInt(id1), 0);
 
+        await exitTree.addId(1, amount, 0, BigInt(Ax), BigInt(Ay), BigInt(id1), 0);
         checkBatchNumber([resForceWithdraw.logs[0]]);
     });
 
@@ -279,30 +279,29 @@ contract("Rollup", (accounts) => {
     // Steps:
     // - Get data from 'exitTree'
     // - Transaction to withdraw amount indicated in previous step
-        const id = 1;
 
+        const id = 1;
         const infoId = await exitTree.getIdInfo(id);
         const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
-
         const leafId = infoId.foundObject;
         // last batch forged
         const lastBatch = await insRollupTest.getStateDepth();
         // Should trigger error since we are try get withdraw from different sender
         try {
             await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
-                BigInt(lastBatch).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
+                BigInt(lastBatch).toString(), leafId.nonce.toString(),
                 siblingsId, { from: id2 });
         } catch (error) {
             expect((error.message).includes("invalid proof")).to.be.equal(true);
         }
         // send withdraw transaction
         await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
-            BigInt(lastBatch).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
+            BigInt(lastBatch).toString(), leafId.nonce.toString(),
             siblingsId, { from: id1 });
         // Should trigger error since we are repeating the withdraw transaction
         try {
             await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
-                BigInt(lastBatch).toString(), leafId.nonce.toString(),[leafId.Ax.toString(), leafId.Ay.toString()],
+                BigInt(lastBatch).toString(), leafId.nonce.toString(),
                 siblingsId, { from: id1 });
         } catch (error) {
             expect((error.message).includes("withdraw has been already done")).to.be.equal(true);
@@ -310,7 +309,7 @@ contract("Rollup", (accounts) => {
 
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        const resId1 = await insTokenRollup.balanceOf(id1);
+        const resId1 = await insTokenRollup.balanceOf(id1); 
         expect(resRollup.toString()).to.be.equal("12");
         expect(resId1.toString()).to.be.equal("48");
     });
@@ -325,6 +324,9 @@ contract("Rollup", (accounts) => {
         const toId = 3;
         const onTopAmount = 3;
         const tokenId = 0;
+
+        let initialBalanceId3 = await rollupDB.getStateByIdx(3);
+        expect(initialBalanceId3.amount.toString()).to.be.equal("5");
 
         const resApprove = await insTokenRollup.approve(insRollupTest.address, onTopAmount, { from: id1 });
         expect(resApprove.logs[0].event).to.be.equal("Approval");
@@ -344,6 +346,9 @@ contract("Rollup", (accounts) => {
         await forgeBatch([resDepositOnTop.logs[0]]);
 
         checkBatchNumber([resDepositOnTop.logs[0]]);
+
+        let finalBalanceId3 = await rollupDB.getStateByIdx(3);//new leaf
+        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())+onTopAmount).toString());
     });
 
     it("Should add transfer", async () => {
@@ -352,13 +357,22 @@ contract("Rollup", (accounts) => {
     // - Get event data
     // - Update rollupTree
     // - forge batches to include transaction
+
+        //current leaf 2: 5, tokens leaf 3: 8 tokens
+        //after leaf 2: 4, tokens leaf 3: 9 tokens
         const fromId = 2;
         const toId = 3;
         const amount = 1;
         const tokenId = 0;
 
+        let initialBalanceId2 = await rollupDB.getStateByIdx(2);
+        let initialBalanceId3 = await rollupDB.getStateByIdx(3);
+
+        expect(initialBalanceId2.amount.toString()).to.be.equal("5");
+        expect(initialBalanceId3.amount.toString()).to.be.equal("8");
+
         const resTransfer = await insRollupTest.transfer(fromId, toId, amount, tokenId,
-            [Ax, Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
+            { from: id2, value: web3.utils.toWei("1", "ether") });
 
         // forge empty batch
         await forgeBatch();
@@ -366,25 +380,141 @@ contract("Rollup", (accounts) => {
         await forgeBatch([resTransfer.logs[0]]);
 
         checkBatchNumber([resTransfer.logs[0]]);
+
+        let finalBalanceId2 = await rollupDB.getStateByIdx(2);
+        let finalBalanceId3 = await rollupDB.getStateByIdx(3);
+
+        expect(finalBalanceId2.amount.toString()).to.be.equal((parseInt(initialBalanceId2.amount.toString())-amount).toString());
+        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())+amount).toString());
     });
 
+    it("Should add DepositAndTransfer", async () => {
+
+        //current Tokens: id1: 45, rollupSc: 15, leaf 2: 4 tokens
+        //after this test: id1: 33, rollupSc 27, leaf 2: 14 tokens
+        const toId = 2;
+        const loadAmount = 12;
+        const tokenId = 0;
+        const amount = 10;
+
+        let initialBalanceId2 = await rollupDB.getStateByIdx(2);
+        expect(initialBalanceId2.amount.toString()).to.be.equal("4");
+
+        const resApprove = await insTokenRollup.approve(insRollupTest.address, loadAmount, { from: id1 });
+        expect(resApprove.logs[0].event).to.be.equal("Approval");
+
+        const resDepositAndTransfer = await insRollupTest.depositAndTransfer(loadAmount, tokenId, id1,
+            [Ax, Ay], toId, amount, { from: id1, value: web3.utils.toWei("1", "ether") });
+        expect(resDepositAndTransfer.logs[0].event).to.be.equal("OnChainTx");
+
+        // Check token balances for id1 and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resId1 = await insTokenRollup.balanceOf(id1);
+        expect(resRollup.toString()).to.be.equal("27");
+        expect(resId1.toString()).to.be.equal("33");
+
+        // forge genesis batch
+        await forgeBatch();
+        // Forge batch with deposit transaction
+        await forgeBatch([resDepositAndTransfer.logs[0]]);
+        
+        checkBatchNumber([resDepositAndTransfer.logs[0]]);
+
+        let finalBalanceId2 = await rollupDB.getStateByIdx(2);
+        let finalBalanceId4 = await rollupDB.getStateByIdx(4);//new leaf
+
+        expect(finalBalanceId2.amount.toString()).to.be.equal((parseInt(initialBalanceId2.amount.toString())+amount).toString());
+        expect(finalBalanceId4.amount.toString()).to.be.equal((loadAmount-amount).toString());
+    });
+
+
+    it("Should add force withdraw2", async () => {
+        // Steps:
+        // - Transaction to force wothdraw 'TokenRollup' from 'id2' to 'rollup smart contract'(owner)
+        // - Check 'tokenRollup' balances
+        // - Get event data
+        // - Update rollupTree
+        // - forge batches to include force withdraw
+        // - it creates a new exit tree
+        exitTree = await RollupTree.newMemRollupTree();
+        const from = 2;
+        const amount = 14;
+    
+        const resForceWithdraw = await insRollupTest.forceWithdraw(from, amount,
+            { from: id2, value: web3.utils.toWei("1", "ether") });
+    
+        // forge batch with no transactions
+        await forgeBatch();
+        // forge batch force withdraw
+        await forgeBatch([resForceWithdraw.logs[0]]);
+    
+        // Simulate exit tree to retrieve siblings
+        await exitTree.addId(2, amount, 0, BigInt(Ax), BigInt(Ay), BigInt(id2), 0);
+        //await exitTree.addIdExit(2, amount, 0, BigInt(id2));
+        checkBatchNumber([resForceWithdraw.logs[0]]);
+    });
+    
+    it("Should withdraw tokens2", async () => {
+        // Steps:
+        // - Get data from 'exitTree'
+        // - Transaction to withdraw amount indicated in previous step
+        const id = 2;
+        const infoId = await exitTree.getIdInfo(id);
+        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const leafId = infoId.foundObject;
+        // last batch forged
+        const lastBatch = await insRollupTest.getStateDepth();
+        // Should trigger error since we are try get withdraw from different sender
+        await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
+            BigInt(lastBatch).toString(), leafId.nonce.toString(),
+            siblingsId, { from: id2 });
+        // Should trigger error since we are repeating the withdraw transaction
+    
+        // Check token balances for id1 and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        //const resId2 = await insTokenRollup.balanceOf(id1);
+        expect(resRollup.toString()).to.be.equal("13");
+        //expect(resId2.toString()).to.be.equal("48");
+    });
+    
+    
     it("Should forge off-chain transaction with fee", async () => {
     // Steps:
-    // - Transaction from 'id3' to 'id2'
+    // - Transaction from 'id3' to '0' -->forcewithdraw offchain
     // - Update rollupTree
     // - forge batch to include transaction
     // - Check block number information, balance of beneficiary and batch number
+    // - Test double withdraw in the same batch
+
+        //current Tokens: leaf 3: 9 tokens
+        //after this test: leaf 4: 5 tokens
+        let initialBalanceId3 = await rollupDB.getStateByIdx(3);
+        expect(initialBalanceId3.amount.toString()).to.be.equal("9");
+
+        exitTree = await RollupTree.newMemRollupTree();
         const tx = {
             fromIdx: 3,
-            toIdx: 2,
+            toIdx: 0,
             coin: 0,
-            amount: 3,
+            amount: 1,
             nonce: 0,
             userFee: 1
         };
+        await exitTree.addId(3, 1, 0, BigInt(Ax), BigInt(Ay), BigInt(id3), BigInt(0));
+        const tx2 = {
+            fromIdx: 3,
+            toIdx: 0,
+            coin: 0,
+            amount: 1,
+            nonce: 1,
+            userFee: 1
+        };
+        await exitTree.updateId(3, 2);
         rollupUtils.signRollupTx(wallet, tx);
+        rollupUtils.signRollupTx(wallet, tx2);
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
         batch.addTx(tx);
+        batch.addTx(tx2);
         // Add fee
         batch.addCoin(0, 1);
         batch.addCoin(1, 5);
@@ -396,7 +526,7 @@ contract("Rollup", (accounts) => {
         await rollupDB.consolidate(batch);
 
         const balanceAfter = await insTokenRollup.balanceOf(beneficiary);
-        expect(BigInt(balanceBefore).add(BigInt(1)).toString()).to.be.
+        expect(BigInt(balanceBefore).add(BigInt(2)).toString()).to.be.
             equal(BigInt(balanceAfter).toString());
         expect(resForge.logs[0].event).to.be.equal("ForgeBatch");
         
@@ -416,5 +546,97 @@ contract("Rollup", (accounts) => {
         });
         // Off-chain hash is 4th position of the input
         expect(inputSm.input[4]).to.be.equal(inputRetrieved[4]);
+
+        let finalBalanceId3 = await rollupDB.getStateByIdx(3);
+        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-4).toString()); //2 fees + 2 amountTransfer = 4
+    });
+
+    it("Should withdraw previous offchain transactions", async () => {
+        // Steps:
+        // - Get data from 'exitTree'
+        // - Transaction to withdraw amount indicated in previous step
+      
+        //current Tokens: id3: 20 tokens
+        //after this test: id3: 22 tokens
+        const id = 3;
+        const infoId = await exitTree.getIdInfo(id);
+        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const leafId = infoId.foundObject;
+        // last batch forged
+        const lastBatch = await insRollupTest.getStateDepth();
+        // Should trigger error since we are try get withdraw from different sender
+        await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
+            BigInt(lastBatch).toString(), leafId.nonce.toString(),
+            siblingsId, { from: id3 });
+        // Should trigger error since we are repeating the withdraw transaction
+    
+        // Check token balances for id1 and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resId3 = await insTokenRollup.balanceOf(id3);
+        expect(resRollup.toString()).to.be.equal("9"); //13-4; 2 2fees + 2 withdraw
+        expect(resId3.toString()).to.be.equal("22");
+    });
+    
+    it("Should DepositAndTransferto 0", async () => {
+        //leaf: 5
+        //current Tokens: leaf 5: undefined, id3: 22 tokens
+        //after this test: leaf 5: 3 tokens, id3: 14 tokens
+        const toId = 0;
+        const loadAmount = 8;
+        const tokenId = 0;
+        const amount = 5;
+        exitTree = await RollupTree.newMemRollupTree();
+
+        const resApprove = await insTokenRollup.approve(insRollupTest.address, loadAmount, { from: id3 });
+        expect(resApprove.logs[0].event).to.be.equal("Approval");
+
+        const resDepositAndTransfer = await insRollupTest.depositAndTransfer(loadAmount, tokenId, id3,
+            [Ax, Ay], toId, amount, { from: id3, value: web3.utils.toWei("1", "ether") });
+        expect(resDepositAndTransfer.logs[0].event).to.be.equal("OnChainTx");
+
+        // Check token balances for id1 and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resId3 = await insTokenRollup.balanceOf(id3);
+        expect(resRollup.toString()).to.be.equal("17");
+        expect(resId3.toString()).to.be.equal("14");
+
+        // forge genesis batch
+        await forgeBatch();
+        // Forge batch with deposit transaction
+        await forgeBatch([resDepositAndTransfer.logs[0]]);
+        
+        checkBatchNumber([resDepositAndTransfer.logs[0]]);
+
+        let finalBalanceId5 = await rollupDB.getStateByIdx(5);//new leaf
+        expect(finalBalanceId5.amount.toString()).to.be.equal("3");
+
+        await exitTree.addId(5, 5, 0, BigInt(Ax), BigInt(Ay), BigInt(id3), BigInt(0));
+    });
+
+
+    it("Should withdraw depositAndTransfer", async () => {
+        // Steps:
+        // - Get data from 'exitTree'
+        // - Transaction to withdraw amount indicated in previous step
+      
+        //current Tokens: id3: 14 tokens
+        //after this test: id3: 19 tokens
+        const id = 5;
+        const infoId = await exitTree.getIdInfo(id);
+        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const leafId = infoId.foundObject;
+        // last batch forged
+        const lastBatch = await insRollupTest.getStateDepth();
+        // Should trigger error since we are try get withdraw from different sender
+        await insRollupTest.withdraw(id, leafId.balance.toString(), leafId.tokenId.toString(),
+            BigInt(lastBatch).toString(), leafId.nonce.toString(),
+            siblingsId, { from: id3 });
+        // Should trigger error since we are repeating the withdraw transaction
+    
+        // Check token balances for id1 and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resId3 = await insTokenRollup.balanceOf(id3);
+        expect(resRollup.toString()).to.be.equal("12"); //13-4; 2 2 fees + 2 withdraw
+        expect(resId3.toString()).to.be.equal("19");
     });
 });

@@ -138,7 +138,7 @@ module.exports = class BatchBuilder {
             isExit = false;
             op2 = "UPDATE";
         } else {
-            resFindExit = await this.exitTree.find(tx.toIdx || 0);
+            resFindExit = await this.exitTree.find(tx.fromIdx);
             if (resFindExit.found) {
                 oldState2 = utils.array2state(await this.dbExit.get(resFindExit.foundValue));
                 op2 = "UPDATE";
@@ -147,9 +147,9 @@ module.exports = class BatchBuilder {
                     amount: bigInt(0),
                     coin: tx.coin,
                     nonce: 0,
-                    ax: tx.ax,
-                    ay: tx.ay,
-                    ethAddress: tx.ethAddress
+                    ax: tx.ax||oldState1.ax,
+                    ay: tx.ay||oldState1.ay,
+                    ethAddress: tx.ethAddress||oldState1.ethAddress
                 };
                 op2 = "INSERT";
             }
@@ -200,6 +200,9 @@ module.exports = class BatchBuilder {
         }
         const newState2 = Object.assign({}, oldState2);
         newState2.amount = oldState2.amount.add(effectiveAmount);
+        if (!tx.onChain && op2 == "UPDATE") {
+            newState2.nonce++;
+        }
 
         if (op1=="INSERT") {
 
