@@ -11,14 +11,14 @@ In order to make life easier some [open source tools](https://swagger.io/tools/o
 
 ##  View / Edit the specification
 
-Of course you can use your favorite IDE to edit (path to the repo)/api/spec.yaml. However using a OAS specific editor is recommended as it provides nice features such as validation and frontend documentation preview. The recommended editor is [Swagger editor](https://github.com/swagger-api/swagger-editor):
+Of course you can use your favorite IDE to edit (path to the repo)/explorer/spec.yaml. However using a OAS specific editor is recommended as it provides nice features such as validation and frontend documentation preview. The recommended editor is [Swagger editor](https://github.com/swagger-api/swagger-editor):
 
 - Using docker:
 0. Install Docker (if you don't have it already)
 1. `docker pull swaggerapi/swagger-editor`
 2. `docker run --rm --name swagger-editor -d -p 80:8080 swaggerapi/swagger-editor`
 3. Use your browser: http://localhost:80
-4. Import the file: File/Import file => (path to the repo)/api/spec.yaml
+4. Import the file: File/Import file => (path to the repo)/explorer/spec.yaml
 5. Save changes: File/Save as YAML => Move the file from your Downloads directory to the path of the repo and replace the old version. ***NOTE: Docker will keep changes made to browser sessions, even if the container is restarted, however the only way to persist changes is to export the file as described in this point.***
 6. To stop the server: `docker kill swagger-editor`
 
@@ -39,13 +39,13 @@ When changes to spec.yaml are made, the generated code should be updated, withou
 
 0. Install Docker (if you don't have it already)
 1. `docker pull swaggerapi/swagger-codegen-cli-v3:3.0.11`
-2. Export code in nodejs-server language: `docker run --rm --name swagger-codegen -v ${PWD}/api:/local swaggerapi/swagger-codegen-cli-v3:3.0.11 generate -i /local/spec.yaml -l nodejs-server -o /local/codegen` ***Note that you can use other languages, for instance to generate client code***
-3. Check differences between fresh generated code (api/codegen) and current server code (api/code). It's recommended to use a diff tool such as [Meld](http://meldmerge.org/) to see changes and merge them. In general the changing parts are: api/swagger.yaml (take all the changes from the codegen version), files under the controller directory (only take the function definitions and inputs from codegen), files under the service directory (only take the function definitions and the example values in case the logic is not implemented yet and inputs from codegen) *If permission errors are thrown, run:* `sudo chown -R $USER api/codegen`
+2. Export code in nodejs-server language: `docker run --rm --name swagger-codegen -v ${PWD}/explorer:/local swaggerapi/swagger-codegen-cli-v3:3.0.11 generate -i /local/spec.yaml -l nodejs-server -o /local/codegen` ***Note that you can use other languages, for instance to generate client code***
+3. Check differences between fresh generated code (explorer/codegen) and current server code (explorer/code). It's recommended to use a diff tool such as [Meld](http://meldmerge.org/) to see changes and merge them. In general the changing parts are: explorer/swagger.yaml (take all the changes from the codegen version), files under the controller directory (only take the function definitions and inputs from codegen), files under the service directory (only take the function definitions and the example values in case the logic is not implemented yet and inputs from codegen) *If permission errors are thrown, run:* `sudo chown -R $USER explorer/codegen`
 
 ## Run the API server
 
-1. Run the server: `cd api/server && npm start & cd ../..`
-2. The server will be listening at http://localhost:8080. To easily test changes, the specification can be imported in [Postman](https://www.getpostman.com/) as a collection (In postman: import -> path/to/repoDirectory/api/spec.yaml).
+1. Run the server: `cd explorer/server && npm start & cd ../..`
+2. The server will be listening at http://localhost:8080. To easily test changes, the specification can be imported in [Postman](https://www.getpostman.com/) as a collection (In postman: import -> path/to/repoDirectory/explorer/spec.yaml).
 3. To stop the server: `kill -9 $(lsof -t -i:8080)`
 
 
@@ -56,7 +56,7 @@ In order to offer access to the API documentation to consumers and developers, [
 - Using docker:
 0. Install Docker (if you don't have it already)
 1. `docker pull swaggerapi/swagger-ui`
-2. `docker run --rm --name swagger-ui -d -p 80:8080 -e SWAGGER_JSON=/doc/spec.yaml -v ${PWD}/api:/doc swaggerapi/swagger-ui`
+2. `docker run --rm --name swagger-ui -d -p 80:8080 -e SWAGGER_JSON=/doc/spec.yaml -v ${PWD}/explorer:/doc swaggerapi/swagger-ui`
 3. Use your browser: http://localhost:80
 4. To stop the server: `docker kill swagger-ui`
 
