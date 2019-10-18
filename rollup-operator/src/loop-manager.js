@@ -1,6 +1,25 @@
-const { timeout, buildInputSm } = require("../src/utils"); 
 const web3 = require("web3");
+const winston = require("winston");
+
+const { timeout, buildInputSm } = require("../src/utils"); 
 const { stringifyBigInts } = require("snarkjs");
+
+// config winston
+var options = {
+    console: {
+        level: "verbose",
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple(),
+        )
+    },
+};
+
+const logger = winston.createLogger({
+    transports: [
+        new winston.transports.Console(options.console)
+    ]
+}); 
 
 // global vars
 const SLOT_DEADLINE = 80;
@@ -20,8 +39,9 @@ const state = {
     BUILD_BATCH: 4,
     GET_PROOF: 5,
 };
+
 const TIMEOUT_ERROR = 2000;
-const TIMEOUT_NEXT_LOOP = 5000;
+let TIMEOUT_NEXT_STATE = 5000;
 
 class LoopManager{
     constructor(rollupSynch, posSynch, poolTx, opManager, cliServerProof) {
@@ -45,43 +65,44 @@ class LoopManager{
     async startLoop(){
         // eslint-disable-next-line no-constant-condition
         while(true) {
+            let info = "Operator State: ";
             try {
                 switch(this.state) {
 
                 case state.SYNCHRONIZING: // check all is fully synched
-                    console.log("SYNCH");
+                    info += "SYNCH";
                     await this._fullySynch();
                     break;
 
                 case state.UPDATE_REGISTER: // check if operator is registered
-                    console.log("UPDATE_REGISTER");
+                    info += "UPDATE OPERATORS";
                     this._checkRegister();
                     break;
                 
                 case state.REGISTER: // Check if operator is the winner
-                    console.log("REGISTER");
+                    info += "CHECK OPERATORS";
                     await this._checkWinner();
                     break;
                 
                 case state.WAIT_FORGE: // wait until block to forge is achieved 
-                    console.log("WAIT FORGE");
+                    info += "WAIT FORGE";
                     await this._checkWaitForge();
                     break;
 
                 case state.BUILD_BATCH: // Start build batch
-                    console.log("BUILD BATCH");    
+                    info += "BUILD BATCH";    
                     await this._buildBatch();
                     break;
 
                 case state.GET_PROOF:
-                    console.log("GET PROOF");
+                    info += "GET PROOF";
                     await this._stateProof();
                     break;
                 }
-                await timeout(TIMEOUT_NEXT_LOOP);
+                logger.verbose(info);
+                await timeout(TIMEOUT_NEXT_STATE);
             } catch (e) {
-                console.error(`Message error: ${e.message}`);
-                console.error(`Error in loop: ${e.stack}`);
+                logger.error(`Message error: ${e.message}`);
                 await timeout(TIMEOUT_ERROR);
             }}
     }
@@ -103,11 +124,13 @@ class LoopManager{
     }
     
     async _fullySynch() {
+        TIMEOUT_NEXT_STATE = 5000;
         // check rollup is fully synched
         const rollupSynched = await this.rollupSynch.isSynched();
         // check PoS is fully synched
         const posSynched = await this.posSynch.isSynched();
         if (rollupSynched & posSynched) { // 100% synched
+            TIMEOUT_NEXT_STATE = 0;
             if (this.flagWaiting) this.state = state.BUILD_BATCH;
             else this.state = state.UPDATE_REGISTER;
         }
@@ -124,8 +147,13 @@ class LoopManager{
                     this.registerId.push(Number(opInfo.operatorId));
             }
         }
-        if (this.registerId.length) this.state = state.REGISTER;
-        else this.state = state.SYNCHRONIZING;
+        if (this.registerId.length) {
+            TIMEOUT_NEXT_STATE = 0;
+            this.state = state.REGISTER;
+        } else {
+            TIMEOUT_NEXT_STATE = 5000;
+            this.state = state.SYNCHRONIZING;
+        }
     }
 
     async _purgeRegisterOperators(listOpRegistered) {
@@ -152,14 +180,20 @@ class LoopManager{
             if (foundSlotWinner) break;
         }
         if (this.blockToStartForge) {
+            TIMEOUT_NEXT_STATE = 0;
             this.flagWaiting = true;
             this.state = state.WAIT_FORGE;
-        } else this.state = state.SYNCHRONIZING;
+        } else {
+            TIMEOUT_NEXT_STATE = 5000;
+            this.state = state.SYNCHRONIZING;
+        }
     }
 
     async _checkWaitForge() {
         const currentBlock = await this.posSynch.getCurrentBlock();
+        TIMEOUT_NEXT_STATE = 5000;
         if (currentBlock > this.blockToStartForge) {
+            TIMEOUT_NEXT_STATE = 0;
             this.state = state.SYNCHRONIZING;
             this.flagWaiting = true;
             this.blockToStartForge = 0;
@@ -172,7 +206,8 @@ class LoopManager{
 
         if(!this.batchBuilded) {
             const bb = await this.rollupSynch.getBatchBuilder();
-            this.batch = await this.poolTx.fillBatch(bb);
+            await this.poolTx.fillBatch(bb);
+            this.batch = bb;
             this.batchBuilded = true;
         }
         // Check server proof is available
@@ -183,7 +218,10 @@ class LoopManager{
             await timeout(2000);
         }
         const res = await this.cliServerProof.setInput(stringifyBigInts(this.batch.getInput()));
-        if (res.status == 200) this.state = state.GET_PROOF;
+        if (res.status == 200) {
+            TIMEOUT_NEXT_STATE = 0;
+            this.state = state.GET_PROOF;
+        } else TIMEOUT_NEXT_STATE = 5000; // retry build or send inputs to server-proof
     }
 
     async _stateProof() {
@@ -205,20 +243,24 @@ class LoopManager{
                 const resForge = await this.opManager.forge(proof.proofA, proof.proofB,
                     proof.proofC, publicInputs);
                 if(resForge.status) {
+                    TIMEOUT_NEXT_STATE = 0;
                     this.commited = false;
-                    this.state = state.UPDATE_REGISTER;
+                    this.state = state.SYNCHRONIZING;
                     this.batchBuilded = false;
                     this.pHashChain--;
                 }
             }
         } else if (statusServer == stateServer.ERROR) {
+            TIMEOUT_NEXT_STATE = 0;
             // reset server-proof and re-send input
             await this.cliServerProof.cancel();
+            await timeout(2000); // time to reset the server-proof 
             this.state = state.BUILD_BATCH;
         } else if (statusServer == stateServer.IDLE) {
+            TIMEOUT_NEXT_STATE = 0;
             // re-send input to server-proof
             this.state = state.BUILD_BATCH;
-        }
+        } else TIMEOUT_NEXT_STATE = 5000; // Server in pending state
     }
 }
 

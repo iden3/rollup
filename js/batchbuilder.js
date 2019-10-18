@@ -36,7 +36,7 @@ module.exports = class BatchBuilder {
             nonce: 0,
             userFee: 0,
             rqOffset: 0,
-            inChain: 0,
+            onChain: 0,
             newAccount: 0
         });
         this.input.rqTxData[i]= 0;
@@ -190,7 +190,7 @@ module.exports = class BatchBuilder {
         this.input.ax[i]= bigInt("0x" +oldState1.ax);
         this.input.ay[i]= bigInt("0x" +oldState1.ay);
 
-        this.input.step[i] = ((!tx.inChain) && tx.step) ? 1 : 0;
+        this.input.step[i] = ((!tx.onChain) && tx.step) ? 1 : 0;
 
         const newState1 = Object.assign({}, oldState1);
         newState1.amount = oldState1.amount.add(loadAmount).sub(effectiveAmount).sub(operatorFee);

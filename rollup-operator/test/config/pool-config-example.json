@@ -1,0 +1,6 @@
+{
+  "maxSlots": 10,               
+  "executableSlots": 1,      
+  "nonExecutableSlots": 1,      
+  "timeout": 1000            
+}

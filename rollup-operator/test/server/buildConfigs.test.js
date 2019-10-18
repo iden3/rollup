@@ -10,12 +10,13 @@ const fs = require("fs");
 const path = require("path");
 
 const configSynchPath = path.join(__dirname, "../config/synch-config-test.json");
+const configPoolPath = path.join(__dirname, "../config/pool-config-test.json");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
 contract("Operator Server", (accounts) => {
     const {
         0: owner,
-        1: id1,
+        1: tokenId,
         2: callerAddress,
     } = accounts;
 
@@ -36,7 +37,7 @@ contract("Operator Server", (accounts) => {
             .send({ gas: 2500000, from: owner });
 
         // Deploy TokenRollup
-        insTokenRollup = await TokenRollup.new(id1, tokenInitialAmount);
+        insTokenRollup = await TokenRollup.new(tokenId, tokenInitialAmount);
 
         // Deploy Verifier
         insVerifier = await Verifier.new();
@@ -50,6 +51,10 @@ contract("Operator Server", (accounts) => {
 
         // load forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoS.address);
+
+        // add token to Rollup
+        await insRollup.addToken(insTokenRollup.address,
+            { from: tokenId, value: web3.utils.toWei("1", "ether") });
     });
 
     it("Should create rollup synch config file", async () => {
@@ -71,6 +76,16 @@ contract("Operator Server", (accounts) => {
             ethAddressCaller: callerAddress,
         };
         fs.writeFileSync(configSynchPath, JSON.stringify(config));
+    });
+
+    it("Should create pool config file", async () => {
+        const config = {
+            maxSlots: 10,               
+            executableSlots: 1,      
+            nonExecutableSlots: 1,      
+            timeout: 1000            
+        };
+        fs.writeFileSync(configPoolPath, JSON.stringify(config));
     });
 
     it("Should expose data to run server test", async () => {

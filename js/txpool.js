@@ -23,7 +23,7 @@ class TXPool {
         this.maxSlots = cfg.maxSlots || 64;
         this.executableSlots = cfg.executableSlots || 16;
         this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
-        this.tieout = 3*3600*1000;
+        this.timeout = 3*3600*1000;
 
         this.rollupDB = rollupDB;
         this.txs = [];
@@ -196,7 +196,7 @@ class TXPool {
 
     _genPurge()  {
         let pCurrent = null;
-        let nPurge =0;
+        let nPurge = 0;
 
         const doPurge = async () => {
             // console.log("Start purge ", nPurge);

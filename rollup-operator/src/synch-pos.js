@@ -1,6 +1,24 @@
 const Web3 = require("web3");
+const winston = require("winston");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
+
+// config winston
+var options = {
+    console: {
+        level: "verbose",
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple(),
+        )
+    },
+};
+
+const logger = winston.createLogger({
+    transports: [
+        new winston.transports.Console(options.console)
+    ]
+});
 
 // global vars
 const blocksPerSlot = 100;
@@ -59,15 +77,14 @@ class SynchPoS {
         // eslint-disable-next-line no-constant-condition
         while(true) {
             try {
+                let info = "POS SYNCH | ";
                 // get last block synched and current blockchain block
                 let lastSynchEra = await this.getLastSynchEra();
                 const currentBlock = await this.web3.eth.getBlockNumber();
                 const currentEra = await this.getCurrentEra();
-                console.log("******************************");
-                console.log(`genesis block: ${this.genesisBlock}`);
-                console.log(`last synchronized era: ${lastSynchEra}`);
-                console.log(`current era: ${currentEra}`);
-                console.log(`current block number: ${currentBlock}`);
+
+                info += `current block number: ${currentBlock} | `;
+                info += `current era: ${currentEra} | `;
 
                 const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
                 if (currentBlock > blockNextUpdate){
@@ -81,16 +98,18 @@ class SynchPoS {
                     await this._updateWinners(lastSynchEra);
                     // update era
                     await this.db.insert(lastEraKey, this._toString(lastSynchEra + 1));
-                    console.log(`Synchronized era ${lastSynchEra+1} correctly`);
                 }
+
                 lastSynchEra = await this.getLastSynchEra();
                 this.totalSynch = ((lastSynchEra / (currentEra + 1)) * 100).toFixed(2);
-                console.log(`Total Synched: ${this.totalSynch} %`);
-                console.log("******************************\n");
+
+                info += `last synchronized era: ${lastSynchEra} | `;
+                info += `Synched: ${this.totalSynch} % | `;
+                logger.info(info);
+
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
-                // console.error(`Message error: ${e.message}`);
-                // console.error(`Error in loop: ${e.stack}`);
+                logger.error(`Message error: ${e.message}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
@@ -197,6 +216,10 @@ class SynchPoS {
         const lastEraSaved = Number(await this.getLastSynchEra());
         if (lastEraSaved <= currentEra) return false;
         return true;
+    }
+
+    async getSynchPercentage() {
+        return this.totalSynch;
     }
 }
 

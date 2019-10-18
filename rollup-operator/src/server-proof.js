@@ -1,8 +1,27 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const morgan = require("morgan");
+const winston = require("winston");
 
 const { timeout } = require("../src/utils");
+
+// Configure winston logger
+var options = {
+    console: {
+        level: "verbose",
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple(),
+        )
+    },
+};
+
+const logger = winston.createLogger({
+    transports: [
+        new winston.transports.Console(options.console)
+    ]
+});
 
 // global vars
 const port = 10001;
@@ -34,21 +53,21 @@ async function genProof() {
         if (!isCancel) await timeout(loopTimeout);
         else break;
     }
-    // await timeout(timeoutProof);
     if(!isCancel) currentState = state.FINISHED;
     else {
         isCancel = false;
-        console.log("CANCEL PROOF GENERATION");
+        logger.verbose("CANCEL PROOF GENERATION");
     }
 }
 ///// Server configuration
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+app.use(morgan("dev"));
 
 app.post("/input", async (req, res) => {
     testProof.input = req.body;
-    console.log("input received");
+    logger.info("input received");
     currentState = state.PENDING;
     genProof();
     res.sendStatus(200);
@@ -66,12 +85,12 @@ app.get("/status", async (req, res) => {
 app.post("/cancel", async (req, res) => {
     if (currentState == state.PENDING) isCancel = true;
     currentState = state.IDLE;
-    console.log("Reset server");
+    logger.info("Reset server");
     res.sendStatus(200);
 });
 
 ///// Run server
 const server = app.listen(port, "127.0.0.1", () => {
     const address = server.address().address;
-    console.log(`Server proof running on http://${address}:${port}`);
+    logger.info(`Server proof running on http://${address}:${port}`);
 });

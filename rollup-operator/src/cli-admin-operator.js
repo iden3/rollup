@@ -21,6 +21,10 @@ class CliAdminOperator {
     withdraw(opId) {
         return axios.post(`${this.url}/withdraw/${opId}`);
     }
+    
+    setConversion(conversion) {
+        return axios.post(`${this.url}/pool/conversion`, { conversion });
+    }
 }
 
 module.exports = CliAdminOperator;
