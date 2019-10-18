@@ -15,7 +15,7 @@ const LevelDb = require("../../../rollup-utils/level-db");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
-const Pool = require("../pool-tx");
+const Pool = require("../../../js/txpool");
 const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
 const LoopManager = require("../loop-manager");
@@ -39,7 +39,7 @@ const logger = winston.createLogger({
 
 // load environment data
 const pathEnvironmentFile = `${__dirname}/config.env`;
-require("dotenv").config({ path: pathEnvironmentFile});
+require("dotenv").config({ path: pathEnvironmentFile });
 
 // load rollup synchronizers configuration file
 let synchConfig;
@@ -47,6 +47,16 @@ if (process.env.CONFIG_SYNCH) {
     synchConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_SYNCH, "utf8"));
 } else {
     synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-config.json", "utf8"));
+}
+
+// load pool configuration file
+let pool;
+let poolConfig;
+
+if (process.env.CONFIG_POOL) {
+    poolConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_POOL, "utf8"));
+} else {
+    poolConfig = JSON.parse(fs.readFileSync("./pool-config.json", "utf8"));
 }
 
 ////////////////
@@ -81,13 +91,6 @@ const opManager = new OperatorManager(
     synchConfig.ethNodeUrl,
     synchConfig.rollupPoS.address,
     synchConfig.rollupPoS.abi);
-
-///////////////////////
-///// POOL OFF-CHAIN TX
-///////////////////////
-const maxTx = 10;
-// TODO: Add final pool implementation
-const pool = new Pool(maxTx);
 
 ////////////////////////
 /////CLIENT PROOF SERVER
@@ -125,6 +128,10 @@ async function mainLoad() {
 
     // start synchronizer loop
     rollupSynch.synchLoop();
+
+    // Intantiate pool
+    const conversion = {};
+    pool = await Pool(initRollupDb, conversion, poolConfig);
 
     ////////////////////
     ///// LOOP MANAGER
@@ -199,6 +206,11 @@ appAdmin.post("/withdraw/:opId", async (req, res) => {
     res.sendStatus(200);
 });
 
+appAdmin.post("/pool/conversion", async (req, res) => {
+    await pool.setConversion(req.body.conversion);
+    res.sendStatus(200);
+});
+
 const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
     const address = serverAdmin.address().address;
     logger.info(`Server admin running on http://${address}:${portAdmin}`);
@@ -246,7 +258,7 @@ appExternal.get("/info/operators", async (req, res) => {
 
 appExternal.post("/offchain/send", async (req, res) => {
     const tx = req.body.transaction;
-    pool.addTx(tx);
+    await pool.addTx(tx);
     res.sendStatus(200);
 });
 

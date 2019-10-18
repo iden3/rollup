@@ -302,7 +302,9 @@ class Synchronizer {
         const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
         // add on-chain txs
         const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${currentBatchDepth-1}`);
-        for (const key of keysOnChain) bb.addTx(this._getTxOnChain(this._fromString(await this.db.get(key))));
+        for (const key of keysOnChain) {
+            bb.addTx(this._getTxOnChain(this._fromString(await this.db.get(key))));
+        }
         return bb;
     }
 

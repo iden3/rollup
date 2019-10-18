@@ -206,7 +206,8 @@ class LoopManager{
 
         if(!this.batchBuilded) {
             const bb = await this.rollupSynch.getBatchBuilder();
-            this.batch = await this.poolTx.fillBatch(bb);
+            await this.poolTx.fillBatch(bb);
+            this.batch = bb;
             this.batchBuilded = true;
         }
         // Check server proof is available

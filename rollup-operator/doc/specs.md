@@ -24,6 +24,8 @@ Also, it provides two api:
   - unregister from PoS
 - http POST `/withdraw`
   - withdraw stake
+- http POST `/pool/conversion`
+  - set pool conversion parameters
 
 ## Api external
 - http POST `/offchain/send`
@@ -38,11 +40,14 @@ Also, it provides two api:
 - http GET `/info/ethaddress/:ethAddress`
   - get current balance tree state of all entries with `ethAddress`
 
-- http GET `/general`
+- http GET `/info/general`
   - get general information about the `operator`
 
 - http GET `/info/operators`
   - get list of avaulable operators
+
+- http GET `/state`
+  - get full state of rollup database
 
 # Modules in detail
 ## Operator Manager
