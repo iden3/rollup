@@ -11,6 +11,10 @@ const SynchPoS = require("../src/synch-pos");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
 
+// timeouts test
+const timeoutSynch = 15000;
+const timeoutCheck = 6000;
+
 contract("Synchronizer PoS", async (accounts) => {
 
     async function checkSlot(slots) {
@@ -22,7 +26,7 @@ contract("Synchronizer PoS", async (accounts) => {
     }
 
     async function checkFullSynch(){
-        await timeout(6000);
+        await timeout(timeoutCheck);
         const isSynched = await synchPoS.isSynched();
         expect(isSynched).to.be.equal(true);
     }
@@ -86,7 +90,7 @@ contract("Synchronizer PoS", async (accounts) => {
         let currentBlock = await web3.eth.getBlockNumber();
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
         currentBlock = await web3.eth.getBlockNumber();
-        await timeout(11000);
+        await timeout(timeoutSynch);
         // check one operator is added
         let listOperators = await synchPoS.getOperators();
         expect(listOperators[operators[0].idOp.toString()].controllerAddress)
@@ -99,7 +103,7 @@ contract("Synchronizer PoS", async (accounts) => {
         // expect no winners for era 0 and era 1
         for(const winner of winners) expect(winner).to.be.equal(-1);
         await timeTravel.addBlocks(blockPerEra); // era 1
-        await timeout(11000);
+        await timeout(timeoutSynch);
         winners = await synchPoS.getRaffleWinners();
         // expect no winners for era 1 and operator winner for era 2
         for(let i = 0; i < winners.length; i++) {
@@ -113,7 +117,7 @@ contract("Synchronizer PoS", async (accounts) => {
     it("Should remove operator and synch", async () => {
         await insRollupPoS.removeOperator(operators[0].idOp, { from: operators[0].address });
         await timeTravel.addBlocks(blockPerEra); // era 3
-        await timeout(13000);
+        await timeout(timeoutSynch);
         let winners = await synchPoS.getRaffleWinners();
         // expect winner for era 3 and no winner for era 4
         for(let i = 0; i < winners.length; i++) {
@@ -122,13 +126,13 @@ contract("Synchronizer PoS", async (accounts) => {
         }
         await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 4
-        await timeout(13000);
+        await timeout(timeoutSynch);
         winners = await synchPoS.getRaffleWinners();
         // expect no winners for era 4 and era 5
         for(const winner of winners) expect(winner).to.be.equal(-1);
         await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 5
-        await timeout(13000);
+        await timeout(timeoutSynch);
         const listOperators = await synchPoS.getOperators();
         expect(Object.keys(listOperators).length).to.be.equal(0);
         await checkFullSynch();
@@ -142,7 +146,7 @@ contract("Synchronizer PoS", async (accounts) => {
                 { from: operators[i+1].address, value: web3.utils.toWei("2", "ether") });
         }
         await timeTravel.addBlocks(blockPerEra); // era 6
-        await timeout(13000);
+        await timeout(timeoutSynch);
         let winners = await synchPoS.getRaffleWinners();
         // expect no winner for era 5 and winner for era 6
         for(let i = 0; i < winners.length; i++) {
@@ -151,13 +155,13 @@ contract("Synchronizer PoS", async (accounts) => {
         }
         await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 7
-        await timeout(20000);
+        await timeout(timeoutSynch);
         winners = await synchPoS.getRaffleWinners();
         // expect winner for era 6 and winner for era 7
         for(const winner of winners) expect(winner).to.be.within(1, numOp2Add);
         await checkSlot(await synchPoS.getSlotWinners());
         await timeTravel.addBlocks(blockPerEra); // era 8
-        await timeout(13000);
+        await timeout(timeoutSynch);
         const listOperators = await synchPoS.getOperators();
         for (let i = 0; i < numOp2Add; i++ ) {
             const value = listOperators[operators[i+1].idOp.toString()];

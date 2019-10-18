@@ -109,16 +109,17 @@ class TXPool {
 
         const tmpState = new TmpState(this.rollupDB);
 
-        if (tmpState.canProcess(tx) == "NO") {
+        const canProcessRes = await tmpState.canProcess(tx);
+        if (canProcessRes == "NO") {
             console.log("Invalid TX");
             return false;
         }
-
+        
         if (!utils.verifyTxSig(tx)) {
             console.log("Invalid Signature");
             return false;
         }
-
+        
         tx.slot=this._allocateFreeSlot();
         if (tx.slot == -1) {
             await this.purge();
@@ -409,7 +410,6 @@ class TXPool {
                 availableTxs.push(this.txs[i]);
             }
         }
-
         const fnSort = (a,b) => { return a.adjustedFee - b.adjustedFee; };
 
         // Sort the TXs reverse normalized Fee (First is the most profitable)

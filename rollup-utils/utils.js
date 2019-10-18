@@ -15,9 +15,8 @@ function num2Buff(num, size) {
 }
 
 function padZeroes(str, length) {
-    while (str.length < length) {
-        str = `0${str}`;
-    }
+    if (length > str.length)
+        str = "0".repeat(length - str.length) + str;
     return str;
 }
 

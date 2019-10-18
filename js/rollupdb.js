@@ -49,7 +49,7 @@ class RollupDB {
     }
 
     async getStateByAxAy(ax, ay) {
-        const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x"+ay));
+        const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x" + ay));
 
         const idxs = await this.db.get(keyAxAy);
         const promises = [];

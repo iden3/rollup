@@ -81,7 +81,8 @@ describe("Server proof with client", async function () {
 
     it("Should get FINISHED state and proof", async () => {
         // wait 5 seconds to server generate proof
-        await timeout(6000);
+        const timeoutWait = 6000;
+        await timeout(timeoutWait);
         const res = await client.getStatus();
         expect(res.data.state).to.be.equal(state.FINISHED);
         expect(res.data.proof.input.key1).to.be.equal(input.key1);
@@ -89,10 +90,11 @@ describe("Server proof with client", async function () {
     });
 
     it("Should post input and cancel while PENDING", async () => {
+        const timeoutActions = 1000;
         await client.setInput(input);
-        await timeout(1000);
+        await timeout(timeoutActions);
         await client.cancel();
-        await timeout(1000);
+        await timeout(timeoutActions);
         const res = await client.getStatus();
         expect(res.data.state).to.be.equal(state.IDLE);
     });

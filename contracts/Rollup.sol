@@ -88,20 +88,20 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     /**
      * @dev Event called when any on-chain transaction has benn done
      * contains all data required for the operator to update balance tree
-    */
+     */
     event OnChainTx(uint batchNumber, bytes32 txData, uint128 loadAmount,
         address ethAddress, uint256 Ax, uint256 Ay);
 
     /**
      * @dev Event called when a batch is forged
      * Contains which batch has been forged and on which block number
-    */
+     */
     event ForgeBatch(uint batchNumber, uint blockNumber);
 
     /**
      * @dev Event called when a token is added to token list
      * Contains token address and its index inside rollup token list
-    */
+     */
     event AddToken(address tokenAddress, uint tokenId);
 
     /**

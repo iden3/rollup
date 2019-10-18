@@ -9,7 +9,7 @@ const bodyParser = require("body-parser");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
 const RollupDB = require("../../../js/rollupdb");
-const { stringifyBigInts } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
 const MemDb = require("../../../rollup-utils/mem-db");
 const LevelDb = require("../../../rollup-utils/level-db");
 
@@ -179,36 +179,56 @@ const portAdmin = process.env.OPERATOR_PORT_ADMIN;
 
 appAdmin.post("/loadwallet", async (req, res) => {
     const walletObj = req.body.wallet;
-    const wallet = await ethers.Wallet.fromEncryptedJson(walletObj, req.body.pass);
-    opManager.loadWallet(wallet);
-    res.sendStatus(200);
+    try {
+        const wallet = await ethers.Wallet.fromEncryptedJson(walletObj, req.body.pass);
+        opManager.loadWallet(wallet);
+        res.sendStatus(200);
+    } catch (error) {
+        res.send(400).status(`Message error: ${error.message}`);
+    }
 });
 
 appAdmin.post("/register/:stake/", async (req, res) => {
     const stakeValue = req.params.stake;
     const url = req.body.url;
     const seed = req.body.seed;
-    await loopManager.loadSeedHashChain(seed);
-    const resManager = await loopManager.register(stakeValue, url);
-    if (resManager) res.sendStatus(200);
-    else res.status(500).send("Register cannot be done");
+    try {
+        await loopManager.loadSeedHashChain(seed);
+        const resManager = await loopManager.register(stakeValue, url);
+        if (resManager) res.sendStatus(200);
+        else res.status(500).send("Register cannot be done");
+    } catch (error) {
+        res.send(400).status(`Message error: ${error.message}`);
+    }
 });
 
 appAdmin.post("/unregister/:opId", async (req, res) => {
     const opId = req.params.opId;
-    await opManager.unregister(opId);
-    res.sendStatus(200);
+    try {
+        await opManager.unregister(opId);
+        res.sendStatus(200);
+    } catch (error) {
+        res.send(400).status(`Message error: ${error.message}`);
+    }
 });
 
 appAdmin.post("/withdraw/:opId", async (req, res) => {
     const opId = req.params.opId;
-    await opManager.withdraw(opId);
-    res.sendStatus(200);
+    try {
+        await opManager.withdraw(opId);
+        res.sendStatus(200);
+    } catch (error) {
+        res.send(400).status(`Message error: ${error.message}`);
+    }
 });
 
 appAdmin.post("/pool/conversion", async (req, res) => {
-    await pool.setConversion(req.body.conversion);
-    res.sendStatus(200);
+    try {
+        await pool.setConversion(req.body.conversion);
+        res.sendStatus(200);
+    } catch (error) {
+        res.send(400).status(`Message error: ${error.message}`);
+    }
 });
 
 const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
@@ -224,42 +244,71 @@ appExternal.use(morgan("dev"));
 const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
 
 appExternal.get("/info/id/:id", async (req, res) => {
-    const info = await rollupSynch.getStateById(req.params.id);
-    res.send(stringifyBigInts(info));
+    const id = req.params.id;
+    try {
+        const info = await rollupSynch.getStateById(id);
+        res.send(stringifyBigInts(info));
+    } catch (error){
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
  
 appExternal.get("/info/axay/:Ax/:Ay", async (req, res) => {
     const Ax = req.params.Ax;
     const Ay = req.params.Ay;
-    const info = await rollupSynch.getStateByAxAy(Ax, Ay);
-    res.status(200).json(stringifyBigInts(info));
+    try {
+        const info = await rollupSynch.getStateByAxAy(Ax, Ay);
+        res.status(200).json(stringifyBigInts(info));
+    } catch (error){
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
 
 appExternal.get("/info/ethaddress/:ethAddress", async (req, res) => {
     const ethAddress = req.params.ethAddress;
-    const info = await rollupSynch.getStateByEthAddr(ethAddress);
-    res.status(200).json(stringifyBigInts(info));
+    try { 
+        const info = await rollupSynch.getStateByEthAddr(ethAddress);
+        res.status(200).json(stringifyBigInts(info));
+    } catch (error){
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
 
 appExternal.get("/state", async (req, res) => {
-    const state = await rollupSynch.getState();
-    res.status(200).json(stringifyBigInts(state));
+    try {
+        const state = await rollupSynch.getState();
+        res.status(200).json(stringifyBigInts(state));    
+    } catch (error){
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
 
 appExternal.get("/info/general", async (req, res) => {
-    const generalInfo = await getGeneralInfo(); 
-    res.status(200).json(generalInfo);
+    try {
+        const generalInfo = await getGeneralInfo(); 
+        res.status(200).json(generalInfo);
+    } catch (error){
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
 
 appExternal.get("/info/operators", async (req, res) => {
-    const operatorList = await posSynch.getOperators();
-    res.status(200).json(stringifyBigInts(operatorList));
+    try {
+        const operatorList = await posSynch.getOperators();
+        res.status(200).json(stringifyBigInts(operatorList));
+    } catch (error) {
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
 
 appExternal.post("/offchain/send", async (req, res) => {
-    const tx = req.body.transaction;
-    await pool.addTx(tx);
-    res.sendStatus(200);
+    const tx = unstringifyBigInts(req.body.tx);
+    try {
+        await pool.addTx(tx);
+        res.sendStatus(200);
+    } catch (error) {
+        res.status(400).send(`Message error: ${error.message}`);
+    }
 });
 
 const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {

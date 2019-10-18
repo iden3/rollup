@@ -29,6 +29,10 @@ const Pool = require("../src/pool-tx");
 const CliServerProof = require("../src/cli-proof-server");
 const LoopManager = require("../src/loop-manager");
 
+// timeouts test
+const timeoutSynch = 10000;
+const timeoutFinal = 40000;
+
 contract("Loop Manager", async (accounts) => { 
 
     const {
@@ -171,7 +175,7 @@ contract("Loop Manager", async (accounts) => {
         const currentBlock = await web3.eth.getBlockNumber();
         const genesisBlock = posSynch.genesisBlock;
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
-        await timeout(10000);
+        await timeout(timeoutSynch);
         const listOperators = await posSynch.getOperators();
         // check address operator is in list operators
         let found = false;
@@ -185,16 +189,16 @@ contract("Loop Manager", async (accounts) => {
 
     it("Should wait until operator turns", async () => {
         await timeTravel.addBlocks(blockPerEra); // era 1
-        await timeout(10000);
+        await timeout(timeoutSynch);
     });
 
     it("Should forge genesis block", async () => {
         await timeTravel.addBlocks(blockPerEra); // era 2
-        await timeout(10000);
+        await timeout(timeoutSynch);
     });
 
     it("Should forge another empty block", async () => {
-        await timeout(20000);
+        await timeout(timeoutFinal);
     });
 
     describe("State check", () => {
@@ -218,7 +222,7 @@ contract("Loop Manager", async (accounts) => {
 
         it("Should forge at least one batch", async () => {
             const lastBatch = await rollupSynch.getLastBatch();
-            expect(lastBatch).to.be.above(0);
+            expect(lastBatch).to.be.above(-1);
         });
     });
 });

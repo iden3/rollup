@@ -11,7 +11,6 @@ const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
 const path = require("path");
-const { BabyJubWallet } = require("../../../rollup-utils/babyjub-wallet");
 const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
