@@ -86,10 +86,26 @@ contract("Operator", (accounts) => {
         const genesisBlock = Number(await insRollupPoS.genesisBlock());
         let currentBlock = await web3.eth.getBlockNumber();
         await addBlocks(genesisBlock - currentBlock + 1); // move to era 0
-        await timeout(5000); // await time to add all blocks
+        await timeout(5000); // wait time to add all blocks
         await addBlocks(blockPerEra); // move to era 1
-        await timeout(5000); // await time to add all blocks
+        await timeout(5000); // wait time to add all blocks
         await addBlocks(blockPerEra); // move to era 2
-        await timeout(5000); // await time to add all blocks
+        await timeout(5000); // wait time to add all blocks
+    });
+
+    it("Should forge at least one batch", async () => {
+        let batchForged = false;
+        let counter = 0;
+        while(!batchForged && counter < 10) {
+            const res = await cliExternalOp.getGeneralInfo();
+            const info = res.data;
+            if (info.rollupSynch.lastBatchSynched > 0) {
+                batchForged = true;
+                break;
+            } 
+            await timeout(10000);
+            counter += 1;
+        }
+        expect(batchForged).to.be.equal(true);
     });
 });

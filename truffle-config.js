@@ -71,6 +71,14 @@ module.exports = {
             network_id: 3, // Ropsten's id
             gas: 5500000, // Ropsten has a lower block limit than mainnet
         },
+        goerli: {
+            provider: () => new HDWalletProvider(
+                process.env.MNEMONIC,
+                process.env.GOERLI_URL,
+            ),
+            network_id: 5, // Goerli's id
+            gas: 8000000, // Ropsten has a lower block limit than mainnet
+        },
 
     // Useful for private networks
     // private: {

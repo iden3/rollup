@@ -11,5 +11,10 @@ Commands are called from repository `rollup` root directory
   - Proof-generator: `node ./rollup-operator/src/server-proof.js`
   - Operator: `node ./rollup-operator/src/server/operator.js`
 
-- Run test
+- Run test #1
+  - test one operator registers to rollupPoS and forge a block
 `truffle test ./rollup-operator/test/server/operator.test.js`
+
+- Run test #2
+  - test all api-external functions
+`truffle test ./rollup-operator/test/server/op-external-api.test.js`

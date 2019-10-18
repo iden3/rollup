@@ -1,8 +1,27 @@
 const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
+const winston = require("winston");
+
 const rollupUtils = require("../../rollup-utils/rollup-utils");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
+
+// config winston
+var options = {
+    console: {
+        level: "verbose",
+        format: winston.format.combine(
+            winston.format.colorize(),
+            winston.format.simple(),
+        )
+    },
+};
+
+const logger = winston.createLogger({
+    transports: [
+        new winston.transports.Console(options.console)
+    ]
+});
 
 // global vars
 const TIMEOUT_ERROR = 5000;
@@ -64,23 +83,21 @@ class Synchronizer {
         // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
+                let info = "SYNCH | ";
                 // get last block synched and current blockchain block
                 let lastSynchBlock = await this.getLastSynchBlock();
                 const currentBlock = await this.web3.eth.getBlockNumber();
-                console.log("******************************");
-                console.log(`creation block: ${this.creationBlock}`);
-                console.log(`last synchronized block: ${lastSynchBlock}`);
-                console.log(`current block number: ${currentBlock}\n`);
 
                 if (lastSynchBlock < this.creationBlock) {
                     await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
                     lastSynchBlock = this.creationBlock;
                 }
+
                 const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
                 let lastBatchSaved = await this.getLastBatch();
-
-                console.log(`current batch depth: ${currentBatchDepth}`);
-                console.log(`last batch saved: ${lastBatchSaved}`);
+                
+                info += `current block number: ${currentBlock} | `;
+                info += `current batch depth: ${currentBatchDepth} | `;
 
                 if ((currentBatchDepth != 0) && (lastBatchSaved < currentBatchDepth)) {
                     const targetBlockNumber = Math.min(currentBlock, lastSynchBlock + 10);
@@ -93,20 +110,20 @@ class Synchronizer {
                         nextBatchSynched = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, targetBlockNumber);
                     }
                     await this._updateEvents(logs, lastBatchSaved, nextBatchSynched, targetBlockNumber);
-                    console.log("Events synchronized correctly");
                 } else {
-                    console.log("No batches has been forged");
-                    // update last block synched
                     await this.db.insert(lastBlockKey, this._toString(currentBlock));
                 }
                 lastBatchSaved = await this.getLastBatch();
+
                 this.totalSynch = (currentBatchDepth == 0) ? Number(100).toFixed(2) : ((lastBatchSaved / currentBatchDepth) * 100).toFixed(2);
-                console.log(`Total Synched: ${this.totalSynch} %`);
-                console.log("******************************\n");
+                
+                info += `last batch saved: ${lastBatchSaved} | `;
+                info += `Synched: ${this.totalSynch} % | `;
+                logger.info(info);
+
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
-                console.error(`Message error: ${e.message}`);
-                console.error(`Error in loop: ${e.stack}`);
+                logger.error(`Message error: ${e.message}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
@@ -285,7 +302,9 @@ class Synchronizer {
         const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
         // add on-chain txs
         const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${currentBatchDepth-1}`);
-        for (const key of keysOnChain) bb.addTx(this._getTxOnChain(this._fromString(await this.db.get(key))));
+        for (const key of keysOnChain) {
+            bb.addTx(this._getTxOnChain(this._fromString(await this.db.get(key))));
+        }
         return bb;
     }
 
