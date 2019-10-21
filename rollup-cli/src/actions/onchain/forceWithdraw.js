@@ -19,7 +19,6 @@ async function forceWithdraw(urlNode, addressSC, balance, tokenId, walletJson, p
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
-    const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
     walletEth = walletEth.connect(provider);
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
     const overrides = {
@@ -40,7 +39,7 @@ async function forceWithdraw(urlNode, addressSC, balance, tokenId, walletJson, p
                     if (correctLeaf === []) {
                         reject(new Error("There're no leafs with this wallet (babyjub) and this tokenID"));
                     }
-                    const receipt = await contractWithSigner.forceWithdraw(correctLeaf.id, balance, pubKeyBabyjub, overrides);
+                    const receipt = await contractWithSigner.forceWithdraw(correctLeaf.id, balance, overrides);
                     resolve(receipt);
                 })
                 .catch((error) => {

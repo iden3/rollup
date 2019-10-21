@@ -21,7 +21,6 @@ async function withdraw(urlNode, addressSC, balance, tokenId, walletJson, passwo
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
-    const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
     walletEth = walletEth.connect(provider);
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
 
@@ -39,7 +38,7 @@ async function withdraw(urlNode, addressSC, balance, tokenId, walletJson, passwo
                         reject(new Error("There're no leafs with this wallet (babyjub) and this tokenID"));
                     }
                     const receipt = await contractWithSigner.withdraw(correctLeaf.id, balance, tokenId, correctLeaf.exitRoot,
-                        correctLeaf.nonce, pubKeyBabyjub, correctLeaf.sibilings);
+                        correctLeaf.nonce, correctLeaf.sibilings);
                     resolve(receipt);
                 })
                 .catch((error) => {
