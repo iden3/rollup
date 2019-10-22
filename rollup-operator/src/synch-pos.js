@@ -82,11 +82,12 @@ class SynchPoS {
                 let lastSynchEra = await this.getLastSynchEra();
                 const currentBlock = await this.web3.eth.getBlockNumber();
                 const currentEra = await this.getCurrentEra();
-
+                const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
+                
                 info += `current block number: ${currentBlock} | `;
+                info += `next block update: ${blockNextUpdate} | `;
                 info += `current era: ${currentEra} | `;
 
-                const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
                 if (currentBlock > blockNextUpdate){
                     const logs = await this.contractPoS.getPastEvents("allEvents", {
                         fromBlock: lastSynchEra ? (blockNextUpdate - blocksNextInfo) : this.creationBlock,

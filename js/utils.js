@@ -2,6 +2,12 @@ const bigInt = require("snarkjs").bigInt;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
 
+function padZeros(str, length) {
+    if (length > str.length)
+        str = "0".repeat(length - str.length) + str;
+    return str;
+}
+
 function float2fix(fl) {
     const m = (fl & 0x3FF);
     const e = (fl >> 11);
@@ -111,7 +117,7 @@ function array2state(a) {
         amount: bigInt(a[1]),
         ax: bigInt(a[2]).toString(16),
         ay: bigInt(a[3]).toString(16),
-        ethAddress: "0x" + bigInt(a[4]).toString(16),
+        ethAddress: "0x" + padZeros(bigInt(a[4]).toString(16), 40),
     };
 }
 
@@ -132,14 +138,12 @@ function verifyTxSig(tx) {
             data,
             tx.rqTxData || 0
         ]);
-
         const signature = {
             R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
             S: bigInt(tx.s)
         };
-
+        
         const pubKey = [ bigInt("0x" + tx.ax), bigInt("0x" + tx.ay)];
-
         return eddsa.verifyPoseidon(h, signature, pubKey);
     } catch(E) {
         return false;

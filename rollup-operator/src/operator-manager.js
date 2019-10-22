@@ -2,7 +2,7 @@ const Web3 = require("web3");
 
 class OperatorManager {
     constructor(nodeUrl, contractAddress, abi){
-        this.wallet = {};
+        this.wallet = undefined;
         this.nodeUrl = nodeUrl;
         this.posAddress = contractAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));

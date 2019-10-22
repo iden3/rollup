@@ -12,9 +12,12 @@ Commands are called from repository `rollup` root directory
   - Operator: `node ./rollup-operator/src/server/operator.js`
 
 - Run test #1
-  - test one operator registers to rollupPoS and forge a block
+  - test one operator registers to rollupPoS and forge a batch
 `truffle test ./rollup-operator/test/server/operator.test.js`
 
 - Run test #2
   - test all api-external functions
+    - one deposit on-chain
+    - forge genesis batch and next one
+    - Retrieve information with api-external 
 `truffle test ./rollup-operator/test/server/op-external-api.test.js`

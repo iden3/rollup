@@ -11,7 +11,7 @@ const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
 const path = require("path");
-const { BabyJubWallet } = require("../../../rollup-utils/babyjub-wallet");
+const { BabyJubWallet, verifyBabyJub } = require("../../../rollup-utils/babyjub-wallet");
 const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
@@ -19,6 +19,7 @@ const CliAdminOp = require("../../src/cli-admin-operator");
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
 const cliDeposit = require("../../../rollup-cli/src/actions/onchain/deposit");
+const cliSendOffChain = require("../../../rollup-cli/src/actions/offchain/send"); 
 
 // This test assumes 'server-proof' is running locally on port 10001
 // This test assumes 'operator' api-admin is running locally on port 9000
@@ -90,7 +91,7 @@ contract("Operator", (accounts) => {
             value: web3.utils.toWei(initBalance.toString(), "ether")});
         walletOpEnc = await walletOp.encrypt(passphrase);
 
-        // load client wallet
+        // load rollup user wallet
         rollupWallet = await Wallet.fromMnemonic(mnemonic);
         walletEth = rollupWallet.ethWallet.wallet;
         walletBaby = rollupWallet.babyjubWallet;
@@ -141,12 +142,17 @@ contract("Operator", (accounts) => {
     });
 
     it("Should do a deposit", async () => {
-        const tokenId = 0;
+        const token = 0;
         const amountDeposit = 10;
-        let resDeposit= await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, tokenId, 
-            encryptedWallet, pass, Rollup.abi);
+        // let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, tokenId, 
+        //     encryptedWallet, pass, Rollup.abi);
+        // await resDeposit.wait();
 
-        await resDeposit.wait();
+        // Approve token to tokenId address
+        await insTokenRollup.approve(insRollup.address, amountDeposit, { from: tokenId });
+        await insRollup.deposit(amountDeposit, token, walletEth.address,
+            [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()],
+            { from: tokenId, value: web3.utils.toWei("1", "ether") });
     });
 
     it("Should get general information", async () => { 
@@ -185,7 +191,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getGeneralInfo();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 1) {
+            if (info.rollupSynch.lastBatchSynched > 0) {
                 batchForged = true;
                 break;
             } 
@@ -195,17 +201,32 @@ contract("Operator", (accounts) => {
         expect(batchForged).to.be.equal(true);
     });
 
+    describe("Should retrieve leaf information", async () => {
+        let id;
+        let walletAx;
+        let walletAy;
 
-    it("Should retrieve leaf information by Id", async () => { 
-        const idBalanceTree = 0;
-        const res = await cliExternalOp.getInfoByIdx(idBalanceTree);
+        it("by Ax, Ay", async () => { 
+            walletAx = walletBaby.publicKey[0].toString(16);
+            walletAy = walletBaby.publicKey[1].toString(16);
+            const resAxAy = await cliExternalOp.getInfoByAxAy(walletAx, walletAy);
+            id = resAxAy.data[0].idx;
+        });
+
+        it("by Id", async () => { 
+            const resId = await cliExternalOp.getInfoByIdx(id);
+            expect(resId.data.ax).to.be.equal(walletAx);
+            expect(resId.data.ay).to.be.equal(walletAy);
+        });
+
+        it("by EthAddress", async () => { 
+            const walletEthAddress = walletEth.address.toString();
+            const resAthAddress = await cliExternalOp.getInfoByEthAddr(walletEthAddress);
+            expect(resAthAddress.data[0].idx).to.be.equal(id);
+        });
     });
 
-    // it("Should retrieve leaf information by Ax, Ay", async () => { 
+    it("Should add off-chain transaction to the pool", async () => {
         
-    // });
-
-    // it("Should retrieve leaf information by EthAddress", async () => { 
-        
-    // });
+    });
 });

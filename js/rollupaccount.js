@@ -64,7 +64,6 @@ module.exports = class RollupAccount {
             data,
             tx.rqTxData || 0
         ]);
-
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
         tx.r8x = signature.R8[0];
         tx.r8y = signature.R8[1];

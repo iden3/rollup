@@ -84,12 +84,15 @@ class Wallet {
         const h = hash([
             IDEN3_ROLLUP_TX,
             data,
-            tx.rqData || 0,
+            tx.rqTxData || 0,
         ]);
-        const signature = eddsa.signPoseidon(this.babyjubWallet.privateKey.toString('hex'), h);
+
+        const signature = eddsa.signPoseidon(this.babyjubWallet.privateKey, h);
         tx.r8x = signature.R8[0];
         tx.r8y = signature.R8[1];
         tx.s = signature.S;
+        tx.ax = this.babyjubWallet.publicKey[0].toString(16);
+        tx.ay = this.babyjubWallet.publicKey[1].toString(16);
     }
 }
 

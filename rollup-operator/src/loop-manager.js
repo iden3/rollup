@@ -33,8 +33,8 @@ const stateServer = {
 
 const state = {
     SYNCHRONIZING: 0,
-    UPDATE_REGISTER: 1,
-    REGISTER: 2,
+    UPDATE_OPERATORS: 1,
+    CHECK_WINNERS: 2,
     WAIT_FORGE: 3,
     BUILD_BATCH: 4,
     GET_PROOF: 5,
@@ -74,12 +74,14 @@ class LoopManager{
                     await this._fullySynch();
                     break;
 
-                case state.UPDATE_REGISTER: // check if operator is registered
+                // update operators
+                // if operator has been loaded, check if it is registered
+                case state.UPDATE_OPERATORS: 
                     info += "UPDATE OPERATORS";
-                    this._checkRegister();
+                    await this._checkRegister();
                     break;
                 
-                case state.REGISTER: // Check if operator is the winner
+                case state.CHECK_WINNERS: // Check if operator is the winner
                     info += "CHECK OPERATORS";
                     await this._checkWinner();
                     break;
@@ -132,24 +134,26 @@ class LoopManager{
         if (rollupSynched & posSynched) { // 100% synched
             TIMEOUT_NEXT_STATE = 0;
             if (this.flagWaiting) this.state = state.BUILD_BATCH;
-            else this.state = state.UPDATE_REGISTER;
+            else this.state = state.UPDATE_OPERATORS;
         }
     }
 
     async _checkRegister() {
-        const opAddress = this.opManager.wallet.address;
         const listOpRegistered = await this.posSynch.getOperators();
         await this._purgeRegisterOperators(listOpRegistered);
-        for (const opInfo of Object.values(listOpRegistered)) {
-            if (opInfo.controllerAddress == opAddress.toString()) {
-                const opId = Number(opInfo.operatorId);
-                if (!this.registerId.includes(opId))
-                    this.registerId.push(Number(opInfo.operatorId));
+        if (this.opManager.wallet != undefined) {
+            const opAddress = this.opManager.wallet.address;
+            for (const opInfo of Object.values(listOpRegistered)) {
+                if (opInfo.controllerAddress == opAddress.toString()) {
+                    const opId = Number(opInfo.operatorId);
+                    if (!this.registerId.includes(opId))
+                        this.registerId.push(Number(opInfo.operatorId));
+                }
             }
         }
         if (this.registerId.length) {
             TIMEOUT_NEXT_STATE = 0;
-            this.state = state.REGISTER;
+            this.state = state.CHECK_WINNERS;
         } else {
             TIMEOUT_NEXT_STATE = 5000;
             this.state = state.SYNCHRONIZING;
@@ -243,7 +247,7 @@ class LoopManager{
                 const resForge = await this.opManager.forge(proof.proofA, proof.proofB,
                     proof.proofC, publicInputs);
                 if(resForge.status) {
-                    TIMEOUT_NEXT_STATE = 0;
+                    TIMEOUT_NEXT_STATE = 15000;
                     this.commited = false;
                     this.state = state.SYNCHRONIZING;
                     this.batchBuilded = false;
@@ -251,13 +255,13 @@ class LoopManager{
                 }
             }
         } else if (statusServer == stateServer.ERROR) {
-            TIMEOUT_NEXT_STATE = 0;
+            TIMEOUT_NEXT_STATE = 2000;
             // reset server-proof and re-send input
             await this.cliServerProof.cancel();
             await timeout(2000); // time to reset the server-proof 
             this.state = state.BUILD_BATCH;
         } else if (statusServer == stateServer.IDLE) {
-            TIMEOUT_NEXT_STATE = 0;
+            TIMEOUT_NEXT_STATE = 5000;
             // re-send input to server-proof
             this.state = state.BUILD_BATCH;
         } else TIMEOUT_NEXT_STATE = 5000; // Server in pending state

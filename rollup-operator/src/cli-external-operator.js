@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { stringifyBigInts } = require("snarkjs");
 
 class CliExternalOperator {
 
@@ -31,7 +32,7 @@ class CliExternalOperator {
     }
 
     sendOffChainTx(tx) {
-        return axios.post(`${this.url}/offchain/send`, tx);
+        return axios.post(`${this.url}/offchain/send`, { tx: stringifyBigInts(tx) });
     }
 }
 
