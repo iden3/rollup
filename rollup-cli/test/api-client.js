@@ -26,7 +26,7 @@ app.post('/offchain/send', (req, res) => {
     }
 });
 
-app.get('/offchain/info/:Ax/:Ay', async (req, res) => {
+app.get('/info/axay/:Ax/:Ay', async (req, res) => {
     if (req.params.Ax !== undefined && req.params.Ax !== undefined) {
         const walletEth = await ethers.Wallet.fromEncryptedJson(fs.readFileSync(walletEthPathDefault, 'utf8'), 'foo');
         const exitTree = await RollupTree.newMemRollupTree();

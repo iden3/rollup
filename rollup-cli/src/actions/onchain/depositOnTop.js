@@ -1,8 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
-const axios = require('axios');
 const { Wallet } = require('../../wallet.js');
-
+const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
 /**
  * @dev deposit on an existing balance tree leaf
  * @param urlNode URL of the ethereum node
@@ -15,6 +14,7 @@ const { Wallet } = require('../../wallet.js');
  * @param UrlOperator URl from operator
 */
 async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, password, abi, UrlOperator) {
+    const apiOperator = new CliExternalOperator(UrlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
@@ -28,7 +28,7 @@ async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, pa
 
     try {
         return new Promise(((resolve, reject) => {
-            axios.get(`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`)
+            apiOperator.getInfoByAxAy(walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString())
                 .then(async (response) => {
                     let correctLeaf = [];
                     for (const leaf of response.data) {

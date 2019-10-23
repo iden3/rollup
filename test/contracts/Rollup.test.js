@@ -478,7 +478,7 @@ contract("Rollup", (accounts) => {
     });
     
     
-    it("Should forge off-chain transaction with fee", async () => {
+    it("Should forge off-chain transaction with fee to 0", async () => {
     // Steps:
     // - Transaction from 'id3' to '0' -->forcewithdraw offchain
     // - Update rollupTree
@@ -577,7 +577,7 @@ contract("Rollup", (accounts) => {
         expect(resId3.toString()).to.be.equal("22");
     });
     
-    it("Should DepositAndTransferto 0", async () => {
+    it("Should DepositAndTransfer to 0", async () => {
         //leaf: 5
         //current Tokens: leaf 5: undefined, id3: 22 tokens
         //after this test: leaf 5: 3 tokens, id3: 14 tokens
@@ -638,5 +638,66 @@ contract("Rollup", (accounts) => {
         const resId3 = await insTokenRollup.balanceOf(id3);
         expect(resRollup.toString()).to.be.equal("12"); //13-4; 2 2 fees + 2 withdraw
         expect(resId3.toString()).to.be.equal("19");
+    });
+
+
+        
+    it("Should forge off-chain transaction with fee", async () => {
+        // Steps:
+        // - Transaction from 'id3' to '0' -->forcewithdraw offchain
+        // - Update rollupTree
+        // - forge batch to include transaction
+        // - Check block number information, balance of beneficiary and batch number
+        // - Test double withdraw in the same batch
+    
+        //current Tokens: leaf 3: 5 tokens
+        //after this test: leaf 3: 3 tokens
+        let initialBalanceId3 = await rollupDB.getStateByIdx(3);
+        expect(initialBalanceId3.amount.toString()).to.be.equal("5");
+    
+        const tx = {
+            fromIdx: 3,
+            toIdx: 1,
+            coin: 0,
+            amount: 1,
+            nonce: 2,
+            userFee: 1
+        };
+        rollupUtils.signRollupTx(wallet, tx);
+        const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        batch.addTx(tx);
+        // Add fee
+        batch.addCoin(0, 1);
+        await batch.build();
+        const inputSm = buildFullInputSm(batch, beneficiary);
+        const balanceBefore = await insTokenRollup.balanceOf(beneficiary);
+        const resForge = await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+            inputSm.proofB, inputSm.proofC, inputSm.input);
+        await rollupDB.consolidate(batch);
+    
+        const balanceAfter = await insTokenRollup.balanceOf(beneficiary);
+        expect(BigInt(balanceBefore).add(BigInt(1)).toString()).to.be.
+            equal(BigInt(balanceAfter).toString());
+        expect(resForge.logs[0].event).to.be.equal("ForgeBatch");
+            
+        // Off-chain are included next bacth forged
+        expect(BigInt(rollupDB.lastBatch).toString()).to.be.
+            equal(BigInt(resForge.logs[0].args.batchNumber).add(BigInt(1)).toString());
+        // Recover hash off-chain from calldata
+        // note: data compressedTx will be available on forge Batch Mechanism
+        const blockNumber = resForge.logs[0].args.blockNumber.toString();
+        const transaction = await web3.eth.getTransactionFromBlock(blockNumber, 0);
+        const decodedData = abiDecoder.decodeMethod(transaction.input);
+        let inputRetrieved;
+        decodedData.params.forEach(elem => {
+            if (elem.name == "input") {
+                inputRetrieved = elem.value;
+            }
+        });
+        // Off-chain hash is 4th position of the input
+        expect(inputSm.input[4]).to.be.equal(inputRetrieved[4]);
+    
+        let finalBalanceId3 = await rollupDB.getStateByIdx(3);
+        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-2).toString()); //1 fees + 1 amountTransfer = 2
     });
 });
