@@ -1,9 +1,8 @@
+/* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
 const { Wallet } = require('../../wallet.js');
-
 /**
- * @dev deposit on-chain transaction
- * add new leaf to balance tree and initializes it with a load amount
+ * @dev deposit on an existing balance tree leaf
  * @param urlNode URL of the ethereum node
  * @param addressSC rollup address
  * @param balance initial balance on balance tree
@@ -11,15 +10,13 @@ const { Wallet } = require('../../wallet.js');
  * @param walletJson from this one can obtain the ethAddress and babyPubKey
  * @param password for decrypt the Wallet
  * @param abi abi of rollup contract
+ * @param UrlOperator URl from operator
 */
-async function deposit(urlNode, addressSC, balance, tokenId, walletJson, password, abi) {
+async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, password, abi, idFrom) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
-    const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
-    const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
     walletEth = walletEth.connect(provider);
-    const address = await walletEth.getAddress();
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
     const overrides = {
         gasLimit: 800000,
@@ -27,12 +24,12 @@ async function deposit(urlNode, addressSC, balance, tokenId, walletJson, passwor
     };
 
     try {
-        return await contractWithSigner.deposit(balance, tokenId, address, pubKeyBabyjub, overrides);
+        return await contractWithSigner.depositOnTop(idFrom, balance, tokenId, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }
 }
 
 module.exports = {
-    deposit,
+    depositOnTop,
 };

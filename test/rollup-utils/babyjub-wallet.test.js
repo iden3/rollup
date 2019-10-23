@@ -7,13 +7,17 @@ describe("BabyJubjub wallet", () => {
     const mnemonic = "urban add pulse prefer exist recycle verb angle sell year more mosquito";
     const privTest = "c72c427a1b6de6890c61254610ce2a5089b83fddab770177f1dc5fd574be39d3";
     const pass = "passphrase";
+    let ax;
+    let ay;
 
-    it("from mnemonic", () => {
+    it("Should create wallet from mnemonic", () => {
         const wallet = BabyJubWallet.fromMnemonic(mnemonic);
         expect(wallet.privateKey.toString("hex")).to.be.equal(privTest);
+        ax = wallet.publicKey[0].toString();
+        ay = wallet.publicKey[1].toString();
     });
 
-    it("from random", () => {
+    it("Should create wallet from random", () => {
         const wallet = BabyJubWallet.createRandom();
         expect(wallet.privateKey.toString("hex")).to.not.be.equal(undefined);
         expect(wallet.publicKey[0].toString()).to.not.be.equal(undefined);
@@ -21,7 +25,7 @@ describe("BabyJubjub wallet", () => {
         expect(wallet.publicKeyCompressed.toString("hex")).to.not.be.equal(undefined);
     });
 
-    it("from-to json", () => {
+    it("Should convert from-to json", () => {
         const wallet0 = BabyJubWallet.fromMnemonic(mnemonic);
         const priv0 = wallet0.privateKey.toString("hex");
         const json = wallet0.toEncryptedJson(pass);
@@ -38,7 +42,15 @@ describe("BabyJubjub wallet", () => {
         }
     });
 
-    it("sign-verify message", () => {
+    it("Should get public key from encrypted json", () => {
+        const wallet = BabyJubWallet.fromMnemonic(mnemonic);
+        const jsonEnc = wallet.toEncryptedJson(pass);
+        const jsonObj = JSON.parse(jsonEnc);
+        expect(ax).to.be.equal(jsonObj.public.ax);
+        expect(ay).to.be.equal(jsonObj.public.ay);
+    });
+
+    it("Should sign-verify message", () => {
         const wallet = BabyJubWallet.fromMnemonic(mnemonic);
         const msg = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
       + "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";

@@ -11,11 +11,14 @@ const chai = require('chai');
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
 const SMTMemDB = require('circomlib/src/smt_memdb');
 const abiDecoder = require('abi-decoder');
-const deposit = require('../src/actions/onchain/deposit.js');
-const depositOnTop = require('../src/actions/onchain/depositOnTop.js');
+const { deposit } = require('../src/actions/onchain/deposit.js');
+const { depositOnTop } = require('../src/actions/onchain/deposit-on-top.js');
 const { withdraw } = require('../src/actions/onchain/withdraw.js');
 const { buildInputSm } = require('../../rollup-operator/src/utils');
-const { forceWithdraw } = require('../src/actions/onchain/forceWithdraw.js');
+const { forceWithdraw } = require('../src/actions/onchain/force-withdraw.js');
+const { transfer } = require('../src/actions/onchain/transfer.js');
+const { depositAndTransfer } = require('../src/actions/onchain/deposit-and-transfer.js');
+
 
 const walletPathDefault = '../src/resources/wallet.json';
 const { Wallet } = require('../src/wallet.js');
@@ -192,7 +195,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        const resDeposit = await deposit.deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
+        const resDeposit = await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
             walletJson, password, abi);
 
         const receip = await resDeposit.wait();
@@ -215,6 +218,7 @@ contract('Rollup', async (accounts) => {
     it('Deposit on top and forge it', async () => {
         const onTopAmount = 5;
         const tokenId = 0;
+        const idFrom = 1;
 
         const tx = {
             from: walletEth.address,
@@ -228,8 +232,8 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        const resDeposit = await depositOnTop.depositOnTop(web3.currentProvider.host, addressSC, onTopAmount, tokenId,
-            walletJson, password, abi, UrlOperator);
+        const resDeposit = await depositOnTop(web3.currentProvider.host, addressSC, onTopAmount, tokenId,
+            walletJson, password, abi, idFrom);
         // Check token balances for walletEth and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -258,9 +262,10 @@ contract('Rollup', async (accounts) => {
 
         const amount = 10;
         const tokenId = 0;
+        const idFrom = 1;
 
         const resForceWithdraw = await forceWithdraw(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJson, password, abi, UrlOperator);
+            walletJson, password, abi, idFrom);
 
         // forge block with no transactions
         // forge block force withdraw
@@ -282,12 +287,123 @@ contract('Rollup', async (accounts) => {
         // - Transaction to withdraw amount indicated in previous step
         const amount = 10;
         const tokenId = 0;
+        const idFrom = 1;
+
         await withdraw(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJson, password, abi, UrlOperator);
+            walletJson, password, abi, UrlOperator, idFrom);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
         expect(resRollup.toString()).to.be.equal('5');
         expect(reswalletEth.toString()).to.be.equal('45');
+    });
+
+    it('Second deposit to have more leafs in tree', async () => {
+        // Steps:
+        // - Transaction to deposit 'TokenRollup' from 'walletEth' to 'rollup smart contract'(owner)
+        // - Check 'tokenRollup' balances
+        // - Add leaf to balance tree
+        // - Check 'filling on-chain' hash
+
+        const depositAmount = 10;
+        const tokenId = 0;
+
+        web3.eth.sendTransaction({ to: walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });// provide funds to our account
+
+        const tx = {
+            from: walletEth.address,
+            gasLimit: web3.utils.toHex(800000),
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
+            to: insTokenRollup.address,
+            data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
+        };
+
+
+        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
+        await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
+
+        const resDeposit = await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
+            walletJson, password, abi);
+
+        const receip = await resDeposit.wait();
+
+        // Check token balances for walletEth and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
+        expect(resRollup.toString()).to.be.equal('15');
+        expect(resWalletEth.toString()).to.be.equal('35');
+
+        await forgeBlock();
+
+        // Forge block with deposit transaction
+        const event = receip.events.pop();
+        await forgeBlock([event]);
+
+        checkBatchNumber([event]);
+    });
+    it('ShouldTransfer', async () => {
+        // Steps:
+        // - Get data from 'exitTree'
+        // - Transaction to withdraw amount indicated in previous step
+        const amount = 10;
+        const tokenId = 0;
+        const fromId = 1;
+        const toId = 2;
+        // from 1 to 2
+        const resTransfer = await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
+            walletJson, password, abi, fromId, toId);
+
+        const receip = await resTransfer.wait();
+        await forgeBlock();
+
+        // Forge block with deposit transaction
+        const event = receip.events.pop();
+        await forgeBlock([event]);
+
+        checkBatchNumber([event]);
+    });
+    it('Should DepositAndTransfer', async () => {
+        // Steps:
+    // - Transaction to deposit 'TokenRollup' from 'walletEth' to 'rollup smart contract'(owner)
+    // - Check 'tokenRollup' balances
+    // - Add leaf to balance tree
+    // - Check 'filling on-chain' hash
+
+        const depositAmount = 10;
+        const tokenId = 0;
+        const amount = 5;
+        const toId = 2;
+
+        web3.eth.sendTransaction({ to: walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });// provide funds to our account
+
+        const tx = {
+            from: walletEth.address,
+            gasLimit: web3.utils.toHex(800000),
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
+            to: insTokenRollup.address,
+            data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
+        };
+
+
+        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
+        await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
+
+        const resDepositAndTransfer = await depositAndTransfer(web3.currentProvider.host, addressSC, depositAmount,
+            amount, tokenId, walletJson, password, abi, toId);
+        const receip = await resDepositAndTransfer.wait();
+
+        // Check token balances for walletEth and rollup smart contract
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
+        expect(resRollup.toString()).to.be.equal('25');
+        expect(resWalletEth.toString()).to.be.equal('25');
+
+        await forgeBlock();
+
+        // Forge block with deposit transaction
+        const event = receip.events.pop();
+        await forgeBlock([event]);
+
+        checkBatchNumber([event]);
     });
 });

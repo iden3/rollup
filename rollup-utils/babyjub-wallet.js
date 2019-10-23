@@ -70,6 +70,10 @@ class BabyJubWallet {
         const macCalc = walletUtils.getMac(keyBuff, Buffer.from(encryptDataStr, "base64"));
 
         const obj = {
+            public: {
+                ax: this.publicKey[0].toString(),
+                ay: this.publicKey[1].toString(),
+            },
             crypto: {
                 cipher: algo,
                 cipherparams: {

@@ -317,4 +317,107 @@ contract('Rollup', async (accounts) => {
         expect(resRollup.toString()).to.be.equal('5');
         expect(reswalletEth.toString()).to.be.equal('45');
     });
+
+    it('Second deposit to have more leafs in tree', async () => {
+        // Steps:
+        // - Transaction to deposit 'TokenRollup' from 'walletEth' to 'rollup smart contract'(owner)
+        // - Check 'tokenRollup' balances
+        // - Get event data
+        // - Add leaf to balance tree
+        // - Check 'filling on-chain' hash
+
+        const depositAmount = 10;
+        const tokenId = 0;
+
+        web3.eth.sendTransaction({ to: walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });// provide funds to our account
+
+        const tx = {
+            from: walletEth.address,
+            gasLimit: web3.utils.toHex(800000),
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
+            to: insTokenRollup.address,
+            data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
+        };
+
+
+        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
+        await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
+
+        const promise = new Promise(((resolve) => {
+            const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId}`);
+            out.stdout.on('data', (data) => {
+                resolve(JSON.parse(data));
+            });
+        }));
+        const event = await promise;
+
+        for (const key in event.args) {
+            if (event.args[key]._hex !== undefined) {
+                event.args[key] = event.args[key]._hex;
+            }
+        }
+
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
+        expect(resRollup.toString()).to.be.equal('15');
+        expect(resWalletEth.toString()).to.be.equal('35');
+
+        await forgeBlock();
+        await forgeBlock([event]);
+
+        checkBatchNumber([event]);
+    });
+
+    it('Should transfer tokens', async () => {
+        // Steps:
+        // - Get data from 'exitTree'
+        // - Transaction to withdraw amount indicated in previous step
+        const amount = 2;
+        const tokenId = 0;
+        const to = 2;
+
+
+        const promise = new Promise(((resolve) => {
+            const out = process.exec(`cd ..; node cli.js onchaintx --type TRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to}`);
+            out.stdout.on('data', (data) => {
+                resolve((data));
+            });
+        }));
+        await promise;
+    });
+
+    it('Should depositAndTransfer', async () => {
+        // Steps:
+        // - Get data from 'exitTree'
+        // - Transaction to withdraw amount indicated in previous step
+        const amount = 5;
+        const tokenId = 0;
+        const to = 2;
+        const loadamount = 10;
+
+        const tx = {
+            from: walletEth.address,
+            gasLimit: web3.utils.toHex(800000),
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
+            to: insTokenRollup.address,
+            data: insTokenRollup.contract.methods.approve(insRollupTest.address, loadamount).encodeABI(),
+        };
+
+
+        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
+        await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
+
+        const promise = new Promise(((resolve) => {
+            const out = process.exec(`cd ..; node cli.js onchaintx --type DEPOSITANDTRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to} --loadamount ${loadamount}`);
+            out.stdout.on('data', (data) => {
+                resolve((data));
+            });
+        }));
+        await promise;
+
+        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
+        const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
+        expect(resRollup.toString()).to.be.equal('25');
+        expect(reswalletEth.toString()).to.be.equal('25');
+    });
 });

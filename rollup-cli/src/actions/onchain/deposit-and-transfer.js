@@ -1,18 +1,18 @@
+/* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
 const { Wallet } = require('../../wallet.js');
-
 /**
- * @dev deposit on-chain transaction
- * add new leaf to balance tree and initializes it with a load amount
+ * @dev deposit on an existing loadAmount tree leaf
  * @param urlNode URL of the ethereum node
  * @param addressSC rollup address
- * @param balance initial balance on balance tree
+ * @param loadAmount initial Amount on balance tree
  * @param tokenId token type identifier
  * @param walletJson from this one can obtain the ethAddress and babyPubKey
  * @param password for decrypt the Wallet
  * @param abi abi of rollup contract
+ * @param UrlOperator URl from operator
 */
-async function deposit(urlNode, addressSC, balance, tokenId, walletJson, password, abi) {
+async function depositAndTransfer(urlNode, addressSC, loadAmount, amount, tokenId, walletJson, password, abi, toId) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
@@ -27,12 +27,13 @@ async function deposit(urlNode, addressSC, balance, tokenId, walletJson, passwor
     };
 
     try {
-        return await contractWithSigner.deposit(balance, tokenId, address, pubKeyBabyjub, overrides);
+        return await contractWithSigner.depositAndTransfer(loadAmount, tokenId,
+            address, pubKeyBabyjub, toId, amount, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }
 }
 
 module.exports = {
-    deposit,
+    depositAndTransfer,
 };

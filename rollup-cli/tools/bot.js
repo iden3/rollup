@@ -43,20 +43,36 @@ const { walletsSend } = require('./helpers/walletsSend');
 
         if (argv._[0].toUpperCase() === 'CREATEWALLETS') {
             // create, and fund wallets with ethers and tokens, also approve (allowance) the rollup SC use the wallets tokens.
-            await createWallets(numWallets, amountToken, passString, addressRollup, walletEthFunder, amountEther,
-                addressTokens, abiTokens, node, pathNewWallets, mnemonic);
+            try {
+                await createWallets(numWallets, amountToken, passString, addressRollup, walletEthFunder, amountEther,
+                    addressTokens, abiTokens, node, pathNewWallets, mnemonic);
+            } catch (e) {
+                console.log(e);
+            }
         }
         if (argv._[0].toUpperCase() === 'DEPOSIT') {
-            await walletsDeposit(numTransOnchain, amountToken, passString, addressRollup, abiRollupPath, node, tokenId, pathNewWallets);
+            try {
+                await walletsDeposit(numTransOnchain, amountToken, passString, addressRollup, abiRollupPath, node, tokenId, pathNewWallets);
+            } catch (e) {
+                console.log(e);
+            }
         }
         if (argv._[0].toUpperCase() === 'SEND') {
-            await walletsSend(numTransOffchain, amountToken, passString, urlOperator, userfee, tokenId, pathNewWallets);
+            try {
+                await walletsSend(numTransOffchain, amountToken, passString, urlOperator, userfee, tokenId, pathNewWallets);
+            } catch (e) {
+                console.log(e);
+            }
         }
         if (argv._[0].toUpperCase() === 'DOALL') {
-            await createWallets(numWallets, amountToken, passString, addressRollup, walletEthFunder, amountEther,
-                addressTokens, abiTokens, node, pathNewWallets, mnemonic);
-            await walletsDeposit(numTransOnchain, amountToken, passString, addressRollup, abiRollupPath, node, tokenId, pathNewWallets);
-            await walletsSend(numTransOffchain, amountToken, passString, urlOperator, userfee, tokenId, pathNewWallets);
+            try {
+                await createWallets(numWallets, amountToken, passString, addressRollup, walletEthFunder, amountEther,
+                    addressTokens, abiTokens, node, pathNewWallets, mnemonic);
+                await walletsDeposit(numTransOnchain, amountToken, passString, addressRollup, abiRollupPath, node, tokenId, pathNewWallets);
+                await walletsSend(numTransOffchain, amountToken, passString, urlOperator, userfee, tokenId, pathNewWallets);
+            } catch (e) {
+                console.log(e);
+            }
         }
     } catch (err) {
         process.exit(1);
