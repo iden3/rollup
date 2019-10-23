@@ -5,7 +5,7 @@ const { expect } = chai;
 
 describe('Ethereum wallet', () => {
     const mnemonic = 'maximum direct solution mushroom before meat public bean board frown announce lawn';
-    const privTest = '0x1f07e59e1c8f9406a89d461fcc6d1044485c5960ba7fe123c67a8b0bbf115524';
+    const privTest = '0xba82b5a5eb3dc4136cd2150b212c10d3942a59131e3473162713321328852dc6';
     const pass = 'passphrase';
 
     it('from mnemonic', () => {

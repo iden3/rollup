@@ -200,7 +200,7 @@ module.exports = class BatchBuilder {
         }
         const newState2 = Object.assign({}, oldState2);
         newState2.amount = oldState2.amount.add(effectiveAmount);
-        if (!tx.onChain && op2 == "UPDATE") {
+        if (!tx.onChain && op2 == "UPDATE" && isExit) {
             newState2.nonce++;
         }
 

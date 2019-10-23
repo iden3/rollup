@@ -1,8 +1,7 @@
 /* eslint-disable no-restricted-syntax */
-const axios = require('axios');
 const { stringifyBigInts } = require('snarkjs');
 const { Wallet } = require('../../wallet.js');
-
+const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
 /**
  * @dev off-chain transaction between users
  * transfer tokens from an id to another offchain
@@ -15,11 +14,12 @@ const { Wallet } = require('../../wallet.js');
  * @param userFee fee the user is diposed to pay
 */
 async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, userFee) {
+    const apiOperator = new CliExternalOperator(UrlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     const walletBaby = walletRollup.babyjubWallet;
 
     return new Promise(((resolve, reject) => {
-        axios.get(`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`)
+        apiOperator.getInfoByAxAy(walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString())
             .then((responseLeaf) => {
                 let correctLeaf = [];
                 for (const leaf of responseLeaf.data) {
@@ -42,8 +42,8 @@ async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, us
                     newAccount: 0,
                 };
                 walletRollup.signRollupTx(transaction); // sign included in transaction
-                const parsetransaction = stringifyBigInts(transaction);// convert bigint to Strings
-                axios.post(`${UrlOperator}/offchain/send`, parsetransaction)
+                const parseTransaction = stringifyBigInts(transaction);// convert bigint to Strings
+                apiOperator.sendOffChainTx(parseTransaction)
                     .then((response) => {
                         resolve(response.status);
                     })

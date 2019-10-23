@@ -1,8 +1,7 @@
 /* eslint-disable no-restricted-syntax */
-const axios = require('axios');
 const { stringifyBigInts } = require('snarkjs');
 const { Wallet } = require('../../src/wallet');
-
+const CliExternalOperator = require('../../../rollup-operator/src/cli-external-operator');
 /**
  * @dev off-chain fake transaction between users, some of them wrong depending on @codeWrongTransaction parameter
  * transfer tokens from an id to another offchain
@@ -16,11 +15,12 @@ const { Wallet } = require('../../src/wallet');
  * @param codeWrongTransaction depending on this parameter produce different errors in transactions
 */
 async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, userFee, codeWrongTransaction) {
+    const apiOperator = new CliExternalOperator(UrlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     const walletBaby = walletRollup.babyjubWallet;
 
     return new Promise(((resolve, reject) => {
-        axios.get(`${UrlOperator}/offchain/info/${walletBaby.publicKey[0].toString()}/${walletBaby.publicKey[1].toString()}`)
+        apiOperator.getInfoByAxAy(walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString())
             .then((info) => {
                 let correctLeaf = [];
                 for (const leaf of info.data) {
@@ -86,11 +86,11 @@ async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, us
                     }
                 }
                 walletRollup.signRollupTx(transaction); // sign included in transaction
-                const parsetransaction = stringifyBigInts(transaction);// convert bigint to Strings
+                const parseTransaction = stringifyBigInts(transaction);// convert bigint to Strings
                 if (codeWrongTransaction === 11) { // -sign don't matchthe Tx
                     transaction.toIdx += 1;
                 }
-                axios.post(`${UrlOperator}/offchain/send`, parsetransaction)
+                apiOperator.sendOffChainTx(parseTransaction)
                     .then((response) => {
                         resolve(response.status);
                     })
