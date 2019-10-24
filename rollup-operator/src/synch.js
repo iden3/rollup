@@ -133,6 +133,7 @@ class Synchronizer {
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
                 logger.error(`Message error: ${e.message}`);
+                logger.error(`Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
@@ -182,20 +183,20 @@ class Synchronizer {
     }
 
     async _updateTree(offChain, onChain) {
-        const block = await this.treeDb.buildBatch(maxTx, nLevels);
+        const batch = await this.treeDb.buildBatch(maxTx, nLevels);
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event);
-            await this._addFeePlan(block, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-            await this._setUserFee(block, offChainTxs.txs);
+            await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
+            await this._setUserFee(batch, offChainTxs.txs);
             for (const tx of offChainTxs.txs) {
-                block.addTx(tx);
+                batch.addTx(tx);
             }
         }
         for (const event of onChain) {
-            block.addTx(await this._getTxOnChain(event));
+            batch.addTx(await this._getTxOnChain(event));
         }
-        await block.build();
-        await this.treeDb.consolidate(block);
+        await batch.build();
+        await this.treeDb.consolidate(batch);
     }
 
     async _getTxOnChain(event) {
@@ -255,7 +256,7 @@ class Synchronizer {
         const txsBuff = buffCompressedTxs.slice(headerBytes, buffCompressedTxs.length);
         const nTx = txsBuff.length / bytesOffChainTx;
         for (let i = 0; i < nTx; i++) {
-            const step = ( headerBuff[Math.floor(i/8)] & 0x80 >> (i%8)) ? 1 : 0;
+            const step = ( headerBuff[Math.floor(i/8)] & 0x80 >> (i%8) ) ? 1 : 0;
             const tx = {
                 fromIdx: txsBuff.readUIntBE(8*i, 3),
                 toIdx: txsBuff.readUIntBE(8*i + 3, 3),
@@ -282,6 +283,7 @@ class Synchronizer {
             const stateId = await this.getStateById(tx.fromIdx);
             const userFee = await bb.getOperatorFee(stateId.coin, tx.step);
             tx.userFee = Number(userFee);
+            tx.coin = Number(stateId.coin);
         }
     }
 

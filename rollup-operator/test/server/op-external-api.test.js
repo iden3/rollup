@@ -141,18 +141,18 @@ contract("Operator", (accounts) => {
         await cliAdminOp.register(stake, url, seed);
     });
 
-    it("Should do a deposit", async () => {
+    it("Should add two deposits", async () => {
         const token = 0;
         const amountDeposit = 10;
-        // let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, tokenId, 
-        //     encryptedWallet, pass, Rollup.abi);
-        // await resDeposit.wait();
 
-        // Approve token to tokenId address
-        await insTokenRollup.approve(insRollup.address, amountDeposit, { from: tokenId });
-        await insRollup.deposit(amountDeposit, token, walletEth.address,
-            [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()],
-            { from: tokenId, value: web3.utils.toWei("1", "ether") });
+        // account idx = 1
+        let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+            encryptedWallet, pass, Rollup.abi);
+        await resDeposit.wait();
+        // account idx = 2
+        resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+            encryptedWallet, pass, Rollup.abi);
+        await resDeposit.wait();
     });
 
     it("Should get general information", async () => { 
@@ -201,6 +201,25 @@ contract("Operator", (accounts) => {
         expect(batchForged).to.be.equal(true);
     });
 
+    it("Should set pool conversion table", async () => {
+        const conversion = {
+            0: {
+                token: "ROLL",
+                price: 20,
+                decimals: 18
+            }
+        };
+        const res = await cliAdminOp.setConversion(conversion);
+        expect(res.status).to.be.equal(200);
+    });
+
+
+    it("Should add off-chain transaction to the pool", async () => {
+        const tx = { fromIdx: 1, toIdx: 2, coin: 0, amount: 3, nonce: 0, userFee: 2};
+        await rollupWallet.signRollupTx(tx);
+        await cliExternalOp.sendOffChainTx(tx);
+    });
+
     describe("Should retrieve leaf information", async () => {
         let id;
         let walletAx;
@@ -224,9 +243,5 @@ contract("Operator", (accounts) => {
             const resAthAddress = await cliExternalOp.getInfoByEthAddr(walletEthAddress);
             expect(resAthAddress.data[0].idx).to.be.equal(id);
         });
-    });
-
-    it("Should add off-chain transaction to the pool", async () => {
-        
     });
 });

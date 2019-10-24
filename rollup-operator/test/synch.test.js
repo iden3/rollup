@@ -18,6 +18,21 @@ const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const { timeout, buildInputSm, manageEvent } = require("../src/utils");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 
+const proofA = ["0", "0"];
+const proofB = [["0", "0"], ["0", "0"]];
+const proofC = ["0", "0"];
+
+function buildFullInputSm(bb, beneficiary) {
+    const input = buildInputSm(bb);
+    return {
+        beneficiary: beneficiary,
+        proofA,
+        proofB,
+        proofC,
+        input,
+    };
+}
+
 async function checkSynch(synch, opRollupDb){
     // Check fully synchronized
     const totalSynched = await synch.getSynchPercentage();
@@ -109,11 +124,6 @@ contract("Synchronizer", (accounts) => {
     const wallet = BabyJubWallet.fromMnemonic(mnemonic);
     const Ax = wallet.publicKey[0].toString();
     const Ay = wallet.publicKey[1].toString();
-
-    // Fake proofs
-    const proofA = ["0", "0"];
-    const proofB = [["0", "0"], ["0", "0"]];
-    const proofC = ["0", "0"];
 
     before(async () => {
         // Deploy poseidon
@@ -269,6 +279,32 @@ contract("Synchronizer", (accounts) => {
         expect(resEthAddress3[0].ay).to.be.equal(ayStr);
     });
 
+    it("Should add off-chain tx with fee and synch", async () => {
+        const tx = {
+            fromIdx: 1,
+            toIdx: 2,
+            coin: 0,
+            amount: 1,
+            nonce: 0,
+            userFee: 1
+        };
+        const bb = await opRollupDb.buildBatch(maxTx, nLevels);
+        bb.addTx(tx);
+        // Add fee
+        bb.addCoin(0, 1);
+
+        await bb.build();
+
+        const inputSm = buildFullInputSm(bb, beneficiary);
+        ptr = ptr - 1;
+        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${bb.getDataAvailable().toString("hex")}`,
+            inputSm.proofA, inputSm.proofB, inputSm.proofC, inputSm.input);
+        
+        await opRollupDb.consolidate(bb);
+        await timeout(timeoutSynch);
+        await checkSynch(synch, opRollupDb);
+    });
+
     it("Should add off-chain tx and synch", async () => {
         const events = [];
         events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 3});
@@ -294,14 +330,14 @@ contract("Synchronizer", (accounts) => {
     });
 
     it("Should get off-chain tx by batch", async () => {
-        // get off-chain tx forge in batch 4
-        const res0 = await synch.getOffChainTxByBatch(4);
+        // get off-chain tx forge in batch 5
+        const res0 = await synch.getOffChainTxByBatch(5);
         expect(res0[0].fromIdx.toString()).to.be.equal("1");
         expect(res0[0].toIdx.toString()).to.be.equal("2");
         expect(res0[0].amount.toString()).to.be.equal("3");
 
-        // get off-chain tx forged in batch 6
-        const res1 = await synch.getOffChainTxByBatch(6);
+        // get off-chain tx forged in batch 7
+        const res1 = await synch.getOffChainTxByBatch(7);
         // Should retrieve two off-chain tx
         expect(res1.length).to.be.equal(2);
         // tx 0
