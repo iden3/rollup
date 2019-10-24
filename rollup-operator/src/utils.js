@@ -34,11 +34,7 @@ function manageEvent(event) {
             onChain: true
         };
     } else if (event.event == "OffChainTx") {
-        return {
-            fromIdx: event.fromId,
-            toIdx: event.toId,
-            amount: event.amount,
-        };
+        return event.tx;
     }
 }
 

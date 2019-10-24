@@ -16,18 +16,22 @@ Also, it provides two api:
   - external: should be exposed externally
 
 ## Api administrator
+Further details on api administrator can be found in: https://hackmd.io/A1vz2jESTa6Qh9pGCiIdQw
+
 - http POST `/loadWallet`
   - load wallet into PoS manager
-- http POST `/register/:stake/:url`
+- http POST `/register/:stake`
   - register operator into PoS
-- http POST `/unregister`
+- http POST `/unregister/:opId`
   - unregister from PoS
-- http POST `/withdraw`
+- http POST `/withdraw/:opId`
   - withdraw stake
 - http POST `/pool/conversion`
   - set pool conversion parameters
 
 ## Api external
+Further details on api administrator can be found in: https://hackmd.io/X5WCYhjHQ-qjFhRQjwBLxQ
+
 - http POST `/offchain/send`
   - sends off-chain transaction to operator pool
 
@@ -45,9 +49,6 @@ Also, it provides two api:
 
 - http GET `/info/operators`
   - get list of avaulable operators
-
-- http GET `/state`
-  - get full state of rollup database
 
 # Modules in detail
 ## Operator Manager

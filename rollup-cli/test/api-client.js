@@ -58,7 +58,7 @@ app.get('/info/id/:id', async (req, res) => {
         const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
 
         res.send({
-            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: req.params.id, numExitRoot: 6, sibilings: siblingsId,
+            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings: siblingsId,
         });
     }
 });

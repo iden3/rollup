@@ -22,17 +22,6 @@ const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
 const proofC = ["0", "0"];
 
-function buildFullInputSm(bb, beneficiary) {
-    const input = buildInputSm(bb);
-    return {
-        beneficiary: beneficiary,
-        proofA,
-        proofB,
-        proofC,
-        input,
-    };
-}
-
 async function checkSynch(synch, opRollupDb){
     // Check fully synchronized
     const totalSynched = await synch.getSynchPercentage();
@@ -52,19 +41,28 @@ const timeoutFinal = 60000;
 
 contract("Synchronizer", (accounts) => {
     
-    async function forgeBlock(events = undefined) {
-        const block = await opRollupDb.buildBatch(maxTx, nLevels);
+    async function forgeBlock(events = undefined, params = undefined) {
+        const batch = await opRollupDb.buildBatch(maxTx, nLevels);
+        // Parse params
+        if (params){
+            if(params.addCoins){
+                for(const element of params.addCoins){
+                    await batch.addCoin(element.coin, element.fee);
+                }
+            }
+        }
+        // Manage events
         if (events) {
             events.forEach(elem => {
-                block.addTx(manageEvent(elem));
+                batch.addTx(manageEvent(elem));
             });
         }
-        await block.build();
-        const inputSm = buildInputSm(block, beneficiary);
+        await batch.build();
+        const inputSm = buildInputSm(batch, beneficiary);
         ptr = ptr - 1;
-        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${block.getDataAvailable().toString("hex")}`,
+        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${batch.getDataAvailable().toString("hex")}`,
             proofA, proofB, proofC, inputSm);
-        await opRollupDb.consolidate(block);
+        await opRollupDb.consolidate(batch);
     }
 
     const {
@@ -288,26 +286,26 @@ contract("Synchronizer", (accounts) => {
             nonce: 0,
             userFee: 1
         };
-        const bb = await opRollupDb.buildBatch(maxTx, nLevels);
-        bb.addTx(tx);
-        // Add fee
-        bb.addCoin(0, 1);
 
-        await bb.build();
-
-        const inputSm = buildFullInputSm(bb, beneficiary);
-        ptr = ptr - 1;
-        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${bb.getDataAvailable().toString("hex")}`,
-            inputSm.proofA, inputSm.proofB, inputSm.proofC, inputSm.input);
+        const params = {
+            addCoins: [{coin: 0, fee:1}]
+        };
         
-        await opRollupDb.consolidate(bb);
+        const events = [];
+        events.push({event:"OffChainTx", tx: tx});
+        await forgeBlock(events, params);
         await timeout(timeoutSynch);
         await checkSynch(synch, opRollupDb);
     });
 
     it("Should add off-chain tx and synch", async () => {
         const events = [];
-        events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 3});
+        const tx = {
+            fromIdx: 1,
+            toIdx: 2,
+            amount: 3,
+        };
+        events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events);
         await timeout(timeoutSynch);
         await checkSynch(synch, opRollupDb);
@@ -321,8 +319,18 @@ contract("Synchronizer", (accounts) => {
         const event = await insRollupTest.depositOnTop(toId, onTopAmount, tokenId,
             { from: id2, value: web3.utils.toWei("1", "ether") });
         events.push(event.logs[0]);
-        events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 2});
-        events.push({event:"OffChainTx", fromId: 2, toId: 1, amount: 3});
+        const tx1 = {
+            fromIdx: 1,
+            toIdx: 2,
+            amount: 2,
+        };
+        events.push({event:"OffChainTx", tx: tx1});
+        const tx2 = {
+            fromIdx: 2,
+            toIdx: 1,
+            amount: 3
+        };
+        events.push({event:"OffChainTx", tx: tx2});
         await forgeBlock();
         await forgeBlock(events);
         await timeout(timeoutSynch);
@@ -355,9 +363,14 @@ contract("Synchronizer", (accounts) => {
         const numBatchForged = 10;
         for (let i = 0; i < numBatchForged; i++) {
             events = [];
-            const from = (i % 2) ? 1 : 2;
-            const to = (i % 2) ? 2 : 1;
-            events.push({event:"OffChainTx", fromId: from, toId: to, amount: 1});
+            const fromIdx = (i % 2) ? 1 : 2;
+            const toIdx = (i % 2) ? 2 : 1;
+            const tx = {
+                fromIdx,
+                toIdx,
+                amount: 1,
+            };
+            events.push({event:"OffChainTx", tx});
             await forgeBlock(events);
         }
         await timeout(timeoutFinal);

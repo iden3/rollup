@@ -188,7 +188,7 @@ appAdmin.post("/loadwallet", async (req, res) => {
     }
 });
 
-appAdmin.post("/register/:stake/", async (req, res) => {
+appAdmin.post("/register/:stake", async (req, res) => {
     const stakeValue = req.params.stake;
     const url = req.body.url;
     const seed = req.body.seed;

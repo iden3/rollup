@@ -38,6 +38,9 @@ const eventOnChainKey = "onChain";
 const eventForgeBatchKey = "forgeBatch";
 const separator = "--";
 
+// cache keys
+const lastPurgedKey = "last-purged";
+
 class Synchronizer {
     constructor(
         db,
@@ -62,6 +65,7 @@ class Synchronizer {
         abiDecoder.addABI(rollupABI);
         this.rollupPoSContract = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         abiDecoder.addABI(rollupPoSABI);
+        this.forgeEventsCache = new Map();
     }
 
     _toString(val) {
@@ -75,6 +79,7 @@ class Synchronizer {
     async synchLoop() {
         this.creationBlock = 0;
         this.totalSynch = 0;
+        this.forgeEventsCache.set(lastPurgedKey, await this.getLastBatch());
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -91,7 +96,8 @@ class Synchronizer {
                     await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
                     lastSynchBlock = this.creationBlock;
                 }
-                const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
+                const currentBatchDepth = await this.rollupContract.methods.getStateDepth()
+                    .call({from: this.ethAddress}, currentBlock);
                 let lastBatchSaved = await this.getLastBatch();
 
                 info += `current block number: ${currentBlock} | `;
@@ -99,21 +105,7 @@ class Synchronizer {
                 info += `current batch depth: ${currentBatchDepth} | `;
 
                 if (currentBatchDepth - 1 > lastBatchSaved) {
-                    // Get target block number from forgeBatch event
-                    //TODO: Could be improved inserting a cache memory
-                    let targetBlockNumber = "latest";
-                    const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
-                        fromBlock: lastSynchBlock + 1,
-                        toBlock: targetBlockNumber,
-                    });
-                    
-                    for (const log of logsForge) {
-                        if (log.returnValues.batchNumber == lastBatchSaved + 1){
-                            targetBlockNumber = Number(log.returnValues.blockNumber);
-                            break;
-                        }
-                    }
-
+                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved, lastSynchBlock);
                     // get all logs from last batch
                     const logs = await this.rollupContract.getPastEvents("allEvents", {
                         fromBlock: lastSynchBlock + 1,
@@ -138,6 +130,32 @@ class Synchronizer {
             }
         }
     }
+
+    async _getTargetBlock(lastBatchSaved, lastSynchBlock){
+        // Check if next target block number is in cache memory
+        let targetBlockNumber = this.forgeEventsCache.get(lastBatchSaved + 1);
+        if (!targetBlockNumber){
+            // read events to get block number for each batch forged
+            const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
+                fromBlock: lastSynchBlock + 1,
+                toBlock: "latest",
+            });
+            for (const log of logsForge) {
+                const key = Number(log.returnValues.batchNumber);
+                const value = Number(log.returnValues.blockNumber);
+                this.forgeEventsCache.set(key, value);
+            }
+        }
+        // purge cache memory
+        const lastEventPurged = this.forgeEventsCache.get(lastPurgedKey);
+        for (let i = lastBatchSaved; i > lastEventPurged; i--) {
+            this.forgeEventsCache.delete(i);
+        }
+        this.forgeEventsCache.set(lastPurgedKey, lastBatchSaved);
+        // return block number according batch forged
+        return this.forgeEventsCache.get(lastBatchSaved + 1);
+    }
+
 
     async getLastSynchBlock() {
         return this._fromString(await this.db.getOrDefault(lastBlockKey, this.creationBlock.toString()));
