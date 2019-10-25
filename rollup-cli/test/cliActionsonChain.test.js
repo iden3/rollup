@@ -302,10 +302,10 @@ contract('Rollup', async (accounts) => {
         // - Get data from 'exitTree'
         // - Transaction to withdraw amount indicated in previous step
         const amount = 10;
-        const tokenId = 0;
+        const numExitRoot = 6;
 
         const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --amount ${amount} --tokenid ${tokenId}`);
+            const out = process.exec(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --amount ${amount} --numexitroot ${numExitRoot}`);
             out.stdout.on('data', (data) => {
                 resolve((data));
             });

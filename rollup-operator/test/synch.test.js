@@ -376,4 +376,28 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutFinal);
         await checkSynch(synch, opRollupDb);
     });
+
+    it("Should add withdraw off-chain tx", async () => {
+        const events = [];
+        const tx1 = {
+            fromIdx: 2,
+            toIdx: 0,
+            coin: 0,
+            amount: 1,
+            nonce:0,
+        };
+        events.push({event:"OffChainTx", tx: tx1});
+        await forgeBlock(events);
+        await timeout(timeoutSynch);
+        await checkSynch(synch, opRollupDb);
+    });
+
+    it("Should check exit tree", async () => {
+        const lastBatch = opRollupDb.lastBatch;
+        const id = 2;
+        const res = await synch.getExitTreeInfo(lastBatch, id);
+        // expect find an exit leaf on synchronizer
+        expect(res.found).to.be.equal(true);
+    });
+    
 });

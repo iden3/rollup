@@ -315,11 +315,15 @@ class Synchronizer {
 
     // ax, ay encoded as hexadecimal string (whitout '0x')
     async getStateByAxAy(ax, ay) {
-        return this.treeDb.getStateByAxAy(ax, ay);
+        return await this.treeDb.getStateByAxAy(ax, ay);
     }
 
     async getStateByEthAddr(ethAddress) {
-        return this.treeDb.getStateByEthAddr(ethAddress);
+        return await this.treeDb.getStateByEthAddr(ethAddress);
+    }
+
+    async getExitTreeInfo(numBatch, id) {
+        return await this.treeDb.getExitTreeInfo(numBatch, id);
     }
 
     async getSynchPercentage() {

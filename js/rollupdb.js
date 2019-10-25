@@ -1,3 +1,5 @@
+const SMT = require("circomlib").SMT;
+const SMTTmpDb = require("./smttmpdb");
 const BatchBuilder = require("./batchbuilder");
 const bigInt = require("snarkjs").bigInt;
 const Constants = require("./constants");
@@ -44,7 +46,7 @@ class RollupDB {
         const stateArray = await this.db.get(valueState);
         if (!stateArray) return null;
         const st = utils.array2state(stateArray);
-        st.idx=Number(idx);
+        st.idx = Number(idx);
         return st;
     }
 
@@ -70,6 +72,25 @@ class RollupDB {
         }
 
         return Promise.all(promises);
+    }
+
+    async getExitTreeInfo(numBatch, idx){
+        const keyRoot = Constants.DB_Batch.add(bigInt(numBatch));
+        const rootValues = await this.db.get(keyRoot);
+        const rootExitTree = rootValues[1];
+
+        const dbExit = new SMTTmpDb(this.db);
+        const tmpExitTree = new SMT(dbExit, rootExitTree);
+        const resFindExit = await tmpExitTree.find(bigInt(idx));
+        
+        // get leaf information
+        if (resFindExit.found) {
+            const stateArray = await this.db.get(resFindExit.foundValue);
+            const state = utils.array2state(stateArray);
+            state.idx = Number(idx);
+            resFindExit.state = state;
+        }
+        return resFindExit;
     }
 
     getLastBatchId(){

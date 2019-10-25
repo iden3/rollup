@@ -67,8 +67,9 @@ class TmpState {
         stFrom.nonce++;
         stFrom.amount = stFrom.amount.sub(amount);
         stFrom.amount = stFrom.amount.sub(userFee);
-        stTo.amount = stTo.amount.add(amount);
-
+        if (tx.toIdx) {
+            stTo.amount = stTo.amount.add(amount);
+        }
         return true;
     }
 

@@ -286,11 +286,11 @@ contract('Rollup', async (accounts) => {
         // - Get data from 'exitTree'
         // - Transaction to withdraw amount indicated in previous step
         const amount = 10;
-        const tokenId = 0;
         const idFrom = 1;
+        const numExitRoot = 6;
 
-        await withdraw(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJson, password, abi, UrlOperator, idFrom);
+        await withdraw(web3.currentProvider.host, addressSC, amount,
+            walletJson, password, abi, UrlOperator, idFrom, numExitRoot);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);

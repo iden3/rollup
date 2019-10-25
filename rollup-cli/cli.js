@@ -79,10 +79,10 @@ onchainTx command
     Passphrasse to decrypt ethereum wallet
   --amount or -a <amount>
   --tokenid <token ID>
+  --numexitroot <num exit root>
   --paramstx <parameter file>
-    Contains all necessary parameters to perform transacction
+    Contains all necessary parameters to perform transaction
     Default: ./src/resources/config.json
-      
       `)
     .alias('p', 'path')
     .alias('pass', 'passphrase')
@@ -113,6 +113,7 @@ const value = (argv.value) ? argv.value : 'novalue';
 const configjson = (argv.paramstx) ? argv.paramstx : configJsonDefault;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
 const userFee = argv.fee ? argv.fee : 'nouserfee';
+const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
 
 (async () => {
     let actualConfig = {};
@@ -208,7 +209,7 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
                     }
                     if (mnemonic !== 'nomnemonic') {
                         console.log('create rollup wallet mnemonic');
-                        wallet = await Wallet.fromMnemonic(mnemonic, passString);
+                        wallet = await Wallet.fromMnemonic(mnemonic);
                         encWallet = await wallet.toEncryptedJson(passString);
                     } else if (importWallet !== 'noimport') {
                         if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
@@ -221,7 +222,7 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
                         encWallet = await wallet.toEncryptedJson(passString);
                     } else {
                         console.log('create rollup wallet random');
-                        wallet = await Wallet.createRandom(passString);
+                        wallet = await Wallet.createRandom();
                         encWallet = await wallet.toEncryptedJson(passString);
                     }
                     fs.writeFileSync(newWalletPath, JSON.stringify(encWallet, null, 1), 'utf-8');
@@ -332,7 +333,7 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
                     console.log(JSON.stringify(receip.events.pop()));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
                     const receip = await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
-                        tokenId, wallet, passString, abi, actualConfig.operator, actualConfig.id);
+                        wallet, passString, abi, actualConfig.operator, actualConfig.id, numExitRoot);
                     console.log(JSON.stringify(receip.events.pop()));
                 } else if (type.toUpperCase() === 'TRANSFER') {
                     const receip = await transferTx(actualConfig.nodeEth, actualConfig.address, amount,
@@ -406,13 +407,13 @@ function checkparamsOnchain(type, actualConfig) {
     case 'WITHDRAW':
         checkparam(passString, 'nopassphrase', 'passphrase');
         checkparam(amount, -1, 'amount');
-        checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
         checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
         checkparam(actualConfig.id, undefined, 'From Id missing');
+        checkparam(numExitRoot, 'noparam', 'Should specify num exit root');
         break;
     case 'FORCEWITHDRAW':
         checkparam(passString, 'nopassphrase', 'passphrase');

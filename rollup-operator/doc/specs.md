@@ -50,6 +50,9 @@ Further details on api administrator can be found in: https://hackmd.io/X5WCYhjH
 - http GET `/info/operators`
   - get list of avaulable operators
 
+- http GET `/info/exit/:numbatch/:id`
+  - get exit tree leaf information at a given batch 
+
 # Modules in detail
 ## Operator Manager
 It does all the heavy work by processing the data available by the `synchronizers` and determines in which state the operator server has to be. It also depends on the operator running mode:
