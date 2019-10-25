@@ -6,7 +6,7 @@ const { EthereumWallet } = require('./src/ethereum-wallet');
 const { BabyJubWallet } = require('../rollup-utils/babyjub-wallet');
 const { Wallet } = require('./src/wallet');
 const {
-    depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
+    depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx, showLeafs, transferTx, depositAndTransferTx,
 } = require('./src/cli-utils');
 
 const walletPathDefault = './src/resources/wallet.json';
@@ -105,6 +105,7 @@ const type = (argv.type) ? argv.type : 'notype';
 const keytype = (argv.keytype) ? argv.keytype : 'nokeytype';
 const to = (argv.to || argv.to === 0) ? argv.to : 'norecipient';
 const amount = (argv.amount) ? argv.amount : -1;
+const loadamount = (argv.loadamount) ? argv.loadamount : -1;
 const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
 const importWallet = (argv.import) ? argv.import : 'noimport';
 const param = (argv.param) ? argv.param : 'noparam';
@@ -248,6 +249,8 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
                 actualConfig.wallet = value;
             } else if (param.toUpperCase() === 'ABI' && value !== 'novalue') {
                 actualConfig.abi = value;
+            } else if (param.toUpperCase() === 'ID' && value !== 'novalue') {
+                actualConfig.id = value;
             } else if (param === 'noparam') {
                 console.log('Please provide a param\n\n');
                 throw new Error('No param submitted');
@@ -305,7 +308,8 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
             }
         } else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
             // onchaintx
-            if (type !== 'notype' && type.toUpperCase() !== 'DEPOSIT' && type.toUpperCase() !== 'DEPOSITONTOP' && type.toUpperCase() !== 'WITHDRAW' && type.toUpperCase() !== 'FORCEWITHDRAW') {
+            if (type !== 'notype' && type.toUpperCase() !== 'DEPOSIT' && type.toUpperCase() !== 'DEPOSITONTOP' && type.toUpperCase() !== 'WITHDRAW'
+            && type.toUpperCase() !== 'FORCEWITHDRAW' && type.toUpperCase() !== 'TRANSFER' && type.toUpperCase() !== 'DEPOSITANDTRANSFER') {
                 throw new Error('Invalid type');
             } else if (type === 'notype') {
                 console.log('It is necessary to specify the type of action\n\n');
@@ -315,17 +319,29 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
                 const abi = JSON.parse(fs.readFileSync(actualConfig.abi, 'utf-8'));
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
                 if (type.toUpperCase() === 'FORCEWITHDRAW') {
-                    await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
-                        tokenId, wallet, passString, abi, actualConfig.operator);
+                    const receip = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
+                        tokenId, wallet, passString, abi, actualConfig.id);
+                    console.log(JSON.stringify(receip.events.pop()));
                 } else if (type.toUpperCase() === 'DEPOSIT') {
-                    await depositTx(actualConfig.nodeEth, actualConfig.address, amount,
+                    const receip = await depositTx(actualConfig.nodeEth, actualConfig.address, amount,
                         tokenId, wallet, passString, abi);
+                    console.log(JSON.stringify(receip.events.pop()));
                 } else if (type.toUpperCase() === 'DEPOSITONTOP') {
-                    await depositOnTopTx(actualConfig.nodeEth, actualConfig.address, amount,
-                        tokenId, wallet, passString, abi, actualConfig.operator);
+                    const receip = await depositOnTopTx(actualConfig.nodeEth, actualConfig.address, amount,
+                        tokenId, wallet, passString, abi, actualConfig.id);
+                    console.log(JSON.stringify(receip.events.pop()));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
-                        tokenId, wallet, passString, abi, actualConfig.operator);
+                    const receip = await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
+                        tokenId, wallet, passString, abi, actualConfig.operator, actualConfig.id);
+                    console.log(JSON.stringify(receip.events.pop()));
+                } else if (type.toUpperCase() === 'TRANSFER') {
+                    const receip = await transferTx(actualConfig.nodeEth, actualConfig.address, amount,
+                        tokenId, wallet, passString, abi, actualConfig.id, to);
+                    console.log(JSON.stringify(receip.events.pop()));
+                } else if (type.toUpperCase() === 'DEPOSITANDTRANSFER') {
+                    const receip = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.address, loadamount, amount,
+                        tokenId, wallet, passString, abi, to);
+                    console.log(JSON.stringify(receip.events.pop()));
                 } else {
                     throw new Error('Invalid type');
                 }
@@ -339,11 +355,22 @@ const userFee = argv.fee ? argv.fee : 'nouserfee';
                 checkparamsOffchain(type, actualConfig);
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
                 if (type.toUpperCase() === 'SEND') {
-                    await sendTx(actualConfig.operator, to, amount, wallet, passString, tokenId, userFee);
+                    const res = await sendTx(actualConfig.operator, to, amount, wallet, passString, tokenId, userFee, actualConfig.id);
+                    console.log(JSON.stringify(res));
                 } else {
                     throw new Error('Invalid type');
                 }
             }
+            process.exit(0);
+        } else if (argv._[0].toUpperCase() === 'SHOWLEAFS') {
+            if (actualConfig.wallet === undefined) {
+                throw new Error('It is necessary a wallet Babyjack to perform this operation');
+            }
+            if (passString === 'nopassphrase') {
+                throw new Error('No passphrase was submitted');
+            }
+            const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+            await showLeafs(actualConfig.operator, wallet, passString);
             process.exit(0);
         } else {
             throw new Error('Invalid command');
@@ -374,7 +401,7 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
-        checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
+        checkparam(actualConfig.id, undefined, 'From Id missing');
         break;
     case 'WITHDRAW':
         checkparam(passString, 'nopassphrase', 'passphrase');
@@ -385,6 +412,7 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
+        checkparam(actualConfig.id, undefined, 'From Id missing');
         break;
     case 'FORCEWITHDRAW':
         checkparam(passString, 'nopassphrase', 'passphrase');
@@ -394,7 +422,29 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
-        checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
+        checkparam(actualConfig.id, undefined, 'From Id missing');
+        break;
+    case 'TRANSFER':
+        checkparam(passString, 'nopassphrase', 'passphrase');
+        checkparam(amount, -1, 'amount');
+        checkparam(tokenId, 'notokenid', 'token ID');
+        checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
+        checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
+        checkparam(actualConfig.id, undefined, 'From Id missing');
+        checkparam(to, 'norecipient', 'recipient');
+        break;
+    case 'DEPOSITANDTRANSFER':
+        checkparam(passString, 'nopassphrase', 'passphrase');
+        checkparam(amount, -1, 'amount');
+        checkparam(loadamount, -1, 'loadamount');
+        checkparam(tokenId, 'notokenid', 'token ID');
+        checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
+        checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
+        checkparam(to, 'norecipient', 'recipient');
         break;
     default:
         throw new Error('Invalid type');
@@ -411,6 +461,7 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(userFee, 'nouserfee', 'fee');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
+        checkparam(actualConfig.id, undefined, 'From Id missing');
         break;
     default:
         throw new Error('Invalid type');

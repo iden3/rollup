@@ -13,48 +13,28 @@ const CliExternalOperator = require('../../../../rollup-operator/src/cli-externa
  * @param tokenId token type identifier, the sender and the reciever must use the same token
  * @param userFee fee the user is diposed to pay
 */
-async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, userFee) {
+async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, userFee, idFrom) {
     const apiOperator = new CliExternalOperator(UrlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
-    const walletBaby = walletRollup.babyjubWallet;
 
-    return new Promise(((resolve, reject) => {
-        apiOperator.getInfoByAxAy(walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString())
-            .then((responseLeaf) => {
-                let correctLeaf = [];
-                for (const leaf of responseLeaf.data) {
-                    if (leaf.tokenId === tokenId) {
-                        correctLeaf = leaf;
-                    }
-                }
-                if (correctLeaf === []) {
-                    reject(new Error("There're no leafs with this wallet (babyjub) and this tokenID"));
-                }
-                const transaction = {
-                    fromIdx: correctLeaf.id,
-                    toIdx: idTo,
-                    coin: tokenId,
-                    amount,
-                    nonce: correctLeaf.nonce,
-                    userFee,
-                    rqOffset: 0,
-                    onChain: 0,
-                    newAccount: 0,
-                };
-                walletRollup.signRollupTx(transaction); // sign included in transaction
-                const parseTransaction = stringifyBigInts(transaction);// convert bigint to Strings
-                apiOperator.sendOffChainTx(parseTransaction)
-                    .then((response) => {
-                        resolve(response.status);
-                    })
-                    .catch((error) => {
-                        reject(error);
-                    });
-            })
-            .catch((error) => {
-                reject(error);
-            });
-    }));
+    const responseLeaf = await apiOperator.getInfoByIdx(idFrom);
+    const tx = {
+        fromIdx: responseLeaf.data.id,
+        toIdx: idTo,
+        coin: tokenId,
+        amount,
+        nonce: responseLeaf.data.nonce,
+        userFee,
+        rqOffset: 0,
+        onChain: 0,
+        newAccount: 0,
+    };
+
+    walletRollup.signRollupTx(tx); // sign included in transaction
+    const parseTx = stringifyBigInts(tx);// convert bigint to Strings
+
+    const res = await apiOperator.sendOffChainTx(parseTx);
+    return res.status;
 }
 
 module.exports = { send };

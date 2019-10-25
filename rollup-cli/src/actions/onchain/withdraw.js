@@ -15,38 +15,20 @@ const CliExternalOperator = require('../../../../rollup-operator/src/cli-externa
  * @param abi abi of rollup contract'
  * @param UrlOperator URl from operator
  */
-async function withdraw(urlNode, addressSC, balance, tokenId, walletJson, password, abi, UrlOperator) {
+async function withdraw(urlNode, addressSC, balance, tokenId, walletJson, password, abi, UrlOperator, idFrom) {
     const apiOperator = new CliExternalOperator(UrlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
-    const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
     walletEth = walletEth.connect(provider);
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
 
     try {
-        return new Promise(((resolve, reject) => {
-            apiOperator.getInfoByAxAy(walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString())
-                .then(async (response) => {
-                    let correctLeaf = [];
-                    for (const leaf of response.data) {
-                        if (leaf.tokenId === tokenId) {
-                            correctLeaf = leaf;
-                        }
-                    }
-                    if (correctLeaf === []) {
-                        reject(new Error("There're no leafs with this wallet (babyjub) and this tokenID"));
-                    }
-                    const receipt = await contractWithSigner.withdraw(correctLeaf.id, balance, tokenId, correctLeaf.exitRoot,
-                        correctLeaf.nonce, correctLeaf.sibilings);
-                    resolve(receipt);
-                })
-                .catch((error) => {
-                    reject(error);
-                });
-        }));
+        const responseLeaf = await apiOperator.getInfoByIdx(idFrom);
+        return await contractWithSigner.withdraw(responseLeaf.data.id, balance, tokenId, responseLeaf.data.numExitRoot,
+            responseLeaf.data.nonce, responseLeaf.data.sibilings);
     } catch (error) {
-        return ('error.... ', error); // fires as the contract reverted the payment
+        throw new Error(`Message error: ${error.message}`);
     }
 }
 

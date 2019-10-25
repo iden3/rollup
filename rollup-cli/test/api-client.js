@@ -38,10 +38,28 @@ app.get('/info/axay/:Ax/:Ay', async (req, res) => {
         const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
 
         res.send([{
-            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 1, exitRoot: 6, sibilings: siblingsId,
+            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 1, numExitRoot: 6, sibilings: siblingsId,
         }, {
-            tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 2, exitRoot: 6, sibilings: siblingsId,
+            tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 2, numExitRoot: 6, sibilings: siblingsId,
         }]);
+    }
+});
+
+
+app.get('/info/id/:id', async (req, res) => {
+    if (req.params.id !== undefined) {
+        const walletEth = await ethers.Wallet.fromEncryptedJson(fs.readFileSync(walletEthPathDefault, 'utf8'), 'foo');
+        const exitTree = await RollupTree.newMemRollupTree();
+        const babyjubJson = fs.readFileSync(walletBabyjubPathDefault, 'utf8');
+        const walletBaby = await BabyJubWallet.fromEncryptedJson(babyjubJson, 'foo');
+        await exitTree.addId(1, 10, 0, BigInt(walletBaby.publicKey[0]), BigInt(walletBaby.publicKey[1]), BigInt(walletEth.address), 0);
+
+        const infoId = await exitTree.getIdInfo(1);
+        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+
+        res.send({
+            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: req.params.id, numExitRoot: 6, sibilings: siblingsId,
+        });
     }
 });
 

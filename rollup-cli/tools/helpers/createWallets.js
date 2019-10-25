@@ -13,6 +13,17 @@ async function createWallets(numWallets, amountToken, passString, addressRollup,
     const provider = new ethers.providers.JsonRpcProvider(node);
     walletEthFunder = walletEthFunder.connect(provider);
     const contractTokensFunder = new ethers.Contract(addressTokens, abiTokens, walletEthFunder);
+    const addressFunder = await walletEthFunder.getAddress();
+    const tokensFunder = await contractTokensFunder.balanceOf(addressFunder); // is contract=?
+    const balanceFunder = await walletEthFunder.getBalance();
+
+    if (balanceFunder < amountEther) {
+        throw Error("Account funder don't have enough ether");
+    }
+
+    if (tokensFunder < amountToken) {
+        throw Error("Account funder don't have enough tokens");
+    }
 
     for (let i = 1; i <= numWallets; i++) {
         if (mnemonic) {
