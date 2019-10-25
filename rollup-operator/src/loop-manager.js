@@ -105,6 +105,7 @@ class LoopManager{
                 await timeout(TIMEOUT_NEXT_STATE);
             } catch (e) {
                 logger.error(`Message error: ${e.message}`);
+                logger.error(`Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }}
     }

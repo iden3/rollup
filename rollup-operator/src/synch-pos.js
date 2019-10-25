@@ -111,6 +111,7 @@ class SynchPoS {
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
                 logger.error(`Message error: ${e.message}`);
+                logger.error(`Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }

@@ -11,7 +11,6 @@ const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
 const path = require("path");
-const { BabyJubWallet, verifyBabyJub } = require("../../../rollup-utils/babyjub-wallet");
 const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
@@ -19,7 +18,13 @@ const CliAdminOp = require("../../src/cli-admin-operator");
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
 const cliDeposit = require("../../../rollup-cli/src/actions/onchain/deposit");
-const cliSendOffChain = require("../../../rollup-cli/src/actions/offchain/send"); 
+const cliSendOffChainTx = require("../../../rollup-cli/src/actions/offchain/send");
+
+// test timeouts
+const timeoutSynch = 20000;
+const timeoutBlocks = 5000;
+const timeoutLoop = 10000;
+
 
 // This test assumes 'server-proof' is running locally on port 10001
 // This test assumes 'operator' api-admin is running locally on port 9000
@@ -67,7 +72,6 @@ contract("Operator", (accounts) => {
     // Contract instances
     let insTokenRollup;
     let insRollup;
-    let insRollupPoS;
 
     before(async () => {
         // Load test configuration
@@ -77,7 +81,7 @@ contract("Operator", (accounts) => {
         // Load Rollup
         insRollup = await Rollup.at(configTest.rollupAddress);
         // Load rollup PoS
-        insRollupPoS = await RollupPoS.at(configTest.posAddress);
+        await RollupPoS.at(configTest.posAddress);
 
         // Load clients
         cliAdminOp = new CliAdminOp(urlAdminOp);
@@ -141,18 +145,18 @@ contract("Operator", (accounts) => {
         await cliAdminOp.register(stake, url, seed);
     });
 
-    it("Should do a deposit", async () => {
+    it("Should add two deposits", async () => {
         const token = 0;
         const amountDeposit = 10;
-        // let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, tokenId, 
-        //     encryptedWallet, pass, Rollup.abi);
-        // await resDeposit.wait();
 
-        // Approve token to tokenId address
-        await insTokenRollup.approve(insRollup.address, amountDeposit, { from: tokenId });
-        await insRollup.deposit(amountDeposit, token, walletEth.address,
-            [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()],
-            { from: tokenId, value: web3.utils.toWei("1", "ether") });
+        // account idx = 1
+        let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+            encryptedWallet, pass, Rollup.abi);
+        await resDeposit.wait();
+        // account idx = 2
+        resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+            encryptedWallet, pass, Rollup.abi);
+        await resDeposit.wait();
     });
 
     it("Should get general information", async () => { 
@@ -162,7 +166,7 @@ contract("Operator", (accounts) => {
         const blockGenesis = res.data.posSynch.genesisBlock;
         const currentBlock = res.data.currentBlock;
         await addBlocks(blockGenesis - currentBlock + 1); // move to era 0
-        await timeout(20000); // time to synch
+        await timeout(timeoutSynch); // time to synch
     });
 
     it("Should get one operator", async () => { 
@@ -180,12 +184,12 @@ contract("Operator", (accounts) => {
 
     it("Should move to era 2", async () => {
         await addBlocks(blockPerEra); // move to era 1
-        await timeout(5000); // wait time to add all blocks
+        await timeout(timeoutBlocks); // wait time to add all blocks
         await addBlocks(blockPerEra); // move to era 2
-        await timeout(5000); // wait time to add all blocks
+        await timeout(timeoutBlocks); // wait time to add all blocks
     });
 
-    it("Should forge genesis and deposit", async () => {
+    it("Should forge genesis and on-chain transaction", async () => {
         let batchForged = false;
         let counter = 0;
         while(!batchForged && counter < 10) {
@@ -195,7 +199,53 @@ contract("Operator", (accounts) => {
                 batchForged = true;
                 break;
             } 
-            await timeout(10000);
+            await timeout(timeoutLoop);
+            counter += 1;
+        }
+        expect(batchForged).to.be.equal(true);
+    });
+
+    it("Should set pool conversion table", async () => {
+        const conversion = {
+            0: {
+                token: "ROLL",
+                price: 20,
+                decimals: 18
+            }
+        };
+        const res = await cliAdminOp.setConversion(conversion);
+        expect(res.status).to.be.equal(200);
+    });
+
+    it("Should add off-chain transaction to the pool", async () => {
+        // Retrieve operator url
+        const res = await cliExternalOp.getOperatorsList();
+        const listOperators = res.data;
+        const urlOp = listOperators[0].url;
+        // config transaction
+        const configTx = {
+            from: 1,
+            to: 2,
+            token: 0,
+            amount: 3,
+            userFee: 2, 
+        };
+        // send transaction with client
+        await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, encryptedWallet,
+            pass, configTx.token, configTx.userFee, configTx.from);
+    });
+
+    it("Should forge off-chain transaction", async () => {
+        let batchForged = false;
+        let counter = 0;
+        while(!batchForged && counter < 10) {
+            const res = await cliExternalOp.getGeneralInfo();
+            const info = res.data;
+            if (info.rollupSynch.lastBatchSynched > 4) {
+                batchForged = true;
+                break;
+            } 
+            await timeout(timeoutLoop);
             counter += 1;
         }
         expect(batchForged).to.be.equal(true);
@@ -224,9 +274,5 @@ contract("Operator", (accounts) => {
             const resAthAddress = await cliExternalOp.getInfoByEthAddr(walletEthAddress);
             expect(resAthAddress.data[0].idx).to.be.equal(id);
         });
-    });
-
-    it("Should add off-chain transaction to the pool", async () => {
-        
     });
 });

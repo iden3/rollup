@@ -3,23 +3,23 @@ const { stringifyBigInts } = require('snarkjs');
 const { Wallet } = require('../../wallet.js');
 const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
 /**
- * @dev off-chain transaction between users
- * transfer tokens from an id to another offchain
- * @param UrlOperator URl from operator
- * @param idTo reciever
+ * @dev sends off-chain transaction
+ * @param urlOperator url from operator
+ * @param idTo receiver
  * @param amount initial balance on balance tree
  * @param walletJson from this one can obtain the ethAddress and babyPubKey
  * @param password for decrypt the Wallet
  * @param tokenId token type identifier, the sender and the reciever must use the same token
- * @param userFee fee the user is diposed to pay
+ * @param userFee amount of fee that the user is willing to pay
+ * @param idFrom Self balance tree identifier
 */
-async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, userFee, idFrom) {
-    const apiOperator = new CliExternalOperator(UrlOperator);
+async function send(urlOperator, idTo, amount, walletJson, password, tokenId, userFee, idFrom) {
+    const apiOperator = new CliExternalOperator(urlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
 
     const responseLeaf = await apiOperator.getInfoByIdx(idFrom);
     const tx = {
-        fromIdx: responseLeaf.data.id,
+        fromIdx: responseLeaf.data.idx,
         toIdx: idTo,
         coin: tokenId,
         amount,

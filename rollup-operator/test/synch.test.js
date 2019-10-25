@@ -18,6 +18,10 @@ const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const { timeout, buildInputSm, manageEvent } = require("../src/utils");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 
+const proofA = ["0", "0"];
+const proofB = [["0", "0"], ["0", "0"]];
+const proofC = ["0", "0"];
+
 async function checkSynch(synch, opRollupDb){
     // Check fully synchronized
     const totalSynched = await synch.getSynchPercentage();
@@ -37,19 +41,28 @@ const timeoutFinal = 60000;
 
 contract("Synchronizer", (accounts) => {
     
-    async function forgeBlock(events = undefined) {
-        const block = await opRollupDb.buildBatch(maxTx, nLevels);
+    async function forgeBlock(events = undefined, params = undefined) {
+        const batch = await opRollupDb.buildBatch(maxTx, nLevels);
+        // Parse params
+        if (params){
+            if(params.addCoins){
+                for(const element of params.addCoins){
+                    await batch.addCoin(element.coin, element.fee);
+                }
+            }
+        }
+        // Manage events
         if (events) {
             events.forEach(elem => {
-                block.addTx(manageEvent(elem));
+                batch.addTx(manageEvent(elem));
             });
         }
-        await block.build();
-        const inputSm = buildInputSm(block, beneficiary);
+        await batch.build();
+        const inputSm = buildInputSm(batch, beneficiary);
         ptr = ptr - 1;
-        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${block.getDataAvailable().toString("hex")}`,
+        await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${batch.getDataAvailable().toString("hex")}`,
             proofA, proofB, proofC, inputSm);
-        await opRollupDb.consolidate(block);
+        await opRollupDb.consolidate(batch);
     }
 
     const {
@@ -109,11 +122,6 @@ contract("Synchronizer", (accounts) => {
     const wallet = BabyJubWallet.fromMnemonic(mnemonic);
     const Ax = wallet.publicKey[0].toString();
     const Ay = wallet.publicKey[1].toString();
-
-    // Fake proofs
-    const proofA = ["0", "0"];
-    const proofB = [["0", "0"], ["0", "0"]];
-    const proofC = ["0", "0"];
 
     before(async () => {
         // Deploy poseidon
@@ -269,9 +277,35 @@ contract("Synchronizer", (accounts) => {
         expect(resEthAddress3[0].ay).to.be.equal(ayStr);
     });
 
+    it("Should add off-chain tx with fee and synch", async () => {
+        const tx = {
+            fromIdx: 1,
+            toIdx: 2,
+            coin: 0,
+            amount: 1,
+            nonce: 0,
+            userFee: 1
+        };
+
+        const params = {
+            addCoins: [{coin: 0, fee:1}]
+        };
+        
+        const events = [];
+        events.push({event:"OffChainTx", tx: tx});
+        await forgeBlock(events, params);
+        await timeout(timeoutSynch);
+        await checkSynch(synch, opRollupDb);
+    });
+
     it("Should add off-chain tx and synch", async () => {
         const events = [];
-        events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 3});
+        const tx = {
+            fromIdx: 1,
+            toIdx: 2,
+            amount: 3,
+        };
+        events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events);
         await timeout(timeoutSynch);
         await checkSynch(synch, opRollupDb);
@@ -285,8 +319,18 @@ contract("Synchronizer", (accounts) => {
         const event = await insRollupTest.depositOnTop(toId, onTopAmount, tokenId,
             { from: id2, value: web3.utils.toWei("1", "ether") });
         events.push(event.logs[0]);
-        events.push({event:"OffChainTx", fromId: 1, toId: 2, amount: 2});
-        events.push({event:"OffChainTx", fromId: 2, toId: 1, amount: 3});
+        const tx1 = {
+            fromIdx: 1,
+            toIdx: 2,
+            amount: 2,
+        };
+        events.push({event:"OffChainTx", tx: tx1});
+        const tx2 = {
+            fromIdx: 2,
+            toIdx: 1,
+            amount: 3
+        };
+        events.push({event:"OffChainTx", tx: tx2});
         await forgeBlock();
         await forgeBlock(events);
         await timeout(timeoutSynch);
@@ -294,14 +338,14 @@ contract("Synchronizer", (accounts) => {
     });
 
     it("Should get off-chain tx by batch", async () => {
-        // get off-chain tx forge in batch 4
-        const res0 = await synch.getOffChainTxByBatch(4);
+        // get off-chain tx forge in batch 5
+        const res0 = await synch.getOffChainTxByBatch(5);
         expect(res0[0].fromIdx.toString()).to.be.equal("1");
         expect(res0[0].toIdx.toString()).to.be.equal("2");
         expect(res0[0].amount.toString()).to.be.equal("3");
 
-        // get off-chain tx forged in batch 6
-        const res1 = await synch.getOffChainTxByBatch(6);
+        // get off-chain tx forged in batch 7
+        const res1 = await synch.getOffChainTxByBatch(7);
         // Should retrieve two off-chain tx
         expect(res1.length).to.be.equal(2);
         // tx 0
@@ -319,9 +363,14 @@ contract("Synchronizer", (accounts) => {
         const numBatchForged = 10;
         for (let i = 0; i < numBatchForged; i++) {
             events = [];
-            const from = (i % 2) ? 1 : 2;
-            const to = (i % 2) ? 2 : 1;
-            events.push({event:"OffChainTx", fromId: from, toId: to, amount: 1});
+            const fromIdx = (i % 2) ? 1 : 2;
+            const toIdx = (i % 2) ? 2 : 1;
+            const tx = {
+                fromIdx,
+                toIdx,
+                amount: 1,
+            };
+            events.push({event:"OffChainTx", tx});
             await forgeBlock(events);
         }
         await timeout(timeoutFinal);

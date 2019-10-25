@@ -5,7 +5,7 @@ Commands are called from repository `rollup` root directory
 `ganache-cli -a 100 --defaultBalanceEther 10000`
 
 - Deploy contracts and build configuration files
-`truffle test ./rollup-operator/test/server/buildConfigs.test.js`
+`truffle test ./rollup-operator/test/server/build-configs.test.js`
 
 - Run servers
   - Proof-generator: `node ./rollup-operator/src/server-proof.js`
@@ -17,7 +17,10 @@ Commands are called from repository `rollup` root directory
 
 - Run test #2
   - test all api-external functions
-    - one deposit on-chain
-    - forge genesis batch and next one
-    - Retrieve information with api-external 
+    - get operators list
+    - several deposit on-chain
+    - get general information
+    - set conversion table for tx-pool
+    - send and forge off-chain transaction
+    - get balance tree information 
 `truffle test ./rollup-operator/test/server/op-external-api.test.js`
