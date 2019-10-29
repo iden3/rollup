@@ -301,6 +301,17 @@ appExternal.get("/info/operators", async (req, res) => {
     }
 });
 
+appExternal.get("/info/exit/:numbatch/:id", async (req, res) => {
+    const numBatch = req.params.numbatch;
+    const id = req.params.id;
+    try {
+        const resFind = await rollupSynch.getExitTreeInfo(numBatch, id);
+        res.status(200).json(stringifyBigInts(resFind));
+    } catch (error) {
+        res.status(400).send(`Message error: ${error.message}`);
+    }
+});
+
 appExternal.post("/offchain/send", async (req, res) => {
     const tx = unstringifyBigInts(req.body.tx);
     try {

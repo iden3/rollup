@@ -3,7 +3,9 @@ const { Wallet, verifyMessageBabyJub, verifyMessageEthereum } = require('../src/
 
 const { expect } = chai;
 
-describe('Wallet', () => {
+describe('Wallet', function () {
+    this.timeout(10000);
+
     const mnemonic = 'maximum direct solution mushroom before meat public bean board frown announce lawn';
     const privTestEth = '0x1f07e59e1c8f9406a89d461fcc6d1044485c5960ba7fe123c67a8b0bbf115524';
     const privTestBabyjub = '7436d936f531fa2cf0c3b1ef6f0635ba19831e62bce6999da31423813e66135c';

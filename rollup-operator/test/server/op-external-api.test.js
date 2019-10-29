@@ -241,7 +241,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getGeneralInfo();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 4) {
+            if (info.rollupSynch.lastBatchSynched > 3) {
                 batchForged = true;
                 break;
             } 
@@ -249,6 +249,70 @@ contract("Operator", (accounts) => {
             counter += 1;
         }
         expect(batchForged).to.be.equal(true);
+    });
+
+    it("Should add withdraw off-chain transaction to the pool", async () => {
+        // Retrieve operator url
+        const res = await cliExternalOp.getOperatorsList();
+        const listOperators = res.data;
+        const urlOp = listOperators[0].url;
+        // config transaction
+        const configTx = {
+            from: 2,
+            to: 0,
+            token: 0,
+            amount: 3,
+            nonce: 0,
+            userFee: 1, 
+        };
+        // send transaction with client
+        await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, encryptedWallet,
+            pass, configTx.token, configTx.userFee, configTx.from);
+    });
+    
+    it("Should forge withdraw off-chain transaction", async () => {
+        let batchForged = false;
+        let counter = 0;
+        while(!batchForged && counter < 10) {
+            const res = await cliExternalOp.getGeneralInfo();
+            const info = res.data;
+            if (info.rollupSynch.lastBatchSynched > 6) {
+                batchForged = true;
+                break;
+            } 
+            await timeout(timeoutLoop);
+            counter += 1;
+        }
+        expect(batchForged).to.be.equal(true);
+    });
+
+    it("Should create leaf on exit tree", async () => {
+        const id = 2;
+        let infoLeaf;
+        for (let i = 1; i < 7; i++) {
+            const res = await cliExternalOp.getExitInfo(i, id);
+            infoLeaf = res.data;
+            if (infoLeaf.found) break;
+        }
+        expect(infoLeaf.state.idx).to.be.equal(id);
+    });
+
+    it("Should check balances", async () => {
+        // Theoretical balances overview:
+        // deposits: id1 --> 10, id2 --> 10
+        // off-chain tx: id1 --> 5, id2 --> 13 (from: id1, to: id2, amount:3, fee: 2)
+        // off-chain tx: id1 --> 5, ide2 --> 9 (from: id2, to: 0, amount:3, fee: 1)
+
+        const id1 = 1;
+        const id2 = 2;
+        const amountId1 = 5;
+        const amountId2 = 9;
+
+        const resId1 = await cliExternalOp.getInfoByIdx(id1);
+        const resId2 = await cliExternalOp.getInfoByIdx(id2);
+
+        expect(resId1.data.amount).to.be.equal(amountId1.toString());
+        expect(resId2.data.amount).to.be.equal(amountId2.toString());
     });
 
     describe("Should retrieve leaf information", async () => {

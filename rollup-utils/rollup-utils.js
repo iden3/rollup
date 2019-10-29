@@ -144,8 +144,8 @@ function signRollupTx(walletBabyJub, tx) {
     tx.r8x = signature.R8[0];
     tx.r8y = signature.R8[1];
     tx.s = signature.S;
-    tx.ax = this.babyjubWallet.publicKey[0].toString(16);
-    tx.ay = this.babyjubWallet.publicKey[1].toString(16);
+    tx.ax = walletBabyJub.publicKey[0].toString(16);
+    tx.ay = walletBabyJub.publicKey[1].toString(16);
 }
 
 function buildFeeInputSm(feePlan) {

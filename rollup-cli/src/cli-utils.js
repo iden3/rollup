@@ -25,8 +25,8 @@ async function depositOnTopTx(node, address, amount, tokenid, wallet, passString
     return receip;
 }
 
-async function withdrawTx(node, address, amount, tokenid, wallet, passString, abi, operator, fromId) {
-    const response = await withdraw(node, address, amount, tokenid, wallet, passString, abi, operator, fromId);
+async function withdrawTx(node, address, amount, wallet, passString, abi, operator, fromId, numExitRoot) {
+    const response = await withdraw(node, address, amount, wallet, passString, abi, operator, fromId, numExitRoot);
     const receip = await response.wait();
     return receip;
 }

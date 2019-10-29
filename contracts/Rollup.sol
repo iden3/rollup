@@ -334,7 +334,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * All leaves created on the exit are allowed to call on-chain transaction to finish the withdraw
      * @param idBalanceTree account identifier on the balance tree
      * @param amount amount to retrieve
-     * @param tokenId token type
      * @param numExitRoot exit root depth. Number of batch where the withdraw transaction has been done
      * @param nonce nonce exit tree leaf
      * @param siblings siblings to demonstrate merkle tree proof
@@ -342,14 +341,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     function withdraw(
         uint64 idBalanceTree,
         uint16 amount,
-        uint32 tokenId,
         uint numExitRoot,
         uint48 nonce,
         uint256[] memory siblings
     ) public {
         // Build 'key' and 'value' for exit tree
         uint256 keyExitTree = idBalanceTree;
-        Entry memory exitEntry = buildTreeState(amount, tokenId, treeInfo[idBalanceTree].babyPubKey[0],
+        Entry memory exitEntry = buildTreeState(amount, treeInfo[idBalanceTree].tokenId, treeInfo[idBalanceTree].babyPubKey[0],
         treeInfo[idBalanceTree].babyPubKey[1], msg.sender, nonce);
         uint256 valueExitTree = hashEntry(exitEntry);
         // Get exit root given its index depth
@@ -364,7 +362,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         bool result = smtVerifier(exitRoot, siblings, keyExitTree, valueExitTree, 0, 0, false, false, 24);
         require(result == true, 'invalid proof');
         // Withdraw token from rollup smart contract to ethereum address
-        require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
+        require(withdrawToken(treeInfo[idBalanceTree].tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
         // Set nullifier
         exitNullifier[nullifier] = true;
     }

@@ -14,9 +14,11 @@ describe('Send', () => {
     const password = 'foo';
     const tokenId = 0;
     const userFee = 10;
+    const idFrom = 1;
     // walletBabyJub = fs.readFileSync("path", "utf8");
 
-    it('Send test', () => send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee).then((response) => {
-        expect(response).to.be.equal(200);
-    })).timeout(0);
+    it('Send test', () => send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom)
+        .then((response) => {
+            expect(response).to.be.equal(200);
+        })).timeout(0);
 });

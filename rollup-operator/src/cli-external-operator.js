@@ -31,6 +31,10 @@ class CliExternalOperator {
         return axios.get(`${this.url}/info/operators`);
     }
 
+    getExitInfo(numBatch, id) {
+        return axios.get(`${this.url}/info/exit/${numBatch}/${id}`);
+    }
+
     sendOffChainTx(tx) {
         return axios.post(`${this.url}/offchain/send`, { tx: stringifyBigInts(tx) });
     }

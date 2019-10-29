@@ -420,16 +420,22 @@ class TXPool {
             const tx = availableTxs.pop();
             const res = await tmpState.canProcess(tx);
             if (res == "YES") {
+
                 await tmpState.process(tx);
+
                 if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
                 txsByCoin[tx.coin].push(tx);
                 const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
-                const stTo = await tmpState.getState(tx.toIdx);
-                const ftxTo = popFuture(tx.toIdx, stTo.nonce);
-                if ((ftxFrom.length>0) || (ftxTo.length>0)) {
-                    availableTxs.push(...ftxFrom);
-                    availableTxs.push(...ftxTo);
-                    availableTxs.sort(fnSort);
+                
+                if (tx.toIdx){
+                    const stTo = await tmpState.getState(tx.toIdx);
+                
+                    const ftxTo = popFuture(tx.toIdx, stTo.nonce);
+                    if ((ftxFrom.length>0) || (ftxTo.length>0)) {
+                        availableTxs.push(...ftxFrom);
+                        availableTxs.push(...ftxTo);
+                        availableTxs.sort(fnSort);
+                    }
                 }
             } else if (res == "NOT_NOW") {
                 pushFuture(tx);
@@ -467,7 +473,7 @@ class TXPool {
 
                 accValue = nNonZero * normalizedFee;
 
-                // If the fee of this TX is greater that every think acululated
+                // If the fee of this TX is greater that every think acumulated
                 // Just take this.
                 if (tx.normalizedFee > accValue) {
                     normalizedFee = tx.normalizedFee;
