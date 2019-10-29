@@ -11,6 +11,7 @@ contract RollupPoSHelpers {
 
   uint constant bytesOffChainTx = 3*2 + 2;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+  uint constant FOURTH_ROOT_FINNEY = 5623; //4th root of finney in weis
 
   constructor () public {}
 
@@ -40,5 +41,29 @@ contract RollupPoSHelpers {
       ptr++;
     }
     return uint256(sha256(hashOffTx)) % rField;
+  }
+
+  /**
+   * @dev Calculate the effective stake, wich is: stake^1.25, we can also express as stake*stake^1/4
+   * @param stake number to get the exponentiation
+   * @return stake^1.25
+   */
+  function effectiveStake(uint stake) internal pure returns (uint64) {
+    return uint64((stake*sqrt(sqrt(stake)))/(1 finney * FOURTH_ROOT_FINNEY));
+  }
+
+  //Babylonian method
+  /**
+   * @dev perform the babylonian method to calculate in a simple and efficient way the square root
+   * @param x number to calculate the square root
+   * @return square root of x
+   */
+  function sqrt(uint x) internal pure returns (uint y) {
+    uint z = (x + 1) / 2;
+    y = x;
+    while (z < y) {
+      y = z;
+      z = (x / z + z) / 2;
+    }
   }
 }

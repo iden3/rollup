@@ -1,7 +1,9 @@
 /* eslint-disable no-underscore-dangle */
 /* global artifacts */
 /* global contract */
+/* global web3 */
 
+const { stringifyBigInts } = require("snarkjs");
 const chai = require("chai");
 const { expect } = chai;
 
@@ -105,4 +107,26 @@ contract("RollupPoSHelpers functions", () => {
         const bb6 = await rollupDB.buildBatch(maxTx, nLevels);
         checkHashOffChain(bb6, insPoSHelpers, maxTx);
     });    
+
+    it("Effective stake should be 0 for amount < 1 finney", async () => {
+        let input = web3.utils.toWei("0.5", "finney");
+        let resStake = await insPoSHelpers.effectiveStakeTest(input);
+        expect (await insPoSHelpers.methods["effectiveStakeTest(uint256)"].estimateGas(input)).to.be.below(31000);
+        expect(parseInt(stringifyBigInts(resStake))).to.be.equal(0);
+    });
+
+    it("Effective stake calculated with very low relative error", async () => {
+        for (let i = 0; i<10; i++){
+            for (let j = 1; j<8; j++){ //test from 0.001 ether to 10000 ethers
+                for (let k = 0; k<11; k++){ 
+                    let input = web3.utils.toWei((k+j*10**i).toString(), "finney");
+                    let resStake = await insPoSHelpers.effectiveStakeTest(input);
+                    let result = parseInt(stringifyBigInts(resStake));
+                    let expected = Math.floor(Math.pow(parseInt(input)/1e+15,1.25));
+                    expect(await insPoSHelpers.methods["effectiveStakeTest(uint256)"].estimateGas(input)).to.be.below(31000);
+                    expect(Math.abs((result-expected)/result)).to.be.below(0.0015);//bigger the input, lower the relative error
+                }
+            }
+        }
+    });
 });

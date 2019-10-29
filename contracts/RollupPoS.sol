@@ -126,16 +126,6 @@ contract RollupPoS is RollupPoSHelpers{
     }
 
     /**
-     * @dev Calculate square exponentiation
-     * @param stake number to get the exponentiation
-     * @return stake square exponentiation
-     */
-    function effectiveStake(uint stake) public pure returns (uint64) {
-        // return uint64( (stake*stake*0x10000000000000000) / (200000000 ether * 200000000 ether) );
-        return uint64(stake*stake / (1 ether * 1 ether));
-    }
-
-    /**
      * @dev Calculate era from block number
      * @param numBlock block number
      * @return era number
