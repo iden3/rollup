@@ -4,20 +4,19 @@
 /* global web3 */
 
 const chai = require('chai');
-
-const walletEthPathDefault = '../src/resources/wallet.json';
-const { expect } = chai;
 const ethers = require('ethers');
 const fs = require('fs');
-
-const config = '../src/resources/config.json';
-
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
+const path = require('path');
+const { createWallet, createConfig, createRollupAbi } = require('./build-resources');
+
+const { expect } = chai;
+
+const walletPathDefault = path.join(__dirname, '../resources/wallet-test.json');
 
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
 const RollupTest = artifacts.require('../../../../contracts/test/RollupTest');
 const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
-
 
 contract('Rollup', async (accounts) => {
     let insPoseidonUnit;
@@ -38,6 +37,7 @@ contract('Rollup', async (accounts) => {
 
 
     before(async () => {
+        await createWallet();
         // Deploy poseidon
         const C = new web3.eth.Contract(poseidonUnit.abi);
         insPoseidonUnit = await C.deploy({ data: poseidonUnit.createCode() })
@@ -53,7 +53,9 @@ contract('Rollup', async (accounts) => {
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
             maxTx, maxOnChainTx);
 
-        walletEth = await ethers.Wallet.fromEncryptedJson(JSON.stringify(JSON.parse(fs.readFileSync(walletEthPathDefault, 'utf8')).ethWallet), 'foo');
+        walletEth = await ethers.Wallet.fromEncryptedJson(JSON.stringify(JSON.parse(fs.readFileSync(walletPathDefault, 'utf8')).ethWallet), 'foo');
+
+        await createRollupAbi(RollupTest.abi);
     });
 
     it('Distribute token rollup', async () => {
@@ -91,11 +93,6 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        let actualConfig = {};
-        if (fs.existsSync(config)) {
-            actualConfig = JSON.parse(fs.readFileSync(config, 'utf8'));
-        }
-        actualConfig.address = insRollupTest.address;
-        fs.writeFileSync(config, JSON.stringify(actualConfig, null, 1), 'utf-8');
+        await createConfig(insRollupTest.address);
     });
 });

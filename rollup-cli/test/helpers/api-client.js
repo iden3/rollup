@@ -4,11 +4,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const ethers = require('ethers');
+const path = require('path');
 const RollupTree = require('../../../rollup-utils/rollup-tree');
 const utils = require('../../../rollup-utils/utils');
 
-const walletBabyjubPathDefault = '../src/resources/babyjubWallet.json';
-const walletEthPathDefault = '../src/resources/ethWallet.json';
+const walletBabyjubPathDefault = path.join(__dirname, '../resources/babyjubWallet.json');
+const walletEthPathDefault = path.join(__dirname, '../resources/ethWallet.json');
 const { BabyJubWallet } = require('../../../rollup-utils/babyjub-wallet');
 
 const app = express();
@@ -16,12 +17,13 @@ app.use(bodyParser.json());
 
 
 app.post('/offchain/send', (req, res) => {
-    const transaction = req.body;
+    const transaction = req.body.tx;
     if (transaction.fromIdx === undefined || transaction.toIdx === undefined
         || transaction.amount === undefined || transaction.r8x === undefined || transaction.nonce === undefined
     || transaction.coin === undefined || transaction.userFee === undefined) {
         res.sendStatus(500);
     } else {
+        console.log(200);
         res.sendStatus(200);
     }
 });

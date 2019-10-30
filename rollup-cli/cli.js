@@ -8,11 +8,12 @@ const { Wallet } = require('./src/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx, showLeafs, transferTx, depositAndTransferTx,
 } = require('./src/cli-utils');
+const { error } = require('./src/list-errors');
 
-const walletPathDefault = './src/resources/wallet.json';
-const walletEthPathDefault = './src/resources/ethWallet.json';
-const walletBabyjubPathDefault = './src/resources/babyjubWallet.json';
-const configJsonDefault = './src/resources/config.json';
+const walletPathDefault = './wallet.json';
+const walletEthPathDefault = './ethWallet.json';
+const walletBabyjubPathDefault = './babyjubWallet.json';
+const configJsonDefault = './config.json';
 
 const { version } = require('./package');
 const { argv } = require('yargs') // eslint-disable-line
@@ -49,7 +50,7 @@ setparam command
 =============
   rollup-cli setparam --param <parameter> --value <parameter value>
   --paramstx <parameter file>
-  Default: ./src/resources/config.json
+  Default: ./config.json
 
 offchainTx command
 =============
@@ -67,7 +68,7 @@ offchainTx command
     User fee
   --paramstx <parameter file>
     Contains all necessary parameters to perform transacction
-    Default: ./src/resources/config.json
+    Default: ./config.json
   --tokenid <token ID>
 
 onchainTx command
@@ -82,7 +83,7 @@ onchainTx command
   --numexitroot <num exit root>
   --paramstx <parameter file>
     Contains all necessary parameters to perform transaction
-    Default: ./src/resources/config.json
+    Default: ./config.json
       `)
     .alias('p', 'path')
     .alias('pass', 'passphrase')
@@ -121,8 +122,8 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
         if (fs.existsSync(configjson)) {
             actualConfig = JSON.parse(fs.readFileSync(configjson, 'utf8'));
         } else {
-            console.log("This file doesn't exist\n\n");
-            throw new Error('No params file was submitted');
+            console.log('No params file was submitted\n\n');
+            throw new Error(error.NO_PARAMS_FILE);
         }
         // createkeys
         if (argv._[0].toUpperCase() === 'CREATEKEYS') {
@@ -132,8 +133,8 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
             // createkeys ethereum
             if (keytype === 'ethereum') {
                 if (passString === 'nopassphrase') {
-                    console.log('Please provide a passphrase to encrypt keys by:\n\n');
-                    throw new Error('No passphrase was submitted');
+                    console.log('Please provide a passphrase to encrypt keys\n\n');
+                    throw new Error(error.NO_PASS);
                 } else {
                     if (pathName === 'nopath') {
                         newWalletPath = walletEthPathDefault;
@@ -141,7 +142,7 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                     if (mnemonic !== 'nomnemonic') {
                         if (mnemonic.split(' ').length !== 12) {
                             console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
-                            throw new Error('Invalid Mnemonic');
+                            throw new Error(error.INVALID_MNEMONIC);
                         } else {
                             console.log('create ethereum wallet mnemonic');
                             wallet = EthereumWallet.fromMnemonic(mnemonic);
@@ -149,8 +150,8 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                         }
                     } else if (importWallet !== 'noimport') {
                         if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                            console.log('Path provided dont work:\n\n');
-                            throw new Error('Path provided dont work');
+                            console.log('Path provided dont work\n\n');
+                            throw new Error(error.INVALID_PATH);
                         }
                         console.log('create ethereum wallet import');
                         const readWallet = fs.readFileSync(importWallet, 'utf8');
@@ -169,20 +170,25 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                 // createkeys babyjub
             } else if (keytype === 'babyjub') {
                 if (passString === 'nopassphrase') {
-                    console.log('Please provide a passphrase to encrypt keys by:\n\n');
-                    throw new Error('No passphrase was submitted');
+                    console.log('Please provide a passphrase to encrypt keys\n\n');
+                    throw new Error(error.NO_PASS);
                 } else {
                     if (pathName === 'nopath') {
                         newWalletPath = walletBabyjubPathDefault;
                     }
                     if (mnemonic !== 'nomnemonic') {
-                        console.log('create babyjub wallet mnemonic');
-                        wallet = BabyJubWallet.fromMnemonic(mnemonic);
-                        encWallet = wallet.toEncryptedJson(passString);
+                        if (mnemonic.split(' ').length !== 12) {
+                            console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
+                            throw new Error(error.INVALID_MNEMONIC);
+                        } else {
+                            console.log('create babyjub wallet mnemonic');
+                            wallet = BabyJubWallet.fromMnemonic(mnemonic);
+                            encWallet = wallet.toEncryptedJson(passString);
+                        }
                     } else if (importWallet !== 'noimport') {
                         if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                            console.log('Path provided dont work:\n\n');
-                            throw new Error('Path provided dont work');
+                            console.log('Path provided dont work\n\n');
+                            throw new Error(error.INVALID_PATH);
                         }
                         console.log('create babyjub wallet import');
                         const readWallet = fs.readFileSync(importWallet, 'utf-8');
@@ -201,20 +207,25 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                 // createkeys rollup
             } else if (keytype === 'rollup') {
                 if (passString === 'nopassphrase') {
-                    console.log('Please provide a passphrase to encrypt keys by:\n\n');
-                    throw new Error('No passphrase was submitted');
+                    console.log('Please provide a passphrase to encrypt keys\n\n');
+                    throw new Error(error.NO_PASS);
                 } else {
                     if (pathName === 'nopath') {
                         newWalletPath = walletPathDefault;
                     }
                     if (mnemonic !== 'nomnemonic') {
-                        console.log('create rollup wallet mnemonic');
-                        wallet = await Wallet.fromMnemonic(mnemonic);
-                        encWallet = await wallet.toEncryptedJson(passString);
+                        if (mnemonic.split(' ').length !== 12) {
+                            console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
+                            throw new Error(error.INVALID_MNEMONIC);
+                        } else {
+                            console.log('create rollup wallet mnemonic');
+                            wallet = await Wallet.fromMnemonic(mnemonic);
+                            encWallet = await wallet.toEncryptedJson(passString);
+                        }
                     } else if (importWallet !== 'noimport') {
                         if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                            console.log('Path provided dont work:\n\n');
-                            throw new Error('Path provided dont work');
+                            console.log('Path provided dont work\n\n');
+                            throw new Error(error.INVALID_PATH);
                         }
                         console.log('create rollup wallet import');
                         const readWallet = fs.readFileSync(importWallet, 'utf-8');
@@ -231,7 +242,7 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                 }
             } else {
                 console.log('Invalid keytype\n\n');
-                throw new Error('Invalid keytype');
+                throw new Error(error.INVALID_KEY_TYPE);
             }
             process.exit(0);
             // setparam
@@ -254,23 +265,23 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                 actualConfig.id = value;
             } else if (param === 'noparam') {
                 console.log('Please provide a param\n\n');
-                throw new Error('No param submitted');
+                throw new Error(error.NO_PARAM);
             } else if (value === 'novalue') {
                 console.log('Please provide a value\n\n');
-                throw new Error('No value submitted');
+                throw new Error(error.NO_VALUE);
             } else {
-                throw new Error('Invalid param');
+                throw new Error(error.INVALID_PARAM);
             }
             fs.writeFileSync(configjson, JSON.stringify(actualConfig, null, 1), 'utf-8');
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'PRINTKEYS') {
             let newWalletPath = pathName;
             let wallet = {};
-            console.log('The following keys have been found:');
             if (passString === 'nopassphrase') {
-                console.log('Please provide a passphrase to encrypt keys by:\n\n');
-                throw new Error('No passphrase was submitted');
+                console.log('Please provide a passphrase\n\n');
+                throw new Error(error.NO_PASS);
             } else {
+                console.log('The following keys have been found:');
                 if (keytype === 'rollup') {
                     if (pathName === 'nopath') {
                         newWalletPath = walletPathDefault;
@@ -303,7 +314,7 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                     console.log(`Public Key Compressed: ${wallet.publicKeyCompressed.toString('hex')}`);
                 } else {
                     console.log('Invalid keytype\n\n');
-                    throw new Error('Invalid keytype');
+                    throw new Error(error.INVALID_KEY_TYPE);
                 }
                 process.exit(0);
             }
@@ -311,10 +322,10 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
             // onchaintx
             if (type !== 'notype' && type.toUpperCase() !== 'DEPOSIT' && type.toUpperCase() !== 'DEPOSITONTOP' && type.toUpperCase() !== 'WITHDRAW'
             && type.toUpperCase() !== 'FORCEWITHDRAW' && type.toUpperCase() !== 'TRANSFER' && type.toUpperCase() !== 'DEPOSITANDTRANSFER') {
-                throw new Error('Invalid type');
+                throw new Error(error.INVALID_KEY_TYPE);
             } else if (type === 'notype') {
                 console.log('It is necessary to specify the type of action\n\n');
-                throw new Error('No type was submitted');
+                throw new Error(error.NO_TYPE);
             } else {
                 checkparamsOnchain(type, actualConfig);
                 const abi = JSON.parse(fs.readFileSync(actualConfig.abi, 'utf-8'));
@@ -344,14 +355,14 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                         tokenId, wallet, passString, abi, to);
                     console.log(JSON.stringify(receip.events.pop()));
                 } else {
-                    throw new Error('Invalid type');
+                    throw new Error(error.INVALID_TYPE);
                 }
             }
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'OFFCHAINTX') {
             if (type === 'notype') {
                 console.log('It is necessary to specify the type of action\n\n');
-                throw new Error('No type was submitted');
+                throw new Error(error.NO_TYPE);
             } else {
                 checkparamsOffchain(type, actualConfig);
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
@@ -359,27 +370,27 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                     const res = await sendTx(actualConfig.operator, to, amount, wallet, passString, tokenId, userFee, actualConfig.id);
                     console.log(JSON.stringify(res));
                 } else {
-                    throw new Error('Invalid type');
+                    throw new Error(error.INVALID_TYPE);
                 }
             }
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'SHOWLEAFS') {
             if (actualConfig.wallet === undefined) {
-                throw new Error('It is necessary a wallet Babyjack to perform this operation');
+                console.log('It is necessary a wallet Babyjub to perform this operation');
+                throw new Error(error.NO_WALLET);
             }
             if (passString === 'nopassphrase') {
-                throw new Error('No passphrase was submitted');
+                throw new Error(error.NO_PASS);
             }
             const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
             await showLeafs(actualConfig.operator, wallet, passString);
             process.exit(0);
         } else {
-            throw new Error('Invalid command');
+            throw new Error(error.INVALID_COMMAND);
         }
     } catch (err) {
-        console.log(err.stack);
-        console.log(`ERROR: ${err}`);
-        process.exit(1);
+        console.log(Object.keys(error)[err.message]);
+        process.exit(err.message);
     }
 })();
 
@@ -448,7 +459,7 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(to, 'norecipient', 'recipient');
         break;
     default:
-        throw new Error('Invalid type');
+        throw new Error(error.INVALID_TYPE);
     }
 }
 
@@ -456,7 +467,7 @@ function checkparamsOffchain(type, actualConfig) {
     switch (type.toUpperCase()) {
     case 'SEND':
         checkparam(passString, 'nopassphrase', 'passphrase');
-        checkparam(amount, '-1', 'amount');
+        checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(to, 'norecipient', 'recipient');
         checkparam(userFee, 'nouserfee', 'fee');
@@ -465,13 +476,13 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(actualConfig.id, undefined, 'From Id missing');
         break;
     default:
-        throw new Error('Invalid type');
+        throw new Error(error.INVALID_TYPE);
     }
 }
 
 function checkparam(param, def, name) {
     if (param === def) {
         console.log(`It is necessary to specify ${name}\n\n`);
-        throw new Error(`No ${name} was submitted`);
+        throw new Error(error.NO_PARAM);
     }
 }
