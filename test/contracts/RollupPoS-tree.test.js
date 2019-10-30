@@ -76,17 +76,20 @@ contract("RollupPoS", (accounts) => {
             // move to era 2, where there are two operators
             await insRollupPoS.setBlockNumber(eraBlock[2]);
 
+            //4 ether means 4000 finneys, 4000^1.25 = 31810 --> 31812 ( cause error from square root aproximation )
+            //2 ether means 2000 finneys, 2000^1.25 = 13374 --> 13375 ( cause error from square root aproximation )
+            //Total: 31812 + 13375 = 45187
             // get raffle winner for era 2 for different lucky numbers
-            let winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 15);
+            let winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 31811); 
             expect(winner.toString()).to.be.equal(operators[0].idOp);
 
-            winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 16);
+            winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 31812);
             expect(winner.toString()).to.be.equal(operators[1].idOp);
 
-            winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 15 + 20);
+            winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 31811 + 45187);
             expect(winner.toString()).to.be.equal(operators[0].idOp);
 
-            winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 16 + 20);
+            winner = await insRollupPoS.getRaffleWinnerTest(eraSlot[2], 31812 + 45187);
             expect(winner.toString()).to.be.equal(operators[1].idOp);
         });
 
@@ -101,7 +104,7 @@ contract("RollupPoS", (accounts) => {
             for (let i = 0; i < numOp2Add; i++) {
                 await insRollupPoS.addOperator(hashChain[9], url,
                     { from: operators[i].address, value: web3.utils.toWei("2", "ether") });
-                raffleWinner.push(4 * i);
+                raffleWinner.push(13375 * i);
             }
             // remove operators
             for (let i = 0; i < numOp2Remove; i++) {
@@ -133,11 +136,11 @@ contract("RollupPoS", (accounts) => {
                 insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
                 // set first era block
                 await insRollupPoS.setBlockNumber(eraBlock[0]);
-                // add numOp2Add operators with eStake = 4
+                // add numOp2Add operators with eStake = 13375
                 for (let n = 0; n < numOp2Add; n++) {
                     await insRollupPoS.addOperator(hashChain[9], url,
                         { from: operators[n].address, value: web3.utils.toWei("2", "ether") });
-                    raffleWinner.push(4 * n);
+                    raffleWinner.push(13375 * n);
                 }
                 // move to era 1
                 await insRollupPoS.setBlockNumber(eraBlock[1]);
@@ -171,7 +174,7 @@ contract("RollupPoS", (accounts) => {
             for (let i = 0; i < numOp2Add; i++) {
                 await insRollupPoS.addOperator(hashChain[9], url,
                     { from: operators[i].address, value: web3.utils.toWei("2", "ether") });
-                raffleWinner.push(4 * i);
+                raffleWinner.push(13375 * i);
             }
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             // remove operators

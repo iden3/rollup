@@ -10,6 +10,10 @@ contract RollupPoSHelpersTest is RollupPoSHelpers{
     return hashOffChainTx(compressedTxs, maxTx);
   }
 
+  function effectiveStakeTest(uint stake) public pure returns (uint64) {
+    return effectiveStake(stake);
+  }
+
   // function testGetHeaderLen(uint bytesLen) public pure returns(uint256) {
   //   return getHeaderLen(bytesLen);
   // }
