@@ -2,7 +2,7 @@ const cryptoLib = require("crypto");
 
 function getMac(keyBuff, encryptedDataBuff) {
     const concatBuff = Buffer.concat([keyBuff.slice(0, 16), encryptedDataBuff]);
-    return cryptoLib.createHmac("sha256", concatBuff.toString()).digest("base64");
+    return cryptoLib.createHmac("sha256", concatBuff.toString("base64")).digest("base64");
 }
 
 function passToKey(pass, salt, iterations, keyLen, digest) {
