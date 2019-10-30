@@ -2,24 +2,7 @@ const web3 = require("web3");
 const winston = require("winston");
 
 const { timeout, buildInputSm } = require("../src/utils"); 
-const { stringifyBigInts } = require("snarkjs");
-
-// config winston
-var options = {
-    console: {
-        level: "verbose",
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple(),
-        )
-    },
-};
-
-const logger = winston.createLogger({
-    transports: [
-        new winston.transports.Console(options.console)
-    ]
-}); 
+const { stringifyBigInts } = require("snarkjs"); 
 
 // global vars
 const SLOT_DEADLINE = 80;
@@ -44,7 +27,7 @@ const TIMEOUT_ERROR = 2000;
 let TIMEOUT_NEXT_STATE = 5000;
 
 class LoopManager{
-    constructor(rollupSynch, posSynch, poolTx, opManager, cliServerProof) {
+    constructor(rollupSynch, posSynch, poolTx, opManager, cliServerProof, logLevel) {
         this.rollupSynch = rollupSynch;
         this.posSynch = posSynch;
         this.poolTx = poolTx;
@@ -60,12 +43,32 @@ class LoopManager{
         // Current hash chain
         this.hashChain = [];
         this.pHashChain = 0;
+        this._initLogger(logLevel);
+    }
+
+    _initLogger(logLevel) {
+        // config winston
+        var options = {
+            console: {
+                level: logLevel,
+                format: winston.format.combine(
+                    winston.format.colorize(),
+                    winston.format.simple(),
+                )
+            },
+        };
+
+        this.logger = winston.createLogger({
+            transports: [
+                new winston.transports.Console(options.console)
+            ]
+        });
     }
 
     async startLoop(){
         // eslint-disable-next-line no-constant-condition
         while(true) {
-            let info = "Operator State: ";
+            let info = "OPERATOR STATE: ";
             try {
                 switch(this.state) {
 
@@ -101,11 +104,11 @@ class LoopManager{
                     await this._stateProof();
                     break;
                 }
-                logger.verbose(info);
+                this.logger.info(info);
                 await timeout(TIMEOUT_NEXT_STATE);
             } catch (e) {
-                logger.error(`Message error: ${e.message}`);
-                logger.error(`Message error: ${e.stack}`);
+                this.logger.error(`OPERATOR STATE Message error: ${e.message}`);
+                this.logger.debug(`OPERATOR STATE Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }}
     }

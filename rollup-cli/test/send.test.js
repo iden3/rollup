@@ -18,15 +18,16 @@ describe('Send', async function () {
     const tokenId = 0;
     const userFee = 10;
     const idFrom = 1;
+
     before(async () => {
         await createWallet();
         wallet = JSON.parse(await fs.readFileSync(walletPathDefault, 'utf8'));
     });
 
-    it('Send test', () => send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom)
-        .then((response) => {
-            expect(response).to.be.equal(200);
-        })).timeout(10000);
+    it('Should call send', async () => {
+        const status = await send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom);
+        expect(status).to.be.equal(200);
+    });
 
     after(async () => {
         await deleteResources();

@@ -465,8 +465,8 @@ describe("Rollup Basic circuit TXs", function () {
             loadAmount: 1000,
             amount: 500,
             coin: 0,
-            ax: account1.ax,
-            ay: account1.ay,
+            ax: account2.ax,
+            ay: account2.ay,
             ethAddress: account2.ethAddress,
             onChain: true
         });

@@ -89,6 +89,8 @@ class RollupDB {
             const state = utils.array2state(stateArray);
             state.idx = Number(idx);
             resFindExit.state = state;
+            delete resFindExit.foundValue;
+            delete resFindExit.isOld0;
         }
         return resFindExit;
     }

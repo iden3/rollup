@@ -331,7 +331,7 @@ describe('OFFCHAINTX', async function () {
         });
     });
 
-    it(' offchaintx send error config file', (done) => {
+    it('offchaintx send error config file', (done) => {
         const out = process.exec(`cd ..; node cli.js offchaintx --type send --pass ${pass} --amount 2 --to 12 --tokenid 0 --fee 1 --paramstx ./resources/config-examplee.json`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.NO_PARAMS_FILE);

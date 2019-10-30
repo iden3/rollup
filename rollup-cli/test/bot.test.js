@@ -5,12 +5,13 @@
 /* global web3 */
 
 const chai = require('chai');
+const path = require('path');
 
 const { expect } = chai;
 const fs = require('fs');
 
 const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
-const configBot = '../tools/resourcesBot/configBot.json';
+const configBot = path.join(__dirname, '../tools/resourcesBot/configBot.json');
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
 
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
@@ -104,7 +105,8 @@ contract('Rollup', async (accounts) => {
 
     // recommended comment this case and execute yourself in order to see logs and errors
     it('test bot', async () => {
-        process.execSync('node ../tools/bot.js doall');
+        const processBot = path.join(__dirname, '../tools/bot.js');
+        process.execSync(`node ${processBot} doall`);
         const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
         expect(resWalletEth.toString()).to.be.equal('260'); // 300-(10tokens*4wallets)= 260
     });

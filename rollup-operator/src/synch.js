@@ -6,23 +6,6 @@ const rollupUtils = require("../../rollup-utils/rollup-utils");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
-// config winston
-var options = {
-    console: {
-        level: "verbose",
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple(),
-        )
-    },
-};
-
-const logger = winston.createLogger({
-    transports: [
-        new winston.transports.Console(options.console)
-    ]
-});
-
 // global vars
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
@@ -51,7 +34,8 @@ class Synchronizer {
         rollupPoSAddress,
         rollupPoSABI,
         creationHash,
-        ethAddress
+        ethAddress,
+        logLevel
     ) {
         this.db = db;
         this.nodeUrl = nodeUrl;
@@ -66,6 +50,26 @@ class Synchronizer {
         this.rollupPoSContract = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         abiDecoder.addABI(rollupPoSABI);
         this.forgeEventsCache = new Map();
+        this._initLogger(logLevel);
+    }
+
+    _initLogger(logLevel) {
+        // config winston
+        var options = {
+            console: {
+                level: logLevel,
+                format: winston.format.combine(
+                    winston.format.colorize(),
+                    winston.format.simple(),
+                )
+            },
+        };
+
+        this.logger = winston.createLogger({
+            transports: [
+                new winston.transports.Console(options.console)
+            ]
+        });
     }
 
     _toString(val) {
@@ -120,12 +124,12 @@ class Synchronizer {
                 
                 info += `last batch saved: ${lastBatchSaved} | `;
                 info += `Synched: ${this.totalSynch} % | `;
-                logger.info(info);
+                this.logger.info(info);
 
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
-                logger.error(`Message error: ${e.message}`);
-                logger.error(`Message error: ${e.stack}`);
+                this.logger.error(`SYNCH Message error: ${e.message}`);
+                this.logger.debug(`SYNCH Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
@@ -305,7 +309,7 @@ class Synchronizer {
         }
     }
 
-    async getState() {
+    async getRollupDB() {
         return this.treeDb.db.nodes;
     }
 

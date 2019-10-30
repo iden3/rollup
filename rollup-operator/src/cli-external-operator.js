@@ -7,36 +7,35 @@ class CliExternalOperator {
         this.url = url;
     }
 
-    getInfoByIdx(id) {
-        return axios.get(`${this.url}/info/id/${id}`);
+    getAccountByIdx(id) {
+        return axios.get(`${this.url}/accounts/${id}`);
     }
 
-    getInfoByAxAy(ax, ay) {
-        return axios.get(`${this.url}/info/axay/${ax}/${ay}`);
+    getAccounts(filters) {
+        const axParam = filters.ax ? `ax=${filters.ax}&` : ""; 
+        const ayParam = filters.ay ? `ay=${filters.ay}&` : "";
+        const ethAddrParam = filters.ethAddr ? `ethAddr=${filters.ethAddr}&` : "";
+
+        let urlParams = "?".concat(axParam, ayParam, ethAddrParam);
+        urlParams = urlParams.substring(0, urlParams.length - 1);
+        
+        return axios.get(`${this.url}/accounts${urlParams}`);
     }
 
-    getInfoByEthAddr(ethAddress) {
-        return axios.get(`${this.url}/info/ethaddress/${ethAddress}`);
-    }
-
-    state() {
+    getState() {
         return axios.get(`${this.url}/state`);
     }
 
-    getGeneralInfo() {
-        return axios.get(`${this.url}/info/general`);
-    }
-
-    getOperatorsList() {
-        return axios.get(`${this.url}/info/operators`);
+    getOperators() {
+        return axios.get(`${this.url}/operators`);
     }
 
     getExitInfo(numBatch, id) {
-        return axios.get(`${this.url}/info/exit/${numBatch}/${id}`);
+        return axios.get(`${this.url}/exits/${numBatch}/${id}`);
     }
 
-    sendOffChainTx(tx) {
-        return axios.post(`${this.url}/offchain/send`, { tx: stringifyBigInts(tx) });
+    sendTx(tx) {
+        return axios.post(`${this.url}/pool`, stringifyBigInts(tx));
     }
 }
 

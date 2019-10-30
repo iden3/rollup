@@ -71,8 +71,8 @@ class BabyJubWallet {
 
         const obj = {
             public: {
-                ax: this.publicKey[0].toString(),
-                ay: this.publicKey[1].toString(),
+                ax: this.publicKey[0].toString(16),
+                ay: this.publicKey[1].toString(16),
             },
             crypto: {
                 cipher: algo,

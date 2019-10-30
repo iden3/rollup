@@ -217,7 +217,7 @@ const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
                     }
                     if (mnemonic !== 'nomnemonic') {
                         if (mnemonic.split(' ').length !== 12) {
-                            console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
+                            console.log('Invalid Mnemonic, enter the mnemonic between "" \n\n');
                             throw new Error(error.INVALID_MNEMONIC);
                         } else {
                             console.log('create rollup wallet mnemonic');
@@ -355,7 +355,7 @@ const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
                 } else if (type.toUpperCase() === 'DEPOSITANDTRANSFER') {
                     const Tx = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.address, loadamount, amount,
                         tokenId, wallet, passString, depositEthaddress, abi, to);
-                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash })); // poenr abajo!
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else {
                     throw new Error(error.INVALID_TYPE);
                 }
@@ -385,7 +385,9 @@ const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
                 throw new Error(error.NO_PASS);
             }
             const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
-            await showLeafs(actualConfig.operator, wallet, passString);
+            const res = await showLeafs(actualConfig.operator, wallet, passString);
+            console.log('Leafs found: \n');
+            console.log(res.data);
             process.exit(0);
         } else {
             throw new Error(error.INVALID_COMMAND);

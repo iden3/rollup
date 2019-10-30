@@ -20,7 +20,11 @@ async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, us
     const walletBaby = walletRollup.babyjubWallet;
 
     return new Promise(((resolve, reject) => {
-        apiOperator.getInfoByAxAy(walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString())
+        const filters = {
+            ax: walletBaby.publicKey[0].toString(16),
+            ay: walletBaby.publicKey[1].toString(16),
+        };
+        apiOperator.getAccounts(filters)
             .then((info) => {
                 let correctLeaf = [];
                 for (const leaf of info.data) {
@@ -90,7 +94,7 @@ async function send(UrlOperator, idTo, amount, walletJson, password, tokenId, us
                 if (codeWrongTransaction === 11) { // -sign don't matchthe Tx
                     transaction.toIdx += 1;
                 }
-                apiOperator.sendOffChainTx(parseTransaction)
+                apiOperator.sendTx(parseTransaction)
                     .then((response) => {
                         resolve(response.status);
                     })
