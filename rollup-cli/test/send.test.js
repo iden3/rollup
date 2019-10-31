@@ -26,7 +26,7 @@ describe('Send', async function () {
     it('Send test', () => send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom)
         .then((response) => {
             expect(response).to.be.equal(200);
-        })).timeout(0);
+        })).timeout(10000);
 
     after(async () => {
         await deleteResources();

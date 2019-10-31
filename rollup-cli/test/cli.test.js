@@ -15,7 +15,6 @@ const walletImportTest = './test/resources/wallet-import.json';
 
 const configTest = './test/resources/config-test.json';
 const pass = 'foo';
-let ethAddress;
 
 const { expect } = chai;
 
@@ -173,8 +172,7 @@ describe('ONCHAINTX deposit', async function () {
     it('onchaintx deposit', (done) => {
         const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --amount 2 --tokenid 0 --paramstx ${configTest}`);
         out.stdout.on('data', (data) => {
-            ethAddress = JSON.parse(data).args.ethAddress;
-            expect(JSON.parse(data).args.loadAmount._hex).to.be.equal('0x02');
+            expect(JSON.parse(data)['Transaction Hash']).to.be.a('string');
             done();
         });
     });
@@ -182,8 +180,7 @@ describe('ONCHAINTX deposit', async function () {
     it('onchaintx deposit default config.json', (done) => {
         const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${pass} --amount 2 --tokenid 0`);
         out.stdout.on('data', (data) => {
-            ethAddress = JSON.parse(data).args.ethAddress;
-            expect(JSON.parse(data).args.loadAmount._hex).to.be.equal('0x02');
+            expect(JSON.parse(data)['Transaction Hash']).to.be.a('string');
             done();
         });
     });
@@ -219,7 +216,7 @@ describe('ONCHAINTX depositOnTop', async function () {
     it('onchaintx depositontop', (done) => {
         const out = process.exec(`cd ..; node cli.js onchaintx --type depositontop --pass ${pass} --amount 2 --tokenid 0 --paramstx ${configTest} `);
         out.stdout.on('data', (data) => {
-            expect(JSON.parse(data).args.loadAmount._hex).to.be.equal('0x02');
+            expect(JSON.parse(data)['Transaction Hash']).to.be.a('string');
             done();
         });
     });
@@ -227,7 +224,7 @@ describe('ONCHAINTX depositOnTop', async function () {
     it('onchaintx depositontop default config.json', (done) => {
         const out = process.exec(`cd ..; node cli.js onchaintx --type depositontop --pass ${pass} --amount 2 --tokenid 0`);
         out.stdout.on('data', (data) => {
-            expect(JSON.parse(data).args.loadAmount._hex).to.be.equal('0x02');
+            expect(JSON.parse(data)['Transaction Hash']).to.be.a('string');
             done();
         });
     });
@@ -260,9 +257,9 @@ describe('ONCHAINTX depositOnTop', async function () {
 describe('ONCHAINTX forceWithdraw', async function () {
     this.timeout(10000);
     it('onchaintx forcewithdraw', (done) => {
-        const out = process.exec(`cd ..; node cli.js onchaintx --type forceWithdraw --pass ${pass} --amount 2 --tokenid 0 --paramstx ${configTest}`);
+        const out = process.exec(`cd ..; node cli.js onchaintx --type forceWithdraw --pass ${pass} --amount 2 --paramstx ${configTest}`);
         out.stdout.on('data', (data) => {
-            expect(ethAddress).to.be.equal(JSON.parse(data).args.ethAddress);
+            expect(JSON.parse(data)['Transaction Hash']).to.be.a('string');
             done();
         });
     });

@@ -32,7 +32,6 @@ async function walletsDeposit(numTransOnchain, amountToken, passString, addressR
     }
 }
 
-
 module.exports = {
     walletsDeposit,
 };

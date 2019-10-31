@@ -16,7 +16,6 @@ const abiDecoder = require('abi-decoder');
 const path = require('path');
 
 const { buildInputSm } = require('../../rollup-operator/src/utils');
-const RollupTree = require('../../rollup-utils/rollup-tree');
 const rollupUtils = require('../../rollup-utils/rollup-utils.js');
 const RollupDB = require('../../js/rollupdb');
 const { Wallet } = require('../src/wallet.js');
@@ -30,7 +29,6 @@ const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
 
 const { expect } = chai;
 const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
-const configTest = './test/resources/config-test.json';
 
 abiDecoder.addABI(RollupTest.abi);
 
@@ -93,11 +91,9 @@ contract('Rollup', async (accounts) => {
     let insRollupTest;
     let insVerifier;
     let walletEth;
-    let exitTree;
     let rollupDB;
     let db;
     let walletJson;
-    let walletBaby;
     const nLevels = 24;
 
     const maxTx = 10;
@@ -132,7 +128,6 @@ contract('Rollup', async (accounts) => {
 
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
-        exitTree = await RollupTree.newMemRollupTree();
         password = 'foo';
 
         await createConfig(insRollupTest.address);
@@ -143,7 +138,6 @@ contract('Rollup', async (accounts) => {
         await createRollupAbi(RollupTest.abi);
 
         walletEth = walletRollup.ethWallet.wallet;
-        walletBaby = walletRollup.babyjubWallet;
     });
 
     it('Distribute token rollup', async () => {
@@ -173,7 +167,6 @@ contract('Rollup', async (accounts) => {
     // - Get event data
     // - Add leaf to balance tree
     // - Check 'filling on-chain' hash
-
         const depositAmount = 10;
         const tokenId = 0;
 
@@ -187,23 +180,11 @@ contract('Rollup', async (accounts) => {
             data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
         };
 
-
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve(JSON.parse(data));
-            });
-        }));
-        const event = await promise;
-
-        for (const key in event.args) {
-            if (event.args[key]._hex !== undefined) {
-                event.args[key] = event.args[key]._hex;
-            }
-        }
+        process.execSync(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId} --dethaddr ${walletEth.address}`);
+        const event = await insRollupTest.getPastEvents('OnChainTx');
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -211,9 +192,9 @@ contract('Rollup', async (accounts) => {
         expect(resWalletEth.toString()).to.be.equal('40');
 
         await forgeBlock();
-        await forgeBlock([event]);
+        await forgeBlock(event);
 
-        checkBatchNumber([event]);
+        checkBatchNumber(event);
     });
 
     it('Deposit on top and forge it', async () => {
@@ -228,24 +209,11 @@ contract('Rollup', async (accounts) => {
             data: insTokenRollup.contract.methods.approve(insRollupTest.address, onTopAmount).encodeABI(),
         };
 
-
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type depositontop --pass ${password} --amount ${onTopAmount} --tokenid ${tokenId} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve(JSON.parse(data));
-            });
-        }));
-        const event = await promise;
-
-        for (const key in event.args) {
-            if (event.args[key]._hex !== undefined) {
-                event.args[key] = event.args[key]._hex;
-            }
-        }
+        process.execSync(`cd ..; node cli.js onchaintx --type depositontop --pass ${password} --amount ${onTopAmount} --tokenid ${tokenId}`);
+        const event = await insRollupTest.getPastEvents('OnChainTx');
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId1 = await insTokenRollup.balanceOf(walletEth.address);
@@ -254,8 +222,8 @@ contract('Rollup', async (accounts) => {
 
         await forgeBlock();
 
-        await forgeBlock([event]);
-        checkBatchNumber([event]);
+        await forgeBlock(event);
+        checkBatchNumber(event);
     });
 
     it('Should add force withdraw', async () => {
@@ -267,29 +235,15 @@ contract('Rollup', async (accounts) => {
         // - forge blocks to include force withdraw
         // - it creates an exit root, it is created
         const amount = 10;
-        const tokenId = 0;
         // Should trigger error since id2 is the sender, does not match id1
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type forcewithdraw --pass ${password} --amount ${amount} --tokenid ${tokenId} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve(JSON.parse(data));
-            });
-        }));
-        const event = await promise;
-
-        for (const key in event.args) {
-            if (event.args[key]._hex !== undefined) {
-                event.args[key] = event.args[key]._hex;
-            }
-        }
+        process.execSync(`cd ..; node cli.js onchaintx --type forcewithdraw --pass ${password} --amount ${amount}`);
+        const event = await insRollupTest.getPastEvents('OnChainTx');
         // forge block with no transactions
         // forge block force withdraw
         // Simulate exit tree to retrieve siblings
         await forgeBlock();
 
-        await forgeBlock([event]);
-
-        await exitTree.addId(1, amount, 0, BigInt(walletBaby.publicKey[0]), BigInt(walletBaby.publicKey[1]), BigInt(walletEth.address), 0);
+        await forgeBlock(event);
     });
 
     it('Should withdraw tokens', async () => {
@@ -299,13 +253,7 @@ contract('Rollup', async (accounts) => {
         const amount = 10;
         const numExitRoot = 6;
 
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --amount ${amount} --numexitroot ${numExitRoot} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve((data));
-            });
-        }));
-        await promise;
+        process.execSync(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --amount ${amount} --numexitroot ${numExitRoot}`);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -320,7 +268,6 @@ contract('Rollup', async (accounts) => {
         // - Get event data
         // - Add leaf to balance tree
         // - Check 'filling on-chain' hash
-
         const depositAmount = 10;
         const tokenId = 0;
 
@@ -334,23 +281,11 @@ contract('Rollup', async (accounts) => {
             data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
         };
 
-
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve(JSON.parse(data));
-            });
-        }));
-        const event = await promise;
-
-        for (const key in event.args) {
-            if (event.args[key]._hex !== undefined) {
-                event.args[key] = event.args[key]._hex;
-            }
-        }
+        process.execSync(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId}`);
+        const event = await insRollupTest.getPastEvents('OnChainTx');
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -358,9 +293,9 @@ contract('Rollup', async (accounts) => {
         expect(resWalletEth.toString()).to.be.equal('35');
 
         await forgeBlock();
-        await forgeBlock([event]);
+        await forgeBlock(event);
 
-        checkBatchNumber([event]);
+        checkBatchNumber(event);
     });
 
     it('Should transfer tokens', async () => {
@@ -371,14 +306,7 @@ contract('Rollup', async (accounts) => {
         const tokenId = 0;
         const to = 2;
 
-
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type TRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve((data));
-            });
-        }));
-        await promise;
+        process.execSync(`cd ..; node cli.js onchaintx --type TRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to}`);
     });
 
     it('Should depositAndTransfer', async () => {
@@ -398,17 +326,10 @@ contract('Rollup', async (accounts) => {
             data: insTokenRollup.contract.methods.approve(insRollupTest.address, loadamount).encodeABI(),
         };
 
-
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        const promise = new Promise(((resolve) => {
-            const out = process.exec(`cd ..; node cli.js onchaintx --type DEPOSITANDTRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to} --loadamount ${loadamount} --paramstx ${configTest}`);
-            out.stdout.on('data', (data) => {
-                resolve((data));
-            });
-        }));
-        await promise;
+        process.execSync(`cd ..; node cli.js onchaintx --type DEPOSITANDTRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to} --loadamount ${loadamount}`);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);

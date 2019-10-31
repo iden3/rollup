@@ -98,6 +98,7 @@ onchainTx command
     .alias('mn', 'mnemonic')
     .alias('we', 'walleteth')
     .alias('wbb', 'walletbabyjub')
+    .alias('dethaddr', 'depositethaddress')
     .epilogue('Rollup client cli tool');
 
 const pathName = (argv.path) ? argv.path : 'nopath';
@@ -115,6 +116,7 @@ const configjson = (argv.paramstx) ? argv.paramstx : configJsonDefault;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
 const userFee = argv.fee ? argv.fee : 'nouserfee';
 const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
+const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
 
 (async () => {
     let actualConfig = {};
@@ -331,29 +333,29 @@ const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
                 const abi = JSON.parse(fs.readFileSync(actualConfig.abi, 'utf-8'));
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
                 if (type.toUpperCase() === 'FORCEWITHDRAW') {
-                    const receip = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
-                        tokenId, wallet, passString, abi, actualConfig.id);
-                    console.log(JSON.stringify(receip.events.pop()));
+                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
+                        wallet, passString, abi, actualConfig.id);
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSIT') {
-                    const receip = await depositTx(actualConfig.nodeEth, actualConfig.address, amount,
-                        tokenId, wallet, passString, abi);
-                    console.log(JSON.stringify(receip.events.pop()));
+                    const Tx = await depositTx(actualConfig.nodeEth, actualConfig.address, amount,
+                        tokenId, wallet, passString, depositEthaddress, abi);
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITONTOP') {
-                    const receip = await depositOnTopTx(actualConfig.nodeEth, actualConfig.address, amount,
+                    const Tx = await depositOnTopTx(actualConfig.nodeEth, actualConfig.address, amount,
                         tokenId, wallet, passString, abi, actualConfig.id);
-                    console.log(JSON.stringify(receip.events.pop()));
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    const receip = await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
+                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
                         wallet, passString, abi, actualConfig.operator, actualConfig.id, numExitRoot);
-                    console.log(JSON.stringify(receip.events.pop()));
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
-                    const receip = await transferTx(actualConfig.nodeEth, actualConfig.address, amount,
+                    const Tx = await transferTx(actualConfig.nodeEth, actualConfig.address, amount,
                         tokenId, wallet, passString, abi, actualConfig.id, to);
-                    console.log(JSON.stringify(receip.events.pop()));
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITANDTRANSFER') {
-                    const receip = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.address, loadamount, amount,
-                        tokenId, wallet, passString, abi, to);
-                    console.log(JSON.stringify(receip.events.pop()));
+                    const Tx = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.address, loadamount, amount,
+                        tokenId, wallet, passString, depositEthaddress, abi, to);
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash })); // poenr abajo!
                 } else {
                     throw new Error(error.INVALID_TYPE);
                 }
@@ -429,7 +431,6 @@ function checkparamsOnchain(type, actualConfig) {
     case 'FORCEWITHDRAW':
         checkparam(passString, 'nopassphrase', 'passphrase');
         checkparam(amount, -1, 'amount');
-        checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
         checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');

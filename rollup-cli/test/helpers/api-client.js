@@ -2,15 +2,7 @@
 /* eslint-disable no-console */
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
-const ethers = require('ethers');
-const path = require('path');
-const RollupTree = require('../../../rollup-utils/rollup-tree');
-const utils = require('../../../rollup-utils/utils');
 
-const walletBabyjubPathDefault = path.join(__dirname, '../resources/babyjubWallet.json');
-const walletEthPathDefault = path.join(__dirname, '../resources/ethWallet.json');
-const { BabyJubWallet } = require('../../../rollup-utils/babyjub-wallet');
 
 const app = express();
 app.use(bodyParser.json());
@@ -23,26 +15,17 @@ app.post('/offchain/send', (req, res) => {
     || transaction.coin === undefined || transaction.userFee === undefined) {
         res.sendStatus(500);
     } else {
-        console.log(200);
         res.sendStatus(200);
     }
 });
 
 app.get('/info/axay/:Ax/:Ay', async (req, res) => {
     if (req.params.Ax !== undefined && req.params.Ax !== undefined) {
-        const walletEth = await ethers.Wallet.fromEncryptedJson(fs.readFileSync(walletEthPathDefault, 'utf8'), 'foo');
-        const exitTree = await RollupTree.newMemRollupTree();
-        const babyjubJson = fs.readFileSync(walletBabyjubPathDefault, 'utf8');
-        const walletBaby = await BabyJubWallet.fromEncryptedJson(babyjubJson, 'foo');
-        await exitTree.addId(1, 10, 0, BigInt(walletBaby.publicKey[0]), BigInt(walletBaby.publicKey[1]), BigInt(walletEth.address), 0);
-
-        const infoId = await exitTree.getIdInfo(1);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
-
+        const sibilings = [];
         res.send([{
-            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 1, numExitRoot: 6, sibilings: siblingsId,
+            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 1, numExitRoot: 6, sibilings,
         }, {
-            tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 2, numExitRoot: 6, sibilings: siblingsId,
+            tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 2, numExitRoot: 6, sibilings,
         }]);
     }
 });
@@ -50,17 +33,9 @@ app.get('/info/axay/:Ax/:Ay', async (req, res) => {
 
 app.get('/info/id/:id', async (req, res) => {
     if (req.params.id !== undefined) {
-        const walletEth = await ethers.Wallet.fromEncryptedJson(fs.readFileSync(walletEthPathDefault, 'utf8'), 'foo');
-        const exitTree = await RollupTree.newMemRollupTree();
-        const babyjubJson = fs.readFileSync(walletBabyjubPathDefault, 'utf8');
-        const walletBaby = await BabyJubWallet.fromEncryptedJson(babyjubJson, 'foo');
-        await exitTree.addId(1, 10, 0, BigInt(walletBaby.publicKey[0]), BigInt(walletBaby.publicKey[1]), BigInt(walletEth.address), 0);
-
-        const infoId = await exitTree.getIdInfo(1);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
-
+        const sibilings = [];
         res.send({
-            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings: siblingsId,
+            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings,
         });
     }
 });

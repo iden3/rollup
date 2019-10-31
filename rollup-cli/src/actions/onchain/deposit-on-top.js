@@ -12,7 +12,7 @@ const { Wallet } = require('../../wallet.js');
  * @param abi abi of rollup contract
  * @param UrlOperator URl from operator
 */
-async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, password, abi, idFrom) {
+async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, password, abi, IdTo) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
@@ -24,7 +24,7 @@ async function depositOnTop(urlNode, addressSC, balance, tokenId, walletJson, pa
     };
 
     try {
-        return await contractWithSigner.depositOnTop(idFrom, balance, tokenId, overrides);
+        return await contractWithSigner.depositOnTop(IdTo, balance, tokenId, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const { argv } = require('yargs').alias('t', 'tokens').alias('mn', 'mnemonic').alias('p', 'path')
     .alias('e', 'ether')
     .alias('w', 'wallets')
@@ -5,7 +6,9 @@ const { argv } = require('yargs').alias('t', 'tokens').alias('mn', 'mnemonic').a
     .alias('s', 'sends');
 const fs = require('fs');
 
-const configjsonBot = '../tools/resourcesBot/configBot.json';
+const path = require('path');
+
+const configjsonBot = path.join(__dirname, '../tools/resourcesBot/configBot.json');
 const ethers = require('ethers');
 const { Wallet } = require('../src/wallet');
 const { createWallets } = require('./helpers/createWallets');
@@ -31,7 +34,7 @@ const { walletsSend } = require('./helpers/walletsSend');
         const walletRollupFunder = await Wallet.fromEncryptedJson(JSON.parse(fs.readFileSync(configBot.walletFunder, 'utf8')), passString);
         const walletEthFunder = walletRollupFunder.ethWallet.wallet;
 
-        const pathNewWallets = (argv.path) ? argv.path : '../tools/resourcesBot/wallets';
+        const pathNewWallets = (argv.path) ? argv.path : path.join(__dirname, '../tools/resourcesBot/wallets');
         const mnemonic = (argv.mnemonic) ? argv.mnemonic : 0;
         const amountEther = (argv.ether) ? ethers.utils.parseEther(argv.ether) : ethers.utils.parseEther('2.0'); // 0.2- for Tx (aprox)
         const amountToken = (argv.tokens) ? argv.tokens : 10;

@@ -9,50 +9,36 @@ const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.j
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
 
 async function sendTx(urlOperator, to, amount, wallet, passString, tokenId, userFee, fromId) {
-    const response = await send(urlOperator, to, amount, wallet, passString, tokenId, userFee, fromId);
-    return response;
+    return send(urlOperator, to, amount, wallet, passString, tokenId, userFee, fromId);
 }
 
-async function depositTx(node, address, amount, tokenid, wallet, passString, abi) {
-    const response = await deposit(node, address, amount, tokenid, wallet, passString, abi);
-    const receip = await response.wait();
-    return receip;
+async function depositTx(node, address, amount, tokenid, wallet, passString, ethAddress, abi) {
+    return deposit(node, address, amount, tokenid, wallet, passString, ethAddress, abi);
 }
 
-async function depositOnTopTx(node, address, amount, tokenid, wallet, passString, abi, IdTo, idTo) {
-    const response = await depositOnTop(node, address, amount, tokenid, wallet, passString, abi, IdTo, idTo);
-    const receip = await response.wait();
-    return receip;
+async function depositOnTopTx(node, address, amount, tokenid, wallet, passString, abi, IdTo) {
+    return depositOnTop(node, address, amount, tokenid, wallet, passString, abi, IdTo);
 }
 
-async function withdrawTx(node, address, amount, wallet, passString, abi, operator, fromId, numExitRoot) {
-    const response = await withdraw(node, address, amount, wallet, passString, abi, operator, fromId, numExitRoot);
-    const receip = await response.wait();
-    return receip;
+async function withdrawTx(node, address, amount, wallet, passString, abi, urlOperator, fromId, numExitRoot) {
+    return withdraw(node, address, amount, wallet, passString, abi, urlOperator, fromId, numExitRoot);
 }
 
-async function forceWithdrawTx(node, address, amount, tokenid, wallet, passString, abi, fromId) {
-    const response = await forceWithdraw(node, address, amount, tokenid, wallet, passString, abi, fromId);
-    const receip = await response.wait();
-    return receip;
+async function forceWithdrawTx(node, address, amount, wallet, passString, abi, fromId) {
+    return forceWithdraw(node, address, amount, wallet, passString, abi, fromId);
 }
 
 async function transferTx(node, address, amount, tokenid, wallet, passString, abi, fromId, toId) {
-    const response = await transfer(node, address, amount, tokenid, wallet, passString, abi, fromId, toId);
-    const receip = await response.wait();
-    return receip;
+    return transfer(node, address, amount, tokenid, wallet, passString, abi, fromId, toId);
 }
 
-async function depositAndTransferTx(node, address, loadAmount, amount, tokenid, wallet, passString, abi, toId) {
-    const response = await depositAndTransfer(node, address, loadAmount, amount, tokenid, wallet, passString, abi, toId);
-    const receip = await response.wait();
-    return receip;
+async function depositAndTransferTx(node, address, loadAmount, amount, tokenid, wallet, passString, ethAddress, abi, toId) {
+    return depositAndTransfer(node, address, loadAmount, amount, tokenid, wallet, passString, ethAddress, abi, toId);
 }
 
-async function showLeafs(operator, wallet) {
-    const apiOperator = new CliExternalOperator(operator);
-    const res = await apiOperator.getInfoByAxAy(wallet.public.ax, wallet.public.ay);
-    return res.data;
+async function showLeafs(urlOperator, wallet) {
+    const apiOperator = new CliExternalOperator(urlOperator);
+    return apiOperator.getInfoByAxAy(wallet.public.ax, wallet.public.ay);
 }
 
 module.exports = {

@@ -7,6 +7,20 @@ Automatic creation of wallets with ethers and tokens, along with making transact
 
 [TOC]
 
+### Quick guide:
+
+- Open ganache (in port 8545)
+
+- In root project directory:
+
+    - Start operator client, or use the fake client with:
+        `node rollup-cli/test/helpers/api-client.js `
+
+    - Then:
+        ```
+        truffle test rollup-cli/tools/helpers/build-resources-bot.test.js 
+        node rollup-cli/tools/bot.js doall
+        ```
 ### Commands:
 - createwallets: Create, fund and save the wallets in files with encrypted JSON format. 
 - deposit: Every wallet does a deposit Tx
@@ -15,21 +29,11 @@ Automatic creation of wallets with ethers and tokens, along with making transact
 
 
 ### Previous configuration:
-It's necessary a `configBot.json` like this one:
-```
-{
- "walletFunder": "../tools/resourcesBot/walletFunder.json",
- "operator": "http://127.0.0.1:9000",
- "addressTokens": "0xF291d7c0b1220caf444FE9D154845c72717680CD",
- "nodeEth": "http://localhost:8545",
- "abiTokens": "../tools/resourcesBot/abiTokens.json",
- "addressRollup": "0x6F03069cE386F29BEE18a656B16b20700eAAF338",
- "abiRollup:": "../tools/resourcesBot/rollupabi.json"
-}
 
-The walletFunder must be an account with tokens and funds. 
-In order to test this, the user can use the bot.test.js which creates in ganache an account with funds and tokens.
-```
+In order to use the bot there's need some configuratoin files and a walletFunder with tokens and funds to distribute, dome contracts deployed...
+There's a script to do it, go to /helpers directory and execute `truffle test build-resources-bot.test.js`
+Then you should be able to use de bot properly
+
 ### Options:
 
 - wallets `[-w | --wallets] <amount of wallets to create> `
@@ -51,7 +55,6 @@ Default: 0
 Default: 1
 
 ##  Examples
-
 
 Create 5 wallets with a mnemonic: 
 ```
