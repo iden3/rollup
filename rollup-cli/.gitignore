@@ -1,3 +1,5 @@
 getIden3.sh
 node_modules
-/src/resources/
+/test/resources/
+/wallet.json
+/config.json

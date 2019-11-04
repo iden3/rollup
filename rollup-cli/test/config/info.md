@@ -1,21 +1,53 @@
 # Test
-Next test should have running an dummy `operator` server in `http://127.0.0.1:9000`
-- `cli.test.js`
-- `cliActionsOnChain.test.js`
-- `onChain.test.js`
-- `send.test.js`
-- `setup.cli-deposit.test.js`
 
+### Ethereum Wallet test
+
+- `mocha rollup-cli/test/ethereum-wallet.test.js`
+
+### Wallet test
+
+- `mocha rollup-cli/test/wallet.test.js`
+
+### DB test
+
+- `mocha rollup-cli/test/db.test.js`
+
+## TX Test
+
+Next test should have running an dummy `operator` server in `http://127.0.0.1:9000`
+- `cli-onchain.test.js`
+- `onchain.test.js`
+- `send.test.js`
+- `setup-cli.test.js`
+- `cli.test.js`
 
 This server can be found in `rollup-cli/test/helpers/api-client.js`
 
-Run server by typing `node api-client.js`
+- Run server by typing `node rollup-cli/test/helpers/api-client.js`
 
-## Steps
-### Run ganache
+- Run server test by typing `mocha rollup-cli/test/api-client.test.js`
+
+### Offchain TX test
+
+- Run test by typing `mocha rollup-cli/test/send.test.js`
+
+### Onchain TX test
+
 Run ganache testnet: `ganache-cli`
 
-### Build configs
-Go to `rollup-cli/test/config` and run `truffle test build-resources.test.js`
+- Run test #1:
+  - Run onchain TX test by typing: `truffle test rollup-cli/test/onchain.test.js`
 
+- Run test #2:
+  - Go to `rollup-cli/test`
+  - Run onchain TX test that uses CLI: `truffle test cli-onchain.test.js`
+
+### CLI Test
+
+Run ganache testnet: `ganache-cli`
+
+- Run test:
+  - Run `truffle test rollup-cli/test/config/setup-cli.test.js`
 This command will create all the needed configuration to trigger test
+  - Go to `rollup-cli/test`
+  - Run `mocha cli.test.js`

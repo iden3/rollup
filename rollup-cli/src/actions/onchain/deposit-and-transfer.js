@@ -12,14 +12,14 @@ const { Wallet } = require('../../wallet.js');
  * @param abi abi of rollup contract
  * @param UrlOperator URl from operator
 */
-async function depositAndTransfer(urlNode, addressSC, loadAmount, amount, tokenId, walletJson, password, abi, toId) {
+async function depositAndTransfer(urlNode, addressSC, loadAmount, amount, tokenId, walletJson, password, ethAddress, abi, toId) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);
     const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
     walletEth = walletEth.connect(provider);
-    const address = await walletEth.getAddress();
+    const address = ethAddress || await walletEth.getAddress();
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
     const overrides = {
         gasLimit: 800000,

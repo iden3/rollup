@@ -6,13 +6,12 @@ const { Wallet } = require('../../wallet.js');
  * @param urlNode URL of the ethereum node
  * @param addressSC rollup address
  * @param balance amount to transfer to the leaf of exit tree
- * @param tokenId token type identifier
  * @param walletJson from this one can obtain the ethAddress and babyPubKey
  * @param password for decrypt the Wallet
  * @param abi abi of rollup contract
  * @param UrlOperator URl from operator
  */
-async function forceWithdraw(urlNode, addressSC, balance, tokenId, walletJson, password, abi, idFrom) {
+async function forceWithdraw(urlNode, addressSC, balance, walletJson, password, abi, idFrom) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(urlNode);

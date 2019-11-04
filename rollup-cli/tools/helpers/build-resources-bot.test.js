@@ -1,22 +1,22 @@
 /* eslint-disable no-underscore-dangle */
+/* eslint-disable no-use-before-define */
 /* eslint-disable no-await-in-loop */
+/* eslint-disable consistent-return */
+/* eslint-disable no-restricted-syntax */
 /* global artifacts */
 /* global contract */
 /* global web3 */
-
+const path = require('path');
 const chai = require('chai');
+const fs = require('fs');
+const poseidonUnit = require('circomlib/src/poseidon_gencontract');
+const { Wallet } = require('../../src/wallet.js');
 
 const { expect } = chai;
-const fs = require('fs');
-
-const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
-const configBot = '../tools/resourcesBot/configBot.json';
-const poseidonUnit = require('circomlib/src/poseidon_gencontract');
-
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
 const RollupTest = artifacts.require('../../../../contracts/test/RollupTest');
-const process = require('child_process');
-const { Wallet } = require('../src/wallet.js');
+const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
+const configBot = path.join(__dirname, '../resourcesBot/');
 
 contract('Rollup', async (accounts) => {
     let insPoseidonUnit;
@@ -24,21 +24,20 @@ contract('Rollup', async (accounts) => {
     let insRollupTest;
     let insVerifier;
     let walletEth;
-
-    const maxTx = 101;
-    const maxOnChainTx = 100;
-
-    const tokenInitialAmount = 400;
+    const maxTx = 10;
+    const maxOnChainTx = 5;
+    const tokenInitialAmount = 1000;
     const {
         0: owner,
         1: id1,
         2: tokenList,
-        4: providerfunds,
+        3: providerfunds,
     } = accounts;
 
+    let password;
 
     before(async () => {
-        // contracts:
+        // Deploy poseidon
         const C = new web3.eth.Contract(poseidonUnit.abi);
         insPoseidonUnit = await C.deploy({ data: poseidonUnit.createCode() })
             .send({ gas: 2500000, from: owner });
@@ -53,25 +52,27 @@ contract('Rollup', async (accounts) => {
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
             maxTx, maxOnChainTx);
 
-        insTokenRollup = await TokenRollup.new(id1, tokenInitialAmount);
+        password = 'foo';
+        const configJson = {
+            walletFunder: path.join(__dirname, '../../tools/resourcesBot/walletFunder.json'),
+            operator: 'http://127.0.0.1:9000',
+            addressRollup: insRollupTest.address,
+            addressTokens: insTokenRollup.address,
+            nodeEth: 'http://localhost:8545',
+            abiTokens: path.join(__dirname, '../../tools/resourcesBot/tokens-abi.json'),
+            abiRollup: path.join(__dirname, '../../tools/resourcesBot/rollup-abi.json'),
+        };
+        if (!fs.existsSync(configBot)) {
+            await fs.mkdirSync(configBot);
+        }
+        fs.writeFileSync(`${configBot}configBot.json`, JSON.stringify(configJson, null, 1), 'utf-8');
+        fs.writeFileSync(`${configBot}rollup-abi.json`, JSON.stringify(insRollupTest.abi, null, 1), 'utf-8');
+        fs.writeFileSync(`${configBot}tokens-abi.json`, JSON.stringify(insTokenRollup.abi, null, 1), 'utf-8');
 
         const walletRollup = await Wallet.createRandom();
-
+        const walletJson = await walletRollup.toEncryptedJson(password);
+        fs.writeFileSync(`${configBot}walletFunder.json`, JSON.stringify(walletJson, null, 1), 'utf-8');
         walletEth = walletRollup.ethWallet.wallet;
-
-        // update configBot.json with new SC address
-        let actualConfigBot = {};
-        if (fs.existsSync(configBot)) {
-            actualConfigBot = JSON.parse(fs.readFileSync(configBot, 'utf8'));
-        }
-        // rewrite contract address in config.json
-        actualConfigBot.addressTokens = insTokenRollup.address;
-        actualConfigBot.addressRollup = insRollupTest.address;
-
-        const walletBotPath = actualConfigBot.walletFunder;
-        fs.writeFileSync(configBot, JSON.stringify(actualConfigBot, null, 1), 'utf-8');
-        // New wallet for Bot
-        fs.writeFileSync(walletBotPath, JSON.stringify(await walletRollup.toEncryptedJson('foo'), null, 1), 'utf-8');
     });
 
     it('Distribute tokens and funds', async () => {
@@ -91,7 +92,7 @@ contract('Rollup', async (accounts) => {
         const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
         const resId1 = await insTokenRollup.balanceOf(id1);
         expect(resWalletEth.toString()).to.be.equal('300');
-        expect(resId1.toString()).to.be.equal('100');
+        expect(resId1.toString()).to.be.equal('700');
 
         // Add token to rollup token list
         const resAddToken = await insRollupTest.addToken(insTokenRollup.address,
@@ -100,12 +101,5 @@ contract('Rollup', async (accounts) => {
         expect(resAddToken.logs[0].event).to.be.equal('AddToken');
         expect(resAddToken.logs[0].args.tokenAddress).to.be.equal(insTokenRollup.address);
         expect(resAddToken.logs[0].args.tokenId.toString()).to.be.equal('0');
-    });
-
-    // recommended comment this case and execute yourself in order to see logs and errors
-    it('test bot', async () => {
-        process.execSync('node ../tools/bot.js doall');
-        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
-        expect(resWalletEth.toString()).to.be.equal('260'); // 300-(10tokens*4wallets)= 260
     });
 });
