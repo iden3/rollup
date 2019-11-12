@@ -39,6 +39,10 @@ Second layer configuration files:
   - error
   - info
   - debug
+- `OPERATOR_MODE`: defines which data is stored
+  - light: full account balance tree
+  - full: full account balance tree and exits account information
+  - archive: full account balance tree, exits account information and all transactions per batch
 
 See this [example](https://github.com/iden3/rollup/blob/master/rollup-operator/test/config/config.env-example) of `config.env` file
 

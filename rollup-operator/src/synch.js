@@ -1,10 +1,11 @@
 const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
 const winston = require("winston");
+const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
 const { timeout } = require("../src/utils");
-const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
+const Constants = require("./constants");
 
 // global vars
 const TIMEOUT_ERROR = 2000;
@@ -20,6 +21,7 @@ const lastBatchKey = "last-state-batch";
 const eventOnChainKey = "onChain";
 const eventForgeBatchKey = "forgeBatch";
 const separator = "--";
+const lastPurgedEventKey = "last-purged-event";
 
 // cache keys
 const lastPurgedKey = "last-purged";
@@ -35,7 +37,8 @@ class Synchronizer {
         rollupPoSABI,
         creationHash,
         ethAddress,
-        logLevel
+        logLevel,
+        mode,
     ) {
         this.db = db;
         this.nodeUrl = nodeUrl;
@@ -51,6 +54,7 @@ class Synchronizer {
         abiDecoder.addABI(rollupPoSABI);
         this.forgeEventsCache = new Map();
         this._initLogger(logLevel);
+        this.mode = mode;
     }
 
     _initLogger(logLevel) {
@@ -171,28 +175,58 @@ class Synchronizer {
 
     async _updateEvents(logs, nextBatchSynched, blockNumber){
         // save events on database
-        logs.forEach((elem, index )=> {
+        logs.forEach((elem, index)=> {
+            console.log("ELEMENT:", elem);
+            console.log("INDEX", elem);
             this._saveEvents(elem, index);
         });
         // Update rollupTree and last batch synched
-        const batchKey = nextBatchSynched + 1;
         const eventForge = [];
         const eventOnChain = [];
         // add off-chain tx
-        const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${batchKey-1}`);
-        for (const key of keysForge) eventForge.push(this._fromString(await this.db.get(key)));
+        const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${nextBatchSynched}`);
+        for (const key of keysForge) {
+            eventForge.push(this._fromString(await this.db.get(key)));
+        }
         // add on-chain tx
-        const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${batchKey-2}`);
-        for (const key of keysOnChain) eventOnChain.push(this._fromString(await this.db.get(key)));
+        const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${nextBatchSynched-1}`);
+        for (const key of keysOnChain) {
+            eventOnChain.push(this._fromString(await this.db.get(key)));
+        }
         // Add events to rollup-tree
         if ((eventForge.length > 0) || (eventOnChain.length > 0)) 
             await this._updateTree(eventForge, eventOnChain);
         
+        if (this.mode !== Constants.mode.archive)
+            await this._purgeEvents(nextBatchSynched);
+
         await this.db.insert(lastBlockKey, this._toString(blockNumber));
         await this.db.insert(lastBatchKey, this._toString(nextBatchSynched));
     }
 
+    async _purgeEvents(batchKey){
+        // purge all events which are already used to update account balance tree
+        const lastEventPurged = Number(await this.db.getOrDefault(lastPurgedEventKey, "-1"));
+        // purge off-chain
+        for (let i = batchKey; i > lastEventPurged; i--) {
+            const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${i}`);
+            for (const key of keysForge) {
+                await this.db.delete(key);
+            }
+        }
+        // purge on-chain
+        for (let i = (batchKey - 1); i > (lastEventPurged - 1); i--) {
+            const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${i}`);
+            for (const key of keysOnChain) {
+                await this.db.delete(key);
+            }
+        }
+        // update last batch purged
+        await this.db.insert(lastPurgedEventKey, this._toString(batchKey));
+    }
+
     async _saveEvents(event, index) {
+        this._deleteRedundantEvents(event);
         if (event.event == "OnChainTx") {
             const batchNumber = event.returnValues.batchNumber;
             await this.db.insert(`${eventOnChainKey}${separator}${batchNumber}${separator}${index}`,
@@ -201,6 +235,25 @@ class Synchronizer {
             const batchNumber = event.returnValues.batchNumber;
             await this.db.insert(`${eventForgeBatchKey}${separator}${batchNumber}${separator}${index}`,
                 this._toString(event.transactionHash));
+        }
+    }
+
+    async _deleteRedundantEvents(event) {
+        const keys = Object.keys(event.returnValues);
+        for (const keyCheck of keys) {
+            if (Number.isInteger(Number(keyCheck))) {
+                let redundant = false;
+                const valueCheck = event.returnValues[keyCheck];
+                for (const key of keys) {
+                    if (key !== keyCheck) {
+                        if (valueCheck === event.returnValues[key]){
+                            redundant = true;
+                            break;
+                        }
+                    }
+                }
+                if (redundant) delete event.returnValues[keyCheck];
+            }
         }
     }
 

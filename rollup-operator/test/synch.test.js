@@ -6,6 +6,7 @@ const chai = require("chai");
 const { expect } = chai;
 const lodash = require("lodash");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
+
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
@@ -17,6 +18,7 @@ const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const { timeout, buildInputSm, manageEvent } = require("../src/utils");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
+const Constants = require("../src/constants");
 
 const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
@@ -116,6 +118,7 @@ contract("Synchronizer", (accounts) => {
         contractPoS: undefined,
         posAbi: RollupPoS.abi,
         logLevel: "debug",
+        mode: Constants.mode.archive,
     }; 
 
     // BabyJubjub public key
@@ -195,7 +198,8 @@ contract("Synchronizer", (accounts) => {
     it("Should initialize synchronizer", async () => {
         synch = new Synchronizer(configSynch.synchDb, configSynch.treeDb, configSynch.ethNodeUrl,
             configSynch.contractAddress, configSynch.abi, configSynch.contractPoS,
-            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress, configSynch.logLevel);
+            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress, configSynch.logLevel,
+            configSynch.mode);
         synch.synchLoop();
     });
 
