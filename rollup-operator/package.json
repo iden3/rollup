@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha",
-    "lint": "eslint ./src"
+    "lint": "eslint ./src",
+    "operator": "node ./src/server/operator.js"
   },
   "keywords": [
     "client",

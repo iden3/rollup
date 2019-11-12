@@ -2,7 +2,6 @@
 
 Automatic creation of wallets with ethers and tokens, along with making transactions onchain and offchain
 
-
 ## Table of Contents
 
 [TOC]
@@ -18,7 +17,9 @@ Automatic creation of wallets with ethers and tokens, along with making transact
 
     - Then:
         ```
-        truffle test rollup-cli/tools/helpers/build-resources-bot.test.js 
+        truffle test rollup-cli/tools/helpers/build-resources-bot.test.js
+        ``` 
+        ```
         node rollup-cli/tools/bot.js doall
         ```
 ### Commands:

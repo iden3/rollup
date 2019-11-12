@@ -38,7 +38,11 @@ async function depositAndTransferTx(node, address, loadAmount, amount, tokenid, 
 
 async function showLeafs(urlOperator, wallet) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    return apiOperator.getInfoByAxAy(wallet.public.ax, wallet.public.ay);
+    const filters = {
+        ax: wallet.public.ax,
+        ay: wallet.public.ay,
+    };
+    return apiOperator.getAccounts(filters);
 }
 
 module.exports = {

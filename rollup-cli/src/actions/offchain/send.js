@@ -2,6 +2,7 @@
 const { stringifyBigInts } = require('snarkjs');
 const { Wallet } = require('../../wallet.js');
 const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
+
 /**
  * @dev sends off-chain transaction
  * @param urlOperator url from operator
@@ -17,7 +18,7 @@ async function send(urlOperator, idTo, amount, walletJson, password, tokenId, us
     const apiOperator = new CliExternalOperator(urlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
 
-    const responseLeaf = await apiOperator.getInfoByIdx(idFrom);
+    const responseLeaf = await apiOperator.getAccountByIdx(idFrom);
     const tx = {
         fromIdx: responseLeaf.data.idx,
         toIdx: idTo,
@@ -33,7 +34,7 @@ async function send(urlOperator, idTo, amount, walletJson, password, tokenId, us
     walletRollup.signRollupTx(tx); // sign included in transaction
     const parseTx = stringifyBigInts(tx);// convert bigint to Strings
 
-    const res = await apiOperator.sendOffChainTx(parseTx);
+    const res = await apiOperator.sendTx(parseTx);
     return res.status;
 }
 

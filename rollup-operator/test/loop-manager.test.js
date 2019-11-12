@@ -120,12 +120,13 @@ contract("Loop Manager", async (accounts) => {
             abi: Rollup.abi,
             rollupPoSAddress: insRollupPoS.address,
             rollupPoSABI: RollupPoS.abi,
+            logLevel: "debug",
         };
         
         rollupSynch = new RollupSynch(configRollupSynch.synchDb, configRollupSynch.treeDb,
             configRollupSynch.ethNodeUrl, configRollupSynch.contractAddress, configRollupSynch.abi,
             configRollupSynch.rollupPoSAddress, configRollupSynch.rollupPoSABI, 
-            configRollupSynch.creationHash, configRollupSynch.ethAddress);
+            configRollupSynch.creationHash, configRollupSynch.ethAddress, configRollupSynch.logLevel);
         
         // Init PoS Synch
         const synchPoSDb = new MemDb();
@@ -137,14 +138,15 @@ contract("Loop Manager", async (accounts) => {
             creationHash: insRollupPoS.transactionHash,
             ethAddress: posSynchAddress,
             abi: RollupPoS.abi,
+            logLevel: "debug",
         };
         
         posSynch = new PoSSynch(configSynchPoS.synchDb, configSynchPoS.ethNodeUrl, configSynchPoS.contractAddress,
-            configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress);
+            configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress, configSynchPoS.logLevel);
         
         // Init operator manager
         opManager = new OperatorManager(configSynchPoS.ethNodeUrl,
-            configSynchPoS.contractAddress, configSynchPoS.abi);
+            configSynchPoS.contractAddress, configSynchPoS.abi, configSynchPoS.logLevel);
         await opManager.loadWallet(wallet);
         
         // Init Pool

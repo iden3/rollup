@@ -96,7 +96,7 @@ contract("Operator", (accounts) => {
         let batchForged = false;
         let counter = 0;
         while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getGeneralInfo();
+            const res = await cliExternalOp.getState();
             const info = res.data;
             if (info.rollupSynch.lastBatchSynched > 0) {
                 batchForged = true;

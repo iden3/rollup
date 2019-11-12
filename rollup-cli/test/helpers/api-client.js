@@ -1,4 +1,3 @@
-/* global BigInt */
 /* eslint-disable no-console */
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -8,8 +7,8 @@ const app = express();
 app.use(bodyParser.json());
 
 
-app.post('/offchain/send', (req, res) => {
-    const transaction = req.body.tx;
+app.post('/pool', (req, res) => {
+    const transaction = req.body;
     if (transaction.fromIdx === undefined || transaction.toIdx === undefined
         || transaction.amount === undefined || transaction.r8x === undefined || transaction.nonce === undefined
     || transaction.coin === undefined || transaction.userFee === undefined) {
@@ -19,28 +18,35 @@ app.post('/offchain/send', (req, res) => {
     }
 });
 
-app.get('/info/axay/:Ax/:Ay', async (req, res) => {
-    if (req.params.Ax !== undefined && req.params.Ax !== undefined) {
+app.get('/accounts', async (req, res) => {
+    const { ax } = req.query;
+    const { ay } = req.query;
+
+    if (ax !== undefined && ay !== undefined) {
         const sibilings = [];
         res.send([{
             tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 1, numExitRoot: 6, sibilings,
         }, {
             tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, id: 2, numExitRoot: 6, sibilings,
         }]);
+    } else {
+        res.sendStatus(404);
     }
 });
 
 
-app.get('/info/id/:id', async (req, res) => {
+app.get('/accounts/:id', async (req, res) => {
     if (req.params.id !== undefined) {
         const sibilings = [];
         res.send({
             tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings,
         });
+    } else {
+        res.sendStatus(404);
     }
 });
 
-app.get('/info/exit/:numbatch/:id', (req, res) => {
+app.get('/exits/:numbatch/:id', (req, res) => {
     const numExitTree = req.params.numbatch;
     const idBalanceTree = req.params.id;
     if (numExitTree !== undefined && idBalanceTree !== undefined) {
@@ -61,6 +67,8 @@ app.get('/info/exit/:numbatch/:id', (req, res) => {
                 },
         };
         res.send(leafInfo);
+    } else {
+        res.sendStatus(404);
     }
 });
 

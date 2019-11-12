@@ -55,6 +55,7 @@ contract("Synchronizer PoS", async (accounts) => {
         creationHash: undefined,
         ethAddress: synchAddress,
         abi: RollupPoS.abi,
+        logLevel: "debug",
     };
 
     before(async () => {
@@ -78,7 +79,7 @@ contract("Synchronizer PoS", async (accounts) => {
 
     it("Should initialize synchronizer PoS", async () => {
         synchPoS = new SynchPoS(configSynchPoS.synchDb, configSynchPoS.ethNodeUrl, configSynchPoS.contractAddress,
-            configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress);
+            configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress, configSynchPoS.logLevel);
         synchPoS.synchLoop();
     });
 

@@ -10,6 +10,9 @@ Commands are called from repository `rollup` root directory
 - Run servers
   - Proof-generator: `node ./rollup-operator/src/server-proof.js`
   - Operator: `node ./rollup-operator/src/server/operator.js`
+    - operator needs configuration file `config.env` in its path
+    - example can be found in `rollup/rollup-operator/test/config/config-example.env`
+    - *It should be noted that this file should be where the `operator.js` is invoked and its name should be `config.env` 
 
 - Run test #1
   - test one operator registers to rollupPoS and forge a batch

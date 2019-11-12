@@ -13,8 +13,8 @@ describe("BabyJubjub wallet", () => {
     it("Should create wallet from mnemonic", () => {
         const wallet = BabyJubWallet.fromMnemonic(mnemonic);
         expect(wallet.privateKey.toString("hex")).to.be.equal(privTest);
-        ax = wallet.publicKey[0].toString();
-        ay = wallet.publicKey[1].toString();
+        ax = wallet.publicKey[0].toString("16");
+        ay = wallet.publicKey[1].toString("16");
     });
 
     it("Should create wallet from random", () => {

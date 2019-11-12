@@ -30,7 +30,7 @@ async function checkSynch(synch, opRollupDb){
     expect(isSynched).to.be.equal(true);
     // Check database-synch matches database-op
     const tmpOpDb = opRollupDb.db.nodes;
-    const synchDb = await synch.getState();
+    const synchDb = await synch.getRollupDB();
     expect(lodash.isEqual(tmpOpDb, synchDb)).to.be.equal(true);
 }
 
@@ -115,6 +115,7 @@ contract("Synchronizer", (accounts) => {
         abi: RollupTest.abi,
         contractPoS: undefined,
         posAbi: RollupPoS.abi,
+        logLevel: "debug",
     }; 
 
     // BabyJubjub public key
@@ -194,7 +195,7 @@ contract("Synchronizer", (accounts) => {
     it("Should initialize synchronizer", async () => {
         synch = new Synchronizer(configSynch.synchDb, configSynch.treeDb, configSynch.ethNodeUrl,
             configSynch.contractAddress, configSynch.abi, configSynch.contractPoS,
-            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress);
+            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress, configSynch.logLevel);
         synch.synchLoop();
     });
 

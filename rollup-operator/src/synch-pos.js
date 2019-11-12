@@ -3,23 +3,6 @@ const winston = require("winston");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
-// config winston
-var options = {
-    console: {
-        level: "verbose",
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple(),
-        )
-    },
-};
-
-const logger = winston.createLogger({
-    transports: [
-        new winston.transports.Console(options.console)
-    ]
-});
-
 // global vars
 const blocksPerSlot = 100;
 const slotsPerEra = 20;
@@ -42,7 +25,8 @@ class SynchPoS {
         rollupPoSAddress,
         rollupPoSABI,
         creationHash,
-        ethAddress
+        ethAddress,
+        logLevel
     ) {
         this.db = db;
         this.nodeUrl = nodeUrl;
@@ -54,6 +38,26 @@ class SynchPoS {
         this.winners = [];
         this.slots = [];
         this.operators = {};
+        this._initLogger(logLevel);
+    }
+
+    _initLogger(logLevel) {
+        // config winston
+        var options = {
+            console: {
+                level: logLevel,
+                format: winston.format.combine(
+                    winston.format.colorize(),
+                    winston.format.simple(),
+                )
+            },
+        };
+
+        this.logger = winston.createLogger({
+            transports: [
+                new winston.transports.Console(options.console)
+            ]
+        });
     }
 
     _toString(val) {
@@ -106,12 +110,12 @@ class SynchPoS {
 
                 info += `last synchronized era: ${lastSynchEra} | `;
                 info += `Synched: ${this.totalSynch} % | `;
-                logger.info(info);
+                this.logger.info(info);
 
                 await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
-                logger.error(`Message error: ${e.message}`);
-                logger.error(`Message error: ${e.stack}`);
+                this.logger.error(`POS SYNCH Message error: ${e.message}`);
+                this.logger.debug(`POS SYNCH Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
