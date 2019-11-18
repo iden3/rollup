@@ -18,6 +18,7 @@ const blocksPerSlot = 100;
 // db keys
 const lastBlockKey = "last-block-synch";
 const lastBatchKey = "last-state-batch";
+const exitInfoKey = "exit";
 const eventOnChainKey = "onChain";
 const eventForgeBatchKey = "forgeBatch";
 const separator = "--";
@@ -176,8 +177,6 @@ class Synchronizer {
     async _updateEvents(logs, nextBatchSynched, blockNumber){
         // save events on database
         logs.forEach((elem, index)=> {
-            console.log("ELEMENT:", elem);
-            console.log("INDEX", elem);
             this._saveEvents(elem, index);
         });
         // Update rollupTree and last batch synched
@@ -265,13 +264,35 @@ class Synchronizer {
             await this._setUserFee(batch, offChainTxs.txs);
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
+                if (this.mode !== Constants.mode.light){
+                    if (Number(tx.toIdx) === 0) {
+                        this._addExitEntry(tx, batch.batchNumber);
+                    }
+                }
+                    
             }
         }
+
         for (const event of onChain) {
-            batch.addTx(await this._getTxOnChain(event));
+            const tx = await this._getTxOnChain(event);
+            batch.addTx(tx);
+            const newAccount = rollupUtils.decodeTxData(event.txData).newAccount;
+            if (this.mode !== Constants.mode.light)
+                if ((Number(tx.toIdx) === 0) && (newAccount == false) && tx.amount !== 0 && tx.loadAmount === 0) 
+                    this._addExitEntry(tx, batch.batchNumber);
         }
         await batch.build();
         await this.treeDb.consolidate(batch);
+    }
+
+    async _addExitEntry(tx, batch){
+        const key = `${exitInfoKey}${separator}${tx.fromIdx}`;
+        const exitIdValue = await this.db.getOrDefault(key, "");
+    
+        if (exitIdValue === "")
+            await this.db.insert(key, `${batch}`);
+        else
+            await this.db.insert(key, `${exitIdValue}${separator}${batch}`);
     }
 
     async _getTxOnChain(event) {
@@ -402,16 +423,31 @@ class Synchronizer {
     async getOffChainTxByBatch(numBatch) {
         const res = [];
         // add off-chain tx
-        const bb = await this.treeDb.buildBatch(maxTx, nLevels); 
-        const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${numBatch}`);
-        for (const key of keysForge) {
-            const tmp = this._fromString(await this.db.get(key));
-            const offChainTxs = await this._getTxOffChain(tmp);
-            await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-            await this._setUserFee(bb, offChainTxs.txs);
-            for (const tx of offChainTxs.txs) res.push(tx);
+        if (this.mode === Constants.mode.archive){
+            const bb = await this.treeDb.buildBatch(maxTx, nLevels); 
+            const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${numBatch}`);
+            for (const key of keysForge) {
+                const tmp = this._fromString(await this.db.get(key));
+                const offChainTxs = await this._getTxOffChain(tmp);
+                await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
+                await this._setUserFee(bb, offChainTxs.txs);
+                for (const tx of offChainTxs.txs) res.push(tx);
+            }
         }
         return res;
+    }
+
+    async getExitsBatchById(idx){
+        const exitsBatches = [];
+        if (this.mode !== Constants.mode.light) {
+            const key = `${exitInfoKey}${separator}${idx}`;
+            const value = await this.db.getOrDefault(key, "");
+            if (value !== ""){
+                const numBatches = value.split(`${separator}`);
+                for (const batch of numBatches) exitsBatches.push(Number(batch));
+            }
+        }
+        return exitsBatches;
     }
 
     async isSynched() {

@@ -293,7 +293,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(toId < lastBalanceTreeIndex, 'From account does not exist on balance tree');
         require(treeInfo[toId].tokenId == tokenId, 'token type does not match');
 
-
         treeInfo[lastBalanceTreeIndex].tokenId = tokenId;
         treeInfo[lastBalanceTreeIndex].ethAddress = ethAddress;
         treeInfo[lastBalanceTreeIndex].babyPubKey = babyPubKey;
