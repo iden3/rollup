@@ -10,7 +10,7 @@ const { Wallet } = require('../../wallet.js');
  * @param tokenId token type identifier
  * @param walletJson from this one can obtain the ethAddress and babyPubKey
  * @param password for decrypt the Wallet
- * @param ethAddress ethereum address to be added on balance tree
+ * @param ethAddress allowed address to control new balance tree leaf
  * @param abi abi of rollup contract
 */
 async function deposit(urlNode, addressSC, balance, tokenId, walletJson, password, ethAddress, abi) {

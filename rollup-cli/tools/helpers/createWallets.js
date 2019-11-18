@@ -14,7 +14,7 @@ async function createWallets(numWallets, amountToken, passString, addressRollup,
     walletEthFunder = walletEthFunder.connect(provider);
     const contractTokensFunder = new ethers.Contract(addressTokens, abiTokens, walletEthFunder);
     const addressFunder = await walletEthFunder.getAddress();
-    const tokensFunder = await contractTokensFunder.balanceOf(addressFunder); // is contract=?
+    const tokensFunder = await contractTokensFunder.balanceOf(addressFunder);
     const balanceFunder = await walletEthFunder.getBalance();
 
     if (balanceFunder < amountEther) {

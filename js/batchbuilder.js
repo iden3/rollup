@@ -165,15 +165,12 @@ module.exports = class BatchBuilder {
 
         let effectiveAmount = amount;
         const underFlowOk = (oldState1.amount.add(loadAmount).sub(amount).sub(operatorFee).greaterOrEquals(bigInt(0)));
-        const overflowOk = (oldState2.amount.add(amount).lesser(bigInt(1).shl(128)));
-        const txOk = underFlowOk && overflowOk;
-        if (!txOk) {
+        if (!underFlowOk) {
             if (tx.onChain) {
                 effectiveAmount = bigInt(0);
             } else {
                 let errStr = "Error ";
                 if (!underFlowOk) errStr = "underflow";
-                if (!overflowOk) errStr = "overflow";
                 throw new Error(errStr);
             }
         }
@@ -200,9 +197,6 @@ module.exports = class BatchBuilder {
         }
         const newState2 = Object.assign({}, oldState2);
         newState2.amount = oldState2.amount.add(effectiveAmount);
-        if (!tx.onChain && op2 == "UPDATE" && isExit) {
-            newState2.nonce++;
-        }
 
         if (op1=="INSERT") {
 
@@ -213,6 +207,7 @@ module.exports = class BatchBuilder {
             while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
             // State 1
+            //That first 4 parameters do not matter in the circuit, since it gets the information from the TxData
             this.input.ax1[i]= 0x1234;      // It should not matter
             this.input.ay1[i]= 0x1234;      // It should not matter
             this.input.amount1[i]= 0x1234;  // It should not matter
@@ -251,11 +246,12 @@ module.exports = class BatchBuilder {
             while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
             // State 1
-            this.input.ax1[i]= bigInt("0x" + oldState1.ax);      // It should not matter
-            this.input.ay1[i]= bigInt("0x" + oldState1.ay);      // It should not matter
-            this.input.amount1[i]= oldState1.amount;  // It should not matter
-            this.input.nonce1[i]= oldState1.nonce;   // It should not matter
-            this.input.ethAddr1[i]= bigInt(oldState1.ethAddress); // It should not matter
+            //It should not matter what the Tx have, because we get the input from the oldState
+            this.input.ax1[i]= bigInt("0x" + oldState1.ax);
+            this.input.ay1[i]= bigInt("0x" + oldState1.ay);
+            this.input.amount1[i]= oldState1.amount;  
+            this.input.nonce1[i]= oldState1.nonce; 
+            this.input.ethAddr1[i]= bigInt(oldState1.ethAddress);
 
 
             this.input.siblings1[i] = siblings;
@@ -302,11 +298,12 @@ module.exports = class BatchBuilder {
                 while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
                 // State 2
-                this.input.ax2[i]= bigInt("0x" + oldState2.ax);      // It should not matter
-                this.input.ay2[i]= bigInt("0x" + oldState2.ay);      // It should not matter
-                this.input.amount2[i]= oldState2.amount;  // It should not matter
-                this.input.nonce2[i]= oldState2.nonce;   // It should not matter
-                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress); // It should not matter
+                //It should not matter what the Tx have, because we get the input from the oldState
+                this.input.ax2[i]= bigInt("0x" + oldState2.ax);
+                this.input.ay2[i]= bigInt("0x" + oldState2.ay);
+                this.input.amount2[i]= oldState2.amount;
+                this.input.nonce2[i]= oldState2.nonce; 
+                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress);
 
 
                 this.input.siblings2[i] = siblings;
@@ -324,11 +321,12 @@ module.exports = class BatchBuilder {
                 while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
                 // State 2
-                this.input.ax2[i]= bigInt("0x" + oldState2.ax);      // It should not matter
-                this.input.ay2[i]= bigInt("0x" + oldState2.ay);      // It should not matter
-                this.input.amount2[i]= oldState2.amount;  // It should not matter
-                this.input.nonce2[i]= oldState2.nonce;   // It should not matter
-                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress); // It should not matter
+                //It should not matter what the Tx have, because we get the input from the oldState
+                this.input.ax2[i]= bigInt("0x" + oldState2.ax);
+                this.input.ay2[i]= bigInt("0x" + oldState2.ay);
+                this.input.amount2[i]= oldState2.amount;
+                this.input.nonce2[i]= oldState2.nonce;
+                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress);
 
 
                 this.input.siblings2[i] = siblings;
