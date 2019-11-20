@@ -32,26 +32,26 @@ Further details on api administrator can be found in: https://hackmd.io/A1vz2jES
 ## Api external
 Further details on api administrator can be found in: https://hackmd.io/X5WCYhjHQ-qjFhRQjwBLxQ
 
-- http POST `/offchain/send`
+- http POST `/pool`
   - sends off-chain transaction to operator pool
 
-- http GET `/info/id/:id`
-  - get current balance tree state of `id`
+- http GET `/accounts/:id`
+  - get account balance tree by identifier `id`
   
-- http GET `/info/axay/:Ax/:Ay`
-  - get current balance tree state of all entries with `Ax:Ay`
+- http GET `/accounts?ax=string&ay=string&ethAddr=string`
+  - get account balance tree given filters `Ax`, `Ay` and `ethAddr`
 
-- http GET `/info/ethaddress/:ethAddress`
-  - get current balance tree state of all entries with `ethAddress`
+- http GET `/state`
+  - get `operator` state
 
-- http GET `/info/general`
-  - get general information about the `operator`
+- http GET `/operators`
+  - get list of available operators
 
-- http GET `/info/operators`
-  - get list of avaulable operators
+- http GET `/exits/:id`
+  - get batches where an account has been done an exit transaction 
 
-- http GET `/info/exit/:numbatch/:id`
-  - get exit tree leaf information at a given batch 
+- http GET `/exits/:id/:numbatch`
+  - get account information regarding exit tree given its batch number
 
 # Modules in detail
 ## Operator Manager

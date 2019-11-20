@@ -430,7 +430,6 @@ contract("Synchronizer", (accounts) => {
     it("Should check exit batches by id", async () => {
         let idx = 1;
         const arrayExists1 = await synch.getExitsBatchById(idx);
-        console.log(arrayExists1);
         // Check exit tree for all bacthes
         for (const numBatch of arrayExists1){
             const res = await synch.getExitTreeInfo(numBatch, idx);

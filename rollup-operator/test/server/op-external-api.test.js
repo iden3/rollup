@@ -299,15 +299,19 @@ contract("Operator", (accounts) => {
         expect(batchForged).to.be.equal(true);
     });
 
-    it("Should create leaf on exit tree", async () => {
+    it("Should check exit batches and get its information", async () => {
         const id = 2;
-        let infoLeaf;
-        for (let i = 1; i < 7; i++) {
-            const res = await cliExternalOp.getExitInfo(i, id);
-            infoLeaf = res.data;
-            if (infoLeaf.found) break;
+        
+        const res = await cliExternalOp.getExits(id);
+        expect(res.status).to.be.equal(200);
+        const exitsNumBatches = res.data;
+        expect(exitsNumBatches.length).to.not.be.equal(0);
+
+        for (const numBatch of exitsNumBatches){
+            const res = await cliExternalOp.getExitInfo(id, numBatch);
+            const infoExit = res.data;
+            expect(infoExit.state.idx).to.be.equal(id);
         }
-        expect(infoLeaf.state.idx).to.be.equal(id);
     });
 
     it("Should check account balances", async () => {
@@ -418,7 +422,7 @@ contract("Operator", (accounts) => {
             expect(account.ethAddress).to.be.equal(walletEthAddress1);
         });
 
-        it("filter both babyjub and address", async () => { 
+        it("filter both babyjubjub and address", async () => { 
             let filters;
             let account;
 

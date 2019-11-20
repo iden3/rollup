@@ -337,7 +337,7 @@ appExternal.get("/operators", async (req, res) => {
     }
 });
 
-appExternal.get("/exits/:numbatch/:id", async (req, res) => {
+appExternal.get("/exits/:id/:numbatch", async (req, res) => {
     const numBatch = req.params.numbatch;
     const id = req.params.id;
     try {
@@ -347,6 +347,18 @@ appExternal.get("/exits/:numbatch/:id", async (req, res) => {
         logger.error(`Message error: ${error.message}`);
         logger.debug(`Message error: ${error.stack}`);
         res.status(400).send("Error getting exit tree information");
+    }
+});
+
+appExternal.get("/exits/:id", async (req, res) => {
+    const id = req.params.id;
+    try {
+        const resFind = await rollupSynch.getExitsBatchById(id);
+        res.status(200).json(stringifyBigInts(resFind));
+    } catch (error) {
+        logger.error(`Message error: ${error.message}`);
+        logger.debug(`Message error: ${error.stack}`);
+        res.status(400).send("Error getting exit batches");
     }
 });
 

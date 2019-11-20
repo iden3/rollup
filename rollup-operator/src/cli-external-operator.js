@@ -30,8 +30,12 @@ class CliExternalOperator {
         return axios.get(`${this.url}/operators`);
     }
 
-    getExitInfo(numBatch, id) {
-        return axios.get(`${this.url}/exits/${numBatch}/${id}`);
+    getExitInfo(id, numBatch) {
+        return axios.get(`${this.url}/exits/${id}/${numBatch}`);
+    }
+
+    getExits(id) {
+        return axios.get(`${this.url}/exits/${id}`);
     }
 
     sendTx(tx) {
