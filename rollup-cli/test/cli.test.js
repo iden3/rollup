@@ -330,8 +330,91 @@ describe('OFFCHAINTX', async function () {
             done();
         });
     });
+});
 
-    it('offchaintx send error config file', (done) => {
+describe('INFO', async function () {
+    this.timeout(10000);
+
+    it('accounts babyjubjub', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type accounts --filter babyjubjub');
+        out.stdout.on('data', (data) => {
+            // Returns array of accounts in string format on the stdout
+            expect(data).to.be.a('string');
+            done();
+        });
+    });
+
+    it('accounts ethereum', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type accounts --filter ethereum');
+        out.stdout.on('data', (data) => {
+            // Returns array of accounts in string format on the stdout
+            expect(data).to.be.a('string');
+            done();
+        });
+    });
+
+    it('exits', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type exits');
+        out.stdout.on('data', (data) => {
+            // Returns array containing all batches where the id account has en exit leaf
+            expect(data).to.be.a('string');
+            done();
+        });
+    });
+
+    it('error no type', (done) => {
+        const out = process.exec('cd ..; node cli.js info');
+        out.on('exit', (code) => {
+            expect(code).to.be.equal(error.NO_TYPE);
+            done();
+        });
+    });
+
+    it('error invalid type', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type random');
+        out.on('exit', (code) => {
+            expect(code).to.be.equal(error.INVALID_TYPE);
+            done();
+        });
+    });
+
+    it('error invalid filter', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type accounts --filter random');
+        out.on('exit', (code) => {
+            expect(code).to.be.equal(error.INVALID_FILTER);
+            done();
+        });
+    });
+
+    it('error invalid command', (done) => {
+        const out = process.exec('cd ..; node cli.js random');
+        out.on('exit', (code) => {
+            expect(code).to.be.equal(error.INVALID_COMMAND);
+            done();
+        });
+    });
+
+    it('error missing filter parameter', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type accounts');
+        out.on('exit', (code) => {
+            expect(code).to.be.equal(error.NO_PARAM);
+            done();
+        });
+    });
+});
+
+describe('General', async function () {
+    this.timeout(10000);
+
+    it('error invalid command', (done) => {
+        const out = process.exec('cd ..; node cli.js random');
+        out.on('exit', (code) => {
+            expect(code).to.be.equal(error.INVALID_COMMAND);
+            done();
+        });
+    });
+
+    it('error invalid config path', (done) => {
         const out = process.exec(`cd ..; node cli.js offchaintx --type send --pass ${pass} --amount 2 --to 12 --tokenid 0 --fee 1 --paramstx ./resources/config-examplee.json`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.NO_PARAMS_FILE);

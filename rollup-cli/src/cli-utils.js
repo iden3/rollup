@@ -20,8 +20,8 @@ async function depositOnTopTx(node, address, amount, tokenid, wallet, passString
     return depositOnTop(node, address, amount, tokenid, wallet, passString, abi, IdTo);
 }
 
-async function withdrawTx(node, address, amount, wallet, passString, abi, urlOperator, fromId, numExitRoot) {
-    return withdraw(node, address, amount, wallet, passString, abi, urlOperator, fromId, numExitRoot);
+async function withdrawTx(node, address, wallet, passString, abi, urlOperator, fromId, numExitRoot) {
+    return withdraw(node, address, wallet, passString, abi, urlOperator, fromId, numExitRoot);
 }
 
 async function forceWithdrawTx(node, address, amount, wallet, passString, abi, fromId) {
@@ -36,13 +36,14 @@ async function depositAndTransferTx(node, address, loadAmount, amount, tokenid, 
     return depositAndTransfer(node, address, loadAmount, amount, tokenid, wallet, passString, ethAddress, abi, toId);
 }
 
-async function showLeafs(urlOperator, wallet) {
+async function showAccounts(urlOperator, filters) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    const filters = {
-        ax: wallet.public.ax,
-        ay: wallet.public.ay,
-    };
     return apiOperator.getAccounts(filters);
+}
+
+async function showExitsBatch(urlOperator, id) {
+    const apiOperator = new CliExternalOperator(urlOperator);
+    return apiOperator.getExits(id);
 }
 
 module.exports = {
@@ -51,7 +52,8 @@ module.exports = {
     depositOnTopTx,
     withdrawTx,
     forceWithdrawTx,
-    showLeafs,
+    showAccounts,
     transferTx,
     depositAndTransferTx,
+    showExitsBatch,
 };

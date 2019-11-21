@@ -12,6 +12,7 @@ const error = {
     NO_PARAMS_FILE: 10,
     NO_TYPE: 11,
     NO_WALLET: 12,
+    INVALID_FILTER: 13,
 };
 
 module.exports = { error };

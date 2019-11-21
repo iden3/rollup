@@ -250,10 +250,11 @@ contract('Rollup', async (accounts) => {
         // Steps:
         // - Get data from 'exitTree'
         // - Transaction to withdraw amount indicated in previous step
-        const amount = 10;
+        // const amount = 10;
+        // Note the amount of tokens is taken from dummy api-client
         const numExitRoot = 6;
 
-        process.execSync(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --amount ${amount} --numexitroot ${numExitRoot}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --numexitroot ${numExitRoot}`);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
