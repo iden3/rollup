@@ -15,7 +15,7 @@ const CliExternalOperator = require('../../../../rollup-operator/src/cli-externa
  * @param abi abi of rollup contract'
  * @param urlOperator URl from operator
  * @param idFrom balance tree identifier
- * @param numExitRoot exit tree root depth to look for exit tree leaf
+ * @param numExitRoot exit tree root depth to look for exit tree account
  */
 async function withdraw(urlNode, addressSC, balance, walletJson, password, abi, urlOperator, idFrom, numExitRoot) {
     const apiOperator = new CliExternalOperator(urlOperator);
@@ -26,7 +26,7 @@ async function withdraw(urlNode, addressSC, balance, walletJson, password, abi, 
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
 
     try {
-        const res = await apiOperator.getExitInfo(numExitRoot, idFrom);
+        const res = await apiOperator.getExitInfo(idFrom, numExitRoot);
         const infoExitTree = res.data;
         if (infoExitTree.found) {
             return await contractWithSigner.withdraw(infoExitTree.state.idx, balance, numExitRoot,

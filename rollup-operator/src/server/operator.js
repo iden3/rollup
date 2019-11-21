@@ -19,10 +19,14 @@ const Pool = require("../../../js/txpool");
 const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
 const LoopManager = require("../loop-manager");
+const Constants = require("../constants");
 
 // load environment data
 const pathEnvironmentFile = `${__dirname}/config.env`;
 require("dotenv").config({ path: pathEnvironmentFile });
+
+// config mode
+const operatorMode = Constants.mode[process.env.OPERATOR_MODE];
 
 // config winston
 const loggerLevel = process.env.LOG_LEVEL;
@@ -130,7 +134,8 @@ let loopManager;
         synchConfig.rollupPoS.abi,
         synchConfig.creationHash,
         synchConfig.ethAddress,
-        loggerLevel);
+        loggerLevel,
+        operatorMode);
 
     // start synchronizer loop
     logger.info("Start synchronizer rollup");
@@ -332,7 +337,7 @@ appExternal.get("/operators", async (req, res) => {
     }
 });
 
-appExternal.get("/exits/:numbatch/:id", async (req, res) => {
+appExternal.get("/exits/:id/:numbatch", async (req, res) => {
     const numBatch = req.params.numbatch;
     const id = req.params.id;
     try {
@@ -342,6 +347,18 @@ appExternal.get("/exits/:numbatch/:id", async (req, res) => {
         logger.error(`Message error: ${error.message}`);
         logger.debug(`Message error: ${error.stack}`);
         res.status(400).send("Error getting exit tree information");
+    }
+});
+
+appExternal.get("/exits/:id", async (req, res) => {
+    const id = req.params.id;
+    try {
+        const resFind = await rollupSynch.getExitsBatchById(id);
+        res.status(200).json(stringifyBigInts(resFind));
+    } catch (error) {
+        logger.error(`Message error: ${error.message}`);
+        logger.debug(`Message error: ${error.stack}`);
+        res.status(400).send("Error getting exit batches");
     }
 });
 

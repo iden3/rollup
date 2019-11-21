@@ -6,9 +6,9 @@
    In an onChain Transaction, no errors are allowed, so in case it is not enough money,
    it will do a 0 transfer.
 
-   In case of an offChan TX the system does not allow it.
+   In case of an offChain TX the system does not allow it.
 
-   It also checks overflow of < 2^192
+   Overflow of < 2^192 is not feasible since deposits amounts can not be above 2^128
 */
 
 include "../node_modules/circomlib/circuits/bitify.circom";
@@ -31,10 +31,10 @@ template BalancesUpdater() {
     signal output countersOut;
     signal output update2;
 
-    signal feeApplies;      // 1 If fee applies (offChain) 0 if not applies (onChain)
+    signal feeApplies;      // 1 If fee applies (offChain), 0 if not applies (onChain)
     signal appliedFee;      // amount of fee that needs to be discounted
 
-    signal limitsOk;        // 1 if from is >0 and <2**192
+    signal limitsOk;        // 1 if from is >0
     signal feeOk;           // If userFee > operatorFee
     signal txOk;            // If both are ok.
 
@@ -46,7 +46,7 @@ template BalancesUpdater() {
     component feeGE = GreaterEqThan(128);
     component effectiveAmountIsZero = IsZero();
 
-    feeApplies <== (1-onChain)*(1-nop);  // Fee applies only on onChainTx and is not a NOP
+    feeApplies <== (1-onChain)*(1-nop);  // Fee applies only on offChainTx and is not a NOP
 
     appliedFee <== operatorFee*feeApplies;
 
@@ -79,5 +79,4 @@ template BalancesUpdater() {
     // Counters
     countersOut <== countersIn + countersBase*feeApplies;
     update2 <== 1-effectiveAmountIsZero.out;
-
 }

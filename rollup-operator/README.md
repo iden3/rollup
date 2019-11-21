@@ -24,8 +24,10 @@ First layer configuration file:
 - `config.env`
 
 Second layer configuration files:
-- configuration synchronizer rollup database
-- configuration synchronizer rollup Proof-of-Stake
+- configuration synchronizer
+  - balance tree
+  - proof-of-stake
+- configuration pool
 
 ### 3.1 Environment variables <a id="3.1"></a>
 `congig.env` is loaded from directory where `operator.js` is executed. Fields are the following:
@@ -39,6 +41,10 @@ Second layer configuration files:
   - error
   - info
   - debug
+- `OPERATOR_MODE`: defines which data is stored
+  - light: full account balance tree
+  - full: full account balance tree and exits account information
+  - archive: full account balance tree, exits account information and all transactions per batch
 
 See this [example](https://github.com/iden3/rollup/blob/master/rollup-operator/test/config/config.env-example) of `config.env` file
 
@@ -46,7 +52,7 @@ See this [example](https://github.com/iden3/rollup/blob/master/rollup-operator/t
 This file is in `.json` format. Parameters are described below:
 - `rollup`: information of Rollup.sol smart contract
   - `synchDb`: path to rollup synchronizer database
-  - `treeDb`: path to rollup state tree databse
+  - `treeDb`: path to rollup state tree database
   - `address`: smart contract address
   - `abi`: smart contract abi interface
   - `creationHash`: smart contract creation hash

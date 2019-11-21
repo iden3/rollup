@@ -6,6 +6,7 @@ const chai = require("chai");
 const { expect } = chai;
 const lodash = require("lodash");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
+
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
@@ -17,6 +18,7 @@ const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const { timeout, buildInputSm, manageEvent } = require("../src/utils");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
+const Constants = require("../src/constants");
 
 const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
@@ -37,7 +39,6 @@ async function checkSynch(synch, opRollupDb){
 // timeouts test
 const timeoutAddBlocks = 2000;
 const timeoutSynch = 15000;
-const timeoutFinal = 60000;
 
 contract("Synchronizer", (accounts) => {
     
@@ -116,6 +117,7 @@ contract("Synchronizer", (accounts) => {
         contractPoS: undefined,
         posAbi: RollupPoS.abi,
         logLevel: "debug",
+        mode: Constants.mode.full,
     }; 
 
     // BabyJubjub public key
@@ -195,7 +197,8 @@ contract("Synchronizer", (accounts) => {
     it("Should initialize synchronizer", async () => {
         synch = new Synchronizer(configSynch.synchDb, configSynch.treeDb, configSynch.ethNodeUrl,
             configSynch.contractAddress, configSynch.abi, configSynch.contractPoS,
-            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress, configSynch.logLevel);
+            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress, configSynch.logLevel,
+            configSynch.mode);
         synch.synchLoop();
     });
 
@@ -278,28 +281,7 @@ contract("Synchronizer", (accounts) => {
         expect(resEthAddress3[0].ay).to.be.equal(ayStr);
     });
 
-    it("Should add off-chain tx with fee and synch", async () => {
-        const tx = {
-            fromIdx: 1,
-            toIdx: 2,
-            coin: 0,
-            amount: 1,
-            nonce: 0,
-            userFee: 1
-        };
-
-        const params = {
-            addCoins: [{coin: 0, fee:1}]
-        };
-        
-        const events = [];
-        events.push({event:"OffChainTx", tx: tx});
-        await forgeBlock(events, params);
-        await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
-    });
-
-    it("Should add off-chain tx and synch", async () => {
+    it("Should add off-chain withdraw tx and synch", async () => {
         const events = [];
         const tx = {
             fromIdx: 1,
@@ -312,93 +294,29 @@ contract("Synchronizer", (accounts) => {
         await checkSynch(synch, opRollupDb);
     });
 
-    it("Should add on-chain and off-chain tx and synch", async () => {
-        const events = [];
-        const toId = 1;
-        const onTopAmount = 10;
-        const tokenId = 0;
-        const event = await insRollupTest.depositOnTop(toId, onTopAmount, tokenId,
-            { from: id2, value: web3.utils.toWei("1", "ether") });
-        events.push(event.logs[0]);
-        const tx1 = {
-            fromIdx: 1,
-            toIdx: 2,
-            amount: 2,
-        };
-        events.push({event:"OffChainTx", tx: tx1});
-        const tx2 = {
-            fromIdx: 2,
-            toIdx: 1,
-            amount: 3
-        };
-        events.push({event:"OffChainTx", tx: tx2});
-        await forgeBlock();
-        await forgeBlock(events);
-        await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
-    });
-
-    it("Should get off-chain tx by batch", async () => {
-        // get off-chain tx forge in batch 5
-        const res0 = await synch.getOffChainTxByBatch(5);
-        expect(res0[0].fromIdx.toString()).to.be.equal("1");
-        expect(res0[0].toIdx.toString()).to.be.equal("2");
-        expect(res0[0].amount.toString()).to.be.equal("3");
-
-        // get off-chain tx forged in batch 7
-        const res1 = await synch.getOffChainTxByBatch(7);
-        // Should retrieve two off-chain tx
-        expect(res1.length).to.be.equal(2);
-        // tx 0
-        expect(res1[0].fromIdx.toString()).to.be.equal("1");
-        expect(res1[0].toIdx.toString()).to.be.equal("2");
-        expect(res1[0].amount.toString()).to.be.equal("2");
-        // tx1
-        expect(res1[1].fromIdx.toString()).to.be.equal("2");
-        expect(res1[1].toIdx.toString()).to.be.equal("1");
-        expect(res1[1].amount.toString()).to.be.equal("3");
-    });
-
-    it("Should add bunch off-chain tx and synch", async () => {
-        let events = [];
-        const numBatchForged = 10;
-        for (let i = 0; i < numBatchForged; i++) {
-            events = [];
-            const fromIdx = (i % 2) ? 1 : 2;
-            const toIdx = (i % 2) ? 2 : 1;
-            const tx = {
-                fromIdx,
-                toIdx,
-                amount: 1,
-            };
-            events.push({event:"OffChainTx", tx});
-            await forgeBlock(events);
-        }
-        await timeout(timeoutFinal);
-        await checkSynch(synch, opRollupDb);
-    });
-
-    it("Should add withdraw off-chain tx", async () => {
-        const events = [];
-        const tx1 = {
-            fromIdx: 2,
-            toIdx: 0,
-            coin: 0,
-            amount: 1,
-            nonce:0,
-        };
-        events.push({event:"OffChainTx", tx: tx1});
-        await forgeBlock(events);
-        await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
-    });
-
-    it("Should check exit tree", async () => {
+    it("Should not be able to get off-chain tx by batch", async () => {
         const lastBatch = opRollupDb.lastBatch;
-        const id = 2;
-        const res = await synch.getExitTreeInfo(lastBatch, id);
-        // expect find an exit leaf on synchronizer
-        expect(res.found).to.be.equal(true);
+        for (let i = 0; i < lastBatch; i++ ) {
+            let res = await synch.getOffChainTxByBatch(i);
+            expect(res.length).to.be.equal(0);
+        }
     });
-    
+
+    it("Should check exit batches by id", async () => {
+        let idx = 1;
+        const arrayExists1 = await synch.getExitsBatchById(idx);
+        // Check exit tree for all bacthes
+        for (const numBatch of arrayExists1){
+            const res = await synch.getExitTreeInfo(numBatch, idx);
+            expect(res.found).to.be.equal(true);
+        }
+        
+        idx = 2;
+        const arrayExists2 = await synch.getExitsBatchById(idx);
+        // Check exit tree for all bacthes
+        for (const numBatch of arrayExists2){
+            const res = await synch.getExitTreeInfo(numBatch, idx);
+            expect(res.found).to.be.equal(true);
+        }
+    });
 });
