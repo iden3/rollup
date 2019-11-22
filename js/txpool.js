@@ -416,7 +416,7 @@ class TXPool {
         availableTxs.sort(fnSort);
 
         const tmpState = new TmpState(this.rollupDB);
-        while  (availableTxs.length>0) {
+        while (availableTxs.length>0) {
             const tx = availableTxs.pop();
             const res = await tmpState.canProcess(tx);
             if (res == "YES") {

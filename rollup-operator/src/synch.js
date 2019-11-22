@@ -176,9 +176,12 @@ class Synchronizer {
 
     async _updateEvents(logs, nextBatchSynched, blockNumber){
         // save events on database
-        logs.forEach((elem, index)=> {
-            this._saveEvents(elem, index);
-        });
+        let index = 0;
+
+        for (const event of logs){
+            await this._saveEvents(event, index);
+            index += 1;
+        }
         // Update rollupTree and last batch synched
         const eventForge = [];
         const eventOnChain = [];
@@ -225,16 +228,27 @@ class Synchronizer {
     }
 
     async _saveEvents(event, index) {
-        this._deleteRedundantEvents(event);
         if (event.event == "OnChainTx") {
-            const batchNumber = event.returnValues.batchNumber;
+            const eventOnChainData = this._getOnChainEventData(event.returnValues);
+            const batchNumber = eventOnChainData.batchNumber;
             await this.db.insert(`${eventOnChainKey}${separator}${batchNumber}${separator}${index}`,
-                this._toString(event.returnValues));
-        } else if(event.event == "ForgeBatch") {
+                this._toString(eventOnChainData));
+        } else if (event.event == "ForgeBatch") {
             const batchNumber = event.returnValues.batchNumber;
             await this.db.insert(`${eventForgeBatchKey}${separator}${batchNumber}${separator}${index}`,
                 this._toString(event.transactionHash));
         }
+    }
+
+    _getOnChainEventData(onChainData) {
+        return {
+            batchNumber: onChainData.batchNumber,
+            txData: onChainData.txData,
+            loadAmount: onChainData.loadAmount,
+            ethAddress: onChainData.ethAddress,
+            Ax: onChainData.Ax,
+            Ay: onChainData.Ay
+        };
     }
 
     async _deleteRedundantEvents(event) {
@@ -266,7 +280,7 @@ class Synchronizer {
                 batch.addTx(tx);
                 if (this.mode !== Constants.mode.light){
                     if (Number(tx.toIdx) === 0) {
-                        this._addExitEntry(tx, batch.batchNumber);
+                        await this._addExitEntry(tx, batch.batchNumber);
                     }
                 }
                     
@@ -279,7 +293,7 @@ class Synchronizer {
             const newAccount = rollupUtils.decodeTxData(event.txData).newAccount;
             if (this.mode !== Constants.mode.light)
                 if ((Number(tx.toIdx) === 0) && (newAccount == false) && tx.amount !== 0 && tx.loadAmount === 0) 
-                    this._addExitEntry(tx, batch.batchNumber);
+                    await this._addExitEntry(tx, batch.batchNumber);
         }
         await batch.build();
         await this.treeDb.consolidate(batch);
@@ -331,7 +345,7 @@ class Synchronizer {
         });
         let txHash;
         for (const log of logs) {
-            if ( log.returnValues.hashOffChain == inputOffChainHash){
+            if (log.returnValues.hashOffChain == inputOffChainHash){
                 txHash = log.transactionHash;
                 break;
             }
@@ -352,7 +366,7 @@ class Synchronizer {
         const txsBuff = buffCompressedTxs.slice(headerBytes, buffCompressedTxs.length);
         const nTx = txsBuff.length / bytesOffChainTx;
         for (let i = 0; i < nTx; i++) {
-            const step = ( headerBuff[Math.floor(i/8)] & 0x80 >> (i%8) ) ? 1 : 0;
+            const step = (headerBuff[Math.floor(i/8)] & 0x80 >> (i%8)) ? 1 : 0;
             const tx = {
                 fromIdx: txsBuff.readUIntBE(8*i, 3),
                 toIdx: txsBuff.readUIntBE(8*i + 3, 3),
@@ -383,12 +397,8 @@ class Synchronizer {
         }
     }
 
-    async getRollupDB() {
-        return this.treeDb.db.nodes;
-    }
-
     async getStateById(id) {
-        return this.treeDb.getStateByIdx(id);
+        return await this.treeDb.getStateByIdx(id);
     }
 
     // ax, ay encoded as hexadecimal string (whitout '0x')
@@ -404,7 +414,7 @@ class Synchronizer {
         return await this.treeDb.getExitTreeInfo(numBatch, id);
     }
 
-    async getSynchPercentage() {
+    getSynchPercentage() {
         return this.totalSynch;
     }
 

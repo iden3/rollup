@@ -123,11 +123,13 @@ class SynchPoS {
 
     async _updateOperators(logs, era) {
         // save operators on database
-        logs.forEach((elem, index )=> {
-            this._saveOperators(elem, index, era);
-        });
+        let index = 0;
+        for (const event of logs) {
+            await this._saveOperators(event, index, era);
+            index += 1;
+        }
         // update list operators
-        this._updateListOperators(era);
+        await this._updateListOperators(era);
     }
 
     async _saveOperators(event, index, era) {

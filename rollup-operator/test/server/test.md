@@ -5,7 +5,10 @@ Commands are called from repository `rollup` root directory
 `ganache-cli -a 100 --defaultBalanceEther 10000`
 
 - Deploy contracts and build configuration files
-`truffle test ./rollup-operator/test/server/build-configs.test.js`
+  - Memory database 
+    `truffle test ./rollup-operator/test/server/build-configs-memDb.test.js`
+  - Level Db database
+    `truffle test ./rollup-operator/test/server/build-configs-levelDb.test.js`
 
 - Run servers
   - Proof-generator: `node ./rollup-operator/src/server-proof.js`
