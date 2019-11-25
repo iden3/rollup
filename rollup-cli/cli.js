@@ -6,7 +6,8 @@ const { EthereumWallet } = require('./src/ethereum-wallet');
 const { BabyJubWallet } = require('../rollup-utils/babyjub-wallet');
 const { Wallet } = require('./src/wallet');
 const {
-    depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx, showLeafs, transferTx, depositAndTransferTx,
+    depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
+    showAccounts, transferTx, depositAndTransferTx, showExitsBatch,
 } = require('./src/cli-utils');
 const { error } = require('./src/list-errors');
 
@@ -20,6 +21,7 @@ const { argv } = require('yargs') // eslint-disable-line
     .version(version)
     .usage(`
 rollup-cli <command> <options>
+
 createkeys command
 =============
   rollup-cli createkeys <option>
@@ -35,6 +37,7 @@ createkeys command
     Mnemonic 12 words
   -import or --imp <walletPath>
     To import encrypt wallet
+
 printkeys command
 =============
   rollup-cli printkeys <options>
@@ -84,12 +87,22 @@ onchainTx command
   --paramstx <parameter file>
     Contains all necessary parameters to perform transaction
     Default: ./config.json
+
+info command
+=============
+  rollup-cli info <options>
+  --type or -t [accounts | exits]
+    get accounts information
+    get batches where an account has been done an exit transaction 
+  --filter or -f [babyjubjub | ethereum]
+    only used on account information
       `)
     .alias('p', 'path')
     .alias('pass', 'passphrase')
     .help('h')
     .alias('h', 'help')
     .alias('t', 'type')
+    .alias('f', 'filter')
     .alias('kt', 'keytype')
     .alias('w', 'wallet')
     .alias('a', 'amount')
@@ -117,6 +130,7 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
 const userFee = argv.fee ? argv.fee : 'nouserfee';
 const numExitRoot = argv.numexitroot ? argv.numexitroot : 'noparam';
 const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
+const filter = argv.filter ? argv.filter : 'nofilter';
 
 (async () => {
     let actualConfig = {};
@@ -345,7 +359,7 @@ const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
                         tokenId, wallet, passString, abi, actualConfig.id);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.address, amount,
+                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.address,
                         wallet, passString, abi, actualConfig.operator, actualConfig.id, numExitRoot);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
@@ -376,18 +390,30 @@ const depositEthaddress = argv.depositethaddress ? argv.depositethaddress : 0;
                 }
             }
             process.exit(0);
-        } else if (argv._[0].toUpperCase() === 'SHOWLEAFS') {
-            if (actualConfig.wallet === undefined) {
-                console.log('It is necessary a wallet Babyjub to perform this operation');
-                throw new Error(error.NO_WALLET);
+        } else if (argv._[0].toUpperCase() === 'INFO') {
+            if (type === 'notype') {
+                console.log('It is necessary to specify the type of information to print\n\n');
+                throw new Error(error.NO_TYPE);
+            } else {
+                checkParamsInfo(type, actualConfig);
+                if (type.toUpperCase() === 'ACCOUNTS') {
+                    const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+                    const filters = {};
+                    if (filter.toUpperCase() === 'BABYJUBJUB') {
+                        filters.ax = wallet.babyjubWallet.public.ax;
+                        filters.ay = wallet.babyjubWallet.public.ay;
+                    } else if (filter.toUpperCase() === 'ETHEREUM') {
+                        filters.ethAddr = wallet.ethWallet.address;
+                    } else {
+                        throw new Error(error.INVALID_FILTER);
+                    }
+                    const res = await showAccounts(actualConfig.operator, filters);
+                    console.log(`Accounts found: \n ${res.data}`);
+                } else if (type.toUpperCase() === 'EXITS') {
+                    const res = await showExitsBatch(actualConfig.operator, actualConfig.id);
+                    console.log(`Batches found with exit transactions: \n ${res.data}`);
+                }
             }
-            if (passString === 'nopassphrase') {
-                throw new Error(error.NO_PASS);
-            }
-            const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
-            const res = await showLeafs(actualConfig.operator, wallet, passString);
-            console.log('Leafs found: \n');
-            console.log(res.data);
             process.exit(0);
         } else {
             throw new Error(error.INVALID_COMMAND);
@@ -421,7 +447,6 @@ function checkparamsOnchain(type, actualConfig) {
         break;
     case 'WITHDRAW':
         checkparam(passString, 'nopassphrase', 'passphrase');
-        checkparam(amount, -1, 'amount');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
         checkparam(actualConfig.address, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abi, undefined, 'abi path (with setparam command)');
@@ -475,6 +500,22 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(to, 'norecipient', 'recipient');
         checkparam(userFee, 'nouserfee', 'fee');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
+        checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
+        checkparam(actualConfig.id, undefined, 'From Id missing');
+        break;
+    default:
+        throw new Error(error.INVALID_TYPE);
+    }
+}
+
+function checkParamsInfo(type, actualConfig) {
+    switch (type.toUpperCase()) {
+    case 'ACCOUNTS':
+        checkparam(filter, 'nofilter', 'babyjubjub or ethereum');
+        checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
+        checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
+        break;
+    case 'EXITS':
         checkparam(actualConfig.operator, undefined, 'operator (with setparam command)');
         checkparam(actualConfig.id, undefined, 'From Id missing');
         break;

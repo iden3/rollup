@@ -6,137 +6,110 @@ rollup-cli <command> <options>
 
 createkeys command
 =============
-
-  rollup-cli createkeys <options>
-
-  create new keys for rollup client,
-  either ethereum wallet and babyjubjub wallet
-
+  rollup-cli createkeys <option>
+    create new wallet for rollup client
+  -keytype or --kt [ethereum | babyjubjub | rollup]
+    select type of wallet
   -path or --p <path>
-
-    Path to store JSON encrypted wallet files
-
-    Default: wallet-ethereum.json
-             wallet-babyjubjub.json
-
+    Path to store wallet
+    Default: ./src/resources/
   -passphrase or --pass <passphrase string>
-
-    Passphrase to encrypt JSON files
+    Passphrase to encrypt private key
+  -mnemonic or --mn <mnemonic>
+    Mnemonic 12 words
+  -import or --imp <walletPath>
+    To import encrypt wallet
 
 printkeys command
 =============
-
   rollup-cli printkeys <options>
-
   Print public keys
-
   -path or --p <path>
-
     Path to JSON file
-    
-  -keytype [ethereum | babyjubjub]
-
+  -keytype [ethereum | babyjubjub | rollup]
     Define which wallet type needs to be readed
+  -passphrase or --pass <passphrase string>
+    Passphrase to decrypt keys
+
+setparam command
+=============
+  rollup-cli setparam --param <parameter> --value <parameter value>
+  --paramstx <parameter file>
+  Default: ./config.json
 
 offchainTx command
 =============
-    
   rollup-cli offchaintx <options>
-
-  --operator or -o <operator url>
-  
-    Operator url to send the transaction
-    
-  --wallet or -w <path json>
-      
-    Path to babyjubjub wallet  
-      
-    Default: wallet-babyjubjub.json
-
-  --pass <passphrase string>
-  
-    Passphrasse to decrypt babyjubjub wallet
-
+  --type or -t [send]
+    Defines which transaction should be done
+  --pass or -passphrase <passphrase string>
+    Passphrasse to decrypt wallet
   --to <recipient address>
-
     User identifier on balance tree which will receive the transaction
-    
     Note: send to 0 makes a withdraw transaction
-
   --amount or -a <amount>
-
     Amount to send or withdraw
+  --fee <fee>
+    User fee
+  --paramstx <parameter file>
+    Contains all necessary parameters to perform transacction
+    Default: ./config.json
+  --tokenid <token ID>
 
 onchainTx command
 =============
-      
   rollup-cli onchaintx <options>
-  
-  --node or -n <node url>
-  
-    Provide ethereum node to send transaction
-  
-  --address <ethereum address>
-  
-    Rollup ethereum smart contract address
-    
-  --operator <operator url>
-  
-    Operator url to retrieve information about current balance tree state
-  
   --type or -t [deposit | depositontop | withdraw | forcewithdraw]
-  
     Defines which transaction should be done
-    
-  --paramsTx <parameter file>
-  
-    Contains all necessary parameters to perform transacction
-    Parameters would be different depending on transaction type
-    
-    Default: params-tx.json
-  
-  --wallet or -w <path json>
-      
-    Path to ethereum wallet  
-      
-    Default: wallet-ethereum.json
-  
-  --pass <passphrase string>
-  
+  --pass or -passphrase <passphrase string>
     Passphrasse to decrypt ethereum wallet
-  
+  --amount or -a <amount>
+  --tokenid <token ID>
+  --numexitroot <num exit root>
+  --paramstx <parameter file>
+    Contains all necessary parameters to perform transaction
+    Default: ./config.json
+
+info command
+=============
+  rollup-cli info <options>
+  --type or -t [accounts | exits]
+    get accounts information
+    get batches where an account has been done an exit transaction 
+  --filter or -f [babyjubjub | ethereum]
+    only used on account information
 ```
+
 ## Configuration parameters
 The following parameters can be configured in a json file in order to not manually write its content on any cli command:
 
-- Ethereum wallet
-- Babyjubjub wallet
-- Ethereum node url 
-- Rollup operator url
-- Rollup Smart contract address
+- Rollup wallet
+- Operator url
+- Rollup smart contract address
+- Ethereum node url
+- Rollup smart contract abi
+- Own account id
 
 ## On-chain parameters definition
-
 - deposit
   - amount
   - token id
   - bayjubjub pubkey
-  - withdraw address
+  - ethereum address
 - deposit on top
-  - id (receiver)
+  - account id (receiver)
   - deposit amount
   - token id
-- withdraw
-  - id exit tree
 - forcewithdraw
-  - id balance tree
+  - account id
+  - amount
+- withdraw
+  - number exit batch
+  - account id
 
 ## Off-chain parameters definition
-
 - send
+  - account id (receiver) 
   - amount
-  - id (receiver)
-  - password
-  - from
-  - wallet
-  - operator
+  - token id
+  - user fee
