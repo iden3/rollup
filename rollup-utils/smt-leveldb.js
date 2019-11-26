@@ -8,15 +8,24 @@ const LevelDb = require("./level-db");
 class SMTLevelDb {
     constructor(pathDb, prefix) {
         this.db = new LevelDb(pathDb, prefix);
-        this.db.insert("smt-root", BigInt(0));
+        this.db.insert("smt-root", this._toString(BigInt(0)));
     }
 
     async getRoot() {
-        return BigInt(await this.db.get("smt-root"));
+        const value = await this.db.get("smt-root");
+        return this._fromString(value);
     }
 
     async setRoot(rt) {
-        await this.db.insert("smt-root", rt);
+        await this.db.insert("smt-root", this._toString(rt));
+    }
+
+    _toString(val) {
+        return JSON.stringify(stringifyBigInts(val));
+    }
+
+    _fromString(val) {
+        return unstringifyBigInts(JSON.parse(val));
     }
 
     _key2str(k) {
@@ -32,15 +41,25 @@ class SMTLevelDb {
 
     async get(key) {
         const keyS = this._key2str(key);
-        const value = await this.db.get(keyS);
-        return unstringifyBigInts(JSON.parse(value));
+        const value = await this.db.getOrDefault(keyS, undefined);
+        if (value)
+            return this._fromString(value);
+        return undefined;
+    }
+
+    async multiGet(keys) {
+        const promises = [];
+        for (let i=0; i<keys.length; i++) {
+            promises.push(this.get(keys[i]));
+        }
+        return await Promise.all(promises);
     }
 
     async multiIns(inserts) {
         for (let i = 0; i < inserts.length; i++) {
             const keyS = this._key2str(inserts[i][0]);
             this._normalize(inserts[i][1]);
-            const valueS = JSON.stringify(stringifyBigInts(inserts[i][1]));
+            const valueS = this._toString(inserts[i][1]);
             await this.db.insert(keyS, valueS);
         }
     }

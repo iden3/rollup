@@ -75,6 +75,7 @@ if (synchConfig.rollupPoS.synchDb == undefined) {
     logger.debug("Start PoS synch with memory database");
     posDb = new MemDb();
 } else {
+    logger.debug("Start PoS synch with levelDb database");
     posDb = new LevelDb(synchConfig.rollupPoS.synchDb);
 }
 
@@ -114,12 +115,19 @@ let rollupSynch;
 let loopManager;
 
 (async () => {
-    if((synchConfig.rollup.synchDb == undefined) || (synchConfig.rollup.treeDb == undefined)){
+    if (synchConfig.rollup.synchDb == undefined){
         logger.debug("Start Rollup synch with memory database");
         rollupSynchDb = new MemDb();
-        db = new SMTMemDB();
-    } else{
+    } else {
+        logger.debug("Start Rollup synch with levelDb database");
         rollupSynchDb = new LevelDb(synchConfig.rollup.synchDb);
+    }
+
+    if (synchConfig.rollup.treeDb == undefined){
+        logger.debug("Start Rollup accounts tree with memory database");
+        db = new SMTMemDB();
+    } else {
+        logger.debug("Start Rollup accounts tree with levelDb database");
         db = new SMTLevelDb(synchConfig.rollup.treeDb);
     }
 

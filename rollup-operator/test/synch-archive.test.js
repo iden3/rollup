@@ -5,6 +5,7 @@
 const chai = require("chai");
 const { expect } = chai;
 const lodash = require("lodash");
+const { stringifyBigInts } = require("snarkjs");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
@@ -31,9 +32,12 @@ async function checkSynch(synch, opRollupDb){
     const isSynched = await synch.isSynched();
     expect(isSynched).to.be.equal(true);
     // Check database-synch matches database-op
-    const tmpOpDb = opRollupDb.db.nodes;
-    const synchDb = await synch.getRollupDB();
-    expect(lodash.isEqual(tmpOpDb, synchDb)).to.be.equal(true);
+    const keys = Object.keys(opRollupDb.db.nodes);
+    for (const key of keys) {
+        const valueOp = JSON.stringify(stringifyBigInts(await opRollupDb.db.get(key)));
+        const valueSynch = JSON.stringify(stringifyBigInts(await synch.treeDb.db.get(key)));
+        expect(lodash.isEqual(valueOp, valueSynch)).to.be.equal(true);
+    }
 }
 
 // timeouts test

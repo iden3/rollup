@@ -168,7 +168,7 @@ class LoopManager{
         // Delete active operators that are no longer registered
         for (const index in this.registerId) {
             const opId = this.registerId[index];
-            if( !(opId.toString() in listOpRegistered))
+            if(!(opId.toString() in listOpRegistered))
                 this.registerId.splice(index, 1);
         }
     }

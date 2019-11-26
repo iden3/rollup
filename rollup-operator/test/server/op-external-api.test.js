@@ -10,6 +10,7 @@ const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
+const process = require("child_process");
 const path = require("path");
 const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
@@ -453,5 +454,9 @@ contract("Operator", (accounts) => {
                 expect((error.response.data).includes("No account has been found")).to.be.equal(true);
             }
         });
+    });
+
+    after(async () => {
+        process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
     });
 });

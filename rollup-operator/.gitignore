@@ -2,4 +2,4 @@ getIden3.sh
 node_modules
 test/config/*-test.json
 test/config/test.json
-test/tmp-*
+test/server/tmp-*

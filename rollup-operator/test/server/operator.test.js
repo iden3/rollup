@@ -11,6 +11,7 @@ const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
 const path = require("path");
+const process = require("child_process");
 const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
@@ -106,5 +107,9 @@ contract("Operator", (accounts) => {
             counter += 1;
         }
         expect(batchForged).to.be.equal(true);
+    });
+
+    after(async () => {
+        process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
     });
 });
