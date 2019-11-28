@@ -284,20 +284,17 @@ contract("Rollup", (accounts) => {
         // Should trigger error since we are try get withdraw from different sender
         try {
             await insRollupTest.withdraw(id, leafId.amount.toString(),
-                BigInt(lastBatch).toString(), leafId.nonce.toString(),
-                siblingsId, { from: id2 });
+                BigInt(lastBatch).toString(), siblingsId, { from: id2 });
         } catch (error) {
             expect((error.message).includes("invalid proof")).to.be.equal(true);
         }
         // send withdraw transaction
         await insRollupTest.withdraw(id, leafId.amount.toString(),
-            BigInt(lastBatch).toString(), leafId.nonce.toString(),
-            siblingsId, { from: id1 });
+            BigInt(lastBatch).toString(), siblingsId, { from: id1 });
         // Should trigger error since we are repeating the withdraw transaction
         try {
             await insRollupTest.withdraw(id, leafId.amount.toString(),
-                BigInt(lastBatch).toString(), leafId.nonce.toString(),
-                siblingsId, { from: id1 });
+                BigInt(lastBatch).toString(), siblingsId, { from: id1 });
         } catch (error) {
             expect((error.message).includes("withdraw has been already done")).to.be.equal(true);
         }
@@ -459,8 +456,7 @@ contract("Rollup", (accounts) => {
         const leafId = infoId.state;
 
         await insRollupTest.withdraw(id, leafId.amount.toString(),
-            BigInt(lastBatch).toString(), leafId.nonce.toString(),
-            siblingsId, { from: id2 });
+            BigInt(lastBatch).toString(), siblingsId, { from: id2 });
 
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
@@ -559,8 +555,7 @@ contract("Rollup", (accounts) => {
         const leafId = infoId.state;
 
         await insRollupTest.withdraw(id, leafId.amount.toString(),
-            BigInt(lastBatch).toString(), leafId.nonce.toString(),
-            siblingsId, { from: id3 });
+            BigInt(lastBatch).toString(), siblingsId, { from: id3 });
     
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
@@ -619,8 +614,7 @@ contract("Rollup", (accounts) => {
         const leafId = infoId.state;
 
         await insRollupTest.withdraw(id, leafId.amount.toString(),
-            BigInt(lastBatch).toString(), leafId.nonce.toString(),
-            siblingsId, { from: id3 });
+            BigInt(lastBatch).toString(), siblingsId, { from: id3 });
     
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);

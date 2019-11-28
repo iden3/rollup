@@ -334,20 +334,18 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param idBalanceTree account identifier on the balance tree
      * @param amount amount to retrieve
      * @param numExitRoot exit root depth. Number of batch where the withdraw transaction has been done
-     * @param nonce nonce exit tree leaf
      * @param siblings siblings to demonstrate merkle tree proof
      */
     function withdraw(
         uint64 idBalanceTree,
         uint16 amount,
         uint numExitRoot,
-        uint48 nonce,
         uint256[] memory siblings
     ) public {
         // Build 'key' and 'value' for exit tree
         uint256 keyExitTree = idBalanceTree;
         Entry memory exitEntry = buildTreeState(amount, treeInfo[idBalanceTree].tokenId, treeInfo[idBalanceTree].babyPubKey[0],
-        treeInfo[idBalanceTree].babyPubKey[1], msg.sender, nonce);
+        treeInfo[idBalanceTree].babyPubKey[1], msg.sender, 0);
         uint256 valueExitTree = hashEntry(exitEntry);
         // Get exit root given its index depth
         uint256 exitRoot = uint256(getExitRoot(numExitRoot));

@@ -29,7 +29,7 @@ async function withdraw(urlNode, addressSC, walletJson, password, abi, urlOperat
         const infoExitTree = res.data;
         if (infoExitTree.found) {
             return await contractWithSigner.withdraw(infoExitTree.state.idx, infoExitTree.state.amount, numExitRoot,
-                infoExitTree.state.nonce, infoExitTree.siblings);
+                infoExitTree.siblings);
         }
         throw new Error(`No exit tree leaf was found in batch: ${numExitRoot} with id: ${idFrom}`);
     } catch (error) {
