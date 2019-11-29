@@ -270,6 +270,9 @@ contract("RollupPoS", (accounts) => {
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             await insRollupPoS.setBlockNumber(eraBlock[3]);
+
+            let raffleEra5 = await insRollupPoS.getRaffle(5); //CurrentEra(3) + 2 = 5
+            expect(raffleEra5.seedRnd).to.be.equal("0x0000000000000000");
             // try to commit batch with wrong previous hash
             try {
                 await insRollupPoS.commitBatch(hashChain[7], compressedTxTest);
@@ -302,6 +305,8 @@ contract("RollupPoS", (accounts) => {
             // Forge batch
             await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
 
+            raffleEra5 = await insRollupPoS.getRaffle(5); //CurrentEra(3) + 2 = 5
+            expect(raffleEra5.seedRnd).to.be.equal("0x8b7ddff242744dc9");
             // try to forge data where there is no data committed
             try {
                 await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
@@ -314,6 +319,8 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.commitBatch(hashChain[7], compressedTxTest);
             await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
 
+            raffleEra5 = await insRollupPoS.getRaffle(5); //CurrentEra(3) + 2 = 5
+            expect(raffleEra5.seedRnd).to.be.equal("0x95a4a2f8e01b5ab2");
             // try to commit just after the deadline
             await insRollupPoS.setBlockNumber(eraBlock[3] + deadlineBlocks + 1);
             try { 
