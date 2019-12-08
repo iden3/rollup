@@ -256,7 +256,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
         require(amount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
         require(fromId < lastBalanceTreeIndex, 'From account does not exist on balance tree');
-        require(toId < lastBalanceTreeIndex, 'From account does not exist on balance tree');
+        require(toId < lastBalanceTreeIndex, 'To account does not exist on balance tree');
         require(treeInfo[fromId].tokenId == tokenId, 'token type does not match');
         require(treeInfo[toId].tokenId == tokenId, 'token type does not match');
         require(msg.sender == treeInfo[fromId].ethAddress, 'Sender does not match identifier balance tree');

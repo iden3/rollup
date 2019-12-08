@@ -1450,6 +1450,135 @@ describe("Rollup Basic circuit TXs", function () {
         }
 
     });
+
+    it("Should check error offchain send to unexisting leaf", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+        
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+        
+        bb.addTx({
+            fromIdx: 1,
+            loadAmount: 1000,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+        
+        bb.addTx({
+            fromIdx: 2,
+            loadAmount: 2000,
+            coin: 1,
+            ax: account2.ax,
+            ay: account2.ay,
+            ethAddress: account2.ethAddress,
+            onChain: true
+        });
+        
+        await bb.build();
+        const input = bb.getInput();
+        
+        const w = circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+        checkBatch(circuit, w, bb);
+        
+        await rollupDB.consolidate(bb);
+        
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+        
+        const tx = {
+            fromIdx: 1,
+            toIdx: 3,
+            coin: 0,
+            amount: 50,
+            nonce: 0,
+            userFee: 10
+        };
+        account1.signTx(tx);
+        bb2.addTx(tx);
+        
+        bb2.addCoin(0, 5);
+        try{ 
+            await bb2.build();
+            const input2 = bb2.getInput();
+                
+            const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
+            checkBatch(circuit, w2, bb2);
+        } catch (error) {
+            assert.include(error.message, "trying to send to a wrong address");
+        }
+
+    });
+
+    it("Should check error deposit offchain", async () => {
+        //if there's fee will be an underflow error from batchbuilder, if there's no fee defined for that coin, the circuit send the error
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+        
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+        
+        bb.addTx({
+            fromIdx: 1,
+            loadAmount: 1000,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+        
+        bb.addTx({
+            fromIdx: 2,
+            loadAmount: 2000,
+            coin: 1,
+            ax: account2.ax,
+            ay: account2.ay,
+            ethAddress: account2.ethAddress,
+            onChain: true
+        });
+        
+        await bb.build();
+        const input = bb.getInput();
+        
+        const w = circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+        checkBatch(circuit, w, bb);
+        
+        await rollupDB.consolidate(bb);
+        
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+        
+        const tx = {
+            fromIdx: 3,
+            coin: 0,
+            amount: 0,
+            nonce: 0,
+            userFee: 0,
+            ax: account2.ax,
+            ay: account2.ay,
+            ethAddress: account2.ethAddress
+        };
+        account1.signTx(tx);
+        bb2.addTx(tx);
+
+        try{ 
+            await bb2.build();
+            const input2 = bb2.getInput();
+                
+            const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
+            checkBatch(circuit, w2, bb2);
+        } catch (error) {
+            assert.include(error.message, "Constraint doesn\'t match main.Tx[0].states");
+        }
+
+    });
+
     it("Should check error batch with invalid order", async () => {
         // Start a new state
         const db = new SMTMemDB();

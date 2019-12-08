@@ -283,7 +283,6 @@ contract RollupPoS is RollupPoSHelpers{
         raffle.root = newRoot;
         raffle.activeStake += eStake;
         raffle.historicStake += eStake;
-        raffle.seedRnd = bytes8(keccak256(abi.encodePacked(raffle.seedRnd, rndHash)));
         emit createOperatorLog(controllerAddress, idOp, url);
         return idOp;
     }
@@ -608,6 +607,9 @@ contract RollupPoS is RollupPoSHelpers{
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+        uint32 updateEra = currentEra() + 2;
+        _updateRaffles();
+        Raffle storage raffle = raffles[updateEra];
         // Check input off-chain hash matches hash commited
         require(commitSlot[slot].offChainHash == input[4],
             'hash off chain input does not match hash commited');
@@ -620,6 +622,7 @@ contract RollupPoS is RollupPoSHelpers{
         commitSlot[slot].committed = false;
         // one block has been forged in this slot
         fullFilled[slot] = true;
+        raffle.seedRnd = bytes8(keccak256(abi.encodePacked(raffle.seedRnd, op.rndHash)));
     }
 
     function commitAndForge(

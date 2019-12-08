@@ -20,6 +20,28 @@ contract RollupPoSTest is RollupPoS {
         fullFilled[slot] = true;
     }
 
+  /**
+     * @dev update raffles mapping
+     * initialize raffle according its era
+     */
+    function _updateRaffles() private {
+        uint32 ce = currentEra();
+        if (lastInitializedRaffle >= ce+2) return;
+        for (uint32 i = ce; i <= ce+2; i++) {
+            if ((i>0) && (raffles[i].era == 0)) {
+                Raffle storage lastRaffle = raffles[lastInitializedRaffle];
+                raffles[i] = Raffle(
+                    i,
+                    lastRaffle.root,
+                    lastRaffle.historicStake,
+                    lastRaffle.activeStake,
+                    lastRaffle.seedRnd
+                );
+                lastInitializedRaffle = i;
+            }
+        }
+    }
+
     function getRaffleWinnerTest(uint32 slot, uint64 luckyNumber) public view returns (uint32 winner) {
         // No negative era
         uint32 era = slot / SLOTS_PER_ERA;
@@ -100,6 +122,9 @@ contract RollupPoSTest is RollupPoS {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+        uint32 updateEra = currentEra() + 2;
+        _updateRaffles();
+        Raffle storage raffle = raffles[updateEra];
         // Check input off-chain hash matches hash commited
         require(commitSlot[slot].offChainHash == input[4],
             'hash off chain input does not match hash commited');
@@ -111,5 +136,6 @@ contract RollupPoSTest is RollupPoS {
         commitSlot[slot].committed = false;
         // one block has been forged in this slot
         fullFilled[slot] = true;
+        raffle.seedRnd = bytes8(keccak256(abi.encodePacked(raffle.seedRnd, op.rndHash)));
     }
 }
