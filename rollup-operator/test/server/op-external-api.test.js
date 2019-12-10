@@ -347,113 +347,103 @@ contract("Operator", (accounts) => {
         const walletAx1 = rollupWallets[1].babyjubWallet.publicKey[0].toString(16);
         const walletAy1 = rollupWallets[1].babyjubWallet.publicKey[1].toString(16);
 
-        it("by Id", async () => {
-            const resId0 = await cliExternalOp.getAccountByIdx(id0);
-            expect(resId0.data.ax).to.be.equal(walletAx0);
-            expect(resId0.data.ay).to.be.equal(walletAy0);
-            expect(resId0.data.ethAddress).to.be.equal(walletEthAddress0);
+        // By Id
+        const resId0 = await cliExternalOp.getAccountByIdx(id0);
+        expect(resId0.data.ax).to.be.equal(walletAx0);
+        expect(resId0.data.ay).to.be.equal(walletAy0);
+        expect(resId0.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-            const resId1 = await cliExternalOp.getAccountByIdx(id1);
-            expect(resId1.data.ax).to.be.equal(walletAx1);
-            expect(resId1.data.ay).to.be.equal(walletAy1);
-            expect(resId1.data.ethAddress).to.be.equal(walletEthAddress1);
-        });
-        
-        it("filter by Ax, Ay", async () => { 
-            let filters;
-            let account;
+        const resId1 = await cliExternalOp.getAccountByIdx(id1);
+        expect(resId1.data.ax).to.be.equal(walletAx1);
+        expect(resId1.data.ay).to.be.equal(walletAy1);
+        expect(resId1.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
-            filters = {
-                ax: walletAx0,
-                ay: walletAy0,
-            };
+        // By Public key Babyjubjub
+        let filters;
+        let account;
 
-            const resAxAy0 = await cliExternalOp.getAccounts(filters);
-            const listAccounts0 = resAxAy0.data; 
-            expect(listAccounts0.length).to.be.equal(1);
+        filters = {
+            ax: walletAx0,
+            ay: walletAy0,
+        };
+
+        const resAxAy0 = await cliExternalOp.getAccounts(filters);
+        let listAccounts0 = resAxAy0.data;
+        expect(listAccounts0.length).to.be.equal(1);
             
-            account = listAccounts0[0];
-            expect(account.ax).to.be.equal(walletAx0);
-            expect(account.ay).to.be.equal(walletAy0);
-            expect(account.ethAddress).to.be.equal(walletEthAddress0);
+        account = listAccounts0[0];
+        expect(account.ax).to.be.equal(walletAx0);
+        expect(account.ay).to.be.equal(walletAy0);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-            filters = {
-                ax: walletAx1,
-                ay: walletAy1,
-            };
+        filters = {
+            ax: walletAx1,
+            ay: walletAy1,
+        };
 
-            const resAxAy1 = await cliExternalOp.getAccounts(filters);
-            const listAccounts1 = resAxAy1.data; 
-            expect(listAccounts1.length).to.be.equal(1);
+        const resAxAy1 = await cliExternalOp.getAccounts(filters);
+        let listAccounts1 = resAxAy1.data;
+        expect(listAccounts1.length).to.be.equal(1);
 
-            account = listAccounts1[0];
-            expect(account.ax).to.be.equal(walletAx1);
-            expect(account.ay).to.be.equal(walletAy1);
-            expect(account.ethAddress).to.be.equal(walletEthAddress1);
-        });
+        account = listAccounts1[0];
+        expect(account.ax).to.be.equal(walletAx1);
+        expect(account.ay).to.be.equal(walletAy1);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
-        it("filter by EthAddress", async () => { 
-            let filters;
-            let account;
+        // By Ethereum Address
+        filters = {
+            ethAddr: walletEthAddress0,
+        };
 
-            filters = {
-                ethAddr: walletEthAddress0,
-            };
+        const resEth0 = await cliExternalOp.getAccounts(filters);
+        listAccounts0 = resEth0.data;
+        expect(listAccounts0.length).to.be.equal(1);
 
-            const resEth0 = await cliExternalOp.getAccounts(filters);
-            const listAccounts0 = resEth0.data;
-            expect(listAccounts0.length).to.be.equal(1);
+        account = listAccounts0[0];
+        expect(account.ax).to.be.equal(walletAx0);
+        expect(account.ay).to.be.equal(walletAy0);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-            account = listAccounts0[0];
-            expect(account.ax).to.be.equal(walletAx0);
-            expect(account.ay).to.be.equal(walletAy0);
-            expect(account.ethAddress).to.be.equal(walletEthAddress0);
+        filters = {
+            ethAddr: walletEthAddress1,
+        };
 
-            filters = {
-                ethAddr: walletEthAddress1,
-            };
+        const resEth1 = await cliExternalOp.getAccounts(filters);
+        listAccounts1 = resEth1.data;
+        expect(listAccounts1.length).to.be.equal(1);
 
-            const resEth1 = await cliExternalOp.getAccounts(filters);
-            const listAccounts1 = resEth1.data;
-            expect(listAccounts1.length).to.be.equal(1);
+        account = listAccounts1[0];
+        expect(account.ax).to.be.equal(walletAx1);
+        expect(account.ay).to.be.equal(walletAy1);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
-            account = listAccounts1[0];
-            expect(account.ax).to.be.equal(walletAx1);
-            expect(account.ay).to.be.equal(walletAy1);
-            expect(account.ethAddress).to.be.equal(walletEthAddress1);
-        });
+        // By both Public key Babyjubjub and Ethereum Address
+        filters = {
+            ax: walletAx0,
+            ay: walletAy0,
+            ethAddr: walletEthAddress0,
+        };
 
-        it("filter both babyjubjub and address", async () => { 
-            let filters;
-            let account;
+        const res0 = await cliExternalOp.getAccounts(filters);
+        listAccounts0 = res0.data;
+        expect(listAccounts0.length).to.be.equal(1);
 
-            filters = {
-                ax: walletAx0,
-                ay: walletAy0,
-                ethAddr: walletEthAddress0,
-            };
+        account = listAccounts0[0];
+        expect(account.ax).to.be.equal(walletAx0);
+        expect(account.ay).to.be.equal(walletAy0);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-            const res0 = await cliExternalOp.getAccounts(filters);
-            const listAccounts0 = res0.data;
-            expect(listAccounts0.length).to.be.equal(1);
+        filters = {
+            ax: walletAx0,
+            ay: walletAy0,
+            ethAddr: walletEthAddress1,
+        };
 
-            account = listAccounts0[0];
-            expect(account.ax).to.be.equal(walletAx0);
-            expect(account.ay).to.be.equal(walletAy0);
-            expect(account.ethAddress).to.be.equal(walletEthAddress0);
-
-            filters = {
-                ax: walletAx0,
-                ay: walletAy0,
-                ethAddr: walletEthAddress1,
-            };
-
-            try {
-                await cliExternalOp.getAccounts(filters);
-            } catch (error) {
-                expect((error.response.data).includes("No account has been found")).to.be.equal(true);
-            }
-        });
+        try {
+            await cliExternalOp.getAccounts(filters);
+        } catch (error) {
+            expect((error.response.data).includes("No account has been found")).to.be.equal(true);
+        }
     });
 
     after(async () => {
