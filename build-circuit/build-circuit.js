@@ -1,4 +1,4 @@
-const { compileCircuit, setupCircuit } = require("./helpers/actions");
+const { compileCircuit, setupCircuit, inputs } = require("./helpers/actions");
 
 // Input parameters
 const op = process.argv[2];
@@ -10,4 +10,6 @@ if (op == "compile") {
     compileCircuit(nTx, Levels);
 } else if (op == "setup") {
     setupCircuit(nTx, Levels);
+} else if (op == "input"){
+    inputs(nTx, Levels);
 }
