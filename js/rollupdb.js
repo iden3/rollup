@@ -105,9 +105,9 @@ module.exports = async function(db) {
     if (!master) {
         return new RollupDB(db, 0, bigInt(0));
     }
-    const batch = await db.get(Constants.DB_Batch.add(master[0]));
+    const batch = await db.get(Constants.DB_Batch.add(bigInt(master)));
     if (!batch) {
         throw new Error("Database corrupted");
     }
-    return new RollupDB(db, master[0], batch[0]);
+    return new RollupDB(db, master, batch[0]);
 };

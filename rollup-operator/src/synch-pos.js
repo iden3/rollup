@@ -4,9 +4,6 @@ const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // global vars
-const blocksPerSlot = 100;
-const slotsPerEra = 20;
-const blocksNextInfo = blocksPerSlot*slotsPerEra; 
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
 
@@ -16,7 +13,6 @@ const opCreateKey = "operator-create";
 const opRemoveKey = "operator-remove";
 // const opListKey = "operator-list";
 const separator = "--";
-
 
 class SynchPoS {
     constructor(
@@ -71,6 +67,12 @@ class SynchPoS {
     async synchLoop() {
         this.genesisBlock = 0;
         this.totalSynch = 0;
+        this.blocksPerSlot = Number(await this.contractPoS.methods.BLOCKS_PER_SLOT()
+            .call({from: this.ethAddress}));
+        this.slotsPerEra = Number(await this.contractPoS.methods.SLOTS_PER_ERA()
+            .call({from: this.ethAddress}));
+        this.blocksNextInfo = this.blocksPerSlot*this.slotsPerEra;
+        
         if (this.creationHash) {
             this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
                 .call({from: this.ethAddress}));
@@ -86,7 +88,7 @@ class SynchPoS {
                 let lastSynchEra = await this.getLastSynchEra();
                 const currentBlock = await this.web3.eth.getBlockNumber();
                 const currentEra = await this.getCurrentEra();
-                const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
+                const blockNextUpdate = this.genesisBlock + lastSynchEra*this.blocksNextInfo;
                 
                 info += `current block number: ${currentBlock} | `;
                 info += `next block update: ${blockNextUpdate} | `;
@@ -94,7 +96,7 @@ class SynchPoS {
 
                 if (currentBlock > blockNextUpdate){
                     const logs = await this.contractPoS.getPastEvents("allEvents", {
-                        fromBlock: lastSynchEra ? (blockNextUpdate - blocksNextInfo) : this.creationBlock,
+                        fromBlock: lastSynchEra ? (blockNextUpdate - this.blocksNextInfo) : this.creationBlock,
                         toBlock: blockNextUpdate - 1,
                     });
                     // Update operators
@@ -159,9 +161,9 @@ class SynchPoS {
 
     async _updateWinners(eraUpdate) {
         // update next era winners
-        for (let i = 0; i < 2*slotsPerEra; i++){
-            const slot = slotsPerEra*eraUpdate + i;
-            if(eraUpdate && (i < slotsPerEra)){
+        for (let i = 0; i < 2*this.slotsPerEra; i++){
+            const slot = this.slotsPerEra*eraUpdate + i;
+            if(eraUpdate && (i < this.slotsPerEra)){
                 this.winners.shift(); // remove first era winners
                 this.slots.shift();
             } else {
@@ -211,7 +213,7 @@ class SynchPoS {
     }
 
     async getBlockBySlot(numSlot){
-        return (this.genesisBlock + numSlot*blocksPerSlot);
+        return (this.genesisBlock + numSlot*this.blocksPerSlot);
     }
 
     async getCurrentBlock() {

@@ -7,21 +7,24 @@ contract RollupPoS is RollupPoSHelpers{
     // Rollup smart contract address
     RollupInterface rollupInterface;
 
-    // maximum rollup transacction: either off-chain or on-chain transactions
-    uint MAX_TX;
+    // Maximum rollup transactions: either off-chain or on-chain transactions
+    uint public MAX_TX;
 
-    uint32 constant BLOCKS_PER_SLOT = 100;
-    uint constant SLOT_DEADLINE = 80;
-    uint32 constant SLOTS_PER_ERA = 20;
+    // Defines slot/era block duration
+    uint constant public DELAY_GENESIS = 1000;
+    uint32 constant public BLOCKS_PER_SLOT = 100;
+    uint constant public SLOT_DEADLINE = 80;
+    uint32 constant public SLOTS_PER_ERA = 20;
+
     // Minimum stake to enter the raffle
     uint constant MIN_STAKE = 1 ether;
 
     // First block where the first era begins
     uint public genesisBlock;
-    // last raffle that has been initialized
+    // Last raffle that has been initialized
     uint32 lastInitializedRaffle;
 
-    // defines operator structure
+    // Defines operator structure
     struct Operator {
         uint128 amountStaked;
         uint32 unlockEra; // era from the operator can withdraw its stake
@@ -42,9 +45,9 @@ contract RollupPoS is RollupPoSHelpers{
         uint32 right;
     }
 
-    // defines raffle structure
+    // Defines raffle structure
     // each era will have a raffle
-    // At the begining of each era, all slots winners are determined by:
+    // at the begining of each era, all slots winners are determined by:
     // seedRnd --> which will select an operator that will be able to forge at each slot
     // root --> pointer of the initial stake root leaf
     struct Raffle {
@@ -60,7 +63,7 @@ contract RollupPoS is RollupPoSHelpers{
     // Store all staker tree nodes
     IntermediateNode[] nodes;
 
-    // list of raffles depending on era index
+    // List of raffles depending on era index
     mapping (uint32 => Raffle) raffles;
     // Indicates if at least one batch has been forged on an slot
     // used for slashing operators
@@ -90,7 +93,7 @@ contract RollupPoS is RollupPoSHelpers{
     constructor(address _rollup, uint256 _maxTx) public {
         require(_rollup != address(0),'Address 0 inserted');
         rollupInterface = RollupInterface(_rollup);
-        genesisBlock = getBlockNumber() + 1000;
+        genesisBlock = getBlockNumber() + DELAY_GENESIS;
         MAX_TX = _maxTx;
         // Initialize first raffle
         raffles[0] = Raffle(

@@ -10,10 +10,10 @@ const Constants = require("./constants");
 // global vars
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
-const maxTx = 10;
 const nLevels = 24;
+// offChainTx --> From | To | Amount |
+//            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
-const blocksPerSlot = 100;
 
 // db keys
 const lastBlockKey = "last-block-synch";
@@ -89,6 +89,11 @@ class Synchronizer {
         this.creationBlock = 0;
         this.totalSynch = 0;
         this.forgeEventsCache.set(lastPurgedKey, await this.getLastBatch());
+        this.blocksPerSlot = Number(await this.rollupPoSContract.methods.BLOCKS_PER_SLOT()
+            .call({from: this.ethAddress}));
+        this.maxTx = Number(await this.rollupPoSContract.methods.MAX_TX()
+            .call({from: this.ethAddress}));
+
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -271,7 +276,7 @@ class Synchronizer {
     }
 
     async _updateTree(offChain, onChain) {
-        const batch = await this.treeDb.buildBatch(maxTx, nLevels);
+        const batch = await this.treeDb.buildBatch(this.maxTx, nLevels);
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event);
             await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
@@ -337,7 +342,7 @@ class Synchronizer {
         const inputFeePlanCoin = inputRetrieved[5];
         const inputFeePlanFee = inputRetrieved[6];
 
-        const fromBlock = txForge.blockNumber - blocksPerSlot;
+        const fromBlock = txForge.blockNumber - this.blocksPerSlot;
         const toBlock = txForge.blockNumber;
         const logs = await this.rollupPoSContract.getPastEvents("dataCommitted", {
             fromBlock: fromBlock, // previous slot
@@ -359,7 +364,7 @@ class Synchronizer {
             }
         });
 
-        const headerBytes = Math.ceil(maxTx/8);
+        const headerBytes = Math.ceil(this.maxTx/8);
         const txs = [];
         const buffCompressedTxs = Buffer.from(compressedTx.slice(2), "hex");
         const headerBuff = buffCompressedTxs.slice(0, headerBytes);
@@ -419,7 +424,7 @@ class Synchronizer {
     }
 
     async getBatchBuilder() {
-        const bb = await this.treeDb.buildBatch(maxTx, nLevels);
+        const bb = await this.treeDb.buildBatch(this.maxTx, nLevels);
         const currentBlock = await this.web3.eth.getBlockNumber();
         const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
         // add on-chain txs
@@ -434,7 +439,7 @@ class Synchronizer {
         const res = [];
         // add off-chain tx
         if (this.mode === Constants.mode.archive){
-            const bb = await this.treeDb.buildBatch(maxTx, nLevels); 
+            const bb = await this.treeDb.buildBatch(this.maxTx, nLevels); 
             const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${numBatch}`);
             for (const key of keysForge) {
                 const tmp = this._fromString(await this.db.get(key));

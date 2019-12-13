@@ -38,7 +38,7 @@ class TXPool {
     async _load() {
         let slots = await this.rollupDB.db.get(Constants.DB_TxPoolSlotsMap);
         if (slots) {
-            this.slotsMap = slots.map( s => s.toJSNumber() );
+            this.slotsMap = slots.map( s => bigInt(s) );
         } else {
             this.slotsMap =Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
         }
