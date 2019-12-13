@@ -225,17 +225,21 @@ module.exports = class BatchBuilder {
                 keyEthAddr
             ]);
 
-            if (!lastVals[0]) lastVals[0] = [];
-            lastVals[0].push(bigInt(tx.fromIdx));
+            let valAxAy;
+            if (!lastVals[0]) valAxAy = [];
+            else valAxAy = [...lastVals[0]];
+            valAxAy.push(bigInt(tx.fromIdx));
 
-            if (!lastVals[1]) lastVals[1] = [];
-            lastVals[1].push(bigInt(tx.fromIdx));
+            let valEthAddr;
+            if (!lastVals[1]) valEthAddr = [];
+            else valEthAddr = [...lastVals[1]];
+            valEthAddr.push(bigInt(tx.fromIdx));
 
             await this.dbState.multiIns([
                 [newValue, utils.state2array(newState1)],
                 [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValue],
-                [keyAxAy, lastVals[0]],
-                [keyEthAddr, lastVals[1]]
+                [keyAxAy, valAxAy],
+                [keyEthAddr, valEthAddr]
             ]);
 
         } else if (op1 == "UPDATE") {
