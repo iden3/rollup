@@ -24,9 +24,9 @@ template DecodeFloatBin() {
     for (i=0; i<10; i++) m[i] <== in[i];
     for (i=0; i<5; i++) e[i] <== in[i+11];
 
-    pe[0] = 9*e[0]+1;
+    pe[0] <== 9*e[0]+1;
     for (i=1; i<5; i++) {
-        pe[i] = (pe[i-1] * (10**(2**i)) - pe[i-1]) * e[i] + pe[i-1];
+        pe[i] <== (pe[i-1] * (10**(2**i)) - pe[i-1]) * e[i] + pe[i-1];
     }
 
     scale10 <== pe[4];
@@ -35,7 +35,7 @@ template DecodeFloatBin() {
 
     isZero.in <== e[0] + e[1] + e[2] + e[3] + e[4]
 
-    allow5 = 1 - isZero.out;
+    allow5 <== 1 - isZero.out;
 
     scale5 <-- scale10 \ 2;
     scale5*2 === scale10*allow5;
