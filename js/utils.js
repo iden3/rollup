@@ -1,4 +1,4 @@
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
 
@@ -14,9 +14,9 @@ function float2fix(fl) {
     const e5 = (fl >> 10) & 1;
 
     const exp = bigInt(10).pow(bigInt(e));
-    let res = bigInt(m).mul(exp);
+    let res = bigInt(m).times(exp);
     if (e5 && e) {
-        res = res.add(exp.div(bigInt(2)));
+        res = res.add(exp.divide(bigInt(2)));
     }
     return res;
 }
@@ -30,8 +30,8 @@ function fix2float(_f) {
 
         let m = f;
         let e =0;
-        while (! m.shr(10).isZero()) {
-            m = m.div(bigInt(10));
+        while (! m.shiftRight(10).isZero()) {
+            m = m.divide(bigInt(10));
             e++;
         }
 
@@ -40,7 +40,7 @@ function fix2float(_f) {
     }
 
     function dist(n1, n2) {
-        return n1.sub(n2).abs();
+        return n1.minus(n2).abs();
     }
 
     const fl1 = floorFix2Float(f);
@@ -77,14 +77,14 @@ function fix2float(_f) {
 function buildTxData(tx) {
     let res = bigInt(0);
     res = res.add( bigInt(tx.fromIdx || 0));
-    res = res.add( bigInt(tx.toIdx || 0).shl(64));
-    res = res.add( bigInt(fix2float(tx.amount || 0)).shl(128));
-    res = res.add( bigInt(tx.coin || 0).shl(144));
-    res = res.add( bigInt(tx.nonce || 0).shl(176));
-    res = res.add( bigInt(fix2float(tx.userFee || 0)).shl(224));
-    res = res.add( bigInt(tx.rqOffset || 0).shl(240));
-    res = res.add( bigInt(tx.onChain ? 1 : 0).shl(243));
-    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(244));
+    res = res.add( bigInt(tx.toIdx || 0).shiftLeft(64));
+    res = res.add( bigInt(fix2float(tx.amount || 0)).shiftLeft(128));
+    res = res.add( bigInt(tx.coin || 0).shiftLeft(144));
+    res = res.add( bigInt(tx.nonce || 0).shiftLeft(176));
+    res = res.add( bigInt(fix2float(tx.userFee || 0)).shiftLeft(224));
+    res = res.add( bigInt(tx.rqOffset || 0).shiftLeft(240));
+    res = res.add( bigInt(tx.onChain ? 1 : 0).shiftLeft(243));
+    res = res.add( bigInt(tx.newAccount ? 1 : 0).shiftLeft(244));
 
     return res;
 }
@@ -98,22 +98,22 @@ function txRoundValues(tx) {
 
 
 function state2array(st) {
-    const data = bigInt(st.coin).add( bigInt(st.nonce).shl(32) );
+    const data = bigInt(st.coin).add( bigInt(st.nonce).shiftLeft(32) );
     return [
         data,
         bigInt(st.amount),
-        bigInt("0x" + st.ax),
-        bigInt("0x" + st.ay),
-        bigInt(st.ethAddress),
+        bigInt(st.ax, 16),
+        bigInt(st.ay, 16),
+        bigInt(st.ethAddress.slice(2), 16),
     ];
 }
 
 function array2state(a) {
     return {
-        // coin: bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
-        // nonce: bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
-        coin: parseInt(bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toString(), 10),
-        nonce: parseInt(bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toString() , 10),
+        // coin: bigInt(a[0]).and(bigInt(1).shiftLeft(32).minus(bigInt(1))).toJSNumber(),
+        // nonce: bigInt(a[0]).shiftRight(32).and(bigInt(1).shiftLeft(32).minus(bigInt(1))).toJSNumber(),
+        coin: parseInt(bigInt(a[0]).and(bigInt(1).shiftLeft(32).minus(bigInt(1))).toString(), 10),
+        nonce: parseInt(bigInt(a[0]).shiftRight(32).and(bigInt(1).shiftLeft(32).minus(bigInt(1))).toString() , 10),
         amount: bigInt(a[1]),
         ax: bigInt(a[2]).toString(16),
         ay: bigInt(a[3]).toString(16),
@@ -142,8 +142,8 @@ function verifyTxSig(tx) {
             R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
             S: bigInt(tx.s)
         };
-        
-        const pubKey = [ bigInt("0x" + tx.ax), bigInt("0x" + tx.ay)];
+
+        const pubKey = [ bigInt(tx.ax, 16), bigInt(tx.ay, 16)];
         return eddsa.verifyPoseidon(h, signature, pubKey);
     } catch(E) {
         return false;

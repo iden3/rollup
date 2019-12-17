@@ -1,7 +1,7 @@
 const SMT = require("circomlib").SMT;
 const SMTTmpDb = require("./smttmpdb");
 const BatchBuilder = require("./batchbuilder");
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 const Constants = require("./constants");
 const utils = require("./utils");
 
@@ -51,7 +51,7 @@ class RollupDB {
     }
 
     async getStateByAxAy(ax, ay) {
-        const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x" + ay));
+        const keyAxAy = Constants.DB_AxAy.add(bigInt(ax, 16)).add(bigInt(ay, 16));
 
         const idxs = await this.db.get(keyAxAy);
         const promises = [];
@@ -63,7 +63,7 @@ class RollupDB {
     }
 
     async getStateByEthAddr(ethAddr) {
-        const keyEthAddr = Constants.DB_EthAddr.add(bigInt(ethAddr));
+        const keyEthAddr = Constants.DB_EthAddr.add(bigInt(ethAddr.slice(2), 16));
 
         const idxs = await this.db.get(keyEthAddr);
         const promises = [];
@@ -82,7 +82,7 @@ class RollupDB {
         const dbExit = new SMTTmpDb(this.db);
         const tmpExitTree = new SMT(dbExit, rootExitTree);
         const resFindExit = await tmpExitTree.find(bigInt(idx));
-        
+
         // get leaf information
         if (resFindExit.found) {
             const stateArray = await this.db.get(resFindExit.foundValue);

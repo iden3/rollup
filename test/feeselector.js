@@ -1,11 +1,9 @@
 const chai = require("chai");
 const path = require("path");
-const snarkjs = require("snarkjs");
-const compiler = require("circom");
+const bigInt = require("big-integer");
+const tester = require("circom").tester;
 
 const assert = chai.assert;
-
-const bigInt = require("snarkjs").bigInt;
 
 describe("FeeSelectorTest test", function () {
     let circuit;
@@ -13,9 +11,7 @@ describe("FeeSelectorTest test", function () {
     this.timeout(100000);
 
     before( async() => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "feeselector_test.circom"));
-        circuit = new snarkjs.Circuit(cirDef);
-        console.log("NConstrains Decode float: " + circuit.nConstraints);
+        circuit = await tester(path.join(__dirname, "circuits", "feeselector_test.circom"));
     });
 
     it("Should test various test vectors", async () => {
@@ -118,12 +114,9 @@ describe("FeeSelectorTest test", function () {
 
         for (let i=0; i<testVectors.length; i++) {
 
-            const w = circuit.calculateWitness(testVectors[i].input);
+            const w = await circuit.calculateWitness(testVectors[i].input);
 
-            for (let outk in testVectors[i].out) {
-                const v = w[circuit.getSignalIdx("main."+outk)];
-                assert(v.equals(bigInt(testVectors[i].out[outk])));
-            }
+            await circuit.assertOut(w, testVectors[i].out);
         }
     });
 });

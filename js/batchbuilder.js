@@ -4,7 +4,7 @@ const SMTTmpDb = require("./smttmpdb");
 const utils = require("./utils");
 const assert = require("assert");
 const crypto = require("crypto");
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 const poseidon = require("circomlib").poseidon;
 const Constants = require("./constants");
 
@@ -164,7 +164,7 @@ module.exports = class BatchBuilder {
         }
 
         let effectiveAmount = amount;
-        const underFlowOk = (oldState1.amount.add(loadAmount).sub(amount).sub(operatorFee).greaterOrEquals(bigInt(0)));
+        const underFlowOk = (oldState1.amount.add(loadAmount).minus(amount).minus(operatorFee).greaterOrEquals(bigInt(0)));
         if (!underFlowOk) {
             if (tx.onChain) {
                 effectiveAmount = bigInt(0);
@@ -183,14 +183,14 @@ module.exports = class BatchBuilder {
         this.input.r8x[i]= tx.r8x || 0;
         this.input.r8y[i]= tx.r8y || 0;
         this.input.loadAmount[i]= loadAmount;
-        this.input.ethAddr[i]= bigInt(oldState1.ethAddress);
-        this.input.ax[i]= bigInt("0x" +oldState1.ax);
-        this.input.ay[i]= bigInt("0x" +oldState1.ay);
+        this.input.ethAddr[i]= bigInt(oldState1.ethAddress.slice(2), 16);
+        this.input.ax[i]= bigInt(oldState1.ax, 16);
+        this.input.ay[i]= bigInt(oldState1.ay, 16);
 
         this.input.step[i] = ((!tx.onChain) && tx.step) ? 1 : 0;
 
         const newState1 = Object.assign({}, oldState1);
-        newState1.amount = oldState1.amount.add(loadAmount).sub(effectiveAmount).sub(operatorFee);
+        newState1.amount = oldState1.amount.add(loadAmount).minus(effectiveAmount).minus(operatorFee);
         if (!tx.onChain) {
             newState1.nonce++;
             this._incCounter(tx.coin, this.input.step[i]);
@@ -251,11 +251,11 @@ module.exports = class BatchBuilder {
 
             // State 1
             //It should not matter what the Tx have, because we get the input from the oldState
-            this.input.ax1[i]= bigInt("0x" + oldState1.ax);
-            this.input.ay1[i]= bigInt("0x" + oldState1.ay);
-            this.input.amount1[i]= oldState1.amount;  
-            this.input.nonce1[i]= oldState1.nonce; 
-            this.input.ethAddr1[i]= bigInt(oldState1.ethAddress);
+            this.input.ax1[i]= bigInt(oldState1.ax, 16);
+            this.input.ay1[i]= bigInt(oldState1.ay, 16);
+            this.input.amount1[i]= oldState1.amount;
+            this.input.nonce1[i]= oldState1.nonce;
+            this.input.ethAddr1[i]= bigInt(oldState1.ethAddress.slice(2), 16);
 
 
             this.input.siblings1[i] = siblings;
@@ -303,11 +303,11 @@ module.exports = class BatchBuilder {
 
                 // State 2
                 //It should not matter what the Tx have, because we get the input from the oldState
-                this.input.ax2[i]= bigInt("0x" + oldState2.ax);
-                this.input.ay2[i]= bigInt("0x" + oldState2.ay);
+                this.input.ax2[i]= bigInt(oldState2.ax, 16);
+                this.input.ay2[i]= bigInt(oldState2.ay, 16);
                 this.input.amount2[i]= oldState2.amount;
-                this.input.nonce2[i]= oldState2.nonce; 
-                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress);
+                this.input.nonce2[i]= oldState2.nonce;
+                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress.slice(2), 16);
 
 
                 this.input.siblings2[i] = siblings;
@@ -326,11 +326,11 @@ module.exports = class BatchBuilder {
 
                 // State 2
                 //It should not matter what the Tx have, because we get the input from the oldState
-                this.input.ax2[i]= bigInt("0x" + oldState2.ax);
-                this.input.ay2[i]= bigInt("0x" + oldState2.ay);
+                this.input.ax2[i]= bigInt(oldState2.ax, 16);
+                this.input.ay2[i]= bigInt(oldState2.ay, 16);
                 this.input.amount2[i]= oldState2.amount;
                 this.input.nonce2[i]= oldState2.nonce;
-                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress);
+                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress.slice(2), 16);
 
 
                 this.input.siblings2[i] = siblings;
@@ -390,8 +390,8 @@ module.exports = class BatchBuilder {
         };
         for (let i=0; i<this.feePlan.length; i++) {
             const feeF = utils.fix2float(this.feePlan[i][1]);
-            res.feePlanCoins = res.feePlanCoins.add( bigInt(this.feePlan[i][0]).shl(16*i) );
-            res.feePlanFees = res.feePlanFees.add( bigInt(feeF).shl(16*i) );
+            res.feePlanCoins = res.feePlanCoins.add( bigInt(this.feePlan[i][0]).shiftLeft(16*i) );
+            res.feePlanFees = res.feePlanFees.add( bigInt(feeF).shiftLeft(16*i) );
         }
         return res;
     }
@@ -528,7 +528,7 @@ module.exports = class BatchBuilder {
         const hash = crypto.createHash("sha256")
             .update(b)
             .digest("hex");
-        const h = bigInt("0x" + hash).mod(r);
+        const h = bigInt(hash, 16).mod(r);
         return h;
     }
 
@@ -536,7 +536,7 @@ module.exports = class BatchBuilder {
         if (!this.builded) throw new Error("Batch must first be builded");
         let res = bigInt(0);
         for (let i=0; i<this.counters.length; i++) {
-            res = res.add( bigInt(this.counters[i]).shl(16*i) );
+            res = res.add( bigInt(this.counters[i]).shiftLeft(16*i) );
         }
         return res;
     }

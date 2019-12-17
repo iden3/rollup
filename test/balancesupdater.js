@@ -1,7 +1,7 @@
 const chai = require("chai");
 const path = require("path");
-const snarkjs = require("snarkjs");
-const compiler = require("circom");
+const bigInt = require("big-integer");
+const tester = require("circom").tester;
 
 const assert = chai.assert;
 
@@ -11,9 +11,7 @@ describe("Decode float test", function () {
     this.timeout(100000);
 
     before( async() => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "balancesupdater_test.circom"));
-        circuit = new snarkjs.Circuit(cirDef);
-        console.log("NConstraints BalancesUpdater: " + circuit.nConstraints);
+        circuit = await tester(path.join(__dirname, "circuits", "balancesupdater_test.circom"));
     });
 
     it("Should check a normal offChain transaction", async () => {
@@ -30,13 +28,9 @@ describe("Decode float test", function () {
             countersBase: 0
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const newStAmountSender = w[circuit.getSignalIdx("main.newStAmountSender")];
-        const newStAmountReceiver = w[circuit.getSignalIdx("main.newStAmountReceiver")];
-
-        assert(newStAmountSender.equals(3));
-        assert(newStAmountReceiver.equals(25));
+        await circuit.assertOut(w, {newStAmountSender: 3, newStAmountReceiver: 25});
 
     });
 
@@ -54,14 +48,9 @@ describe("Decode float test", function () {
             countersBase: 0
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const newStAmountSender = w[circuit.getSignalIdx("main.newStAmountSender")];
-        const newStAmountReceiver = w[circuit.getSignalIdx("main.newStAmountReceiver")];
-
-        assert(newStAmountSender.equals(15));
-        assert(newStAmountReceiver.equals(20));
-
+        await circuit.assertOut(w, {newStAmountSender: 15, newStAmountReceiver: 20});
     });
 
     it("Should check underflow onChain", async () => {
@@ -78,13 +67,9 @@ describe("Decode float test", function () {
             countersBase: 0
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const newStAmountSender = w[circuit.getSignalIdx("main.newStAmountSender")];
-        const newStAmountReceiver = w[circuit.getSignalIdx("main.newStAmountReceiver")];
-
-        assert(newStAmountSender.equals(10));       // Should not variate
-        assert(newStAmountReceiver.equals(20));
+        await circuit.assertOut(w, {newStAmountSender: 10, newStAmountReceiver: 20});
     });
 
     it("Should check underflow offChain", async () => {
@@ -102,10 +87,10 @@ describe("Decode float test", function () {
         };
 
         try {
-            circuit.calculateWitness(input, {logOutput: false});
+            await circuit.calculateWitness(input, {logOutput: false});
             assert(false, "Constraint matches");
         } catch (err) {
-            assert.equal(err.message.includes("Constraint doesn't match main:"), true);
+            assert.equal(err.message.includes("Constraint doesn't match"), true);
             assert.equal(err.message.includes("1 != 0"), true);
         }
     });
@@ -134,10 +119,10 @@ describe("Decode float test", function () {
         };
 
         try {
-            circuit.calculateWitness(input, {logOutput: false});
+            await circuit.calculateWitness(input, {logOutput: false});
             assert(false, "Constraint matches");
         } catch (err) {
-            assert.equal(err.message.includes("Constraint doesn't match main:"), true);
+            assert.equal(err.message.includes("Constraint doesn't match"), true);
             assert.equal(err.message.includes("1 != 0"), true);
         }
     });
@@ -156,11 +141,9 @@ describe("Decode float test", function () {
             countersBase: 1
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const countersOut = w[circuit.getSignalIdx("main.countersOut")];
-
-        assert(countersOut.equals(2));
+        await circuit.assertOut(w, {countersOut: 2});
     });
 
     it("Should check increment counters onChain", async () => {
@@ -177,10 +160,8 @@ describe("Decode float test", function () {
             countersBase: 1
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const countersOut = w[circuit.getSignalIdx("main.countersOut")];
-
-        assert(countersOut.equals(1)); // Should not variate
+        await circuit.assertOut(w, {countersOut: 1});
     });
 });
