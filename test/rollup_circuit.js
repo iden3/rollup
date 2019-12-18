@@ -11,7 +11,7 @@ const RollupDB = require("../js/rollupdb");
 const checkBatch = require("./helpers/checkbatch");
 const assert = chai.assert;
 
-const NTX = 4;
+const NTX = 5;
 const NLEVELS = 8;
 
 describe("Rollup Basic circuit TXs", function () {

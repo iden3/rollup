@@ -71,9 +71,15 @@ template Rollup(nTx, nLevels) {
     var nDataAvailabilityBitsPerTx;
     nDataAvailabilityBitsPerTx = (nLevels*2+16);
 
-    var nPad = nTx - (nTx\8*8);
-    component offChainHasher = Sha256(nTx + nPad + nDataAvailabilityBitsPerTx*nTx);
-    for (i=nTx; i<nTx+nPad; i++) {
+    var nPad = nTx \ 8;
+    var ceil = nTx % 8;
+    if (ceil != 0){
+        nPad = nPad + 1;
+    }
+    nPad = nPad * 8; // bytes to bits
+    
+    component offChainHasher = Sha256(nPad + nDataAvailabilityBitsPerTx*nTx);
+    for (i=nTx; i<nPad; i++) {
         offChainHasher.in[i] <== 0;
     }
 
@@ -98,7 +104,7 @@ template Rollup(nTx, nLevels) {
         decodeTx[i].ax <== ax[i];
         decodeTx[i].ay <== ay[i];
         for (j=0; j<nLevels*2+16; j++) {
-            offChainHasher.in[nTx + nPad + i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
+            offChainHasher.in[nPad + i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
         }
         offChainHasher.in[i] <== step[i];
 
