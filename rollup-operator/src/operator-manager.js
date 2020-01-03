@@ -87,6 +87,20 @@ class OperatorManager {
         const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
         return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
     }
+
+    async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
+        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
+        const tx = {
+            from:  this.wallet.address,
+            to: this.posAddress,
+            gasLimit: this.gasLimit,
+            data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
+                proofA, proofB, proofC, input).encodeABI()
+        };
+        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        // return this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        return txSign;
+    }
 }
 
 module.exports = OperatorManager;

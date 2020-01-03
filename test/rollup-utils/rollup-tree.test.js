@@ -1,6 +1,7 @@
 /* global BigInt */
 const chai = require("chai");
-const process = require("child_process");
+const util = require("util");
+const exec = util.promisify( require("child_process").exec);
 const RollupTree = require("../../rollup-utils/rollup-tree");
 
 const { expect } = chai;
@@ -72,8 +73,8 @@ describe("Rollup tree level db", () => {
     const nonce = BigInt(4);
 
     after(async () => {
-        process.exec(`rm -rf ${pathDb}-leafs`);
-        process.exec(`rm -rf ${pathDb}-tree`);
+        await exec(`rm -rf ${pathDb}-leafs`);
+        await exec(`rm -rf ${pathDb}-tree`);
     });
 
     it("Create Balance tree and insert a deposit", async () => {

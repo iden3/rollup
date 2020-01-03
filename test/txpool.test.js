@@ -4,7 +4,6 @@ const snarkjs = require("snarkjs");
 const compiler = require("circom");
 const bigInt = require("snarkjs").bigInt;
 const SMTMemDB = require("circomlib").SMTMemDB;
-const fs = require("fs");
 const RollupAccount = require("../js/rollupaccount");
 const RollupDB = require("../js/rollupdb");
 const checkBatch = require("./helpers/checkbatch");
@@ -66,7 +65,7 @@ describe("txPool test", function () {
     this.timeout(1000000);
 
     before( async() => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
         // const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains Rollup: " + circuit.nConstraints);
@@ -123,6 +122,7 @@ describe("txPool test", function () {
         assert(txPool.txs.length, 1);
 
     });
+
     it("Check purge", async () => {
 
         // Start a new state
@@ -157,6 +157,7 @@ describe("txPool test", function () {
 
         assert.equal(txPool.txs.length, 2);
     });
+
     it("Check send thousands of txs", async () => {
 
         // Start a new state
@@ -192,5 +193,4 @@ describe("txPool test", function () {
 
         assert.equal(txPool.txs.length, 2);
     });
-
 });

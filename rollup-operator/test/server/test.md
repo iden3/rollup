@@ -17,16 +17,13 @@ Commands are called from repository `rollup` root directory
     - example can be found in `rollup/rollup-operator/test/config/config-example.env`
     - *It should be noted that this file should be where the `operator.js` is invoked and its name should be `config.env` 
 
-- Run test #1
-  - test one operator registers to rollupPoS and forge a batch
-`truffle test ./rollup-operator/test/server/operator.test.js`
-
 - Run test #2
-  - test all api-external functions
+  - test all functions
+    - test one operator registers to rollupPoS
     - get operators list
     - several deposit on-chain
     - get general information
     - set conversion table for tx-pool
     - send and forge off-chain transaction
     - get balance tree information 
-`truffle test ./rollup-operator/test/server/op-external-api.test.js`
+`truffle test ./rollup-operator/test/server/operator-server.test.js`

@@ -5,7 +5,7 @@ const compiler = require("circom");
 
 const assert = chai.assert;
 
-describe("Decode float test", function () {
+describe("Balance updater test", function () {
     let circuit;
 
     this.timeout(100000);

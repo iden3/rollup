@@ -13,8 +13,8 @@ contract RollupPoS is RollupPoSHelpers{
     // Defines slot/era block duration
     uint constant public DELAY_GENESIS = 1000;
     uint32 constant public BLOCKS_PER_SLOT = 100;
-    uint constant public SLOT_DEADLINE = 80;
     uint32 constant public SLOTS_PER_ERA = 20;
+    uint constant public SLOT_DEADLINE = 20;
 
     // Minimum stake to enter the raffle
     uint constant MIN_STAKE = 1 ether;
@@ -59,7 +59,7 @@ contract RollupPoS is RollupPoSHelpers{
     }
 
     // Array of operators
-    Operator[] operators;
+    Operator[] public operators;
     // Store all staker tree nodes
     IntermediateNode[] nodes;
 
@@ -580,10 +580,10 @@ contract RollupPoS is RollupPoSHelpers{
         Operator storage op = operators[opId];
         // operator must know data to generate current hash
         require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash,
-            'hash revelead not match current committed hash');
+            'hash revealed not match current committed hash');
         // Check if deadline has been achieved to not commit any more data
-        uint blockDeadline = getBlockBySlot(slot) + SLOT_DEADLINE;
-        require(getBlockNumber() < blockDeadline, 'not possible to commit data afer deadline');
+        uint blockDeadline = getBlockBySlot(slot + 1) - SLOT_DEADLINE;
+        require(getBlockNumber() < blockDeadline, 'not possible to commit data after deadline');
         // Check there is no data to be forged
         require(commitSlot[slot].committed == false, 'there is data which is not forged');
         // Store data committed

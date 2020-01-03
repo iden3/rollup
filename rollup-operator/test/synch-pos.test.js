@@ -98,8 +98,9 @@ contract("Synchronizer PoS", async (accounts) => {
             .to.be.equal(operators[0].address.toString());
         expect(listOperators[operators[0].idOp.toString()].url)
             .to.be.equal(operators[0].url);
+
         let winners = await synchPoS.getRaffleWinners();
-        expect(winners.length).to.be.equal(40);
+        expect(winners.length).to.be.equal(2*slotPerEra);
         await checkSlot(await synchPoS.getSlotWinners());
         // expect no winners for era 0 and era 1
         for(const winner of winners) expect(winner).to.be.equal(-1);

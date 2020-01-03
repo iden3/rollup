@@ -2,11 +2,12 @@ const { expect } = require("chai");
 const { stringifyBigInts } = require("snarkjs");
 const lodash = require("lodash");
 const SMTMemDB = require("circomlib").SMTMemDB;
-const process = require("child_process");
+const util = require("util");
+const exec = util.promisify( require("child_process").exec);
 
-const RollupAccount = require("../js/rollupaccount");
-const RollupDB = require("../js/rollupdb");
-const { SMTLevelDb } = require("../rollup-utils/smt-leveldb");
+const RollupAccount = require("../../js/rollupaccount");
+const RollupDB = require("../../js/rollupdb");
+const { SMTLevelDb } = require("../../rollup-utils/smt-leveldb");
 
 async function initRollupDb(rollupDB) {
 
@@ -52,11 +53,7 @@ describe("RollupDb", async function () {
     let rollupMemDb;
     let rollupLevelDb;
 
-    const pathDb = `${__dirname}/tmp`;
-
-    before(async () => {
-        process.exec(`rm -rf ${pathDb}`);
-    });
+    const pathDb = `${__dirname}/tmp-rollupDb`;
 
     it("should initialize with memory database", async () => {
         const db = new SMTMemDB();
@@ -75,6 +72,6 @@ describe("RollupDb", async function () {
     });
 
     after(async () => {
-        process.exec(`rm -rf ${pathDb}`);
+        await exec(`rm -rf ${pathDb}`);
     });
 });

@@ -5,6 +5,7 @@
 /* global web3 */
 
 // This test assumes 'server-proof' is running locally on port 10001
+// This test assumes 'ganache-cli' is run with flag '-b 1' to enable block time for minning instead of auto-mining 
 
 const chai = require("chai");
 const ethers = require("ethers");
@@ -69,6 +70,10 @@ contract("Loop Manager", async (accounts) => {
 
     let loopManager;
 
+    let synchDb;
+    let db;
+    let synchRollupDb;
+    let synchPoSDb;
 
     before(async () => {
     // Deploy poseidon
@@ -106,9 +111,9 @@ contract("Loop Manager", async (accounts) => {
     it("Should initialize loop manager", async () => {
         
         // Init Rollup Synch
-        const synchDb = new MemDb();
-        const db = new SMTMemDB();
-        const synchRollupDb = await RollupDB(db);
+        synchDb = new MemDb();
+        db = new SMTMemDB();
+        synchRollupDb = await RollupDB(db);
 
         let configRollupSynch = {
             treeDb: synchRollupDb,
@@ -129,7 +134,7 @@ contract("Loop Manager", async (accounts) => {
             configRollupSynch.creationHash, configRollupSynch.ethAddress, configRollupSynch.logLevel);
         
         // Init PoS Synch
-        const synchPoSDb = new MemDb();
+        synchPoSDb = new MemDb();
 
         let configSynchPoS = {
             synchDb: synchPoSDb,
@@ -159,7 +164,7 @@ contract("Loop Manager", async (accounts) => {
         await cliServerProof.cancel(); // Reset server proof
         // Init loop Manager
         loopManager = new LoopManager(rollupSynch, posSynch, poolTx, 
-            opManager, cliServerProof);
+            opManager, cliServerProof, configSynchPoS.logLevel, configSynchPoS.ethNodeUrl);
 
         const seedMsg = "rollup";
         await loopManager.loadSeedHashChain(seedMsg);

@@ -1,6 +1,7 @@
 const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
 const winston = require("winston");
+const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
@@ -10,6 +11,7 @@ const Constants = require("./constants");
 // global vars
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
+const TIMEOUT_LOGGER = 5000;
 const nLevels = 24;
 // offChainTx --> From | To | Amount |
 //            -->   3  | 3  |    2   | bytes 
@@ -41,6 +43,7 @@ class Synchronizer {
         logLevel,
         mode,
     ) {
+        this.info = "";
         this.db = db;
         this.nodeUrl = nodeUrl;
         this.rollupAddress = rollupAddress;
@@ -85,7 +88,8 @@ class Synchronizer {
         return unstringifyBigInts(JSON.parse(val));
     }
 
-    async synchLoop() {
+    async _init(){
+        // Initialize class variables
         this.creationBlock = 0;
         this.totalSynch = 0;
         this.forgeEventsCache.set(lastPurgedKey, await this.getLastBatch());
@@ -98,11 +102,21 @@ class Synchronizer {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
         }
+
+        // Start logger
+        this.logInterval = setInterval(() => {
+            this.logger.info(this.info);
+        }, TIMEOUT_LOGGER );
+    }
+
+    async synchLoop() {
+        await this._init();
+
         // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
-                let info = "SYNCH | ";
                 // get last block synched and current blockchain block
+                let totalSynch = 0;
                 let lastSynchBlock = await this.getLastSynchBlock();
                 const currentBlock = await this.web3.eth.getBlockNumber();
 
@@ -110,13 +124,10 @@ class Synchronizer {
                     await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
                     lastSynchBlock = this.creationBlock;
                 }
+
                 const currentBatchDepth = await this.rollupContract.methods.getStateDepth()
                     .call({from: this.ethAddress}, currentBlock);
                 let lastBatchSaved = await this.getLastBatch();
-
-                info += `current block number: ${currentBlock} | `;
-                info += `last block synched: ${lastSynchBlock} | `;
-                info += `current batch depth: ${currentBatchDepth} | `;
 
                 if (currentBatchDepth - 1 > lastBatchSaved) {
                     const targetBlockNumber = await this._getTargetBlock(lastBatchSaved, lastSynchBlock);
@@ -125,24 +136,32 @@ class Synchronizer {
                         fromBlock: lastSynchBlock + 1,
                         toBlock: targetBlockNumber,
                     });
+                    // update events
                     await this._updateEvents(logs, lastBatchSaved + 1, targetBlockNumber);
+                    lastBatchSaved = await this.getLastBatch();
                 }
 
-                lastBatchSaved = await this.getLastBatch();
+                totalSynch = (currentBatchDepth == 0) ? 100 : (((lastBatchSaved + 1) / currentBatchDepth) * 100);
+                this.totalSynch = totalSynch.toFixed(2);
 
-                this.totalSynch = (currentBatchDepth == 0) ? Number(100).toFixed(2) : (((lastBatchSaved + 1) / currentBatchDepth) * 100).toFixed(2);
-                
-                info += `last batch saved: ${lastBatchSaved} | `;
-                info += `Synched: ${this.totalSynch} % | `;
-                this.logger.info(info);
+                this._fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved);
 
-                await timeout(TIMEOUT_NEXT_LOOP);
+                if (totalSynch === 100) await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
                 this.logger.error(`SYNCH Message error: ${e.message}`);
                 this.logger.debug(`SYNCH Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
+    }
+
+    _fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved){
+        this.info = `${chalk.blue("SYNCH")} | `;
+        this.info += `current block number: ${currentBlock} | `;
+        this.info += `last block synched: ${lastSynchBlock} | `;
+        this.info += `current batch depth: ${currentBatchDepth} | `;
+        this.info += `last batch saved: ${lastBatchSaved} | `;
+        this.info += `Synched: ${chalk.white.bold(`${this.totalSynch} %`)}`;
     }
 
     async _getTargetBlock(lastBatchSaved, lastSynchBlock){

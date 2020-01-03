@@ -42,12 +42,11 @@ contract("RollupPoS", (accounts) => {
     const operators = [];
     const eraBlock = [];
     const eraSlot = [];
-    const deadlineBlockPerSlot = [];
     const hashChain = [];
-    const blockPerEra = 2000;
-    const slotPerEra = 20;
-    const blocksPerSlot = blockPerEra / slotPerEra;
-    const deadlineBlocks = 80;
+    let blockPerEra;
+    let slotPerEra;
+    let blocksPerSlot;
+    let deadlineBlocks;
     let amountToStake = 2;
     let db;
     let rollupDB;
@@ -58,16 +57,31 @@ contract("RollupPoS", (accounts) => {
         hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
     }
 
+    async function getIndexHash(opId){
+        try {
+            const opInfo = await insRollupPoS.operators(opId);
+            const currentHash = opInfo.rndHash;
+            const index = hashChain.findIndex(hash => hash === currentHash);
+            return index;
+        } catch (error){
+            return -1;
+        }
+    }
+
     before(async () => {
     // Deploy token test
         insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
         // Initialization
         // fill with first block of each era
         const genesisBlockNum = await insRollupPoS.genesisBlock();
+        blocksPerSlot = Number(await insRollupPoS.BLOCKS_PER_SLOT());
+        slotPerEra = Number(await insRollupPoS.SLOTS_PER_ERA());
+        deadlineBlocks = Number(await insRollupPoS.SLOT_DEADLINE());
+        blockPerEra = blocksPerSlot*slotPerEra;
+
         for (let i = 0; i < 20; i++) {
             eraBlock.push(i * blockPerEra + Number(genesisBlockNum) + 1);
             eraSlot.push(i * slotPerEra);
-            deadlineBlockPerSlot.push(Number(genesisBlockNum) + (i * blocksPerSlot) + deadlineBlocks);
         }
         // fill 5 addresses for operators
         for (let i = 1; i < 6; i++) {
@@ -245,6 +259,7 @@ contract("RollupPoS", (accounts) => {
         });
 
         it("commit and forge batch", async () => {
+            const opId = 0;
             const nLevels = 24;
             const maxTx = 10;
             // non-empty off-chain tx with 10 maxTx
@@ -269,18 +284,27 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.addOperator(hashChain[9], url,
                 { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[1]);
-            await insRollupPoS.setBlockNumber(eraBlock[3]);
+            await insRollupPoS.setBlockNumber(eraBlock[3]); // set era to 3
 
-            let raffleEra5 = await insRollupPoS.getRaffle(5); //CurrentEra(3) + 2 = 5
-            expect(raffleEra5.seedRnd).to.be.equal("0x0000000000000000");
+            // Check raffle random number initialization
+            let oldRaffleRandom = "0x0000000000000000";
+            let currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
+            expect(currentRaffleRandom.seedRnd).to.be.equal(oldRaffleRandom);
+            oldRaffleRandom = currentRaffleRandom; // Update old raffle random
+
             // try to commit batch with wrong previous hash
+            let index = await getIndexHash(opId);
             try {
-                await insRollupPoS.commitBatch(hashChain[7], compressedTxTest);
+                await insRollupPoS.commitBatch(hashChain[index - 2], compressedTxTest);
+                // above function should trigger an error
+                // otherwise test should not pass
+                expect(true).to.be.equal(false);
             } catch(error) {
-                expect((error.message).includes("hash revelead not match current committed hash")).to.be.equal(true);
+                expect((error.message).includes("hash revealed not match current committed hash")).to.be.equal(true);
             }
+
             // check commit hash
-            const resCommit = await insRollupPoS.commitBatch(hashChain[8], compressedTxTest);
+            const resCommit = await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
             expect(resCommit.logs[0].event).to.be.equal("dataCommitted");
             expect(resCommit.logs[0].args.hashOffChain.toString()).to.be.equal(hashOffChain);
             // Get compressedTx from block number
@@ -297,7 +321,10 @@ contract("RollupPoS", (accounts) => {
             expect(`0x${compressedTxTest.toString("hex")}`).to.be.equal(inputRetrieved);
             // try to update data committed before without forging
             try {
-                await insRollupPoS.commitBatch(hashChain[8], compressedTxTest);
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
+                // above function should trigger an error
+                // otherwise test should not pass
+                expect(true).to.be.equal(false);
             } catch(error) {
                 expect((error.message).includes("there is data which is not forged")).to.be.equal(true);
             }
@@ -305,68 +332,97 @@ contract("RollupPoS", (accounts) => {
             // Forge batch
             await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
 
-            raffleEra5 = await insRollupPoS.getRaffle(5); //CurrentEra(3) + 2 = 5
-            expect(raffleEra5.seedRnd).to.be.equal("0x8b7ddff242744dc9");
-            // try to forge data where there is no data committed
+            // Check raffle random number has been updated
+            currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
+            expect(currentRaffleRandom.seedRnd).to.be.not.equal(oldRaffleRandom);
+            oldRaffleRandom = currentRaffleRandom; // Update old raffle random
+
+            // try to forge data when there is no data committed
             try {
                 await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
+                // above function should trigger an error
+                // otherwise test should not pass
+                expect(true).to.be.equal(false);
             } catch (error) {
                 expect((error.message).includes("There is no committed data")).to.be.equal(true);
             }
 
-            // commit data just before deadline
-            await insRollupPoS.setBlockNumber(eraBlock[3] + deadlineBlocks - 2);
-            await insRollupPoS.commitBatch(hashChain[7], compressedTxTest);
-            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
+            if (deadlineBlocks){
+                // commit data just before deadline
+                index = await getIndexHash(opId);
+                await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot - deadlineBlocks - 2);
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
 
-            raffleEra5 = await insRollupPoS.getRaffle(5); //CurrentEra(3) + 2 = 5
-            expect(raffleEra5.seedRnd).to.be.equal("0x95a4a2f8e01b5ab2");
-            // try to commit just after the deadline
-            await insRollupPoS.setBlockNumber(eraBlock[3] + deadlineBlocks + 1);
-            try { 
-                await insRollupPoS.commitBatch(hashChain[6], compressedTxTest);
-            } catch (error) {
-                expect((error.message).includes("not possible to commit data afer deadline")).to.be.equal(true);
-            }
+                // Check raffle random number has been updated
+                currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
+                expect(currentRaffleRandom.seedRnd).to.be.not.equal(oldRaffleRandom);
+                oldRaffleRandom = currentRaffleRandom; // Update old raffle random
 
-            // move forward just one slot
-            await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot);
-            // try to slash operator
-            try {
-                await insRollupPoS.slash(eraSlot[3]);
-            } catch(error) {
-                expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
-            }
+                // try to commit just after the deadline
+                await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot - deadlineBlocks + 1);
+                index = await getIndexHash(opId);
+                try { 
+                    await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
+                    // above function should trigger an error
+                    // otherwise test should not pass
+                    expect(true).to.be.equal(false);
+                } catch (error) {
+                    expect((error.message).includes("not possible to commit data after deadline")).to.be.equal(true);
+                }
 
-            // commit data before deadline, try to update it, not forge block and slash operator
-            // commit and forge
-            await insRollupPoS.commitBatch(hashChain[6], compressedTxTest);
-            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
-            // commit again but not forge
-            await insRollupPoS.commitBatch(hashChain[5], compressedTxTest);
-            // move forward and try to update committed info
-            await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot + deadlineBlocks);
-            try {
-                await insRollupPoS.commitBatch(hashChain[5], compressedTxTest);
-            } catch(error) {
-                expect((error.message).includes("not possible to commit data afer deadline")).to.be.equal(true);
-            }
-            // move formward next slot without forging
-            await insRollupPoS.setBlockNumber(eraBlock[3] + 2*blocksPerSlot);
-            // slash operator despite a block has been forged
-            // but it committed data and has not forge committed data
-            try {
-                await insRollupPoS.slash(eraSlot[3]);
-            } catch(error) {
-                expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
-            }
-            await insRollupPoS.slash(eraSlot[3] + 1);
-            // move forward and be sure that there are no operators
-            await insRollupPoS.setBlockNumber(eraBlock[5]);
-            try {
-                await insRollupPoS.getRaffleWinner(eraSlot[3]);
-            } catch (error) {
-                expect((error.message).includes("Must be stakers")).to.be.equal(true);
+                // move forward just one slot
+                await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot);
+                // try to slash operator
+                try {
+                    await insRollupPoS.slash(eraSlot[3]);
+                    // above function should trigger an error
+                    // otherwise test should not pass
+                    expect(true).to.be.equal(false);
+                } catch(error) {
+                    expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
+                }
+
+                // commit data before deadline, try to update it, not forge block and slash operator
+                // commit and forge
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input);
+                // commit again but not forge
+                index = await getIndexHash(opId);
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
+                // move forward and try to update committed info after deadline
+                await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot + blocksPerSlot - deadlineBlocks + 1);
+                try {
+                    await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest);
+                    // above function should trigger an error
+                    // otherwise test should not pass
+                    expect(true).to.be.equal(false);
+                } catch(error) {
+                    expect((error.message).includes("not possible to commit data after deadline")).to.be.equal(true);
+                }
+                // move forward next slot without forging
+                await insRollupPoS.setBlockNumber(eraBlock[3] + 2*blocksPerSlot);
+                // slash operator despite a block has been forged
+                // but it committed data and has not forge committed data
+                try {
+                    await insRollupPoS.slash(eraSlot[3]);
+                    // above function should trigger an error
+                    // otherwise test should not pass
+                    expect(true).to.be.equal(false);
+                } catch(error) {
+                    expect((error.message).includes("Batch has been committed and forged during this slot")).to.be.equal(true);
+                }
+                await insRollupPoS.slash(eraSlot[3] + 1);
+                // move forward and be sure that there are no operators
+                await insRollupPoS.setBlockNumber(eraBlock[5]);
+                try {
+                    await insRollupPoS.getRaffleWinner(eraSlot[5]);
+                    // above function should trigger an error
+                    // otherwise test should not pass
+                    expect(true).to.be.equal(false);
+                } catch (error) {
+                    expect((error.message).includes("Must be stakers")).to.be.equal(true);
+                }
             }
         });
 
@@ -388,7 +444,10 @@ contract("RollupPoS", (accounts) => {
             // Assure no operators after slashing
             await insRollupPoS.setBlockNumber(eraBlock[5]);
             try {
-                await insRollupPoS.getRaffleWinner(eraSlot[3]);
+                await insRollupPoS.getRaffleWinner(eraSlot[5]);
+                // above function should trigger an error
+                // otherwise test should not pass
+                expect(true).to.be.equal(false);
             } catch (error) {
                 expect((error.message).includes("Must be stakers")).to.be.equal(true);
             }

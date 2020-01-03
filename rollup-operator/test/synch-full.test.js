@@ -44,7 +44,7 @@ async function checkSynch(synch, opRollupDb){
 const timeoutAddBlocks = 2000;
 const timeoutSynch = 15000;
 
-contract("Synchronizer", (accounts) => {
+contract("Synchronizer - full mode", (accounts) => {
     
     async function forgeBlock(events = undefined, params = undefined) {
         const batch = await opRollupDb.buildBatch(maxTx, nLevels);
