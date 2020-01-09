@@ -10,24 +10,28 @@ const pass = "foo";
 describe("UNREGISTER", async function () {
     this.timeout(10000);
 
-    it("Unregister OK", (done) => {
+    it("Should unregister", (done) => {
         const register = process.exec(`cd ..; node cli-pos.js register -w ${walletTest} -p ${pass} -s 2 -u localhost`);
         register.stdout.on("data", () => {
             const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
             out.stdout.on("data", (data) => {
-                expect(data[0]).to.be.equal("0");
-                expect(data[1]).to.be.equal("x");
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
                 done();
             });
         });
     });
-    it("No doble unregister", (done) => {
+
+    it("No double unregister", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
+        out.stdout.on("data", (data) => {
+            expect(data.includes("Transaction hash: ")).to.be.equal(true);
+        });
         out.on("exit", (code) => {
             expect(code).to.be.equal(error.ERROR);
             done();
         });
     });
+
     it("Unregister invalid command", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregiste -w ${walletTest} -p ${pass} -i 1`);
         out.on("exit", (code) => {
@@ -35,6 +39,7 @@ describe("UNREGISTER", async function () {
             done();
         });
     });
+
     it("Unregister invalid path", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w wallet-no.json -p ${pass} -i 1`);
         out.on("exit", (code) => {
@@ -42,6 +47,7 @@ describe("UNREGISTER", async function () {
             done();
         });
     });
+
     it("Unregister invalid param", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass}`);
         out.on("exit", (code) => {
@@ -49,6 +55,7 @@ describe("UNREGISTER", async function () {
             done();
         });
     });
+
     it("Unregister invalid wallet or password", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p fii -i 1`);
         out.on("exit", (code) => {
@@ -56,6 +63,7 @@ describe("UNREGISTER", async function () {
             done();
         });
     });
+
     it("Unregister no config file", (done) => {
         const out = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 1`);
         out.on("exit", (code) => {

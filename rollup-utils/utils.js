@@ -6,6 +6,10 @@ const Poseidon = require("../node_modules/circomlib/src/poseidon");
 
 const hash = Poseidon.createHash(6, 8, 57);
 
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function num2Buff(num, size) {
     let bytes = [];
     for (let i=0; i<size; i++) {
@@ -85,4 +89,5 @@ module.exports = {
     hashBuffer,
     num2Buff,
     multiHash,
+    timeout,
 };

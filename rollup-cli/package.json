@@ -4,6 +4,7 @@
   "description": "light client rollup",
   "main": "index.js",
   "scripts": {
+    "operator-dummy": "node ./test/helpers/api-client.js",
     "test": "mocha",
     "lint": "eslint ./src"
   },

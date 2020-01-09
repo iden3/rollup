@@ -118,8 +118,8 @@ contract("Rollup - RollupPoS", (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx, feeTokenAddress,
-            { from: owner });
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
+            maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);

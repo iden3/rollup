@@ -111,7 +111,7 @@ class SynchPoS {
                 const blockNextUpdate = this.genesisBlock + lastSynchEra*this.blocksNextInfo;
                 
 
-                if (currentEra === 0 && lastSynchEra === 0 ){
+                if (currentEra === 0 && lastSynchEra === 0){
                     totalSynch = 100; // never updated since first era block has not been achieved
                 } else {
                     totalSynch = (((lastSynchEra) / (currentEra + 1)) * 100);
@@ -129,9 +129,8 @@ class SynchPoS {
                     // update operators
                     await this._updateOperators(logs, lastSynchEra - 1);
 
-                    // update raffle winners when fully synch
                     // skip update winners allows fast synching
-                    if (totalSynch === 100) await this._updateWinners(lastSynchEra - 1);
+                    if (lastSynchEra >= currentEra) await this._updateWinners(lastSynchEra - 1);
 
                     // update era
                     await this.db.insert(lastEraKey, this._toString(lastSynchEra));

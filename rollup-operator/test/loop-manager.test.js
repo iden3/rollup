@@ -43,6 +43,7 @@ contract("Loop Manager", async (accounts) => {
         2: rollupSynchAddress,
         3: posSynchAddress,
         4: tokenList,
+        5: feeTokenAddress,
     } = accounts;
 
     const slotPerEra = 20;
@@ -91,8 +92,8 @@ contract("Loop Manager", async (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx,
-            { from: owner });
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
+            maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
@@ -186,6 +187,7 @@ contract("Loop Manager", async (accounts) => {
     });
 
     let hashChain;
+    
     it("Should calculate hashChain", async () => {
         const seed = utils.getSeedFromPrivKey(wallet.privateKey);
         hashChain = utils.loadHashChain(seed);

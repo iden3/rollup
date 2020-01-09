@@ -20,6 +20,7 @@ contract("Operator Server", (accounts) => {
         0: owner,
         1: tokenId,
         2: callerAddress,
+        3: feeTokenAddress,
     } = accounts;
 
     const maxTx = 10;
@@ -46,7 +47,7 @@ contract("Operator Server", (accounts) => {
 
         // Deploy Rollup test
         insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);

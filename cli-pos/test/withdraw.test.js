@@ -10,13 +10,12 @@ const pass = "foo";
 describe("WITHDRAW", async function () {
     this.timeout(20000);
 
-    it("Withdraw OK", (done) => {
+    it("Should Withdraw", (done) => {
         const outBalance = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
         outBalance.stdout.on("data", (balance) => {
             const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 2`);
             out.stdout.on("data", (data) => {
-                expect(data[0]).to.be.equal("0");
-                expect(data[1]).to.be.equal("x");
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance2)).to.be.equal(parseInt(balance)+2);
@@ -25,20 +24,29 @@ describe("WITHDRAW", async function () {
             }); 
         }); 
     });
+
     it("No double withdraw", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
+        out.stdout.on("data", (data) => {
+            expect(data.includes("Transaction hash: ")).to.be.equal(true);
+        });
         out.on("exit", (code) => {
             expect(code).to.be.equal(error.ERROR);
             done();
         });
     });
+
     it("No withdraw without unregister", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 1`);
+        out.stdout.on("data", (data) => {
+            expect(data.includes("Transaction hash: ")).to.be.equal(true);
+        });
         out.on("exit", (code) => {
             expect(code).to.be.equal(error.ERROR);
             done();
         });
     });
+
     it("Withdraw invalid command", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js withdra -w ${walletTest} -p ${pass} -i 2`);
         out.on("exit", (code) => {
@@ -46,6 +54,7 @@ describe("WITHDRAW", async function () {
             done();
         });
     });
+
     it("Withdraw invalid path", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js withdraw -w wallet-no.json -p ${pass} -i 2`);
         out.on("exit", (code) => {
@@ -53,6 +62,7 @@ describe("WITHDRAW", async function () {
             done();
         });
     });
+
     it("Withdraw invalid param", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p ${pass}`);
         out.on("exit", (code) => {
@@ -60,6 +70,7 @@ describe("WITHDRAW", async function () {
             done();
         });
     });
+
     it("Withdraw invalid wallet or password", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p fii -i 2`);
         out.on("exit", (code) => {
@@ -67,6 +78,7 @@ describe("WITHDRAW", async function () {
             done();
         });
     });
+
     it("Withdraw no config file", (done) => {
         const out = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 1`);
         out.on("exit", (code) => {

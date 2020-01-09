@@ -34,7 +34,8 @@ contract('Rollup', async (accounts) => {
         0: owner,
         1: id1,
         2: tokenList,
-        4: providerfunds,
+        3: providerfunds,
+        4: feeTokenAddress,
     } = accounts;
 
 
@@ -52,7 +53,7 @@ contract('Rollup', async (accounts) => {
 
         // Deploy Rollup test
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         insTokenRollup = await TokenRollup.new(id1, tokenInitialAmount);
 

@@ -108,6 +108,7 @@ contract('Rollup', async (accounts) => {
         2: tokenList,
         3: beneficiary,
         4: providerfunds,
+        5: feeTokenAddress,
     } = accounts;
 
     let addressSC;
@@ -134,7 +135,7 @@ contract('Rollup', async (accounts) => {
 
         // Deploy Rollup test
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
 
         walletJson = JSON.parse(fs.readFileSync(walletPathDefault, 'utf8'));
@@ -334,7 +335,7 @@ contract('Rollup', async (accounts) => {
 
         checkBatchNumber(event);
     });
-    it('ShouldTransfer', async () => {
+    it('Should transfer', async () => {
         // Steps:
         // - Transaction onChain performing a "send" offchain Tx
         const amount = 10;

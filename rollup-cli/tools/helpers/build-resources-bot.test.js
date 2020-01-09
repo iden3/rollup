@@ -32,6 +32,7 @@ contract('Rollup', async (accounts) => {
         1: id1,
         2: tokenList,
         3: providerfunds,
+        4: feeTokenAddress,
     } = accounts;
 
     let password;
@@ -50,7 +51,7 @@ contract('Rollup', async (accounts) => {
 
         // Deploy Rollup test
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         password = 'foo';
         const configJson = {

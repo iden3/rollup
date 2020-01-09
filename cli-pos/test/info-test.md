@@ -2,7 +2,7 @@
 Commands are called from repository `rollup/cli-pos/test` directory
 
 - Start local ethereum blockchain
-`ganache-cli --mnemonic "jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous" --defaultBalanceEther 100000`
+`ganache-cli -b 1 --mnemonic "jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous" --defaultBalanceEther 100000`
 
 - Run build-configs
 `truffle test helpers/build-configs.test.js`

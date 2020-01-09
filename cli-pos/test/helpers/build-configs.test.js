@@ -14,10 +14,11 @@ const passString = "foo";
 const walletPath = "../wallet-test.json";
 const configPath = "../config.json";
 
-contract("Operator Server", (accounts) => {
+contract("Build configuration files for cli-pos", (accounts) => {
     const {
         0: owner,
         1: tokenId,
+        2: feeTokenAddress,
     } = accounts;
 
     const maxTx = 10;
@@ -44,7 +45,7 @@ contract("Operator Server", (accounts) => {
 
         // Deploy Rollup test
         insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
@@ -57,13 +58,13 @@ contract("Operator Server", (accounts) => {
             { from: tokenId, value: web3.utils.toWei("1", "ether") });
     });
 
-    it("Write wallet", async () => {
+    it("Should save wallet", async () => {
         const wallet = await ethers.Wallet.fromMnemonic(mnemonic);
         const encWallet = await wallet.encrypt(passString);
         fs.writeFileSync(walletPath, JSON.stringify(JSON.parse(encWallet), null, 1), "utf-8");
     });
 
-    it("Write config", async () => {
+    it("Should load configuration file", async () => {
         const nodeUrl = "http://127.0.0.1:8545";
         const posAddress = insRollupPoS.address;
         const posAbi = RollupPoS.abi;

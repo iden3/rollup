@@ -2,6 +2,7 @@
 /* eslint-disable no-use-before-define */
 /* eslint-disable no-shadow */
 const fs = require("fs");
+const Web3 = require("web3");
 const ethers = require("ethers");
 const { error } = require("./list-errors");
 const config = "./config.json";
@@ -23,6 +24,10 @@ register command
         Wallet path
     --passphrase or -p <passphrase string>
         Passphrase to decrypt the wallet
+    --gaslimit or -gl <number>
+        Gas limit at the time to send a transaction
+    --gasmultiplier or -gm <number>
+        Gas price used = default gas price * gasmultiplier
     --stake or -s <num>
         Amount to Stake
     --url or -u <url string>
@@ -35,6 +40,10 @@ unregister command
         Wallet path
     --passphrase or -p <passphrase string>
         Passphrase to decrypt the wallet
+    --gaslimit or -gl <number>
+        Gas limit at the time to send a transaction
+    --gasmultiplier or -gm <number>
+        GasPrice used = default gas price * gasmultiplier
     --id or -i <ID>
         Operator ID
 withdraw command
@@ -45,6 +54,10 @@ withdraw command
         Wallet path
     --passphrase or -p <passphrase string>
         Passphrase to decrypt the wallet
+    --gaslimit or -gl <number>
+        Gas limit at the time to send a transaction
+    --gasmultiplier or -gm <number>
+        GasPrice used = default gas price * gasmultiplier
     --id or -i <ID>
         Operator ID
 balance command
@@ -61,6 +74,8 @@ balance command
     .alias("s", "stake")
     .alias("u", "url")
     .alias("i", "id")
+    .alias("gl", "gaslimit")
+    .alias("gm", "gasmultiplier")
     .epilogue("Rollup operator cli tool");
 
 const pathWallet = (argv.wallet) ? argv.wallet : "nowallet";
@@ -68,7 +83,8 @@ const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
 const stake = (argv.stake) ? argv.stake : "nostake";
 const url = (argv.url) ? argv.url : "nourl";
 const opId = (argv.id || argv.id === 0) ? argv.id : -1;
-const gasLimit = 5000000;
+const gasLimit = (argv.gaslimit) ? argv.gaslimit : 5000000;
+const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
 
 (async () => {
     let actualConfig = {};
@@ -98,13 +114,15 @@ const gasLimit = 5000000;
             }
             const seed = getSeedFromPrivKey(wallet.privateKey);
             const hashChain = loadHashChain(seed);
-            await register(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit, stake, url);
+            const txSigned = await register(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
+                gasMultiplier, stake, url);
+            sendTx(txSigned.rawTransaction, actualConfig.nodeUrl);
         // unregister
         } else if(argv._[0].toUpperCase() === "UNREGISTER") {
             checkParamsUnregister(actualConfig);
             let wallet = {};
             if (!fs.existsSync(pathWallet) || !fs.lstatSync(pathWallet).isFile()) {
-                console.log("Path provided dont work\n\n");
+                console.log("Path provided does not work\n\n");
                 throw new Error(error.INVALID_PATH);
             }
             try {
@@ -114,12 +132,13 @@ const gasLimit = 5000000;
                 console.log(err);
                 throw new Error(error.INVALID_WALLET);
             }
-            await unregister(opId, wallet, actualConfig, gasLimit);
+            const txSigned = await unregister(opId, wallet, actualConfig, gasLimit, gasMultiplier);
+            sendTx(txSigned.rawTransaction, actualConfig.nodeUrl);
         } else if(argv._[0].toUpperCase() === "WITHDRAW") {
             checkParamsWithdraw(actualConfig);
             let wallet = {};
             if (!fs.existsSync(pathWallet) || !fs.lstatSync(pathWallet).isFile()) {
-                console.log("Path provided dont work\n\n");
+                console.log("Path provided does not work\n\n");
                 throw new Error(error.INVALID_PATH);
             }
             try {
@@ -129,11 +148,12 @@ const gasLimit = 5000000;
                 console.log(err);
                 throw new Error(error.INVALID_WALLET);
             }
-            await withdraw(opId, wallet, actualConfig, gasLimit);
+            const txSigned = await withdraw(opId, wallet, actualConfig, gasLimit, gasMultiplier);
+            sendTx(txSigned.rawTransaction, actualConfig.nodeUrl);
         } else if(argv._[0].toUpperCase() === "BALANCE") {
             let wallet = {};
             if (!fs.existsSync(pathWallet) || !fs.lstatSync(pathWallet).isFile()) {
-                console.log("Path provided dont work\n\n");
+                console.log("Path provided does not work\n\n");
                 throw new Error(error.INVALID_PATH);
             }
             try {
@@ -189,4 +209,12 @@ function checkParam(param, def, name) {
         console.log(`It is necessary to specify ${name}\n\n`);
         throw new Error(error.NO_PARAM);
     }
+}
+
+function sendTx(rawTransaction, nodeUrl){
+    const web3 = new Web3(new Web3.providers.HttpProvider(nodeUrl));
+    web3.eth.sendSignedTransaction(rawTransaction)
+        .once("transactionHash", txHash => {
+            console.log("Transaction hash: ", txHash);
+        });
 }

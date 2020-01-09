@@ -31,6 +31,7 @@ contract("Operator Manager", async (accounts) => {
 
     const {
         0: owner,
+        1: feeTokenAddress,
     } = accounts;
 
     let db;
@@ -82,8 +83,8 @@ contract("Operator Manager", async (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx,
-            { from: owner });
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
+            maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
