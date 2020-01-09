@@ -3,9 +3,7 @@ const path = require("path");
 const snarkjs = require("snarkjs");
 const compiler = require("circom");
 const bigInt = require("snarkjs").bigInt;
-const SMT = require("circomlib").SMT;
 const SMTMemDB = require("circomlib").SMTMemDB;
-const fs = require("fs");
 const RollupAccount = require("../js/rollupaccount");
 const RollupDB = require("../js/rollupdb");
 const checkBatch = require("./helpers/checkbatch");
@@ -1062,14 +1060,14 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
         bb2.addCoin(0, 5);
 
-        try{
+        try {
             await bb2.build();
             const input2 = bb2.getInput();
               
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
-        }
-        catch(error){
+            assert(false);
+        } catch(error){
             assert.include(error.message, "underflow");
         }
     });
@@ -1131,6 +1129,7 @@ describe("Rollup Basic circuit TXs", function () {
             const input2 = bb2.getInput();
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "Load ammount must be 0 for offChainTxs");
         }
@@ -1188,11 +1187,12 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
 
         bb2.addCoin(0, 5);
-        try{
+        try {
             await bb2.build();
             const input2 = bb2.getInput();
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match main.Tx[0].balancesUpdater");
         }
@@ -1263,6 +1263,7 @@ describe("Rollup Basic circuit TXs", function () {
             const input2 = bb2.getInput();
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match main.Tx[1].nonceChecker");
         }
@@ -1318,11 +1319,12 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
         
         bb2.addCoin(0, 5);
-        try{
+        try {
             await bb2.build();
             const input2 = bb2.getInput();
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match main.Tx[0].sigVerifier.eqCheckX");
         }
@@ -1383,10 +1385,10 @@ describe("Rollup Basic circuit TXs", function () {
             const input2 = bb2.getInput();
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match main.Tx[0].processor1.checkOldInput");
         }
- 
     });
     it("Should check error offchain with double defined coin", async () => {
         // Start a new state
@@ -1439,16 +1441,16 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
         
         bb2.addCoin(0, 5);
-        try{ 
+        try { 
             await bb2.build();
             const input2 = bb2.getInput();
                 
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match main.Tx[0].processor2.checkOldInput");
         }
-
     });
 
     it("Should check error offchain send to unexisting leaf", async () => {
@@ -1502,16 +1504,16 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
         
         bb2.addCoin(0, 5);
-        try{ 
+        try { 
             await bb2.build();
             const input2 = bb2.getInput();
                 
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
             assert.include(error.message, "trying to send to a wrong address");
         }
-
     });
 
     it("Should check error deposit offchain", async () => {
@@ -1567,16 +1569,16 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx);
         bb2.addTx(tx);
 
-        try{ 
+        try { 
             await bb2.build();
             const input2 = bb2.getInput();
                 
             const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb2);
+            assert(false);
         } catch (error) {
-            assert.include(error.message, "Constraint doesn\'t match main.Tx[0].states");
+            assert.include(error.message, "Constraint doesn't match main.Tx[0].states");
         }
-
     });
 
     it("Should check error batch with invalid order", async () => {
@@ -1631,17 +1633,15 @@ describe("Rollup Basic circuit TXs", function () {
  
         bb2.addCoin(0, 5);
         
-        await bb2.build();
-        const input2 = bb2.getInput();
-         
-        const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
-        try{
+        try {
+            await bb2.build();
+            const input2 = bb2.getInput();
+            const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
             checkBatch(circuit, w2, bb);
+            assert(false);
         }
         catch(error){
             assert.include(error.message, "AssertionError");
         }
     });
 });
-
-

@@ -8,11 +8,10 @@ const LevelDb = require("./level-db");
 class SMTLevelDb {
     constructor(pathDb, prefix) {
         this.db = new LevelDb(pathDb, prefix);
-        this.db.insert("smt-root", this._toString(BigInt(0)));
     }
 
     async getRoot() {
-        const value = await this.db.get("smt-root");
+        const value = await this.db.getOrDefault("smt-root", this._toString(BigInt(0)));
         return this._fromString(value);
     }
 

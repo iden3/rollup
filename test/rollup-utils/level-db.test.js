@@ -1,17 +1,18 @@
 /* eslint-disable no-await-in-loop */
 const chai = require("chai");
-const process = require("child_process");
+const util = require("util");
+const exec = util.promisify( require("child_process").exec);
 const LevelDb = require("../../rollup-utils/level-db");
 
 const { expect } = chai;
 
 describe("level Db", () => {
     let dataBase;
-    const pathDb = `${__dirname}/tmp`;
+    const pathDb = `${__dirname}/tmp-level`;
 
     after(async () => {
         await dataBase.close();
-        process.exec(`rm -rf ${pathDb}`);
+        await exec(`rm -rf ${pathDb}`);
     });
 
     it("Create database and fill it", async () => {
@@ -79,11 +80,11 @@ describe("level Db", () => {
 
 describe("export and import database", () => {
     let dataBase;
-    const pathDb = `${__dirname}/tmp`;
+    const pathDb = `${__dirname}/tmp-level`;
 
     after(async () => {
         await dataBase.close();
-        process.exec(`rm -rf ${pathDb}`);
+        await exec(`rm -rf ${pathDb}`);
     });
 
     it("Export and import database", async () => {

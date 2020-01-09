@@ -43,9 +43,8 @@ async function checkSynch(synch, opRollupDb){
 // timeouts test
 const timeoutAddBlocks = 2000;
 const timeoutSynch = 15000;
-const timeoutFinal = 60000;
 
-contract("Synchronizer", (accounts) => {
+contract("Synchronizer - archive mode", (accounts) => {
     
     async function forgeBlock(events = undefined, params = undefined) {
         const batch = await opRollupDb.buildBatch(maxTx, nLevels);
@@ -382,7 +381,7 @@ contract("Synchronizer", (accounts) => {
             events.push({event:"OffChainTx", tx});
             await forgeBlock(events);
         }
-        await timeout(timeoutFinal);
+        await timeout(timeoutSynch);
         await checkSynch(synch, opRollupDb);
     });
 
@@ -427,7 +426,7 @@ contract("Synchronizer", (accounts) => {
             events.push({event:"OffChainTx", tx});
             await forgeBlock(events);
         }
-        await timeout(timeoutFinal);
+        await timeout(timeoutSynch);
         await checkSynch(synch, opRollupDb);
     });
 

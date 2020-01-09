@@ -1,6 +1,7 @@
 const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
 const winston = require("winston");
+const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
@@ -10,10 +11,11 @@ const Constants = require("./constants");
 // global vars
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
-const maxTx = 10;
+const TIMEOUT_LOGGER = 5000;
 const nLevels = 24;
+// offChainTx --> From | To | Amount |
+//            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
-const blocksPerSlot = 100;
 
 // db keys
 const lastBlockKey = "last-block-synch";
@@ -41,6 +43,7 @@ class Synchronizer {
         logLevel,
         mode,
     ) {
+        this.info = "";
         this.db = db;
         this.nodeUrl = nodeUrl;
         this.rollupAddress = rollupAddress;
@@ -85,19 +88,35 @@ class Synchronizer {
         return unstringifyBigInts(JSON.parse(val));
     }
 
-    async synchLoop() {
+    async _init(){
+        // Initialize class variables
         this.creationBlock = 0;
         this.totalSynch = 0;
         this.forgeEventsCache.set(lastPurgedKey, await this.getLastBatch());
+        this.blocksPerSlot = Number(await this.rollupPoSContract.methods.BLOCKS_PER_SLOT()
+            .call({from: this.ethAddress}));
+        this.maxTx = Number(await this.rollupPoSContract.methods.MAX_TX()
+            .call({from: this.ethAddress}));
+
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
         }
+
+        // Start logger
+        this.logInterval = setInterval(() => {
+            this.logger.info(this.info);
+        }, TIMEOUT_LOGGER );
+    }
+
+    async synchLoop() {
+        await this._init();
+
         // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
-                let info = "SYNCH | ";
                 // get last block synched and current blockchain block
+                let totalSynch = 0;
                 let lastSynchBlock = await this.getLastSynchBlock();
                 const currentBlock = await this.web3.eth.getBlockNumber();
 
@@ -105,13 +124,10 @@ class Synchronizer {
                     await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
                     lastSynchBlock = this.creationBlock;
                 }
+
                 const currentBatchDepth = await this.rollupContract.methods.getStateDepth()
                     .call({from: this.ethAddress}, currentBlock);
                 let lastBatchSaved = await this.getLastBatch();
-
-                info += `current block number: ${currentBlock} | `;
-                info += `last block synched: ${lastSynchBlock} | `;
-                info += `current batch depth: ${currentBatchDepth} | `;
 
                 if (currentBatchDepth - 1 > lastBatchSaved) {
                     const targetBlockNumber = await this._getTargetBlock(lastBatchSaved, lastSynchBlock);
@@ -120,24 +136,32 @@ class Synchronizer {
                         fromBlock: lastSynchBlock + 1,
                         toBlock: targetBlockNumber,
                     });
+                    // update events
                     await this._updateEvents(logs, lastBatchSaved + 1, targetBlockNumber);
+                    lastBatchSaved = await this.getLastBatch();
                 }
 
-                lastBatchSaved = await this.getLastBatch();
+                totalSynch = (currentBatchDepth == 0) ? 100 : (((lastBatchSaved + 1) / currentBatchDepth) * 100);
+                this.totalSynch = totalSynch.toFixed(2);
 
-                this.totalSynch = (currentBatchDepth == 0) ? Number(100).toFixed(2) : (((lastBatchSaved + 1) / currentBatchDepth) * 100).toFixed(2);
-                
-                info += `last batch saved: ${lastBatchSaved} | `;
-                info += `Synched: ${this.totalSynch} % | `;
-                this.logger.info(info);
+                this._fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved);
 
-                await timeout(TIMEOUT_NEXT_LOOP);
+                if (totalSynch === 100) await timeout(TIMEOUT_NEXT_LOOP);
             } catch (e) {
                 this.logger.error(`SYNCH Message error: ${e.message}`);
                 this.logger.debug(`SYNCH Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
+    }
+
+    _fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved){
+        this.info = `${chalk.blue("SYNCH")} | `;
+        this.info += `current block number: ${currentBlock} | `;
+        this.info += `last block synched: ${lastSynchBlock} | `;
+        this.info += `current batch depth: ${currentBatchDepth} | `;
+        this.info += `last batch saved: ${lastBatchSaved} | `;
+        this.info += `Synched: ${chalk.white.bold(`${this.totalSynch} %`)}`;
     }
 
     async _getTargetBlock(lastBatchSaved, lastSynchBlock){
@@ -271,7 +295,7 @@ class Synchronizer {
     }
 
     async _updateTree(offChain, onChain) {
-        const batch = await this.treeDb.buildBatch(maxTx, nLevels);
+        const batch = await this.treeDb.buildBatch(this.maxTx, nLevels);
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event);
             await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
@@ -337,7 +361,7 @@ class Synchronizer {
         const inputFeePlanCoin = inputRetrieved[5];
         const inputFeePlanFee = inputRetrieved[6];
 
-        const fromBlock = txForge.blockNumber - blocksPerSlot;
+        const fromBlock = txForge.blockNumber - this.blocksPerSlot;
         const toBlock = txForge.blockNumber;
         const logs = await this.rollupPoSContract.getPastEvents("dataCommitted", {
             fromBlock: fromBlock, // previous slot
@@ -359,7 +383,7 @@ class Synchronizer {
             }
         });
 
-        const headerBytes = Math.ceil(maxTx/8);
+        const headerBytes = Math.ceil(this.maxTx/8);
         const txs = [];
         const buffCompressedTxs = Buffer.from(compressedTx.slice(2), "hex");
         const headerBuff = buffCompressedTxs.slice(0, headerBytes);
@@ -419,7 +443,7 @@ class Synchronizer {
     }
 
     async getBatchBuilder() {
-        const bb = await this.treeDb.buildBatch(maxTx, nLevels);
+        const bb = await this.treeDb.buildBatch(this.maxTx, nLevels);
         const currentBlock = await this.web3.eth.getBlockNumber();
         const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
         // add on-chain txs
@@ -434,7 +458,7 @@ class Synchronizer {
         const res = [];
         // add off-chain tx
         if (this.mode === Constants.mode.archive){
-            const bb = await this.treeDb.buildBatch(maxTx, nLevels); 
+            const bb = await this.treeDb.buildBatch(this.maxTx, nLevels); 
             const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${numBatch}`);
             for (const key of keysForge) {
                 const tmp = this._fromString(await this.db.get(key));

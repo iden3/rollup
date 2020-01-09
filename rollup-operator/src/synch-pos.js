@@ -1,22 +1,19 @@
 const Web3 = require("web3");
 const winston = require("winston");
+const chalk = require("chalk");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // global vars
-const blocksPerSlot = 100;
-const slotsPerEra = 20;
-const blocksNextInfo = blocksPerSlot*slotsPerEra; 
 const TIMEOUT_ERROR = 2000;
 const TIMEOUT_NEXT_LOOP = 5000;
+const TIMEOUT_LOGGER = 5000;
 
 // db keys
 const lastEraKey = "last-era-synch";
 const opCreateKey = "operator-create";
 const opRemoveKey = "operator-remove";
-// const opListKey = "operator-list";
 const separator = "--";
-
 
 class SynchPoS {
     constructor(
@@ -28,6 +25,7 @@ class SynchPoS {
         ethAddress,
         logLevel
     ) {
+        this.info = "";
         this.db = db;
         this.nodeUrl = nodeUrl;
         this.rollupPoSAddress = rollupPoSAddress;
@@ -68,9 +66,18 @@ class SynchPoS {
         return unstringifyBigInts(JSON.parse(val));
     }
 
-    async synchLoop() {
+    async _init(){
+        // Initialize class variables
         this.genesisBlock = 0;
         this.totalSynch = 0;
+        this.blocksPerSlot = Number(await this.contractPoS.methods.BLOCKS_PER_SLOT()
+            .call({from: this.ethAddress}));
+        this.slotsPerEra = Number(await this.contractPoS.methods.SLOTS_PER_ERA()
+            .call({from: this.ethAddress}));
+        this.slotDeadline = Number(await this.contractPoS.methods.SLOT_DEADLINE()
+            .call({from: this.ethAddress}));
+        this.blocksNextInfo = this.blocksPerSlot*this.slotsPerEra;
+        
         if (this.creationHash) {
             this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
                 .call({from: this.ethAddress}));
@@ -78,47 +85,82 @@ class SynchPoS {
             this.creationBlock = creationTx.blockNumber;
         }
 
+        // Initialize winners / slots with proper length
+        for (let i = 0; i < 2*this.slotsPerEra; i++) {
+            this.winners.push(-1);
+            if (i < this.slotsPerEra) this.slots.push(-1);
+            else this.slots.push(i - this.slotsPerEra);
+        }
+
+        // Start logger
+        this.logInterval = setInterval(() => {
+            this.logger.info(this.info);
+        }, TIMEOUT_LOGGER );
+    }
+
+    async synchLoop() {
+        await this._init();
+
         // eslint-disable-next-line no-constant-condition
         while(true) {
             try {
-                let info = "POS SYNCH | ";
-                // get last block synched and current blockchain block
+                let totalSynch = 0;
                 let lastSynchEra = await this.getLastSynchEra();
                 const currentBlock = await this.web3.eth.getBlockNumber();
                 const currentEra = await this.getCurrentEra();
-                const blockNextUpdate = this.genesisBlock + lastSynchEra*blocksNextInfo;
+                const blockNextUpdate = this.genesisBlock + lastSynchEra*this.blocksNextInfo;
                 
-                info += `current block number: ${currentBlock} | `;
-                info += `next block update: ${blockNextUpdate} | `;
-                info += `current era: ${currentEra} | `;
+
+                if (currentEra === 0 && lastSynchEra === 0 ){
+                    totalSynch = 100; // never updated since first era block has not been achieved
+                } else {
+                    totalSynch = (((lastSynchEra) / (currentEra + 1)) * 100);
+                }
 
                 if (currentBlock > blockNextUpdate){
                     const logs = await this.contractPoS.getPastEvents("allEvents", {
-                        fromBlock: lastSynchEra ? (blockNextUpdate - blocksNextInfo) : this.creationBlock,
+                        fromBlock: lastSynchEra ? (blockNextUpdate - this.blocksNextInfo) : this.creationBlock,
                         toBlock: blockNextUpdate - 1,
                     });
-                    // Update operators
-                    await this._updateOperators(logs, lastSynchEra);
-                    // update raffle winners
-                    await this._updateWinners(lastSynchEra);
+                    // update total synch
+                    lastSynchEra += 1;
+                    totalSynch = (((lastSynchEra) / (currentEra + 1)) * 100);
+
+                    // update operators
+                    await this._updateOperators(logs, lastSynchEra - 1);
+
+                    // update raffle winners when fully synch
+                    // skip update winners allows fast synching
+                    if (totalSynch === 100) await this._updateWinners(lastSynchEra - 1);
+
                     // update era
-                    await this.db.insert(lastEraKey, this._toString(lastSynchEra + 1));
+                    await this.db.insert(lastEraKey, this._toString(lastSynchEra));
                 }
 
-                lastSynchEra = await this.getLastSynchEra();
-                this.totalSynch = ((lastSynchEra / (currentEra + 1)) * 100).toFixed(2);
+                // update global totalSynch variable
+                this.totalSynch = totalSynch.toFixed(2);
 
-                info += `last synchronized era: ${lastSynchEra} | `;
-                info += `Synched: ${this.totalSynch} % | `;
-                this.logger.info(info);
+                // fill logger information
+                this._fillInfo(currentBlock, blockNextUpdate, currentEra, lastSynchEra);
 
-                await timeout(TIMEOUT_NEXT_LOOP);
+                // wait for next iteration to update, only if it is fully synch
+                if (totalSynch === 100) await timeout(TIMEOUT_NEXT_LOOP);
+
             } catch (e) {
                 this.logger.error(`POS SYNCH Message error: ${e.message}`);
                 this.logger.debug(`POS SYNCH Message error: ${e.stack}`);
                 await timeout(TIMEOUT_ERROR);
             }
         }
+    }
+
+    _fillInfo(currentBlock, blockNextUpdate, currentEra, lastSynchEra){
+        this.info = `${chalk.magenta("POS SYNCH")} | `;
+        this.info += `current block number: ${currentBlock} | `;
+        this.info += `next block update: ${blockNextUpdate} | `;
+        this.info += `current era: ${currentEra} | `;
+        this.info += `last synchronized era: ${lastSynchEra} | `;
+        this.info += `Synched: ${chalk.white.bold(`${this.totalSynch} %`)}`;
     }
 
     async _updateOperators(logs, era) {
@@ -134,12 +176,29 @@ class SynchPoS {
 
     async _saveOperators(event, index, era) {
         if (event.event == "createOperatorLog") {
+            const operatorData = this._getRegOperatorsData(event.returnValues);
             await this.db.insert(`${opCreateKey}${separator}${era}${separator}${index}`,
-                this._toString(event.returnValues));
+                this._toString(operatorData));
         } else if(event.event == "removeOperatorLog") {
+            const operatorData = this._getUnregOperatorsData(event.returnValues);
             await this.db.insert(`${opRemoveKey}${separator}${era+2}${separator}${index}`,
-                this._toString(event.returnValues));
+                this._toString(operatorData));
         }
+    }
+
+    _getRegOperatorsData(operatorData){
+        return {
+            controllerAddress: operatorData.controllerAddress,
+            operatorId: operatorData.operatorId,
+            url: operatorData.url,
+        };
+    }
+
+    _getUnregOperatorsData(operatorData){
+        return {
+            controllerAddress: operatorData.controllerAddress,
+            operatorId: operatorData.operatorId
+        };
     }
 
     async _updateListOperators(era) {
@@ -159,9 +218,10 @@ class SynchPoS {
 
     async _updateWinners(eraUpdate) {
         // update next era winners
-        for (let i = 0; i < 2*slotsPerEra; i++){
-            const slot = slotsPerEra*eraUpdate + i;
-            if(eraUpdate && (i < slotsPerEra)){
+        for (let i = 0; i < 2*this.slotsPerEra; i++){
+            const slot = this.slotsPerEra*eraUpdate + i;
+
+            if (i < this.slotsPerEra){
                 this.winners.shift(); // remove first era winners
                 this.slots.shift();
             } else {
@@ -175,7 +235,7 @@ class SynchPoS {
                 this.winners.push(Number(winner));
                 this.slots.push(slot);
             }
-        } 
+        }
     }
 
     async getLastSynchEra() {
@@ -211,7 +271,7 @@ class SynchPoS {
     }
 
     async getBlockBySlot(numSlot){
-        return (this.genesisBlock + numSlot*blocksPerSlot);
+        return (this.genesisBlock + numSlot*this.blocksPerSlot);
     }
 
     async getCurrentBlock() {
@@ -228,6 +288,20 @@ class SynchPoS {
 
     async getSynchPercentage() {
         return this.totalSynch;
+    }
+
+    async getLastCommitedHash(opId) {
+        const opInfo = await this.contractPoS.methods.operators(opId)
+            .call({from: this.ethAddress});
+        return opInfo.rndHash;
+    }
+
+    async getSlotDeadline(){
+        if (this.slotDeadline) return this.slotDeadline;
+        else {
+            return Number(await this.contractPoS.methods.SLOT_DEADLINE()
+                .call({from: this.ethAddress}));
+        }
     }
 }
 

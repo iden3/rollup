@@ -35,7 +35,7 @@ describe("Decode float test", function () {
 
     it("Should test utils", async () => {
         for (let i=0; i<testVector.length; i++) {
-            console.log(testVector[i][0]);
+            // console.log(testVector[i][0]);
             const fx = utils.float2fix(testVector[i][0]);
             assert.equal(fx.toString() , testVector[i][1]);
 
@@ -50,12 +50,9 @@ describe("Decode float test", function () {
         for (let i=0; i<testVector.length; i++) {
 
             const w = circuit.calculateWitness({in: testVector[i][0]});
-
             const out = w[circuit.getSignalIdx("main.out")];
-
-            console.log(out);
+            // console.log(out);
             assert(out.equals(bigInt(testVector[i][1])));
         }
     });
-
 });

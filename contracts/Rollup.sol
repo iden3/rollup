@@ -67,7 +67,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // maximum on-chain transactions
     uint MAX_ONCHAIN_TX;
-    // maximum rollup transacction: either off-chain or on-chain transactions
+    // maximum rollup transactions: either off-chain or on-chain transactions
     uint MAX_TX;
     // current on chain transactions
     uint currentOnChainTx = 0;

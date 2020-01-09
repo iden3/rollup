@@ -4,7 +4,7 @@
 const { eddsa } = require('circomlib');
 const { EthereumWallet, verifyEthereum } = require('../src/ethereum-wallet');
 const { BabyJubWallet, verifyBabyJub } = require('../../rollup-utils/babyjub-wallet');
-const utils = require('../../rollup-utils/rollup-utils');
+const utils = require('../../js/utils');
 const { hash } = require('../../rollup-utils/utils');
 
 class Wallet {
@@ -79,8 +79,7 @@ class Wallet {
    */
     signRollupTx(tx) {
         const IDEN3_ROLLUP_TX = BigInt('1625792389453394788515067275302403776356063435417596283072371667635754651289');
-        const data = utils.buildTxData(tx.fromIdx, tx.toIdx, tx.amount, tx.coin, tx.nonce,
-            tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
+        const data = utils.buildTxData(tx);
         const h = hash([
             IDEN3_ROLLUP_TX,
             data,

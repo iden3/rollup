@@ -157,7 +157,7 @@ let loopManager;
     ///// LOOP MANAGER
     ///////////////////
     loopManager = new LoopManager(rollupSynch, posSynch, pool, 
-        opManager, cliServerProof, loggerLevel);
+        opManager, cliServerProof, loggerLevel, synchConfig.ethNodeUrl);
     
     logger.info("Start manager PoS");
     loopManager.startLoop();
