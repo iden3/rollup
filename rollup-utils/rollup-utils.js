@@ -3,6 +3,8 @@ const {
     hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff,
 } = require("./utils");
 const eddsa = require("circomlib").eddsa;
+const crypto = require("crypto");
+const web3 = require("web3");
 
 function createOffChainTx(numTx) {
     // create bunch of tx
@@ -162,6 +164,23 @@ function buildFeeInputSm(feePlan) {
     return [feePlanCoins.toString(), feePlanFees.toString()];
 }
 
+function getSeedFromPrivKey(pvk){
+    const IDEN3_ROLLUP_SEED = "IDEN3_ROLLUP_SEED";
+    const seed = `${pvk}${IDEN3_ROLLUP_SEED}`;
+    const hash = crypto.createHash("sha256");
+    hash.update(seed);
+    return hash.digest("hex");
+}
+
+function loadHashChain(seed){
+    const hashChain = [];
+    const hashChainLength = Math.pow(2, 16);
+    hashChain.push(web3.utils.keccak256(seed));
+    for (let i = 1; i < hashChainLength; i++) {
+        hashChain.push(web3.utils.keccak256(hashChain[i - 1]));
+    }
+    return hashChain;
+}
 
 module.exports = {
     createOffChainTx,
@@ -173,4 +192,6 @@ module.exports = {
     decodeTxData,
     signRollupTx,
     buildFeeInputSm,
+    getSeedFromPrivKey,
+    loadHashChain,
 };

@@ -2,7 +2,8 @@ const Web3 = require("web3");
 const winston = require("winston");
 const chalk = require("chalk");
 const { timeout, buildInputSm } = require("../src/utils"); 
-const { stringifyBigInts } = require("snarkjs"); 
+const { stringifyBigInts } = require("snarkjs");
+const { loadHashChain } = require("../../rollup-utils/rollup-utils");
 
 const strState = [
     "Synchronizing",
@@ -173,11 +174,7 @@ class LoopManager{
 
     // seed encoded as an string
     async loadSeedHashChain(seed){
-        const hashChainLength = Math.pow(2, 16);
-        this.hashChain.push(this.web3.utils.keccak256(seed));
-        for (let i = 1; i < hashChainLength; i++) {
-            this.hashChain.push(this.web3.utils.keccak256(this.hashChain[i - 1]));
-        }
+        this.hashChain = loadHashChain(seed);
     }
 
     async register(stake, url) {

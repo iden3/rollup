@@ -8,9 +8,11 @@ const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const Rollup = artifacts.require("../contracts/test/Rollup");
 const fs = require("fs");
 const path = require("path");
+const ethers = require("ethers");
 
 const configSynchPath = path.join(__dirname, "../config/synch-config-test.json");
 const configPoolPath = path.join(__dirname, "../config/pool-config-test.json");
+const configWalletPath = path.join(__dirname, "../config/wallet-test.json");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
 contract("Operator Server", (accounts) => {
@@ -55,6 +57,17 @@ contract("Operator Server", (accounts) => {
         // add token to Rollup
         await insRollup.addToken(insTokenRollup.address,
             { from: tokenId, value: web3.utils.toWei("1", "ether") });
+    });
+
+    it("Should load operartor wallet with funds", async () => {
+        const pass = "passTest";
+        let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
+        const walletOp = new ethers.Wallet(privateKey);
+        const initBalance = 1000;
+        await web3.eth.sendTransaction({to: walletOp.address, from: owner,
+            value: web3.utils.toWei(initBalance.toString(), "ether")});
+        const walletOpEnc = await walletOp.encrypt(pass);
+        fs.writeFileSync(configWalletPath, walletOpEnc);
     });
 
     it("Should create rollup synch config file", async () => {

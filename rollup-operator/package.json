@@ -6,7 +6,7 @@
   "scripts": {
     "test": "mocha",
     "lint": "eslint ./src",
-    "operator": "node ./src/server/operator.js",
+    "test:operator": "node ./src/server/operator.js -p passTest",
     "server-proof": "node ./src/server-proof.js"
   },
   "keywords": [

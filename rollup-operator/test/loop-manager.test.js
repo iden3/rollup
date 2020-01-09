@@ -17,6 +17,7 @@ const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontr
 const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const utils = require("../../rollup-utils/rollup-utils");
 
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
@@ -51,6 +52,8 @@ contract("Loop Manager", async (accounts) => {
     const tokenInitialAmount = 50;
     const maxTx = 10;
     const maxOnChainTx = 3;
+    const gasLimit = "default";
+    const gasMultiplier = 1;
 
     let insPoseidonUnit;
     let insTokenRollup;
@@ -150,9 +153,13 @@ contract("Loop Manager", async (accounts) => {
             configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress, configSynchPoS.logLevel);
         
         // Init operator manager
-        opManager = new OperatorManager(configSynchPoS.ethNodeUrl,
-            configSynchPoS.contractAddress, configSynchPoS.abi, configSynchPoS.logLevel);
-        await opManager.loadWallet(wallet);
+        opManager = new OperatorManager(
+            configSynchPoS.ethNodeUrl,
+            configSynchPoS.contractAddress, 
+            configSynchPoS.abi,
+            wallet,
+            gasMultiplier,
+            gasLimit);
         
         // Init Pool
         poolTx = new Pool(maxTx);
@@ -162,12 +169,15 @@ contract("Loop Manager", async (accounts) => {
         const url = `http://localhost:${port}`;
         cliServerProof = new CliServerProof(url);
         await cliServerProof.cancel(); // Reset server proof
+        
         // Init loop Manager
-        loopManager = new LoopManager(rollupSynch, posSynch, poolTx, 
-            opManager, cliServerProof, configSynchPoS.logLevel, configSynchPoS.ethNodeUrl);
-
-        const seedMsg = "rollup";
-        await loopManager.loadSeedHashChain(seedMsg);
+        loopManager = new LoopManager(rollupSynch,
+            posSynch,
+            poolTx, 
+            opManager,
+            cliServerProof,
+            configSynchPoS.logLevel,
+            configSynchPoS.ethNodeUrl);
                
         // Init loops    
         loopManager.startLoop();
@@ -175,10 +185,21 @@ contract("Loop Manager", async (accounts) => {
         posSynch.synchLoop();
     });
 
+    let hashChain;
+    it("Should calculate hashChain", async () => {
+        const seed = utils.getSeedFromPrivKey(wallet.privateKey);
+        hashChain = utils.loadHashChain(seed);
+        await loopManager.loadSeedHashChain(seed);
+    });
+
     it("Should register operator", async () => {
         const url = "localhost";
-        const res = await loopManager.register(2, url);
-        expect(res).to.be.equal(true);
+        const amountToStake = 2;
+
+        const txSign = await opManager.getTxRegister(hashChain[hashChain.length - 1], amountToStake, url);
+        const resRegister = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resRegister.status).to.be.equal(true);
+
         const currentBlock = await web3.eth.getBlockNumber();
         const genesisBlock = posSynch.genesisBlock;
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
@@ -194,7 +215,7 @@ contract("Loop Manager", async (accounts) => {
         expect(found).to.be.equal(true);
     });
 
-    it("Should wait until operator turns", async () => {
+    it("Should wait until operator turn", async () => {
         await timeTravel.addBlocks(blockPerEra); // era 1
         await timeout(timeoutSynch);
     });

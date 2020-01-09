@@ -116,14 +116,6 @@ contract("Operator", (accounts) => {
         // Load clients
         cliAdminOp = new CliAdminOp(urlAdminOp);
         cliExternalOp = new CliExternalOp(urlExternalOp);
-
-        // load operator wallet with funds
-        let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
-        walletOp = new ethers.Wallet(privateKey);
-        const initBalance = 1000;
-        await web3.eth.sendTransaction({to: walletOp.address, from: owner,
-            value: web3.utils.toWei(initBalance.toString(), "ether")});
-        walletOpEnc = await walletOp.encrypt(passphrase);
     });
 
     it("manage rollup token and fill funds to rollup user", async () => { 
@@ -149,7 +141,7 @@ contract("Operator", (accounts) => {
         expect(Object.keys(res.data).length).to.be.equal(0);
     });
 
-    it("Should load and register operator", async () => {
+    it("Should register operator", async () => {
         const stake = 2;
         const url = urlExternalOp;
         const seed = "rollup";
@@ -158,295 +150,295 @@ contract("Operator", (accounts) => {
         await cliAdminOp.register(stake, url, seed);
     });
 
-    it("Should add two deposits", async () => {
-        const token = 0;
-        const amountDeposit = 10;
-        const ethAddress = undefined;
+    // it("Should add two deposits", async () => {
+    //     const token = 0;
+    //     const amountDeposit = 10;
+    //     const ethAddress = undefined;
 
-        // account idx = 1
-        let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
-            rollupEncWallets[0], pass, ethAddress, Rollup.abi);
-        await resDeposit.wait();
-        // account idx = 2
-        resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
-            rollupEncWallets[1], pass, ethAddress, Rollup.abi);
-        await resDeposit.wait();
-    });
+    //     // account idx = 1
+    //     let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+    //         rollupEncWallets[0], pass, ethAddress, Rollup.abi);
+    //     await resDeposit.wait();
+    //     // account idx = 2
+    //     resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+    //         rollupEncWallets[1], pass, ethAddress, Rollup.abi);
+    //     await resDeposit.wait();
+    // });
 
-    it("Should get general information", async () => { 
-        const res = await cliExternalOp.getState();
-        expect(res.data).to.not.be.equal(undefined);
+    // it("Should get general information", async () => { 
+    //     const res = await cliExternalOp.getState();
+    //     expect(res.data).to.not.be.equal(undefined);
 
-        const blockGenesis = res.data.posSynch.genesisBlock;
-        const currentBlock = res.data.currentBlock;
-        await addBlocks(blockGenesis - currentBlock + 1); // move to era 0
-        await timeout(timeoutSynch); // time to synch
-    });
+    //     const blockGenesis = res.data.posSynch.genesisBlock;
+    //     const currentBlock = res.data.currentBlock;
+    //     await addBlocks(blockGenesis - currentBlock + 1); // move to era 0
+    //     await timeout(timeoutSynch); // time to synch
+    // });
 
-    it("Should get one operator", async () => { 
-        const res = await cliExternalOp.getOperators();
-        const listOperators = res.data;
-        let found = false;
-        for (const opInfo of Object.values(listOperators)){
-            if (opInfo.controllerAddress == walletOp.address.toString()){
-                found = true;
-                break;
-            }
-        }
-        expect(found).to.be.equal(true);
-    });
+    // it("Should get one operator", async () => { 
+    //     const res = await cliExternalOp.getOperators();
+    //     const listOperators = res.data;
+    //     let found = false;
+    //     for (const opInfo of Object.values(listOperators)){
+    //         if (opInfo.controllerAddress == walletOp.address.toString()){
+    //             found = true;
+    //             break;
+    //         }
+    //     }
+    //     expect(found).to.be.equal(true);
+    // });
 
-    it("Should move to era 2", async () => {
-        await addBlocks(blockPerEra); // move to era 1
-        await timeout(timeoutBlocks); // wait time to add all blocks
-        await addBlocks(blockPerEra); // move to era 2
-        await timeout(timeoutBlocks); // wait time to add all blocks
-    });
+    // it("Should move to era 2", async () => {
+    //     await addBlocks(blockPerEra); // move to era 1
+    //     await timeout(timeoutBlocks); // wait time to add all blocks
+    //     await addBlocks(blockPerEra); // move to era 2
+    //     await timeout(timeoutBlocks); // wait time to add all blocks
+    // });
 
-    it("Should forge genesis and on-chain transaction", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getState();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 0) {
-                batchForged = true;
-                break;
-            } 
-            await timeout(timeoutLoop);
-            counter += 1;
-        }
-        expect(batchForged).to.be.equal(true);
-    });
+    // it("Should forge genesis and on-chain transaction", async () => {
+    //     let batchForged = false;
+    //     let counter = 0;
+    //     while(!batchForged && counter < 10) {
+    //         const res = await cliExternalOp.getState();
+    //         const info = res.data;
+    //         if (info.rollupSynch.lastBatchSynched > 0) {
+    //             batchForged = true;
+    //             break;
+    //         } 
+    //         await timeout(timeoutLoop);
+    //         counter += 1;
+    //     }
+    //     expect(batchForged).to.be.equal(true);
+    // });
 
-    it("Should set pool conversion table", async () => {
-        const conversion = {
-            0: {
-                token: "ROLL",
-                price: 20,
-                decimals: 18
-            }
-        };
-        const res = await cliAdminOp.setConversion(conversion);
-        expect(res.status).to.be.equal(200);
-    });
+    // it("Should set pool conversion table", async () => {
+    //     const conversion = {
+    //         0: {
+    //             token: "ROLL",
+    //             price: 20,
+    //             decimals: 18
+    //         }
+    //     };
+    //     const res = await cliAdminOp.setConversion(conversion);
+    //     expect(res.status).to.be.equal(200);
+    // });
 
-    it("Should add off-chain transaction to the pool", async () => {
-        // Retrieve operator url
-        const res = await cliExternalOp.getOperators();
-        const listOperators = res.data;
-        const urlOp = listOperators[0].url;
-        // config transaction
-        const configTx = {
-            from: 1,
-            to: 2,
-            token: 0,
-            amount: 3,
-            userFee: 2, 
-        };
-        // send transaction with client
-        await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, rollupEncWallets[0],
-            pass, configTx.token, configTx.userFee, configTx.from);
-    });
+    // it("Should add off-chain transaction to the pool", async () => {
+    //     // Retrieve operator url
+    //     const res = await cliExternalOp.getOperators();
+    //     const listOperators = res.data;
+    //     const urlOp = listOperators[0].url;
+    //     // config transaction
+    //     const configTx = {
+    //         from: 1,
+    //         to: 2,
+    //         token: 0,
+    //         amount: 3,
+    //         userFee: 2, 
+    //     };
+    //     // send transaction with client
+    //     await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, rollupEncWallets[0],
+    //         pass, configTx.token, configTx.userFee, configTx.from);
+    // });
 
-    it("Should forge off-chain transaction", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getState();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 3) {
-                batchForged = true;
-                break;
-            } 
-            await timeout(timeoutLoop);
-            counter += 1;
-        }
-        expect(batchForged).to.be.equal(true);
-    });
+    // it("Should forge off-chain transaction", async () => {
+    //     let batchForged = false;
+    //     let counter = 0;
+    //     while(!batchForged && counter < 10) {
+    //         const res = await cliExternalOp.getState();
+    //         const info = res.data;
+    //         if (info.rollupSynch.lastBatchSynched > 3) {
+    //             batchForged = true;
+    //             break;
+    //         } 
+    //         await timeout(timeoutLoop);
+    //         counter += 1;
+    //     }
+    //     expect(batchForged).to.be.equal(true);
+    // });
 
-    it("Should add withdraw off-chain transaction to the pool", async () => {
-        // Retrieve operator url
-        const res = await cliExternalOp.getOperators();
-        const listOperators = res.data;
-        const urlOp = listOperators[0].url;
-        // config transaction
-        const configTx = {
-            from: 2,
-            to: 0,
-            token: 0,
-            amount: 3,
-            nonce: 0,
-            userFee: 1, 
-        };
-        // send transaction with client
-        await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, rollupEncWallets[1],
-            pass, configTx.token, configTx.userFee, configTx.from);
-    });
+    // it("Should add withdraw off-chain transaction to the pool", async () => {
+    //     // Retrieve operator url
+    //     const res = await cliExternalOp.getOperators();
+    //     const listOperators = res.data;
+    //     const urlOp = listOperators[0].url;
+    //     // config transaction
+    //     const configTx = {
+    //         from: 2,
+    //         to: 0,
+    //         token: 0,
+    //         amount: 3,
+    //         nonce: 0,
+    //         userFee: 1, 
+    //     };
+    //     // send transaction with client
+    //     await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, rollupEncWallets[1],
+    //         pass, configTx.token, configTx.userFee, configTx.from);
+    // });
     
-    it("Should forge withdraw off-chain transaction", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getState();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 6) {
-                batchForged = true;
-                break;
-            } 
-            await timeout(timeoutLoop);
-            counter += 1;
-        }
-        expect(batchForged).to.be.equal(true);
-    });
+    // it("Should forge withdraw off-chain transaction", async () => {
+    //     let batchForged = false;
+    //     let counter = 0;
+    //     while(!batchForged && counter < 10) {
+    //         const res = await cliExternalOp.getState();
+    //         const info = res.data;
+    //         if (info.rollupSynch.lastBatchSynched > 6) {
+    //             batchForged = true;
+    //             break;
+    //         } 
+    //         await timeout(timeoutLoop);
+    //         counter += 1;
+    //     }
+    //     expect(batchForged).to.be.equal(true);
+    // });
 
-    it("Should check exit batches and get its information", async () => {
-        const id = 2;
+    // it("Should check exit batches and get its information", async () => {
+    //     const id = 2;
         
-        const res = await cliExternalOp.getExits(id);
-        expect(res.status).to.be.equal(200);
-        const exitsNumBatches = res.data;
-        expect(exitsNumBatches.length).to.not.be.equal(0);
+    //     const res = await cliExternalOp.getExits(id);
+    //     expect(res.status).to.be.equal(200);
+    //     const exitsNumBatches = res.data;
+    //     expect(exitsNumBatches.length).to.not.be.equal(0);
 
-        for (const numBatch of exitsNumBatches){
-            const res = await cliExternalOp.getExitInfo(id, numBatch);
-            const infoExit = res.data;
-            expect(infoExit.state.idx).to.be.equal(id);
-        }
-    });
+    //     for (const numBatch of exitsNumBatches){
+    //         const res = await cliExternalOp.getExitInfo(id, numBatch);
+    //         const infoExit = res.data;
+    //         expect(infoExit.state.idx).to.be.equal(id);
+    //     }
+    // });
 
-    it("Should check account balances", async () => {
-        // Theoretical balances overview:
-        // deposits: id1 --> 10, id2 --> 10
-        // off-chain tx: id1 --> 5, id2 --> 13 (from: id1, to: id2, amount:3, fee: 2)
-        // off-chain tx: id1 --> 5, ide2 --> 9 (from: id2, to: 0, amount:3, fee: 1)
+    // it("Should check account balances", async () => {
+    //     // Theoretical balances overview:
+    //     // deposits: id1 --> 10, id2 --> 10
+    //     // off-chain tx: id1 --> 5, id2 --> 13 (from: id1, to: id2, amount:3, fee: 2)
+    //     // off-chain tx: id1 --> 5, ide2 --> 9 (from: id2, to: 0, amount:3, fee: 1)
 
-        const id1 = 1;
-        const id2 = 2;
-        const amountId1 = 5;
-        const amountId2 = 9;
+    //     const id1 = 1;
+    //     const id2 = 2;
+    //     const amountId1 = 5;
+    //     const amountId2 = 9;
 
-        const resId1 = await cliExternalOp.getAccountByIdx(id1);
-        const resId2 = await cliExternalOp.getAccountByIdx(id2);
+    //     const resId1 = await cliExternalOp.getAccountByIdx(id1);
+    //     const resId2 = await cliExternalOp.getAccountByIdx(id2);
 
-        expect(resId1.data.amount).to.be.equal(amountId1.toString());
-        expect(resId2.data.amount).to.be.equal(amountId2.toString());
-    });
+    //     expect(resId1.data.amount).to.be.equal(amountId1.toString());
+    //     expect(resId2.data.amount).to.be.equal(amountId2.toString());
+    // });
 
-    it("Should retrieve account information", async () => {
+    // it("Should retrieve account information", async () => {
         
-        const id0 = 1;
-        const walletEth0 = rollupWallets[0].ethWallet.wallet;
-        const walletEthAddress0 = walletEth0.address.toString();
-        const walletAx0 = rollupWallets[0].babyjubWallet.publicKey[0].toString(16);
-        const walletAy0 = rollupWallets[0].babyjubWallet.publicKey[1].toString(16);
+    //     const id0 = 1;
+    //     const walletEth0 = rollupWallets[0].ethWallet.wallet;
+    //     const walletEthAddress0 = walletEth0.address.toString();
+    //     const walletAx0 = rollupWallets[0].babyjubWallet.publicKey[0].toString(16);
+    //     const walletAy0 = rollupWallets[0].babyjubWallet.publicKey[1].toString(16);
 
-        const id1 = 2;
-        const walletEth1 = rollupWallets[1].ethWallet.wallet;
-        const walletEthAddress1 = walletEth1.address.toString();
-        const walletAx1 = rollupWallets[1].babyjubWallet.publicKey[0].toString(16);
-        const walletAy1 = rollupWallets[1].babyjubWallet.publicKey[1].toString(16);
+    //     const id1 = 2;
+    //     const walletEth1 = rollupWallets[1].ethWallet.wallet;
+    //     const walletEthAddress1 = walletEth1.address.toString();
+    //     const walletAx1 = rollupWallets[1].babyjubWallet.publicKey[0].toString(16);
+    //     const walletAy1 = rollupWallets[1].babyjubWallet.publicKey[1].toString(16);
 
-        // By Id
-        const resId0 = await cliExternalOp.getAccountByIdx(id0);
-        expect(resId0.data.ax).to.be.equal(walletAx0);
-        expect(resId0.data.ay).to.be.equal(walletAy0);
-        expect(resId0.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
+    //     // By Id
+    //     const resId0 = await cliExternalOp.getAccountByIdx(id0);
+    //     expect(resId0.data.ax).to.be.equal(walletAx0);
+    //     expect(resId0.data.ay).to.be.equal(walletAy0);
+    //     expect(resId0.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-        const resId1 = await cliExternalOp.getAccountByIdx(id1);
-        expect(resId1.data.ax).to.be.equal(walletAx1);
-        expect(resId1.data.ay).to.be.equal(walletAy1);
-        expect(resId1.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
+    //     const resId1 = await cliExternalOp.getAccountByIdx(id1);
+    //     expect(resId1.data.ax).to.be.equal(walletAx1);
+    //     expect(resId1.data.ay).to.be.equal(walletAy1);
+    //     expect(resId1.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
-        // By Public key Babyjubjub
-        let filters;
-        let account;
+    //     // By Public key Babyjubjub
+    //     let filters;
+    //     let account;
 
-        filters = {
-            ax: walletAx0,
-            ay: walletAy0,
-        };
+    //     filters = {
+    //         ax: walletAx0,
+    //         ay: walletAy0,
+    //     };
 
-        const resAxAy0 = await cliExternalOp.getAccounts(filters);
-        let listAccounts0 = resAxAy0.data;
-        expect(listAccounts0.length).to.be.equal(1);
+    //     const resAxAy0 = await cliExternalOp.getAccounts(filters);
+    //     let listAccounts0 = resAxAy0.data;
+    //     expect(listAccounts0.length).to.be.equal(1);
             
-        account = listAccounts0[0];
-        expect(account.ax).to.be.equal(walletAx0);
-        expect(account.ay).to.be.equal(walletAy0);
-        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
+    //     account = listAccounts0[0];
+    //     expect(account.ax).to.be.equal(walletAx0);
+    //     expect(account.ay).to.be.equal(walletAy0);
+    //     expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-        filters = {
-            ax: walletAx1,
-            ay: walletAy1,
-        };
+    //     filters = {
+    //         ax: walletAx1,
+    //         ay: walletAy1,
+    //     };
 
-        const resAxAy1 = await cliExternalOp.getAccounts(filters);
-        let listAccounts1 = resAxAy1.data;
-        expect(listAccounts1.length).to.be.equal(1);
+    //     const resAxAy1 = await cliExternalOp.getAccounts(filters);
+    //     let listAccounts1 = resAxAy1.data;
+    //     expect(listAccounts1.length).to.be.equal(1);
 
-        account = listAccounts1[0];
-        expect(account.ax).to.be.equal(walletAx1);
-        expect(account.ay).to.be.equal(walletAy1);
-        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
+    //     account = listAccounts1[0];
+    //     expect(account.ax).to.be.equal(walletAx1);
+    //     expect(account.ay).to.be.equal(walletAy1);
+    //     expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
-        // By Ethereum Address
-        filters = {
-            ethAddr: walletEthAddress0,
-        };
+    //     // By Ethereum Address
+    //     filters = {
+    //         ethAddr: walletEthAddress0,
+    //     };
 
-        const resEth0 = await cliExternalOp.getAccounts(filters);
-        listAccounts0 = resEth0.data;
-        expect(listAccounts0.length).to.be.equal(1);
+    //     const resEth0 = await cliExternalOp.getAccounts(filters);
+    //     listAccounts0 = resEth0.data;
+    //     expect(listAccounts0.length).to.be.equal(1);
 
-        account = listAccounts0[0];
-        expect(account.ax).to.be.equal(walletAx0);
-        expect(account.ay).to.be.equal(walletAy0);
-        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
+    //     account = listAccounts0[0];
+    //     expect(account.ax).to.be.equal(walletAx0);
+    //     expect(account.ay).to.be.equal(walletAy0);
+    //     expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-        filters = {
-            ethAddr: walletEthAddress1,
-        };
+    //     filters = {
+    //         ethAddr: walletEthAddress1,
+    //     };
 
-        const resEth1 = await cliExternalOp.getAccounts(filters);
-        listAccounts1 = resEth1.data;
-        expect(listAccounts1.length).to.be.equal(1);
+    //     const resEth1 = await cliExternalOp.getAccounts(filters);
+    //     listAccounts1 = resEth1.data;
+    //     expect(listAccounts1.length).to.be.equal(1);
 
-        account = listAccounts1[0];
-        expect(account.ax).to.be.equal(walletAx1);
-        expect(account.ay).to.be.equal(walletAy1);
-        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
+    //     account = listAccounts1[0];
+    //     expect(account.ax).to.be.equal(walletAx1);
+    //     expect(account.ay).to.be.equal(walletAy1);
+    //     expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
-        // By both Public key Babyjubjub and Ethereum Address
-        filters = {
-            ax: walletAx0,
-            ay: walletAy0,
-            ethAddr: walletEthAddress0,
-        };
+    //     // By both Public key Babyjubjub and Ethereum Address
+    //     filters = {
+    //         ax: walletAx0,
+    //         ay: walletAy0,
+    //         ethAddr: walletEthAddress0,
+    //     };
 
-        const res0 = await cliExternalOp.getAccounts(filters);
-        listAccounts0 = res0.data;
-        expect(listAccounts0.length).to.be.equal(1);
+    //     const res0 = await cliExternalOp.getAccounts(filters);
+    //     listAccounts0 = res0.data;
+    //     expect(listAccounts0.length).to.be.equal(1);
 
-        account = listAccounts0[0];
-        expect(account.ax).to.be.equal(walletAx0);
-        expect(account.ay).to.be.equal(walletAy0);
-        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
+    //     account = listAccounts0[0];
+    //     expect(account.ax).to.be.equal(walletAx0);
+    //     expect(account.ay).to.be.equal(walletAy0);
+    //     expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
 
-        filters = {
-            ax: walletAx0,
-            ay: walletAy0,
-            ethAddr: walletEthAddress1,
-        };
+    //     filters = {
+    //         ax: walletAx0,
+    //         ay: walletAy0,
+    //         ethAddr: walletEthAddress1,
+    //     };
 
-        try {
-            await cliExternalOp.getAccounts(filters);
-        } catch (error) {
-            expect((error.response.data).includes("No account has been found")).to.be.equal(true);
-        }
-    });
+    //     try {
+    //         await cliExternalOp.getAccounts(filters);
+    //     } catch (error) {
+    //         expect((error.response.data).includes("No account has been found")).to.be.equal(true);
+    //     }
+    // });
 
-    after(async () => {
-        process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
-    });
+    // after(async () => {
+    //     process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
+    // });
 });

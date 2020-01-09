@@ -2,6 +2,7 @@ const fs = require("fs");
 const ethers = require("ethers");
 const morgan = require("morgan");
 const winston = require("winston");
+const chalk = require("chalk");
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -20,114 +21,109 @@ const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
 const LoopManager = require("../loop-manager");
 const Constants = require("../constants");
+const utils = require("../../../rollup-utils/rollup-utils");
 
-// load environment data
-const pathEnvironmentFile = `${__dirname}/config.env`;
-require("dotenv").config({ path: pathEnvironmentFile });
+const { argv } = require("yargs")
+    .usage(`
+operator <options>
 
-// config mode
-const operatorMode = Constants.mode[process.env.OPERATOR_MODE];
+options
+=======
+    operator <options>
+        start operator with passphrase
+    --passphrase or -p <passphrase string>
+        Passphrase to decrypt the wallet
+    `)
+    .alias("p", "passphrase")
+    .epilogue("Rollup operator");
 
-// config winston
-const loggerLevel = process.env.LOG_LEVEL;
+// Log vars
+const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
 
-var options = {
-    console: {
-        level: loggerLevel,
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple(),
-        )
-    },
-};
-
-const logger = winston.createLogger({
-    transports: [
-        new winston.transports.Console(options.console)
-    ]
-});
-
-// load rollup synchronizers configuration file
-let synchConfig;
-if (process.env.CONFIG_SYNCH) {
-    synchConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_SYNCH, "utf8"));
-} else {
-    synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-config.json", "utf8"));
-}
-
-// load pool configuration file
-let pool;
-let poolConfig;
-
-if (process.env.CONFIG_POOL) {
-    poolConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_POOL, "utf8"));
-} else {
-    poolConfig = JSON.parse(fs.readFileSync("./pool-config.json", "utf8"));
-}
-
-////////////////
-///// POS SYNCH
-///////////////
-let posDb;
+// Global vars
 let posSynch;
-
-if (synchConfig.rollupPoS.synchDb == undefined) {
-    logger.debug("Start PoS synch with memory database");
-    posDb = new MemDb();
-} else {
-    logger.debug("Start PoS synch with levelDb database");
-    posDb = new LevelDb(synchConfig.rollupPoS.synchDb);
-}
-
-posSynch = new SynchPoS(
-    posDb,
-    synchConfig.ethNodeUrl,
-    synchConfig.rollupPoS.address,
-    synchConfig.rollupPoS.abi,
-    synchConfig.rollupPoS.creationHash,
-    synchConfig.ethAddressCaller,
-    loggerLevel);
-
-// start synchronizer loop
-logger.info("Start synchronizer forge batch mechanism PoS");
-posSynch.synchLoop();
-
-//////////////////////
-///// OPERATOR MANAGER
-//////////////////////
-
-const opManager = new OperatorManager(
-    synchConfig.ethNodeUrl,
-    synchConfig.rollupPoS.address,
-    synchConfig.rollupPoS.abi);
-
-////////////////////////
-/////CLIENT PROOF SERVER
-////////////////////////
-const cliServerProof = new CliServerProof(process.env.URL_SERVER_PROOF);
-
-///////////////////
-///// ROLLUP SYNCH
-///////////////////
-let db;
-let rollupSynchDb;
 let rollupSynch;
 let loopManager;
+let opManager;
+let logger;
+let pool;
 
 (async () => {
+    let info;
+    // load environment data
+    const pathEnvironmentFile = `${__dirname}/config.env`;
+    require("dotenv").config({ path: pathEnvironmentFile });
+
+    // config mode
+    const operatorMode = Constants.mode[process.env.OPERATOR_MODE];
+
+    // config winston
+    const loggerLevel = process.env.LOG_LEVEL;
+
+    var options = {
+        console: {
+            level: loggerLevel,
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.simple(),
+            )
+        },
+    };
+
+    logger = winston.createLogger({
+        transports: [
+            new winston.transports.Console(options.console)
+        ]
+    });
+
+    // load rollup synchronizers configuration file
+    let synchConfig;
+    if (process.env.CONFIG_SYNCH) {
+        synchConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_SYNCH, "utf8"));
+    } else {
+        synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-config.json", "utf8"));
+    }
+
+    // load pool configuration file
+    let poolConfig;
+
+    if (process.env.CONFIG_POOL) {
+        poolConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_POOL, "utf8"));
+    } else {
+        poolConfig = JSON.parse(fs.readFileSync("./pool-config.json", "utf8"));
+    }
+
+    ///////////////////
+    ///// ROLLUP SYNCH
+    ///////////////////
+    let db;
+    let rollupSynchDb;
+
     if (synchConfig.rollup.synchDb == undefined){
-        logger.debug("Start Rollup synch with memory database");
+        info = infoInit;
+        info += "Rollup data synchronizer: ";
+        info += chalk.white.bold("memory database");
+        logger.info(info);
         rollupSynchDb = new MemDb();
     } else {
-        logger.debug("Start Rollup synch with levelDb database");
+        info = infoInit;
+        info += "Rollup data synchronizer: ";
+        info += chalk.white.bold("levelDb database");
+        logger.info(info);
         rollupSynchDb = new LevelDb(synchConfig.rollup.synchDb);
     }
 
     if (synchConfig.rollup.treeDb == undefined){
-        logger.debug("Start Rollup accounts tree with memory database");
+        info = infoInit;
+        info += "Rollup balance tree: ";
+        info += chalk.white.bold("memory database");
+        logger.info(info);
         db = new SMTMemDB();
     } else {
-        logger.debug("Start Rollup accounts tree with levelDb database");
+        info = infoInit;
+        info += "Rollup balance tree: ";
+        info += chalk.white.bold("levelDb database");
+        logger.info(info);
         db = new SMTLevelDb(synchConfig.rollup.treeDb);
     }
 
@@ -145,22 +141,108 @@ let loopManager;
         loggerLevel,
         operatorMode);
 
-    // start synchronizer loop
-    logger.info("Start synchronizer rollup");
-    rollupSynch.synchLoop();
+    ////////////////
+    ///// POS SYNCH
+    ///////////////
+    let posDb;
 
-    // Intantiate pool
-    const conversion = {};
-    pool = await Pool(initRollupDb, conversion, poolConfig);
+    if (synchConfig.rollupPoS.synchDb == undefined) {
+        info = infoInit;
+        info += "Rollup PoS synchronizer: ";
+        info += chalk.white.bold("memory database");
+        logger.info(info);
+        posDb = new MemDb();
+    } else {
+        info = infoInit;
+        info += "Rollup PoS synchronizer: ";
+        info += chalk.white.bold("levelDb database");
+        logger.info(info);
+        posDb = new LevelDb(synchConfig.rollupPoS.synchDb);
+    }
 
-    ////////////////////
-    ///// LOOP MANAGER
-    ///////////////////
-    loopManager = new LoopManager(rollupSynch, posSynch, pool, 
-        opManager, cliServerProof, loggerLevel, synchConfig.ethNodeUrl);
-    
-    logger.info("Start manager PoS");
-    loopManager.startLoop();
+    posSynch = new SynchPoS(
+        posDb,
+        synchConfig.ethNodeUrl,
+        synchConfig.rollupPoS.address,
+        synchConfig.rollupPoS.abi,
+        synchConfig.rollupPoS.creationHash,
+        synchConfig.ethAddressCaller,
+        loggerLevel);
+
+    /////////////////
+    ///// LOAD WALLET
+    /////////////////
+
+    // Load wallet ( if specified ) and check if password provided is correct
+    info = infoInit;
+    info += "Initialize operator as: ";
+    const walletPath = process.env.WALLET_PATH;
+    let wallet = undefined;
+    if (walletPath !== undefined) {
+        const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
+        if (!fs.existsSync(walletPath) || !fs.lstatSync(walletPath).isFile()) {
+            logger.error("Wallet path provided does not work\n");
+            process.exit(0);
+        }
+
+        try {
+            const readWallet = fs.readFileSync(walletPath, "utf8");
+            wallet = await ethers.Wallet.fromEncryptedJson(readWallet, passString);
+        } catch (err) {
+            logger.error("Passphrase provided is not correct");
+            process.exit(0);
+        }
+
+        info += chalk.bgWhite.black("FORGER AND SYNCHRONIZER");
+        info += " | Operator public address: ";
+        info += chalk.white.bold(wallet.address);
+    } else {
+        info += chalk.bgWhite.black("SYNCHRONIZER");
+    }
+    logger.info(info);
+
+    // Initilaize classes if wallet is loaded
+    if (wallet !== undefined) {
+        //////////////////////
+        ///// OPERATOR MANAGER
+        //////////////////////
+        opManager = new OperatorManager(
+            synchConfig.ethNodeUrl,
+            synchConfig.rollupPoS.address,
+            synchConfig.rollupPoS.abi,
+            wallet,
+            process.env.GAS_MULTIPLIER,
+            process.env.GAS_LIMIT);
+
+        /////////////////////////
+        ///// CLIENT PROOF SERVER
+        /////////////////////////
+
+        const cliServerProof = new CliServerProof(process.env.URL_SERVER_PROOF);
+
+        //////////
+        ///// POOL
+        //////////
+        const conversion = {};
+        pool = await Pool(initRollupDb, conversion, poolConfig);
+
+        ////////////////////
+        ///// LOOP MANAGER
+        ///////////////////
+        loopManager = new LoopManager(rollupSynch, posSynch, pool, 
+            opManager, cliServerProof, loggerLevel);
+        
+        const seed = utils.getSeedFromPrivKey(wallet.privateKey);
+        await loopManager.loadSeedHashChain(seed);
+        info = infoInit;
+        info += "Start Rollup PoS manager";
+        logger.info(info);
+        loopManager.startLoop();
+    }
+
+    startRollup();
+    startRollupPoS();
+    loadServer();
 })();
 
 async function getGeneralInfo() {
@@ -185,207 +267,176 @@ async function getGeneralInfo() {
     return generalInfo;
 }
 
-/////////////
-///// SERVERS
-/////////////
+function startRollupPoS(){
+    // start synchronizer loop
+    let info = infoInit;
+    info += "Start Rollup PoS synchronizer";
+    logger.info(info);
+    posSynch.synchLoop();
+}
 
-///// API ADMIN
-const appAdmin = express();
-appAdmin.use(bodyParser.json());
-appAdmin.use(cors());
-appAdmin.use(morgan("dev"));
-const portAdmin = process.env.OPERATOR_PORT_ADMIN;
+function startRollup(){
+    // start synchronizer loop
+    let info = infoInit;
+    info += "Start rollup synchronizer";
+    logger.info(info);
+    rollupSynch.synchLoop();
+}
 
-appAdmin.post("/loadwallet", async (req, res) => {
-    const walletObj = req.body.wallet;
-    try {
-        const wallet = await ethers.Wallet.fromEncryptedJson(walletObj, req.body.pass);
-        opManager.loadWallet(wallet);
-        res.sendStatus(200);
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.send(400).status("Error loading wallet");
-    }
-});
+function loadServer(){
+    /////////////
+    ///// SERVERS
+    /////////////
 
-appAdmin.post("/register/:stake", async (req, res) => {
-    const stakeValue = req.params.stake;
-    const url = req.body.url;
-    const seed = req.body.seed;
-    try {
-        await loopManager.loadSeedHashChain(seed);
-        const resManager = await loopManager.register(stakeValue, url);
-        if (resManager) res.sendStatus(200);
-        else res.status(500).send("Register cannot be done");
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.send(400).status("Error at the time to register operator");
-    }
-});
+    ///// API ADMIN
+    const appAdmin = express();
+    appAdmin.use(bodyParser.json());
+    appAdmin.use(cors());
+    appAdmin.use(morgan("dev"));
+    const portAdmin = process.env.OPERATOR_PORT_ADMIN;
 
-appAdmin.post("/unregister/:opId", async (req, res) => {
-    const opId = req.params.opId;
-    try {
-        await opManager.unregister(opId);
-        res.sendStatus(200);
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.send(400).status("Error at the time to unregister operator");
-    }
-});
-
-appAdmin.post("/withdraw/:opId", async (req, res) => {
-    const opId = req.params.opId;
-    try {
-        await opManager.withdraw(opId);
-        res.sendStatus(200);
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.send(400).status("Error at the time to withdraw funds");
-    }
-});
-
-appAdmin.post("/pool/conversion", async (req, res) => {
-    try {
-        await pool.setConversion(req.body.conversion);
-        res.sendStatus(200);
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.send(400).status("Error setting pool conversion table");
-    }
-});
-
-const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
-    const address = serverAdmin.address().address;
-    logger.http(`Server admin running on http://${address}:${portAdmin}`);
-});
-
-///// API EXTERNAL
-const appExternal = express();
-appExternal.use(bodyParser.json());
-appExternal.use(cors());
-appExternal.use(morgan("dev"));
-const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
-
-appExternal.get("/accounts/:id", async (req, res) => {
-    const id = req.params.id;
-    try {
-        const info = await rollupSynch.getStateById(id);
-        res.status(200).json(stringifyBigInts(info));
-    } catch (error){
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.status(400).send("Error getting accounts information");
-    }
-});
- 
-appExternal.get("/accounts", async (req, res) => {
-    const ax = req.query.ax;
-    const ay = req.query.ay;
-    const ethAddr = req.query.ethAddr; 
-
-    let accounts;
-
-    if (ax === undefined && ay === undefined && ethAddr === undefined )
-        res.status(400).send("No filters has been submitted");
-
-    // Filter first by AxAy or/and ethAddress
-    if ((ax !== undefined && ay === undefined) || (ax === undefined && ay !== undefined)){
-        res.status(400).send("Babyjub key is not completed. Please provide both Ax and Ay");
-    } else {
+    appAdmin.post("/pool/conversion", async (req, res) => {
         try {
-            if (ax !== undefined && ay !== undefined) {
-                accounts = await rollupSynch.getStateByAxAy(ax, ay);
-                if (ethAddr !== undefined){
-                    accounts = accounts.filter(account => {
-                        if (account.ethAddress.toLowerCase() == ethAddr.toLowerCase())
-                            return account;
-                    });
-                }
-            } else {
-                accounts = await rollupSynch.getStateByEthAddr(ethAddr);
-            }
-            if (accounts.length > 0)
-                res.status(200).json(stringifyBigInts(accounts));
-            else
-                res.status(400).send("No account has been found");
-
+            await pool.setConversion(req.body.conversion);
+            res.sendStatus(200);
         } catch (error) {
+            logger.error(`Message error: ${error.message}`);
+            logger.debug(`Message error: ${error.stack}`);
+            res.send(400).status("Error setting pool conversion table");
+        }
+    });
+
+    const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
+        const address = serverAdmin.address().address;
+        let infoHttp = infoInit;
+        infoHttp += `Server admin running on http://${address}:${portExternal}`;
+        logger.http(infoHttp);
+    });
+
+    ///// API EXTERNAL
+    const appExternal = express();
+    appExternal.use(bodyParser.json());
+    appExternal.use(cors());
+    appExternal.use(morgan("dev"));
+    const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
+
+    appExternal.get("/accounts/:id", async (req, res) => {
+        const id = req.params.id;
+        try {
+            const info = await rollupSynch.getStateById(id);
+            res.status(200).json(stringifyBigInts(info));
+        } catch (error){
             logger.error(`Message error: ${error.message}`);
             logger.debug(`Message error: ${error.stack}`);
             res.status(400).send("Error getting accounts information");
         }
-    }
-});
+    });
+ 
+    appExternal.get("/accounts", async (req, res) => {
+        const ax = req.query.ax;
+        const ay = req.query.ay;
+        const ethAddr = req.query.ethAddr; 
 
-appExternal.get("/state", async (req, res) => {
-    try {
-        const generalInfo = await getGeneralInfo(); 
-        res.status(200).json(generalInfo);
-    } catch (error){
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.status(400).send("Error getting general information");
-    }
-});
+        let accounts;
 
-appExternal.get("/operators", async (req, res) => {
-    try {
-        const operatorList = await posSynch.getOperators();
-        res.status(200).json(stringifyBigInts(operatorList));
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.status(400).send("Error getting operators list");
-    }
-});
+        if (ax === undefined && ay === undefined && ethAddr === undefined )
+            res.status(400).send("No filters has been submitted");
 
-appExternal.get("/exits/:id/:numbatch", async (req, res) => {
-    const numBatch = req.params.numbatch;
-    const id = req.params.id;
-    try {
-        const resFind = await rollupSynch.getExitTreeInfo(numBatch, id);
-        res.status(200).json(stringifyBigInts(resFind));
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.status(400).send("Error getting exit tree information");
-    }
-});
+        // Filter first by AxAy or/and ethAddress
+        if ((ax !== undefined && ay === undefined) || (ax === undefined && ay !== undefined)){
+            res.status(400).send("Babyjub key is not completed. Please provide both Ax and Ay");
+        } else {
+            try {
+                if (ax !== undefined && ay !== undefined) {
+                    accounts = await rollupSynch.getStateByAxAy(ax, ay);
+                    if (ethAddr !== undefined){
+                        accounts = accounts.filter(account => {
+                            if (account.ethAddress.toLowerCase() == ethAddr.toLowerCase())
+                                return account;
+                        });
+                    }
+                } else {
+                    accounts = await rollupSynch.getStateByEthAddr(ethAddr);
+                }
+                if (accounts.length > 0)
+                    res.status(200).json(stringifyBigInts(accounts));
+                else
+                    res.status(400).send("No account has been found");
 
-appExternal.get("/exits/:id", async (req, res) => {
-    const id = req.params.id;
-    try {
-        const resFind = await rollupSynch.getExitsBatchById(id);
-        res.status(200).json(stringifyBigInts(resFind));
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.status(400).send("Error getting exit batches");
-    }
-});
+            } catch (error) {
+                logger.error(`Message error: ${error.message}`);
+                logger.debug(`Message error: ${error.stack}`);
+                res.status(400).send("Error getting accounts information");
+            }
+        }
+    });
 
-appExternal.post("/pool", async (req, res) => {
-    const tx = unstringifyBigInts(req.body);
-    try {
-        const isAdded = await pool.addTx(tx);
-        if (isAdded === false)
-            res.status(400).send("Error adding transaction to pool");   
-        else
-            res.sendStatus(200);
-    } catch (error) {
-        logger.error(`Message error: ${error.message}`);
-        logger.debug(`Message error: ${error.stack}`);
-        res.status(400).send("Error receiving off-chain transaction");
-    }
-});
+    appExternal.get("/state", async (req, res) => {
+        try {
+            const generalInfo = await getGeneralInfo(); 
+            res.status(200).json(generalInfo);
+        } catch (error){
+            logger.error(`Message error: ${error.message}`);
+            logger.debug(`Message error: ${error.stack}`);
+            res.status(400).send("Error getting general information");
+        }
+    });
 
-const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {
-    const address = serverExternal.address().address;
-    logger.http(`Server external running on http://${address}:${portExternal}`);
-});
+    appExternal.get("/operators", async (req, res) => {
+        try {
+            const operatorList = await posSynch.getOperators();
+            res.status(200).json(stringifyBigInts(operatorList));
+        } catch (error) {
+            logger.error(`Message error: ${error.message}`);
+            logger.debug(`Message error: ${error.stack}`);
+            res.status(400).send("Error getting operators list");
+        }
+    });
+
+    appExternal.get("/exits/:id/:numbatch", async (req, res) => {
+        const numBatch = req.params.numbatch;
+        const id = req.params.id;
+        try {
+            const resFind = await rollupSynch.getExitTreeInfo(numBatch, id);
+            res.status(200).json(stringifyBigInts(resFind));
+        } catch (error) {
+            logger.error(`Message error: ${error.message}`);
+            logger.debug(`Message error: ${error.stack}`);
+            res.status(400).send("Error getting exit tree information");
+        }
+    });
+
+    appExternal.get("/exits/:id", async (req, res) => {
+        const id = req.params.id;
+        try {
+            const resFind = await rollupSynch.getExitsBatchById(id);
+            res.status(200).json(stringifyBigInts(resFind));
+        } catch (error) {
+            logger.error(`Message error: ${error.message}`);
+            logger.debug(`Message error: ${error.stack}`);
+            res.status(400).send("Error getting exit batches");
+        }
+    });
+
+    appExternal.post("/pool", async (req, res) => {
+        const tx = unstringifyBigInts(req.body);
+        try {
+            const isAdded = await pool.addTx(tx);
+            if (isAdded === false)
+                res.status(400).send("Error adding transaction to pool");   
+            else
+                res.sendStatus(200);
+        } catch (error) {
+            logger.error(`Message error: ${error.message}`);
+            logger.debug(`Message error: ${error.stack}`);
+            res.status(400).send("Error receiving off-chain transaction");
+        }
+    });
+
+    const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {
+        const address = serverExternal.address().address;
+        let infoHttp = infoInit;
+        infoHttp += `Server external running on http://${address}:${portExternal}`;
+        logger.http(infoHttp);
+    });
+}

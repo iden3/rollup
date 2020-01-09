@@ -1,14 +1,4 @@
 const Web3 = require("web3");
-const crypto = require("crypto");
-const stringRollup = "PoSMagic";
-
-async function loadSeedHashChain(pk){
-    const seed = pk + stringRollup;
-    const hash = crypto.createHash("sha256");
-    hash.update(seed);
-    const seedHash = "0x" + hash.digest("hex");
-    return seedHash;
-}
 
 async function register(rndHash, wallet, actualConfig, gasLimit, stakeValue, url) {
     try { 
@@ -80,7 +70,6 @@ async function getEtherBalance(wallet, actualConfig) {
 }
 
 module.exports = {
-    loadSeedHashChain,
     register,
     unregister,
     withdraw,

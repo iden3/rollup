@@ -6,7 +6,8 @@ const ethers = require("ethers");
 const { error } = require("./list-errors");
 const config = "./config.json";
 
-const { loadSeedHashChain, register, unregister, withdraw, getEtherBalance } = require("./utils");
+const { register, unregister, withdraw, getEtherBalance } = require("./utils");
+const { getSeedFromPrivKey, loadHashChain } = require("../rollup-utils/rollup-utils");
 
 const version = "0.0.1";
 const { argv } = require('yargs') // eslint-disable-line
@@ -86,7 +87,7 @@ const gasLimit = 5000000;
             checkParamsRegister(actualConfig);
             let wallet = {};
             if (!fs.existsSync(pathWallet) || !fs.lstatSync(pathWallet).isFile()) {
-                console.log("Path provided dont work\n\n");
+                console.log("Path provided does not work\n\n");
                 throw new Error(error.INVALID_PATH);
             }
             try {
@@ -95,8 +96,9 @@ const gasLimit = 5000000;
             } catch (err) {
                 throw new Error(error.INVALID_WALLET);
             }
-            const hashSeed = await loadSeedHashChain(wallet.privateKey);
-            await register(hashSeed, wallet, actualConfig, gasLimit, stake, url);
+            const seed = getSeedFromPrivKey(wallet.privateKey);
+            const hashChain = loadHashChain(seed);
+            await register(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit, stake, url);
         // unregister
         } else if(argv._[0].toUpperCase() === "UNREGISTER") {
             checkParamsUnregister(actualConfig);
