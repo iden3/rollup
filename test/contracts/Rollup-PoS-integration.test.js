@@ -69,6 +69,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         2: ethAddress,
         3: tokenList,
         4: operator1,
+        5: feeTokenAddress
     } = accounts;
 
     let db;
@@ -84,7 +85,7 @@ contract("Rollup - RollupPoS", (accounts) => {
 
     const maxTx = 10;
     const maxOnChainTx = 3;
-    const nLevels = 24;
+    let nLevels;
     const url = "localhost";
 
     // BabyJubjub public key
@@ -117,7 +118,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx,
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx, feeTokenAddress,
             { from: owner });
 
         // Deploy Staker manager
@@ -132,6 +133,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         // init rollup database
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
+        nLevels = await insRollup.NLevels();
     });
 
     it("Initialization", async () => {

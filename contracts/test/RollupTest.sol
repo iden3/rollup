@@ -4,8 +4,8 @@ import '../Rollup.sol';
 
 contract RollupTest is Rollup {
 
-  constructor(address _verifier, address _poseidon, uint _maxTx, uint _maxOnChainTx)
-    Rollup(_verifier, _poseidon, _maxTx, _maxOnChainTx) public {}
+  constructor(address _verifier, address _poseidon, uint _maxTx, uint _maxOnChainTx, address payable _feeTokenAddress)
+    Rollup(_verifier, _poseidon, _maxTx, _maxOnChainTx, _feeTokenAddress) public {}
 
   function forgeBatch(
         address payable beneficiaryAddress,

@@ -11,6 +11,7 @@ const maxTx = 4;
 const maxOnChainTx = 2;
 const initialAmount = 1000;
 let insPoseidonUnit;
+let feeTokenAddress = "0x29a9b6486667E67e4ef9e586E3622d35b19E3E7E";
 
 module.exports = async function (deployer, network, accounts) {
     const C = new web3.eth.Contract(poseidonUnit.abi);
@@ -22,7 +23,7 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(Verifier);
     // console.log("Verifier address:" + Verifier.address);
     await deployer.deploy(Rollup, Verifier.address, insPoseidonUnit._address,
-        maxTx, maxOnChainTx);
+        maxTx, maxOnChainTx, feeTokenAddress);
     // console.log("Rollup address:" + Rollup.address);
     await deployer.deploy(RollupPoS, Rollup.address, maxTx);
     // console.log("RollupPoS address:" + RollupPoS.address);
