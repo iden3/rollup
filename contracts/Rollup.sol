@@ -40,10 +40,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint constant MAX_AMOUNT_DEPOSIT = (1 << 128);
 
     // List of valid ERC20 tokens that can be deposit in 'balance tree'
-    address[] tokens;
+    address[] public tokens;
     mapping(uint => address) tokenList;
     uint constant MAX_TOKENS = 0xFFFFFFFF;
-    uint feeAddToken = 0.01 ether;
+    uint public feeAddToken = 0.01 ether;
+
+    // Address to receive token fees
+    address payable feeTokenAddress;
 
     // Set the leaf position for an account into the 'balance tree'
     // '0' is reserved for off-chain withdraws
@@ -66,14 +69,17 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint constant FEE_ONCHAIN_TX = 0.1 ether;
 
     // maximum on-chain transactions
-    uint MAX_ONCHAIN_TX;
+    uint public MAX_ONCHAIN_TX;
     // maximum rollup transactions: either off-chain or on-chain transactions
-    uint MAX_TX;
+    uint public MAX_TX;
     // current on chain transactions
-    uint currentOnChainTx = 0;
+    uint public currentOnChainTx = 0;
 
     // Flag to determine if the mechanism to forge batch has been initialized
     bool initialized = false;
+
+    // Number of levels in Snark circuit
+    uint256 public NLevels = 24;
 
     // Input snark definition
     uint256 constant oldStateRootInput = 0;
@@ -123,7 +129,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param _maxOnChainTx maximum rollup on-chain transactions
      */
     constructor(address _verifier, address _poseidon, uint _maxTx,
-        uint _maxOnChainTx) RollupHelpers(_poseidon) public {
+        uint _maxOnChainTx, address payable _feeTokenAddress) RollupHelpers(_poseidon) public {
+        feeTokenAddress = _feeTokenAddress;
         verifier = VerifierInterface(_verifier);
         MAX_ONCHAIN_TX = _maxOnChainTx;
         MAX_TX = _maxTx;
@@ -151,8 +158,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(msg.value >= feeAddToken, 'Amount is not enough to cover token fees');
         uint tokenId = tokens.push(tokenAddress) - 1;
         tokenList[tokenId] = tokenAddress;
+        feeTokenAddress.transfer(msg.value);
         // increase fees for next token deposit
-        feeAddToken = feeAddToken * 2;
+        feeAddToken = (feeAddToken / 4) + feeAddToken;
         emit AddToken(tokenAddress, tokenId);
     }
 
@@ -174,10 +182,16 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         Entry memory onChainHashData = buildOnChainData(fillingOnChainTxsHash, txData, loadAmount,
             ethAddress, babyPubKey[0], babyPubKey[1]);
         fillingOnChainTxsHash = hashEntry(onChainHashData);
-        // Update total on-chain fees
-        totalFillingOnChainFee += onChainFee;
         // Update number of on-chain transactions
         currentOnChainTx++;
+
+        // The burned fee depends on how many on-chain transactions have been taken place the last batch
+        // It grows linearly to a maximum of 33% of the onChainFee
+        uint256 burnedFee = (onChainFee * currentOnChainTx) / (MAX_ONCHAIN_TX * 3);
+        address(0).transfer(burnedFee);
+        // Update total on-chain fees
+        totalFillingOnChainFee += onChainFee - burnedFee;
+
         // trigger on chain tx event event
         emit OnChainTx(getStateDepth(), bytes32(txData), loadAmount, ethAddress, babyPubKey[0], babyPubKey[1]);
     }

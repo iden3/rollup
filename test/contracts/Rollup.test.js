@@ -81,7 +81,7 @@ contract("Rollup", (accounts) => {
 
     const maxTx = 10;
     const maxOnChainTx = 3;
-    const nLevels = 24;
+    let nLevels;
     let db;
     let rollupDB;
 
@@ -107,6 +107,7 @@ contract("Rollup", (accounts) => {
         3: id3,
         4: tokenList,
         5: beneficiary,
+        6: feeTokenAddress
     } = accounts;
 
     before(async () => {
@@ -123,7 +124,7 @@ contract("Rollup", (accounts) => {
 
         // Deploy Rollup test
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         // Deploy Staker manager
         insStakerManager = await StakerManager.new(insRollupTest.address, maxTx);
@@ -131,6 +132,7 @@ contract("Rollup", (accounts) => {
         // init rollup database
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
+        nLevels = await insRollupTest.NLevels();
     });
 
     it("Check ganache provider", async () => {
@@ -160,10 +162,20 @@ contract("Rollup", (accounts) => {
         expect(resOwner.toString()).to.be.equal("0");
         expect(resId1.toString()).to.be.equal("50");
 
+        //check if developers win the fee of adding tokens
+        let balanceFeeTokenAddress = await web3.eth.getBalance(feeTokenAddress);
         // Add token to rollup token list
+        let feeAddToken =  await insRollupTest.feeAddToken();
         const resAddToken = await insRollupTest.addToken(insTokenRollup.address,
-            { from: tokenList, value: web3.utils.toWei("1", "ether") });
+            { from: tokenList, value: feeAddToken});
 
+        let balanceFeeTokenAddress2 = await web3.eth.getBalance(feeTokenAddress);
+        let feeAddToken2 =  await insRollupTest.feeAddToken();
+
+        //the account get the payment from the add token fee
+        expect((BigInt(balanceFeeTokenAddress2).sub(BigInt(balanceFeeTokenAddress))).toString()).to.be.equal(feeAddToken.toString());
+        //the add token fee is increased
+        expect(feeAddToken2.toString()).to.be.equal((parseInt(feeAddToken)*1.25).toString());
         expect(resAddToken.logs[0].event).to.be.equal("AddToken");
         expect(resAddToken.logs[0].args.tokenAddress).to.be.equal(insTokenRollup.address);
         expect(resAddToken.logs[0].args.tokenId.toString()).to.be.equal("0");
@@ -185,12 +197,13 @@ contract("Rollup", (accounts) => {
 
         const loadAmount = 10;
         const tokenId = 0;
+        const feeOnChain = web3.utils.toWei("1", "ether");
 
         const resApprove = await insTokenRollup.approve(insRollupTest.address, loadAmount, { from: id1 });
         expect(resApprove.logs[0].event).to.be.equal("Approval");
 
         const resDeposit = await insRollupTest.deposit(loadAmount, tokenId, id1,
-            [Ax, Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
+            [Ax, Ay], { from: id1, value: feeOnChain });
         expect(resDeposit.logs[0].event).to.be.equal("OnChainTx");
 
         // Check token balances for id1 and rollup smart contract
@@ -199,11 +212,18 @@ contract("Rollup", (accounts) => {
         expect(resRollup.toString()).to.be.equal("10");
         expect(resId1.toString()).to.be.equal("40");
 
+        let balanceBeneficiary = await web3.eth.getBalance(beneficiary);
         // forge genesis batch
         await forgeBatch();
 
         // Forge batch with deposit transaction
         await forgeBatch([resDeposit.logs[0]]);
+
+        let balanceBeneficiary2 = await web3.eth.getBalance(beneficiary);
+         
+        expect(BigInt(balanceBeneficiary2) - BigInt(balanceBeneficiary)).to.be.equal(
+            BigInt(feeOnChain) - BigInt(feeOnChain) / BigInt(maxOnChainTx * 3));
+
         checkBatchNumber([resDeposit.logs[0]]);
     });
 
