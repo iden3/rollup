@@ -16,6 +16,7 @@ const LevelDb = require("../../../rollup-utils/level-db");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
+const SynchPool = require("../synch-pool/synch-pool");
 const Pool = require("../../../js/txpool");
 const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
@@ -43,6 +44,7 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
 // Global vars
 let posSynch;
 let rollupSynch;
+let poolSynch;
 let loopManager;
 let opManager;
 let logger;
@@ -51,7 +53,7 @@ let pool;
 (async () => {
     let info;
     // load environment data
-    const pathEnvironmentFile = `${__dirname}/config.env`;
+    const pathEnvironmentFile = `${__dirname}/config-test.env`;
     require("dotenv").config({ path: pathEnvironmentFile });
 
     // config mode
@@ -226,6 +228,16 @@ let pool;
         const conversion = {};
         pool = await Pool(initRollupDb, conversion, poolConfig);
 
+        //Synch Pool
+        poolSynch = new SynchPool(
+            rollupSynchDb,
+            synchConfig.ethNodeUrl,
+            synchConfig.ethAddressCaller,
+            synchConfig.rollup.address,
+            synchConfig.rollup.abi,
+            pool,
+            loggerLevel
+        );
         ////////////////////
         ///// LOOP MANAGER
         ///////////////////
@@ -242,6 +254,7 @@ let pool;
 
     startRollup();
     startRollupPoS();
+    startPool();
     loadServer();
 })();
 
@@ -281,6 +294,14 @@ function startRollup(){
     info += "Start rollup synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
+}
+
+function startPool(){
+    // start synchronizer loop
+    let info = infoInit;
+    info += "Start Pool synchronizer";
+    logger.info(info);
+    poolSynch.synchLoop();
 }
 
 function loadServer(){
