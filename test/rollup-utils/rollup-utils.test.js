@@ -82,4 +82,21 @@ describe("Rollup helpers js", () => {
         expect(BigInt(res[0]).toString("16")).to.be.equal(feePlanCoinsHex);
         expect(BigInt(res[1]).toString("16")).to.be.equal(feePlanFeesHex);
     });
+
+    it("Should calculate seed from private key", async () => {
+        const privKey = "e8e436b860daf5d9ce624f2b4266ecf07171f98ac6eea6c874df4789b388ad2b";
+        
+        const seed = rollupUtils.getSeedFromPrivKey(privKey);
+
+        expect(seed).to.be.equal("31c5ea96e38cb2586d49fc651b5078de955a92d5e754a7dd65bc71e5699ce0fe");
+    });
+
+    it("Should calculate hashChain", async () => {
+        const privKey = "e8e436b860daf5d9ce624f2b4266ecf07171f98ac6eea6c874df4789b388ad2b";
+        
+        const seed = rollupUtils.getSeedFromPrivKey(privKey);
+        const hashChain = rollupUtils.loadHashChain(seed);
+
+        expect(hashChain[hashChain.length - 1]).to.be.equal("0xf7dd7f98983182789755c8b95d7cc96f2ba6205c8af4ef5d48a9d13defb8c3ad");
+    });
 });

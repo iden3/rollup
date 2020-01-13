@@ -75,3 +75,6 @@ rollup-cli/src/wallet-rollup-cli.json
 rollup-cli/tools/resourcesBot/
 rollup-cli/tools/walletSlash.json
 rollup-cli/src/resources/
+
+cli-pos/wallet-test.json
+cli-pos/config.json

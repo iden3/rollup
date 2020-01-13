@@ -78,6 +78,7 @@ contract("Synchronizer - full mode", (accounts) => {
         4: synchAddress,
         5: beneficiary,
         6: op1,
+        7: feeTokenAddress,
     } = accounts;
 
     let synchDb;
@@ -144,7 +145,7 @@ contract("Synchronizer - full mode", (accounts) => {
 
         // Deploy Rollup test
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollupTest.address, maxTx);

@@ -1,105 +1,92 @@
+/*global BigInt*/
 const Web3 = require("web3");
 
 class OperatorManager {
-    constructor(nodeUrl, contractAddress, abi){
-        this.wallet = undefined;
+    constructor(nodeUrl, contractAddress, abi, wallet, gasMul, gasLimit){
+        this.wallet = wallet;
         this.nodeUrl = nodeUrl;
         this.posAddress = contractAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.rollupPoS = new this.web3.eth.Contract(abi, this.posAddress);
-        this.gasLimit = 5000000;
+        this.gasMul = BigInt(gasMul);
+        // Default is described in:
+        // https://iden3.io/post/istanbul-zkrollup-ethereum-throughput-limits-analysis
+        this.gasLimit = (gasLimit === "default") ? (2 * 616240): gasLimit;
     }
 
-    async loadWallet(wallet) {
-        this.wallet = wallet;
+    async _getGasPrice(){
+        const strAvgGas = await this.web3.eth.getGasPrice();
+        const avgGas = BigInt(strAvgGas);
+        return (avgGas * this.gasMul).toString();
     }
 
-    async register(rndHash, stakeValue, url) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
+    async getTxRegister(rndHash, stakeValue, url) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
+            gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(stakeValue.toString(), "ether")),
             data: this.rollupPoS.methods.addOperator(rndHash, url).encodeABI()
         };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 
-    async unregister(opId) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
+    async getTxUnregister(opId) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
+            gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.removeOperator(opId.toString()).encodeABI()
         };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 
-    async withdraw(opId) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
+    async getTxWithdraw(opId) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
+            gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.withdraw(opId.toString()).encodeABI()
         };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 
-    async commit(prevHash, compressedTx) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
+
+    async getTxCommit(prevHash, compressedTx) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
+            gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.commitBatch(prevHash, compressedTx).encodeABI()
         };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 
-    async forge(proofA, proofB, proofC, input) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
+    async getTxForge(proofA, proofB, proofC, input) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
+            gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input).encodeABI()
         };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
-    }
-
-    async commitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
-        const tx = {
-            from:  this.wallet.address,
-            to: this.posAddress,
-            gasLimit: this.gasLimit,
-            data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
-                proofA, proofB, proofC, input).encodeABI()
-        };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        return await this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 
     async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
-        if (this.wallet == undefined) throw new Error("No wallet has been loaded");
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
+            gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
                 proofA, proofB, proofC, input).encodeABI()
         };
-        const txSign = await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
-        // return this.web3.eth.sendSignedTransaction(txSign.rawTransaction);
-        return txSign;
+        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 }
 

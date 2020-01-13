@@ -31,6 +31,7 @@ contract("Operator Manager", async (accounts) => {
 
     const {
         0: owner,
+        1: feeTokenAddress,
     } = accounts;
 
     let db;
@@ -54,6 +55,8 @@ contract("Operator Manager", async (accounts) => {
     const blocksPerSlot = 100;
     const blockPerEra = slotPerEra * blocksPerSlot;
     const initBalance = 5;
+    const gasLimit = "default";
+    const gasMultiplier = 1;
 
     const hashChain = [];
     const initialMsg = "rollup";
@@ -80,8 +83,8 @@ contract("Operator Manager", async (accounts) => {
         insVerifier = await Verifier.new();
 
         // Deploy Rollup test
-        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address, maxTx, maxOnChainTx,
-            { from: owner });
+        insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
+            maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
         insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
@@ -109,16 +112,19 @@ contract("Operator Manager", async (accounts) => {
     });
 
     it("Should initialize operator manager", async () => {
-        opManager = new OperatorManager(configSynchPoS.ethNodeUrl,
-            configSynchPoS.contractAddress, configSynchPoS.abi);
-    });
-
-    it("Should load wallet [debug mode]", async () => {
-        await opManager.loadWallet(wallet);
+        opManager = new OperatorManager(
+            configSynchPoS.ethNodeUrl,
+            configSynchPoS.contractAddress, 
+            configSynchPoS.abi,
+            wallet,
+            gasMultiplier,
+            gasLimit);
     });
 
     it("Should register operator", async () => {
-        const res = await opManager.register(hashChain[9], amountToStake, url);
+        const txSign = await opManager.getTxRegister(hashChain[9], amountToStake, url);
+        const res = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+
         const currentBlock = await web3.eth.getBlockNumber();
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
         await insRollupPoS.setBlockNumber(eraBlock[0]); // era 0 smart contract test
@@ -133,6 +139,7 @@ contract("Operator Manager", async (accounts) => {
     });
 
     it("Should first commit data and then forge it", async () => {
+        let txSign;
         const proofA = ["0", "0"];
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
@@ -142,7 +149,10 @@ contract("Operator Manager", async (accounts) => {
 
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
-        await opManager.commit(hashChain[8], `0x${batch.getDataAvailable().toString("hex")}`);
+        txSign = await opManager.getTxCommit(hashChain[8], `0x${batch.getDataAvailable().toString("hex")}`);
+        const resCommit = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resCommit.status).to.be.equal(true);
+
         await timeTravel.addBlocks(10); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
         const logs = await insRollupPoS.getPastEvents("dataCommitted", {
@@ -156,8 +166,9 @@ contract("Operator Manager", async (accounts) => {
             }
         });
         expect(found).to.be. equal(true);
-        const res = await opManager.forge(proofA, proofB, proofC, input);
-        expect(res.status).to.be.equal(true);
+        txSign = await opManager.getTxForge(proofA, proofB, proofC, input);
+        const resForge = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resForge.status).to.be.equal(true);
     });
 
     it("Should commit and forge", async () => {
@@ -171,8 +182,9 @@ contract("Operator Manager", async (accounts) => {
 
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
-        const res = await opManager.commitAndForge(hashChain[7], commitData, proofA,
+        const txSign = await opManager.getTxCommitAndForge(hashChain[7], commitData, proofA,
             proofB, proofC, input);
+        const resForge = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
         await timeTravel.addBlocks(10); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
         const logs = await insRollupPoS.getPastEvents("dataCommitted", {
@@ -186,13 +198,14 @@ contract("Operator Manager", async (accounts) => {
             }
         });
         expect(found).to.be. equal(true);
-        expect(res.status).to.be.equal(true);
+        expect(resForge.status).to.be.equal(true);
     });
 
     it("Should unregister operator", async () => {
         const opIdToRemove = 0;
-        const res = await opManager.unregister(opIdToRemove);
-        expect(res.status).to.be.equal(true);
+        const txSign = await opManager.getTxUnregister(opIdToRemove);
+        const resUnregister = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resUnregister.status).to.be.equal(true);
         const logs = await insRollupPoS.getPastEvents("removeOperatorLog", {
             fromBlock: 0,
             toBlock: "latest",
@@ -209,7 +222,9 @@ contract("Operator Manager", async (accounts) => {
     it("Should withdraw operator", async () => {
         await timeTravel.addBlocks(2*blockPerEra); // era 4
         await insRollupPoS.setBlockNumber(eraBlock[4]); // era 4 smart contract test
-        await opManager.withdraw(0);
+        const txSign = await opManager.getTxWithdraw(0);
+        const resWithdraw = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resWithdraw.status).to.be.equal(true);
         // check funds are returned to the operator
         const balance = await getEtherBalance(wallet.address);
         expect(Math.ceil(balance)).to.be.equal(initBalance);

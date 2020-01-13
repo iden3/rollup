@@ -105,6 +105,7 @@ contract('Rollup', async (accounts) => {
         2: tokenList,
         3: beneficiary,
         4: providerfunds,
+        5: feeTokenAddress,
     } = accounts;
 
     let password;
@@ -124,7 +125,7 @@ contract('Rollup', async (accounts) => {
 
         // Deploy Rollup test
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
-            maxTx, maxOnChainTx);
+            maxTx, maxOnChainTx, feeTokenAddress);
 
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);

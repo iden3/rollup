@@ -14,16 +14,18 @@ const process = require("child_process");
 const path = require("path");
 const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
+const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rollup-utils");
 
 const CliAdminOp = require("../../src/cli-admin-operator");
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
+const cliPoS = require("../../../cli-pos/utils");
 const cliDeposit = require("../../../rollup-cli/src/actions/onchain/deposit");
 const cliSendOffChainTx = require("../../../rollup-cli/src/actions/offchain/send");
 
 // test timeouts
 const timeoutSynch = 20000;
-const timeoutBlocks = 5000;
+const timeoutBlocks = 10000;
 const timeoutLoop = 10000;
 
 
@@ -90,9 +92,8 @@ contract("Operator", (accounts) => {
     const blockPerEra = slotPerEra * blocksPerSlot;
 
     // Operator wallet
-    const passphrase = "passphrase";
+    const passOp = "passTest";
     let walletOp;
-    let walletOpEnc;
 
     // Rollup wallets
     const pass = "pass";
@@ -102,6 +103,7 @@ contract("Operator", (accounts) => {
     // Contract instances
     let insTokenRollup;
     let insRollup;
+    let insRollupPoS;
 
     before(async () => {
         // Load test configuration
@@ -111,19 +113,11 @@ contract("Operator", (accounts) => {
         // Load Rollup
         insRollup = await Rollup.at(configTest.rollupAddress);
         // Load rollup PoS
-        await RollupPoS.at(configTest.posAddress);
+        insRollupPoS = await RollupPoS.at(configTest.posAddress);
 
         // Load clients
         cliAdminOp = new CliAdminOp(urlAdminOp);
         cliExternalOp = new CliExternalOp(urlExternalOp);
-
-        // load operator wallet with funds
-        let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
-        walletOp = new ethers.Wallet(privateKey);
-        const initBalance = 1000;
-        await web3.eth.sendTransaction({to: walletOp.address, from: owner,
-            value: web3.utils.toWei(initBalance.toString(), "ether")});
-        walletOpEnc = await walletOp.encrypt(passphrase);
     });
 
     it("manage rollup token and fill funds to rollup user", async () => { 
@@ -149,13 +143,31 @@ contract("Operator", (accounts) => {
         expect(Object.keys(res.data).length).to.be.equal(0);
     });
 
-    it("Should load and register operator", async () => {
+    it("Should load operator wallet", async () => { 
+        const walletOpPath = path.join(__dirname, "../config/wallet-test.json");
+
+        const readOpWallet = fs.readFileSync(walletOpPath, "utf8");
+        walletOp = await ethers.Wallet.fromEncryptedJson(readOpWallet, passOp);
+    });
+
+    it("Should register operator", async () => {
+        const gasLimit = 5000000;
+        const gasMultiplier = 1;
         const stake = 2;
         const url = urlExternalOp;
-        const seed = "rollup";
+        const actualConfig = {
+            nodeUrl: "http://localhost:8545",
+            posAbi: RollupPoS.abi,
+            posAddress: insRollupPoS.address,
+        };
 
-        await cliAdminOp.loadWallet(walletOpEnc, passphrase); 
-        await cliAdminOp.register(stake, url, seed);
+        const seed = getSeedFromPrivKey(walletOp.privateKey);
+        const hashChain = loadHashChain(seed);
+        const txSign = await cliPoS.register(hashChain[hashChain.length - 1], walletOp, actualConfig, gasLimit,
+            gasMultiplier, stake, url);
+        
+        const resRegister = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resRegister.status).to.be.equal(true);
     });
 
     it("Should add two deposits", async () => {

@@ -24,7 +24,8 @@ Next test should have running dummy `operator` server in `http://127.0.0.1:9000`
 
 This server can be found in `rollup-cli/test/helpers/api-client.js`
 
-- Run server by typing `node rollup-cli/test/helpers/api-client.js`
+- Go to `rollup-cli` folder:
+  - Run server by typing `npm run operator-dummy`
 
 - Run server test by typing `mocha rollup-cli/test/api-client.test.js`
 
