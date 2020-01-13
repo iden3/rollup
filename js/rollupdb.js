@@ -43,6 +43,7 @@ class RollupDB {
     async getStateByIdx(idx) {
         const key = Constants.DB_Idx.add(bigInt(idx));
         const valueState = await this.db.get(key);
+        if (!valueState) return null;
         const stateArray = await this.db.get(valueState);
         if (!stateArray) return null;
         const st = utils.array2state(stateArray);

@@ -17,7 +17,7 @@ class TmpState {
 
     async canProcess(tx) {
         const stFrom = await this.getState(tx.fromIdx);
-        if (!stFrom) return "NO";
+        if (!stFrom || stFrom.ax != tx.ax || stFrom.ay != tx.ay) return "NO";
         let stTo;
         if (tx.toIdx) {
             stTo = await this.getState(tx.toIdx);
@@ -35,15 +35,18 @@ class TmpState {
 
         // Check coins match
         if (tx.toIdx) {
-            if (stTo.coin != stFrom.coin) return "NO";
+            if (stTo.coin != stFrom.coin || stFrom.coin != tx.coin) return "NO";
         }
+
+        // Check onChain flag
+        if (tx.onChain) return "NO";
 
         return "YES";
     }
 
     async process(tx) {
         const stFrom = await this.getState(tx.fromIdx);
-        if (!stFrom) return false;
+        if (!stFrom || stFrom.ax != tx.ax || stFrom.ay != tx.ay) return false;
 
         let stTo;
         if (tx.toIdx) {
@@ -61,8 +64,11 @@ class TmpState {
 
         // Check coins match
         if (tx.toIdx) {
-            if (stTo.coin != stFrom.coin) return false;
+            if (stTo.coin != stFrom.coin || stFrom.coin != tx.coin) return false;
         }
+
+        // Check onChain flag
+        if (tx.onChain) return false;
 
         stFrom.nonce++;
         stFrom.amount = stFrom.amount.sub(amount);

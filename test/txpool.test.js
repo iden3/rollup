@@ -193,4 +193,48 @@ describe("txPool test", function () {
 
         assert.equal(txPool.txs.length, 2);
     });
+
+    it("Should not add any transaction to the pool", async () => {
+
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1, account2] = await initBlock(rollupDB);
+
+        /// Block 2
+        const txPool = await TxPool(rollupDB, conversion);
+
+        const txs = [];
+        txs[0] = { fromIdx: 5, toIdx: 3, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // from: unexistent leaf
+        txs[1] = { fromIdx: 1, toIdx: 5, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // to: unexistent leaf
+        txs[2] = { fromIdx: 2, toIdx: 4, coin: 3, amount: dai(4), nonce: 0, userFee: cdai(1)}; // coin don't match YES???
+        txs[3] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(1000), nonce: 0, userFee: cdai(1)}; // insufficient funds
+        txs[4] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(2), nonce: 10, userFee: cdai(3)}; // incorrect nonce 
+        txs[5] = { fromIdx: 1, toIdx: 3, coin: 0, amount: dai(5), nonce: 0, userFee: eth(40)}; // no fee errror ¡
+        txs[6] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20), onChain : true}; // onChain should be false
+        txs[7] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(30)}; // incorrect signature
+
+        account1.signTx(txs[0]);
+        account1.signTx(txs[1]);
+        account1.signTx(txs[2]);
+        account1.signTx(txs[3]);
+        account1.signTx(txs[4]);
+        account1.signTx(txs[5]);
+        account1.signTx(txs[6]);
+        account2.signTx(txs[7]);
+
+        for (let i=0; i<txs.length; i++) {
+            await txPool.addTx(txs[i]);
+        }
+
+        const bb2 = await rollupDB.buildBatch(4, 8);
+
+        await txPool.fillBatch(bb2);
+
+        const calcSlots = bb2.offChainTxs.map((tx) => tx.slot);
+        const expectedSlots = [];
+
+        assert.deepEqual(calcSlots, expectedSlots);
+    });
 });
