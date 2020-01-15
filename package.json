@@ -9,7 +9,8 @@
   "scripts": {
     "test:circuits": "mocha --max-old-space-size=4096 --timeout 20000 ./test",
     "test:utils": "mocha --timeout 20000 ./test/rollup-utils",
-    "test:contracts": "truffle test ./test/contracts/*.test.js"
+    "test:contracts": "truffle test ./test/contracts/*.test.js",
+    "build:webapp": "browserify rollup-cli/index.js -s rollup > simple-webapp/src/utils/bundle-cli.js && browserify rollup-operator/index.js -s operator > simple-webapp/src/utils/bundle-op.js && simple-webapp/src/utils/disable-eslint.sh"
   },
   "repository": {
     "type": "git",
