@@ -1,0 +1,6 @@
+node_modules/
+test/
+
+/src/utils/bundle-cli.js
+/src/utils/bundle-op.js
+/src/utils/config.json
