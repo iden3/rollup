@@ -241,6 +241,105 @@ describe("Rollup Basic circuit TXs", function () {
         checkBatch(circuit, w2, bb2);
     });
 
+    it("Should create 4 deposits and then 3 offchain transfer", async () => {
+
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const account1 = new RollupAccount(1);
+
+        bb.addTx({
+            fromIdx: 1,
+            loadAmount: 1000,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+
+        bb.addTx({
+            fromIdx: 2,
+            loadAmount: 1000,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+
+        bb.addTx({
+            fromIdx: 3,
+            loadAmount: 1000,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+
+        bb.addTx({
+            fromIdx: 4,
+            loadAmount: 1000,
+            coin: 0,
+            ax: account1.ax,
+            ay: account1.ay,
+            ethAddress: account1.ethAddress,
+            onChain: true
+        });
+
+        await bb.build();
+        const input = bb.getInput();
+
+        const w = circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+        checkBatch(circuit, w, bb);
+
+        await rollupDB.consolidate(bb);
+
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const tx = {
+            fromIdx: 1,
+            toIdx: 3,
+            coin: 0,
+            amount: 50,
+            nonce: 0,
+            userFee: 10
+        };
+        const tx2 = {
+            fromIdx: 2,
+            toIdx: 1,
+            coin: 0,
+            amount: 100,
+            nonce: 0,
+            userFee: 10
+        };
+        const tx3 = {
+            fromIdx: 1,
+            toIdx: 4,
+            coin: 0,
+            amount: 50,
+            nonce: 1,
+            userFee: 10
+        };
+        account1.signTx(tx);
+        account1.signTx(tx2);
+        account1.signTx(tx3);
+        bb2.addTx(tx);
+        bb2.addTx(tx2);
+        bb2.addTx(tx3);
+
+        bb2.addCoin(0, 5);
+       
+        await bb2.build();
+        const input2 = bb2.getInput();
+        
+        const w2 = circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
+        checkBatch(circuit, w2, bb2);
+    });
+
     it("Should get states correctly", async () => {
         // Start a new state
         const db = new SMTMemDB();

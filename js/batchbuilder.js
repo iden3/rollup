@@ -8,6 +8,8 @@ const bigInt = require("snarkjs").bigInt;
 const poseidon = require("circomlib").poseidon;
 const Constants = require("./constants");
 
+const poseidonHash = poseidon.createHash(6, 8, 57);
+
 module.exports = class BatchBuilder {
     constructor(rollupDB, batchNumber, root, maxNTx, nLevels) {
         assert((nLevels % 8) == 0);
@@ -25,7 +27,7 @@ module.exports = class BatchBuilder {
         this.counters = Array(16).fill(0);
         this.nCoins = 0;
     }
-
+    
     _addNopTx() {
         const i = this.input.txData.length;
         this.input.txData[i] = utils.buildTxData({
@@ -112,7 +114,8 @@ module.exports = class BatchBuilder {
 
         const resFind1 = await this.stateTree.find(tx.fromIdx);
         if (resFind1.found) {
-            oldState1 = utils.array2state(await this.dbState.get(resFind1.foundValue));
+            const foundValueId = poseidonHash([resFind1.foundValue, tx.fromIdx]);
+            oldState1 = utils.array2state(await this.dbState.get(foundValueId));
             op1 = "UPDATE";
         } else {
             oldState1 = {
@@ -134,13 +137,15 @@ module.exports = class BatchBuilder {
             if (!resFind2.found) {
                 throw new Error("trying to send to a wrong address");
             }
-            oldState2 = utils.array2state(await this.dbState.get(resFind2.foundValue));
+            const foundValueId = poseidonHash([resFind2.foundValue, tx.toIdx]);
+            oldState2 = utils.array2state(await this.dbState.get(foundValueId));
             isExit = false;
             op2 = "UPDATE";
         } else {
             resFindExit = await this.exitTree.find(tx.fromIdx);
             if (resFindExit.found) {
-                oldState2 = utils.array2state(await this.dbExit.get(resFindExit.foundValue));
+                const foundValueId = poseidonHash([resFindExit.foundValue, tx.fromIdx]);
+                oldState2 = utils.array2state(await this.dbExit.get(foundValueId));
                 op2 = "UPDATE";
             } else {
                 oldState2 = {
@@ -235,9 +240,10 @@ module.exports = class BatchBuilder {
             else valEthAddr = [...lastVals[1]];
             valEthAddr.push(bigInt(tx.fromIdx));
 
+            const newValueId = poseidonHash([newValue, tx.fromIdx]);
             await this.dbState.multiIns([
-                [newValue, utils.state2array(newState1)],
-                [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValue],
+                [newValueId, utils.state2array(newState1)],
+                [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValueId],
                 [keyAxAy, valAxAy],
                 [keyEthAddr, valEthAddr]
             ]);
@@ -263,10 +269,12 @@ module.exports = class BatchBuilder {
             this.input.oldKey1[i]= 0x1234;      // It should not matter
             this.input.oldValue1[i]= 0x1234;    // It should not matter
 
-            await this.dbState.multiDel([resFind1.foundValue]);
+            const newValueId = poseidonHash([newValue, tx.fromIdx]);
+            const oldValueId = poseidonHash([resFind1.foundValue, tx.fromIdx]);
+            await this.dbState.multiDel([oldValueId]);
             await this.dbState.multiIns([
-                [newValue, utils.state2array(newState1)],
-                [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValue]
+                [newValueId, utils.state2array(newState1)],
+                [Constants.DB_Idx.add(bigInt(tx.fromIdx)), newValueId]
             ]);
         }
 
@@ -291,7 +299,8 @@ module.exports = class BatchBuilder {
             this.input.oldKey2[i]= res.isOld0 ? 0 : res.oldKey;
             this.input.oldValue2[i]= res.isOld0 ? 0 : res.oldValue;
 
-            await this.dbExit.multiIns([[newValue, utils.state2array(newState2)]]);
+            const newValueId = poseidonHash([newValue, tx.fromIdx]);
+            await this.dbExit.multiIns([[newValueId, utils.state2array(newState2)]]);
 
         } else if (op2=="UPDATE") {
             if (isExit) {
@@ -315,8 +324,10 @@ module.exports = class BatchBuilder {
                 this.input.oldKey2[i]= 0x1234;      // It should not matter
                 this.input.oldValue2[i]= 0x1234;    // It should not matter
 
-                await this.dbExit.multiDel([resFindExit.foundValue]);
-                await this.dbExit.multiIns([[newValue, utils.state2array(newState2)]]);
+                const newValueId = poseidonHash([newValue, tx.fromIdx]);
+                const oldValueId = poseidonHash([resFindExit.foundValue, tx.fromIdx]);
+                await this.dbExit.multiDel([oldValueId]);
+                await this.dbExit.multiIns([[newValueId, utils.state2array(newState2)]]);
             } else {
                 const newValue = utils.hashState(newState2);
 
@@ -338,10 +349,12 @@ module.exports = class BatchBuilder {
                 this.input.oldKey2[i]= 0x1234;      // It should not matter
                 this.input.oldValue2[i]= 0x1234;    // It should not matter
 
-                await this.dbState.multiDel([resFind2.foundValue]);
+                const newValueId = poseidonHash([newValue, tx.toIdx]);
+                const oldValueId = poseidonHash([resFind2.foundValue, tx.toIdx]);
+                await this.dbState.multiDel([oldValueId]);
                 await this.dbState.multiIns([
-                    [newValue, utils.state2array(newState2)],
-                    [Constants.DB_Idx.add(bigInt(tx.toIdx)), newValue]
+                    [newValueId, utils.state2array(newState2)],
+                    [Constants.DB_Idx.add(bigInt(tx.toIdx)), newValueId]
                 ]);
             }
         } else if (op2=="NOP") {
