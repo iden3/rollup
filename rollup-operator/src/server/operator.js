@@ -53,7 +53,7 @@ let pool;
 (async () => {
     let info;
     // load environment data
-    const pathEnvironmentFile = `${__dirname}/config-test.env`;
+    const pathEnvironmentFile = `${__dirname}/config.env`;
     require("dotenv").config({ path: pathEnvironmentFile });
 
     // config mode
@@ -228,16 +228,14 @@ let pool;
         const conversion = {};
         pool = await Pool(initRollupDb, conversion, poolConfig);
 
-        //Synch Pool
+        ////////////////
+        ///// SYNCH POOL
+        ////////////////
         poolSynch = new SynchPool(
-            rollupSynchDb,
-            synchConfig.ethNodeUrl,
-            synchConfig.ethAddressCaller,
-            synchConfig.rollup.address,
-            synchConfig.rollup.abi,
             pool,
             loggerLevel
         );
+
         ////////////////////
         ///// LOOP MANAGER
         ///////////////////

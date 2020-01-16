@@ -7,7 +7,8 @@
     "test": "mocha",
     "lint": "eslint ./src",
     "test:operator": "node ./src/server/operator.js -p passTest",
-    "server-proof": "node ./src/server-proof.js"
+    "server-proof": "node ./src/server-proof.js",
+    "service-synch-pool": "node ./src/synch-pool-service/run-synch-pool.js"
   },
   "keywords": [
     "client",
