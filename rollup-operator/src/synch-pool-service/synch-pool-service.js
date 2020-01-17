@@ -92,7 +92,6 @@ class SynchPool {
                 let lastSynchBlock = await this.getLastSynchBlock();
                 const currentBlock = await this.web3.eth.getBlockNumber();
                 let addedTokens = "";
-
                 // Check if tokens has been added to Rollup
                 if (currentBlock > lastSynchBlock) {
                     const logs = await this.contractRollup.getPastEvents("AddToken", {
@@ -129,7 +128,6 @@ class SynchPool {
 
                 // Update pool conversion table
                 this._setConversionTable(this.tokensList);
-                
                 // Log information
                 this._fillInfo(lastSynchBlock, currentBlock, addedTokens);
 

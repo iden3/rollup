@@ -14,12 +14,18 @@ Test pool synchronizer
 
 ## Service pool synchronizer
 
-Build configuration files
-  - `truffle test ./rollup-operator/test/synch-pool-service/build-configs.test.js`
+Build configuration files:
+  - Memory database
+    - `truffle test ./rollup-operator/test/synch-pool-service/build-configs-memDb.test.js`
+  - LevelDb database
+    - `truffle test ./rollup-operator/test/synch-pool-service/build-configs-levelDb.test.js`
 
 Open new terminal and run service
   - `cd ./rollup-operator`
   - `npm run service-synch-pool`
+    - service needs configuration file `config.env` in its path
+    - example can be found in `rollup/rollup-operator/test/synch-pool-service/config/config.env-example`
+    - *It should be noted that this file should be where the `run-synch-pool.js` is invoked and its name should be `config.env`
 
 Test service
-  - `truffle test ./rollup-operator/test/synch-pool-service/run-synch-pool.test`
+  - `truffle test ./rollup-operator/test/synch-pool-service/run-synch-pool.test.js`

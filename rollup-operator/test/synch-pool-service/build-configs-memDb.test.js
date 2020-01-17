@@ -42,7 +42,7 @@ contract("Synnchronizer Pool", (accounts) => {
 
     it("Should build configuration for synch pool service", async () => {
         let config = {
-            synchDb: undefined,
+            pathDb: undefined,
             ethNodeUrl: "http://localhost:8545",
             ethAddress: ethAddress,
             rollupAddress: insRollup.address,

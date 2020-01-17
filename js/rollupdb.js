@@ -4,6 +4,8 @@ const BatchBuilder = require("./batchbuilder");
 const bigInt = require("snarkjs").bigInt;
 const Constants = require("./constants");
 const utils = require("./utils");
+const poseidon = require("circomlib").poseidon;
+const poseidonHash = poseidon.createHash(6, 8, 57);
 
 class RollupDB {
 
@@ -86,7 +88,8 @@ class RollupDB {
         
         // get leaf information
         if (resFindExit.found) {
-            const stateArray = await this.db.get(resFindExit.foundValue);
+            const foundValueId = poseidonHash([resFindExit.foundValue, idx]);
+            const stateArray = await this.db.get(foundValueId);
             const state = utils.array2state(stateArray);
             state.idx = Number(idx);
             resFindExit.state = state;

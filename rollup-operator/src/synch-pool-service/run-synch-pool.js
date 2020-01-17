@@ -51,7 +51,7 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
     ///////////////////
     let db;
 
-    if (config.db == undefined){
+    if (config.pathDb == undefined){
         info = infoInit;
         info += chalk.white.bold("memory database");
         logger.info(info);
@@ -60,7 +60,7 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
         info = infoInit;
         info += chalk.white.bold("levelDb database");
         logger.info(info);
-        db = new LevelDb(config.Db);
+        db = new LevelDb(config.pathDb);
     }
 
     ////////////////////

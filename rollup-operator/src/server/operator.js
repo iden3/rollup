@@ -16,7 +16,7 @@ const LevelDb = require("../../../rollup-utils/level-db");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
-const SynchPool = require("../synch-pool/synch-pool");
+const SynchPool = require("../synch-pool");
 const Pool = require("../../../js/txpool");
 const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
@@ -233,7 +233,8 @@ let pool;
         ////////////////
         poolSynch = new SynchPool(
             pool,
-            loggerLevel
+            poolConfig.pathConversionTable,
+            loggerLevel,
         );
 
         ////////////////////
@@ -289,7 +290,7 @@ function startRollupPoS(){
 function startRollup(){
     // start synchronizer loop
     let info = infoInit;
-    info += "Start rollup synchronizer";
+    info += "Start Rollup synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
 }
@@ -303,36 +304,9 @@ function startPool(){
 }
 
 function loadServer(){
-    /////////////
-    ///// SERVERS
-    /////////////
-
-    ///// API ADMIN
-    const appAdmin = express();
-    appAdmin.use(bodyParser.json());
-    appAdmin.use(cors());
-    appAdmin.use(morgan("dev"));
-    const portAdmin = process.env.OPERATOR_PORT_ADMIN;
-
-    appAdmin.post("/pool/conversion", async (req, res) => {
-        try {
-            await pool.setConversion(req.body.conversion);
-            res.sendStatus(200);
-        } catch (error) {
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.send(400).status("Error setting pool conversion table");
-        }
-    });
-
-    const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
-        const address = serverAdmin.address().address;
-        let infoHttp = infoInit;
-        infoHttp += `Server admin running on http://${address}:${portExternal}`;
-        logger.http(infoHttp);
-    });
-
-    ///// API EXTERNAL
+    /////////////////
+    ///// LOAD SERVER
+    /////////////////
     const appExternal = express();
     appExternal.use(bodyParser.json());
     appExternal.use(cors());

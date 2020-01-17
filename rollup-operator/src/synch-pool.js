@@ -49,6 +49,7 @@ class SynchPool {
                 let flagRead = false;
 
                 if (fs.existsSync(this.pathConversionTable)){
+                    
                     // read table conversion from json
                     const tableConversion = JSON.parse(fs.readFileSync(this.pathConversionTable));
                 

@@ -16,7 +16,6 @@ const { timeout } = require("../../src/utils");
 const configTestPath = path.join(__dirname, "../config/test.json");
 const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rollup-utils");
 
-const CliAdminOp = require("../../src/cli-admin-operator");
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
 const cliPoS = require("../../../cli-pos/utils");
@@ -79,11 +78,9 @@ contract("Operator", (accounts) => {
     } = accounts;
 
     // Clients
-    let cliAdminOp;
     let cliExternalOp;
 
     // Url
-    const urlAdminOp = "http://127.0.0.1:9000";
     const urlExternalOp = "http://127.0.0.1:9001";
 
     // Constants to move to a specific era
@@ -116,7 +113,6 @@ contract("Operator", (accounts) => {
         insRollupPoS = await RollupPoS.at(configTest.posAddress);
 
         // Load clients
-        cliAdminOp = new CliAdminOp(urlAdminOp);
         cliExternalOp = new CliExternalOp(urlExternalOp);
     });
 
@@ -229,18 +225,6 @@ contract("Operator", (accounts) => {
             counter += 1;
         }
         expect(batchForged).to.be.equal(true);
-    });
-
-    it("Should set pool conversion table", async () => {
-        const conversion = {
-            0: {
-                token: "ROLL",
-                price: 20,
-                decimals: 18
-            }
-        };
-        const res = await cliAdminOp.setConversion(conversion);
-        expect(res.status).to.be.equal(200);
     });
 
     it("Should add off-chain transaction to the pool", async () => {

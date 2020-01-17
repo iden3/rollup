@@ -2,6 +2,7 @@
 /* global contract */
 /* global web3 */
 const { expect } = require("chai");
+const process = require("child_process");
 
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const TokenTest = artifacts.require("../contracts/test/TokenTest");
@@ -113,5 +114,9 @@ contract("Run Synchronizer Pool", (accounts) => {
         expect(infoToken.decimals).to.be.equal(18);
         expect(infoToken.tokenAddress).to.be.equal(insTokenTest.address);
         expect(infoToken.price).to.be.not.equal(0);
+    });
+
+    after(async () => {
+        process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
     });
 });
