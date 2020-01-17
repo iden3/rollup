@@ -1,0 +1,37 @@
+
+version: '3'
+services:
+  operator:
+    container_name: operator
+    ports:
+      - "9000:9000"
+    build:
+      context: ./operator/
+      args:
+        - branch=${BRANCH_OPERATOR}
+    env_file:
+      - ./operator/config.env
+    volumes:
+      - pool-volume:/table-conversion
+      - ./leveldb-operator:/leveldb-operator
+
+  synch-pool:
+    container_name: synch-pool
+    build:
+      context: ./synch-pool/
+      args:
+        - branch=${BRANCH_SYNCH_POOL}
+    env_file:
+      - ./synch-pool/config.env
+    volumes:
+      - pool-volume:/table-conversion
+  
+  server-proof:
+    container_name: server-proof
+    build: ./server-proof/
+    env_file:
+      - ./server-proof/config.env
+    expose:
+      - '10001'
+volumes:
+    pool-volume:

@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const morgan = require("morgan");
 const winston = require("winston");
+const ip = require("ip");
 
 const { timeout } = require("../src/utils");
 
@@ -92,5 +93,10 @@ app.post("/cancel", async (req, res) => {
 ///// Run server
 const server = app.listen(port, "127.0.0.1", () => {
     const address = server.address().address;
+    logger.info(`Server proof running on http://${address}:${port}`);
+});
+
+const serverLAN = app.listen(port, ip.address(), () => {
+    const address = serverLAN.address().address;
     logger.info(`Server proof running on http://${address}:${port}`);
 });
