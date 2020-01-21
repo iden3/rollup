@@ -15,6 +15,11 @@ const configPoolPath = path.join(__dirname, "../config/pool-config-test.json");
 const configWalletPath = path.join(__dirname, "../config/wallet-test.json");
 const configTestPath = path.join(__dirname, "../config/test.json");
 
+// service synchronize pool
+const configSynchPoolPath = path.join(__dirname, "../synch-pool-service/config/config-test.json");
+const pathConversionTable = path.join(__dirname,"../config/table-conversion-test.json");
+const pathCustomTokens = path.join(__dirname,"../config/custom-test.json");
+
 contract("Operator Server", (accounts) => {
     const {
         0: owner,
@@ -101,7 +106,8 @@ contract("Operator Server", (accounts) => {
             maxSlots: 10,               
             executableSlots: 1,      
             nonExecutableSlots: 1,      
-            timeout: 1000            
+            timeout: 1000,
+            pathConversionTable,            
         };
         fs.writeFileSync(configPoolPath, JSON.stringify(config));
     });
@@ -113,5 +119,33 @@ contract("Operator Server", (accounts) => {
             posAddress: insRollupPoS.address,
         };
         fs.writeFileSync(configTestPath, JSON.stringify(testConfig));
+    });
+
+    it("Should create service synch pool file", async () => {
+        const pathServicePoolSynch = `${__dirname}/tmp-4`;
+
+        let config = {
+            pathDb: pathServicePoolSynch,
+            ethNodeUrl: "http://localhost:8545",
+            ethAddress: callerAddress,
+            rollupAddress: insRollup.address,
+            rollupAbi: Rollup.abi,
+            logLevel: "debug",
+            pathConversionTable: pathConversionTable,
+            pathCustomTokens: pathCustomTokens,
+            timeouts: { ERROR: 5000, NEXT_LOOP: 10000 },
+        };
+
+        fs.writeFileSync(configSynchPoolPath, JSON.stringify(config));
+    });
+
+    it("Should create custom conversion table", async () => {
+        // Write custom table
+        const tableConversion = {};
+        tableConversion[insTokenRollup.address] = {
+            price: 1,
+            decimals: 18,
+        };
+        fs.writeFileSync(pathCustomTokens, JSON.stringify(tableConversion));
     });
 });

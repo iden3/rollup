@@ -1,6 +1,6 @@
 const SMTMemDB = require("circomlib").SMTMemDB;
-const RollupAccount = require("../js/rollupaccount");
-const RollupDB = require("../js/rollupdb");
+const RollupAccount = require("../../js/rollupaccount");
+const RollupDB = require("../../js/rollupdb");
 const { performance } = require("perf_hooks");
 const account1 = new RollupAccount(1);
 
@@ -42,7 +42,7 @@ describe("Batchbuilder test", function () {
     this.timeout(0); 
 
     it("Should test batchbuilder performance", async () => {
-        console.log("|   NTX    | 24 levels | 32 levels |");
+        console.log("|   nTx    | 24 levels | 32 levels |");
         console.log("| -------- | --------- | --------- |");
         const levels= [24, 32];
         for (let i = 2; i < 13; i++){

@@ -16,6 +16,7 @@ const LevelDb = require("../../../rollup-utils/level-db");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
+const SynchPool = require("../synch-pool");
 const Pool = require("../../../js/txpool");
 const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
@@ -43,6 +44,7 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
 // Global vars
 let posSynch;
 let rollupSynch;
+let poolSynch;
 let loopManager;
 let opManager;
 let logger;
@@ -226,6 +228,15 @@ let pool;
         const conversion = {};
         pool = await Pool(initRollupDb, conversion, poolConfig);
 
+        ////////////////
+        ///// SYNCH POOL
+        ////////////////
+        poolSynch = new SynchPool(
+            pool,
+            poolConfig.pathConversionTable,
+            loggerLevel,
+        );
+
         ////////////////////
         ///// LOOP MANAGER
         ///////////////////
@@ -242,6 +253,7 @@ let pool;
 
     startRollup();
     startRollupPoS();
+    startPool();
     loadServer();
 })();
 
@@ -278,42 +290,23 @@ function startRollupPoS(){
 function startRollup(){
     // start synchronizer loop
     let info = infoInit;
-    info += "Start rollup synchronizer";
+    info += "Start Rollup synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
 }
 
+function startPool(){
+    // start synchronizer loop
+    let info = infoInit;
+    info += "Start Pool synchronizer";
+    logger.info(info);
+    poolSynch.synchLoop();
+}
+
 function loadServer(){
-    /////////////
-    ///// SERVERS
-    /////////////
-
-    ///// API ADMIN
-    const appAdmin = express();
-    appAdmin.use(bodyParser.json());
-    appAdmin.use(cors());
-    appAdmin.use(morgan("dev"));
-    const portAdmin = process.env.OPERATOR_PORT_ADMIN;
-
-    appAdmin.post("/pool/conversion", async (req, res) => {
-        try {
-            await pool.setConversion(req.body.conversion);
-            res.sendStatus(200);
-        } catch (error) {
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.send(400).status("Error setting pool conversion table");
-        }
-    });
-
-    const serverAdmin = appAdmin.listen(portAdmin, "127.0.0.1", () => {
-        const address = serverAdmin.address().address;
-        let infoHttp = infoInit;
-        infoHttp += `Server admin running on http://${address}:${portExternal}`;
-        logger.http(infoHttp);
-    });
-
-    ///// API EXTERNAL
+    /////////////////
+    ///// LOAD SERVER
+    /////////////////
     const appExternal = express();
     appExternal.use(bodyParser.json());
     appExternal.use(cors());
