@@ -12,8 +12,9 @@ const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
 
 // timeouts test
-const timeoutSynch = 15000;
-const timeoutCheck = 6000;
+const timeoutDelay = 7500;
+let timeoutSynch;
+let timeoutCheck;
 
 contract("Synchronizer PoS", async (accounts) => {
 
@@ -56,6 +57,7 @@ contract("Synchronizer PoS", async (accounts) => {
         ethAddress: synchAddress,
         abi: RollupPoS.abi,
         logLevel: "debug",
+        timeouts: { ERROR: 1000, NEXT_LOOP: 1000, LOGGER: 5000 },
     };
 
     before(async () => {
@@ -78,9 +80,19 @@ contract("Synchronizer PoS", async (accounts) => {
     });
 
     it("Should initialize synchronizer PoS", async () => {
-        synchPoS = new SynchPoS(configSynchPoS.synchDb, configSynchPoS.ethNodeUrl, configSynchPoS.contractAddress,
-            configSynchPoS.abi, configSynchPoS.creationHash, configSynchPoS.ethAddress, configSynchPoS.logLevel);
+        synchPoS = new SynchPoS(
+            configSynchPoS.synchDb,
+            configSynchPoS.ethNodeUrl,
+            configSynchPoS.contractAddress,
+            configSynchPoS.abi,
+            configSynchPoS.creationHash,
+            configSynchPoS.ethAddress,
+            configSynchPoS.logLevel,
+            configSynchPoS.timeouts);
         synchPoS.synchLoop();
+
+        timeoutSynch = synchPoS.timeouts.NEXT_LOOP + timeoutDelay;
+        timeoutCheck = synchPoS.timeouts.NEXT_LOOP + timeoutDelay;
     });
 
     it("Should Add operator and synch", async () => {

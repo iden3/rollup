@@ -7,18 +7,31 @@ class SynchPool {
     constructor(
         pool,
         pathConversionTable,
-        logLevel
+        logLevel,
+        timeouts,
     ) {
         this.pool = pool;
         this.pathConversionTable = pathConversionTable;
+        
+        this._initTimeouts(timeouts);
         this._initLogger(logLevel);
-        this._initTimeouts();
     }
 
-    _initTimeouts(){
+    _initTimeouts(timeouts){
+        const errorDefault = 5000;
+        const nextLoopDefault = 10000;
+
+        let timeoutError = errorDefault;
+        let timeoutNextLoop = nextLoopDefault;
+
+        if (timeouts !== undefined) {
+            timeoutError = timeouts.ERROR || errorDefault;
+            timeoutNextLoop = timeouts.NEXT_LOOP || nextLoopDefault;
+        }
+
         this.timeouts = {
-            ERROR: 2500,
-            NEXT_LOOP: 10000,
+            ERROR: timeoutError,
+            NEXT_LOOP: timeoutNextLoop,
         };
     }
 

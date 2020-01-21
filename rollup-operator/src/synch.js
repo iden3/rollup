@@ -8,10 +8,6 @@ const rollupUtils = require("../../rollup-utils/rollup-utils");
 const { timeout } = require("../src/utils");
 const Constants = require("./constants");
 
-// global vars
-const TIMEOUT_ERROR = 2000;
-const TIMEOUT_NEXT_LOOP = 5000;
-const TIMEOUT_LOGGER = 5000;
 // offChainTx --> From | To | Amount |
 //            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
@@ -41,6 +37,7 @@ class Synchronizer {
         ethAddress,
         logLevel,
         mode,
+        timeouts,
     ) {
         this.info = "";
         this.db = db;
@@ -56,8 +53,32 @@ class Synchronizer {
         this.rollupPoSContract = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         abiDecoder.addABI(rollupPoSABI);
         this.forgeEventsCache = new Map();
-        this._initLogger(logLevel);
         this.mode = mode;
+        
+        this._initTimeouts(timeouts);
+        this._initLogger(logLevel);
+    }
+
+    _initTimeouts(timeouts){
+        const errorDefault = 5000;
+        const nextLoopDefault = 5000;
+        const loggerDefault = 5000;
+
+        let timeoutError = errorDefault;
+        let timeoutNextLoop = nextLoopDefault;
+        let timeoutLogger = loggerDefault;
+
+        if (timeouts !== undefined) {
+            timeoutError = timeouts.ERROR || errorDefault;
+            timeoutNextLoop = timeouts.NEXT_LOOP || nextLoopDefault;
+            timeoutLogger = timeouts.LOGGER || loggerDefault;
+        }
+
+        this.timeouts = {
+            ERROR: timeoutError,
+            NEXT_LOOP: timeoutNextLoop,
+            LOGGER: timeoutLogger,
+        };
     }
 
     _initLogger(logLevel) {
@@ -107,7 +128,7 @@ class Synchronizer {
         // Start logger
         this.logInterval = setInterval(() => {
             this.logger.info(this.info);
-        }, TIMEOUT_LOGGER );
+        }, this.timeouts.LOGGER );
     }
 
     async synchLoop() {
@@ -147,11 +168,11 @@ class Synchronizer {
 
                 this._fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved);
 
-                if (totalSynch === 100) await timeout(TIMEOUT_NEXT_LOOP);
+                if (totalSynch === 100) await timeout(this.timeouts.NEXT_LOOP);
             } catch (e) {
                 this.logger.error(`SYNCH Message error: ${e.message}`);
                 this.logger.debug(`SYNCH Message error: ${e.stack}`);
-                await timeout(TIMEOUT_ERROR);
+                await timeout(this.timeouts.ERROR);
             }
         }
     }

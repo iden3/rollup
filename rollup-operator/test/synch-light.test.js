@@ -42,7 +42,9 @@ async function checkSynch(synch, opRollupDb){
 
 // timeouts test
 const timeoutAddBlocks = 2000;
-const timeoutSynch = 15000;
+// timeouts test
+const timeoutDelay = 7500;
+let timeoutSynch;
 
 contract("Synchronizer - light mode", (accounts) => {
     
@@ -123,6 +125,7 @@ contract("Synchronizer - light mode", (accounts) => {
         posAbi: RollupPoS.abi,
         logLevel: "debug",
         mode: Constants.mode.full,
+        timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000},
     }; 
 
     // BabyJubjub public key
@@ -200,11 +203,23 @@ contract("Synchronizer - light mode", (accounts) => {
     let eventsInitial = [];
 
     it("Should initialize synchronizer", async () => {
-        synch = new Synchronizer(configSynch.synchDb, configSynch.treeDb, configSynch.ethNodeUrl,
-            configSynch.contractAddress, configSynch.abi, configSynch.contractPoS,
-            configSynch.posAbi, configSynch.creationHash, configSynch.ethAddress, configSynch.logLevel,
-            configSynch.mode);
+        synch = new Synchronizer(
+            configSynch.synchDb,
+            configSynch.treeDb,
+            configSynch.ethNodeUrl,
+            configSynch.contractAddress,
+            configSynch.abi,
+            configSynch.contractPoS,
+            configSynch.posAbi,
+            configSynch.creationHash,
+            configSynch.ethAddress,
+            configSynch.logLevel,
+            configSynch.mode,
+            configSynch.timeouts
+        );
         synch.synchLoop();
+
+        timeoutSynch = synch.timeouts.NEXT_LOOP + timeoutDelay;
     });
 
     it("Should add one deposit", async () => {

@@ -1,10 +1,26 @@
 const fs = require("fs");
 const chalk = require("chalk");
 const winston = require("winston");
+const rmRf = require("rimraf");
 
 const MemDb = require("../../../rollup-utils/mem-db");
 const LevelDb = require("../../../rollup-utils/level-db");
 const synchService = require("./synch-pool-service");
+
+const { argv } = require("yargs")
+    .usage(`
+synch-pool-service <options>
+
+options
+=======
+    synch-pool-service <options>
+        start synch-pool-service
+    
+    --clear [true | false]
+        Erase persistent database
+        Default: false
+    `)
+    .epilogue("Synchronize pool service");
 
 // Global vars
 let poolSynch;
@@ -45,6 +61,14 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
             new winston.transports.Console(options.console)
         ]
     });
+
+    // delete database folders if `--clear true`
+    const clearFlag = (argv.clear) ? argv.clear : false;
+
+    if (clearFlag === "true"){
+        if (config.pathDb)
+            rmRf.sync(config.pathDb);
+    }
 
     ///////////////////
     ///// INIT DATABASE

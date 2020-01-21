@@ -40,7 +40,7 @@ class TXPool {
         if (slots) {
             this.slotsMap = slots.map( s => bigInt(s) );
         } else {
-            this.slotsMap =Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
+            this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
         }
 
         const slotKeys = [];
@@ -49,17 +49,15 @@ class TXPool {
             for (let j=0; j<256; j++) {
                 if (!this.slotsMap[i].and(bigInt(1).shl(j)).isZero()) {
                     if (i*256+j<this.maxSlots) {
-                        slotKeys.push(Constants.DB_TxPollTx.add(i*256+j));
+                        slotKeys.push(Constants.DB_TxPollTx.add(bigInt(i*256+j)));
                     }
                 }
             }
         }
-
         const res = await this.rollupDB.db.multiGet(slotKeys);
+        this.txs = res.map( elem => this._array2Tx(elem));
 
-        this.txs = res.map(this._tx2Array);
-
-        await this.purge();
+        // await this.purge();
     }
 
     setConversion(conversion) {
@@ -79,10 +77,10 @@ class TXPool {
         const d0 = bigInt(arr[0]);
         res.fromIdx = extract(d0, 0, 64);
         res.toIdx = extract(d0, 64, 64);
-        res.amount = utils.float2fix(extract(d0, 128, 16));
+        res.amount = utils.float2fix(extract(d0, 128, 16).toJSNumber());
         res.coin = extract(d0, 144, 16);
         res.nonce = extract(d0, 176, 16);
-        res.userFee = utils.float2fix(extract(d0, 224, 16));
+        res.userFee = utils.float2fix(extract(d0, 224, 16).toJSNumber());
         res.rqOffset = extract(d0, 240, 3);
         res.onChain = extract(d0, 243, 1);
         res.newAccount = extract(d0, 244, 1);
@@ -93,9 +91,11 @@ class TXPool {
         res.slot = extract(d2, 0, 32).toJSNumber();
         res.timestamp = extract(d2, 32, 64).toJSNumber();
 
+        return res;
+
         function extract(n, o, s) {
             const mask = bigInt(1).shl(s).sub(bigInt(1));
-            return n.shr(0).and(mask);
+            return n.shr(o).and(mask);
         }
     }
 

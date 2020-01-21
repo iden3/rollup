@@ -65,7 +65,7 @@ contract("Operator Server", (accounts) => {
             { from: tokenId, value: web3.utils.toWei("1", "ether") });
     });
 
-    it("Should load operartor wallet with funds", async () => {
+    it("Should load operator wallet with funds", async () => {
         const pass = "passTest";
         let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
         const walletOp = new ethers.Wallet(privateKey);
@@ -84,12 +84,14 @@ contract("Operator Server", (accounts) => {
                 address: insRollup.address,
                 abi: Rollup.abi,
                 creationHash: insRollup.transactionHash,
+                timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000 },
             },
             rollupPoS: {
                 synchDb: undefined,
                 address: insRollupPoS.address,
                 abi: RollupPoS.abi,
                 creationHash: insRollupPoS.transactionHash,
+                timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000 },
             },
             ethNodeUrl:"http://localhost:8545",
             ethAddressCaller: callerAddress,
@@ -103,7 +105,8 @@ contract("Operator Server", (accounts) => {
             executableSlots: 1,      
             nonExecutableSlots: 1,      
             timeout: 1000,
-            pathConversionTable,        
+            pathConversionTable,
+            timeouts: { ERROR: 1000, NEXT_LOOP: 10000 },     
         };
         fs.writeFileSync(configPoolPath, JSON.stringify(config));
     });

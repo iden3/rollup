@@ -4,11 +4,6 @@ const chalk = require("chalk");
 const { timeout } = require("../src/utils");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
-// global vars
-const TIMEOUT_ERROR = 2000;
-const TIMEOUT_NEXT_LOOP = 5000;
-const TIMEOUT_LOGGER = 5000;
-
 // db keys
 const lastEraKey = "last-era-synch";
 const opCreateKey = "operator-create";
@@ -23,7 +18,8 @@ class SynchPoS {
         rollupPoSABI,
         creationHash,
         ethAddress,
-        logLevel
+        logLevel,
+        timeouts
     ) {
         this.info = "";
         this.db = db;
@@ -36,7 +32,31 @@ class SynchPoS {
         this.winners = [];
         this.slots = [];
         this.operators = {};
+
+        this._initTimeouts(timeouts);
         this._initLogger(logLevel);
+    }
+
+    _initTimeouts(timeouts){
+        const errorDefault = 5000;
+        const nextLoopDefault = 5000;
+        const loggerDefault = 5000;
+
+        let timeoutError = errorDefault;
+        let timeoutNextLoop = nextLoopDefault;
+        let timeoutLogger = loggerDefault;
+
+        if (timeouts !== undefined) {
+            timeoutError = timeouts.ERROR || errorDefault;
+            timeoutNextLoop = timeouts.NEXT_LOOP || nextLoopDefault;
+            timeoutLogger = timeouts.LOGGER || loggerDefault;
+        }
+
+        this.timeouts = {
+            ERROR: timeoutError,
+            NEXT_LOOP: timeoutNextLoop,
+            LOGGER: timeoutLogger,
+        };
     }
 
     _initLogger(logLevel) {
@@ -92,10 +112,22 @@ class SynchPoS {
             else this.slots.push(i - this.slotsPerEra);
         }
 
+        // Update from persistent database 
+        const lastSynchEra = await this.getLastSynchEra();
+        if (lastSynchEra){
+            // update operators list from database
+            for (let i = 0; i < lastSynchEra; i++)
+                await this._updateListOperators(i);
+            // update last two eras for winners and slots
+            if (lastSynchEra > 1)
+                await this._updateWinners(lastSynchEra - 2);
+            await this._updateWinners(lastSynchEra - 1);
+        }
+
         // Start logger
         this.logInterval = setInterval(() => {
             this.logger.info(this.info);
-        }, TIMEOUT_LOGGER );
+        }, this.timeouts.LOGGER );
     }
 
     async synchLoop() {
@@ -122,6 +154,7 @@ class SynchPoS {
                         fromBlock: lastSynchEra ? (blockNextUpdate - this.blocksNextInfo) : this.creationBlock,
                         toBlock: blockNextUpdate - 1,
                     });
+
                     // update total synch
                     lastSynchEra += 1;
                     totalSynch = (((lastSynchEra) / (currentEra + 1)) * 100);
@@ -143,12 +176,12 @@ class SynchPoS {
                 this._fillInfo(currentBlock, blockNextUpdate, currentEra, lastSynchEra);
 
                 // wait for next iteration to update, only if it is fully synch
-                if (totalSynch === 100) await timeout(TIMEOUT_NEXT_LOOP);
+                if (totalSynch === 100) await timeout(this.timeouts.NEXT_LOOP);
 
             } catch (e) {
                 this.logger.error(`POS SYNCH Message error: ${e.message}`);
                 this.logger.debug(`POS SYNCH Message error: ${e.stack}`);
-                await timeout(TIMEOUT_ERROR);
+                await timeout(this.timeouts.ERROR);
             }
         }
     }
@@ -235,6 +268,8 @@ class SynchPoS {
                 this.slots.push(slot);
             }
         }
+        // console.log(this.winners);
+        // console.log(this.slots);
     }
 
     async getLastSynchEra() {

@@ -23,7 +23,8 @@ describe("Synchronizer test", function () {
         executableSlots: 1,
         nonExecutableSlots: 1, 
         timeout: 1000,
-        pathConversionTable: pathConversionTable, 
+        pathConversionTable: pathConversionTable,
+        timeouts: { ERROR: 5000, NEXT_LOOP: 5000}, 
     };
 
     after (async () => {
@@ -58,7 +59,8 @@ describe("Synchronizer test", function () {
         synchPool = new SynchPool(
             pool,
             poolConfig.pathConversionTable,
-            poolConfig.logLevel);
+            poolConfig.logLevel,
+            poolConfig.timeouts);
         synchPool.synchLoop();
     });
 
