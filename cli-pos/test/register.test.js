@@ -40,6 +40,39 @@ describe("REGISTER", async function () {
         }); 
     });
 
+    it("Should register with different beneficiary", (done) => {
+        const outBalance = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
+        outBalance.stdout.on("data", (balance) => {
+            const out = process.exec(`cd ..; node cli-pos.js register -w ${walletTest} -p ${pass} -s 2 -u localhost 
+            -b 0xe1b2676bD69A76c3E689D7D584f050fCfd17DcaF`);
+            out.stdout.on("data", (data) => {
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
+                const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
+                outBalance2.stdout.on("data", (balance2) => {
+                    expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                });
+                done();
+            }); 
+        }); 
+    });
+
+    it("Should register relay", (done) => {
+        const outBalance = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
+        outBalance.stdout.on("data", (balance) => {
+            const out = process.exec(`cd ..; node cli-pos.js register -w ${walletTest} -p ${pass} -s 2 -u localhost 
+            -b 0xe1b2676bD69A76c3E689D7D584f050fCfd17DcaF -c 0xe1b2676bD69A76c3E689D7D584f050fCfd17DcaF`);
+            out.stdout.on("data", (data) => {
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
+                const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
+                outBalance2.stdout.on("data", (balance2) => {
+                    expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                });
+                done();
+            }); 
+        }); 
+    });
+
+
     it("Should register with gas limit and gas multipliers parameters", (done) => {
         const outBalance = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
         outBalance.stdout.on("data", (balance) => {

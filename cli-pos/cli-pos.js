@@ -7,7 +7,7 @@ const ethers = require("ethers");
 const { error } = require("./list-errors");
 const config = "./config.json";
 
-const { register, unregister, withdraw, getEtherBalance } = require("./utils");
+const { register, registerWithDifferentBeneficiary, registerRelay, unregister, withdraw, getEtherBalance } = require("./utils");
 const { getSeedFromPrivKey, loadHashChain } = require("../rollup-utils/rollup-utils");
 
 const version = "0.0.1";
@@ -32,6 +32,10 @@ register command
         Amount to Stake
     --url or -u <url string>
         Operator URL
+    --beneficiary or -b <address> (optional)
+        Beneficiary address
+    --controller or -c <address> (optional)
+        Controller address
 unregister command
 ================
     cli-pos unregister <options>
@@ -76,6 +80,8 @@ balance command
     .alias("i", "id")
     .alias("gl", "gaslimit")
     .alias("gm", "gasmultiplier")
+    .alias("b", "beneficiary")
+    .alias("c", "controller")
     .epilogue("Rollup operator cli tool");
 
 const pathWallet = (argv.wallet) ? argv.wallet : "nowallet";
@@ -83,6 +89,8 @@ const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
 const stake = (argv.stake) ? argv.stake : "nostake";
 const url = (argv.url) ? argv.url : "nourl";
 const opId = (argv.id || argv.id === 0) ? argv.id : -1;
+const beneficiary = (argv.beneficiary) ? argv.beneficiary : "nobeneficiary";
+const controller = (argv.controller) ? argv.controller : "nocontroller";
 const gasLimit = (argv.gaslimit) ? argv.gaslimit : 5000000;
 const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
 
@@ -114,8 +122,21 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             }
             const seed = getSeedFromPrivKey(wallet.privateKey);
             const hashChain = loadHashChain(seed);
-            const txSigned = await register(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
-                gasMultiplier, stake, url);
+            let txSigned;
+            if(controller == "nocontroller" && beneficiary == "nobeneficiary"){
+                txSigned = await register(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
+                    gasMultiplier, stake, url);
+            } else if(controller == "nocontroller" && beneficiary != "nobeneficiary"){
+                txSigned = await registerWithDifferentBeneficiary(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
+                    gasMultiplier, stake, url, beneficiary);
+            } else if(controller != "nocontroller" && beneficiary != "nobeneficiary"){
+                txSigned = await registerRelay(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
+                    gasMultiplier, stake, url, beneficiary, controller);
+            } else {
+                console.log("Invalid command");
+                throw new Error(error.INVALID_COMMAND);
+            }
+            
             sendTx(txSigned.rawTransaction, actualConfig.nodeUrl);
         // unregister
         } else if(argv._[0].toUpperCase() === "UNREGISTER") {
@@ -171,6 +192,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
         }
         
     } catch (err) {
+        console.log(err.message)
         console.log(Object.keys(error)[err.message]);
         process.exit(err.message);
     }
