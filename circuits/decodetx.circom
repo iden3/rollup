@@ -148,7 +148,7 @@ template DecodeTx(nLevels) {
     onChainHasher.inputs[5] <== ay;
     // IMPORTANT NOTE FOR SECURITY AUDITORS:
     // Poseidon paper says that one of the pieces of the state must be keep fixed to keep the security.
-    // The asumption that I'm doing here is that ay depends on ax of just one bit. and the eth address hase 253-140 =123 bits set to 0, so it is more than an element.
+    // The asumption that I'm doing here is that ay depends on ax of just one bit. and the eth address has 253-140 =123 bits set to 0, so it is more than an element.
     // We could extract the sign bit and put it in one of the free bits of ethAdd or txData, but this safes many constraints.
 
 // s6

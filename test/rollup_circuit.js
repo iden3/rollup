@@ -10,6 +10,8 @@ const assert = chai.assert;
 
 const NTX = 4;
 const NLEVELS = 8;
+//const NTX = 64;
+//const NLEVELS = 24;
 
 function stringifyBigInts(o) {
     if ((typeof(o) == "bigint") || o.isZero !== undefined)  {
@@ -33,7 +35,7 @@ describe("Rollup Basic circuit TXs", function () {
     this.timeout(1000000000);
 
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints: false});
+        circuit = await tester(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints: false, verbose: true,  newThreadTemplates: new RegExp("RollupTx|DecodeTx")});
     });
 
     it("Should create empty TXs", async () => {

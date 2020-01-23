@@ -1,3 +1,4 @@
 include "rollup.circom";
 
-component main = Rollup(32, 24);
+// 64 works
+component main = Rollup(64, 24);

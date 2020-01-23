@@ -17,6 +17,13 @@ template Rollup(nTx, nLevels) {
     signal output offChainHash;
     signal output countersOut;
 
+    // Intermediary States to parallelize the witnes computation
+    signal private input imStateRoot[nTx-1];
+    signal private input imExitRoot[nTx-1];
+    signal private input imCounters[nTx-1];
+    signal private input imOnChainHash[nTx-1];
+    signal private input imOnChain[nTx-1];
+
     signal private input txData[nTx];
     signal private input rqTxData[nTx];
     signal private input s[nTx];
@@ -88,8 +95,8 @@ template Rollup(nTx, nLevels) {
             decodeTx[i].oldOnChainHash <== 0;
             decodeTx[i].previousOnChain <== 0;
         } else {
-            decodeTx[i].oldOnChainHash <== decodeTx[i-1].newOnChainHash;
-            decodeTx[i].previousOnChain <== decodeTx[i-1].onChain;
+            decodeTx[i].oldOnChainHash <== imOnChainHash[i-1];
+            decodeTx[i].previousOnChain <== imOnChain[i-1];
         }
         decodeTx[i].txData <== txData[i];
         decodeTx[i].rqTxData <== rqTxData[i];
@@ -104,6 +111,11 @@ template Rollup(nTx, nLevels) {
 
         // Ensure step is binary
         step[i]*(1-step[i]) === 0;
+    }
+
+    for (i=0; i<nTx-1; i++) {
+        decodeTx[i].newOnChainHash === imOnChainHash[i];
+        decodeTx[i].onChain === imOnChain[i];
     }
 
     for (i=0; i<nTx; i++) {
@@ -176,9 +188,9 @@ template Rollup(nTx, nLevels) {
             Tx[0].oldExitRoot <== 0;
             Tx[0].countersIn <== 0;
         } else {
-            Tx[i].oldStRoot <== Tx[i-1].newStRoot;
-            Tx[i].oldExitRoot <== Tx[i-1].newExitRoot;
-            Tx[i].countersIn <== Tx[i-1].countersOut;
+            Tx[i].oldStRoot <== imStateRoot[i-1];
+            Tx[i].oldExitRoot <== imExitRoot[i-1];
+            Tx[i].countersIn <== imCounters[i-1];
         }
 
         for (j=0; j<4; j++) {
@@ -197,6 +209,14 @@ template Rollup(nTx, nLevels) {
             }
         }
     }
+
+    // Check Intermediary signals.
+    for (i=0; i<nTx-1; i++) {
+        Tx[i].newStRoot  === imStateRoot[i];
+        Tx[i].newExitRoot  === imExitRoot[i];
+        Tx[i].countersOut  === imCounters[i];
+    }
+
 
     component n2bOffChainHash = Bits2Num(256);
     for (i=0; i<256; i++) {
