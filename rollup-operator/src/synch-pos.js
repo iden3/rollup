@@ -268,8 +268,6 @@ class SynchPoS {
                 this.slots.push(slot);
             }
         }
-        // console.log(this.winners);
-        // console.log(this.slots);
     }
 
     async getLastSynchEra() {

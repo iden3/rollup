@@ -150,6 +150,7 @@ function verifyTxSig(tx) {
     }
 }
 
+module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
 module.exports.fix2float = fix2float;
 module.exports.float2fix = float2fix;
