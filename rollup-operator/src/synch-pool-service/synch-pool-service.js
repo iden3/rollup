@@ -47,10 +47,12 @@ class SynchPool {
         const nextLoopDefault = 60000;
 
         let timeoutError = errorDefault;
-        if (timeouts.ERROR !== undefined) timeoutError = timeouts.ERROR;  
-
         let timeoutNextLoop = nextLoopDefault;
-        if (timeouts.NEXT_LOOP !== undefined) timeoutNextLoop = timeouts.NEXT_LOOP;
+
+        if (timeouts !== undefined) {
+            timeoutError = timeouts.ERROR || errorDefault;
+            timeoutNextLoop = timeouts.NEXT_LOOP || nextLoopDefault;
+        }
 
         this.timeouts = {
             ERROR: timeoutError,

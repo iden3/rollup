@@ -40,7 +40,7 @@ class TXPool {
         if (slots) {
             this.slotsMap = slots.map( s => bigInt(s) );
         } else {
-            this.slotsMap =Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
+            this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
         }
 
         const slotKeys = [];
@@ -49,15 +49,19 @@ class TXPool {
             for (let j=0; j<256; j++) {
                 if (!this.slotsMap[i].and(bigInt(1).shl(j)).isZero()) {
                     if (i*256+j<this.maxSlots) {
-                        slotKeys.push(Constants.DB_TxPollTx.add(i*256+j));
+                        slotKeys.push(Constants.DB_TxPollTx.add(bigInt(i*256+j)));
                     }
                 }
             }
         }
+        const encodedTxs = await this.rollupDB.db.multiGet(slotKeys);
 
-        const res = await this.rollupDB.db.multiGet(slotKeys);
-
-        this.txs = res.map(this._tx2Array);
+        const tmpState = new TmpState(this.rollupDB);
+        for (const encodeTx of encodedTxs){
+            const tx = this._array2Tx(encodeTx);
+            const canProcessRes = await tmpState.canProcess(tx);
+            if (canProcessRes !== "NO") this.txs.push(tx);
+        }
 
         await this.purge();
     }
@@ -70,32 +74,39 @@ class TXPool {
         return [
             utils.buildTxData(tx),
             tx.rqTxData || 0,
-            bigInt(tx.timestamp).shl(32).add(bigInt(tx.slot))
+            bigInt(tx.timestamp).shl(32).add(bigInt(tx.slot)),
+            bigInt("0x" + tx.ax),
+            bigInt("0x" + tx.ay),
         ];
     }
 
     _array2Tx(arr) {
-        const res = {};
+        const tx = {};
         const d0 = bigInt(arr[0]);
-        res.fromIdx = extract(d0, 0, 64);
-        res.toIdx = extract(d0, 64, 64);
-        res.amount = utils.float2fix(extract(d0, 128, 16));
-        res.coin = extract(d0, 144, 16);
-        res.nonce = extract(d0, 176, 16);
-        res.userFee = utils.float2fix(extract(d0, 224, 16));
-        res.rqOffset = extract(d0, 240, 3);
-        res.onChain = extract(d0, 243, 1);
-        res.newAccount = extract(d0, 244, 1);
+        tx.fromIdx = extract(d0, 0, 64);
+        tx.toIdx = extract(d0, 64, 64);
+        tx.amount = utils.float2fix(extract(d0, 128, 16));
+        tx.coin = extract(d0, 144, 16);
+        tx.nonce = extract(d0, 176, 16);
+        tx.userFee = utils.float2fix(extract(d0, 224, 16));
+        tx.rqOffset = extract(d0, 240, 3);
+        tx.onChain = extract(d0, 243, 1);
+        tx.newAccount = extract(d0, 244, 1);
 
-        res.rqTxData = bigInt(arr[1]);
+        tx.rqTxData = bigInt(arr[1]);
 
         const d2 = bigInt(arr[2]);
-        res.slot = extract(d2, 0, 32).toJSNumber();
-        res.timestamp = extract(d2, 32, 64).toJSNumber();
+        tx.slot = extract(d2, 0, 32);
+        tx.timestamp = extract(d2, 32, 64);
+
+        tx.ax = bigInt(arr[3]).toString(16);
+        tx.ay = bigInt(arr[4]).toString(16);
+
+        return tx;
 
         function extract(n, o, s) {
             const mask = bigInt(1).shl(s).sub(bigInt(1));
-            return n.shr(0).and(mask);
+            return n.shr(o).and(mask).toJSNumber();
         }
     }
 

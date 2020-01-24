@@ -71,7 +71,7 @@ contract("Synnchronizer Pool", (accounts) => {
             logLevel: "debug",
             pathConversionTable: pathConversionTable,
             pathCustomTokens: pathCustomTokens,
-            timeouts: { ERROR: 6000, NEXT_LOOP: 5000}
+            timeouts: { ERROR: 6000, NEXT_LOOP: 5000},
         };
 
         synchPool = new SynchPool(

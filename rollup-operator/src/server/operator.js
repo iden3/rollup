@@ -6,6 +6,7 @@ const chalk = require("chalk");
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const rmRf = require("rimraf");
 
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
@@ -32,8 +33,13 @@ options
 =======
     operator <options>
         start operator with passphrase
+
     --passphrase or -p <passphrase string>
         Passphrase to decrypt the wallet
+    
+    --clear [true | false]
+        Erase persistent databases
+        Default: false
     `)
     .alias("p", "passphrase")
     .epilogue("Rollup operator");
@@ -95,6 +101,18 @@ let pool;
         poolConfig = JSON.parse(fs.readFileSync("./pool-config.json", "utf8"));
     }
 
+    // delete database folders if `--clear true`
+    const clearFlag = (argv.clear) ? argv.clear : false;
+
+    if (clearFlag === "true"){
+        if (synchConfig.rollup.synchDb)
+            rmRf.sync(synchConfig.rollup.synchDb);
+        if (synchConfig.rollup.treeDb)
+            rmRf.sync(synchConfig.rollup.treeDb);
+        if (synchConfig.rollupPoS.synchDb)
+            rmRf.sync(synchConfig.rollupPoS.synchDb);
+    }
+
     ///////////////////
     ///// ROLLUP SYNCH
     ///////////////////
@@ -141,7 +159,9 @@ let pool;
         synchConfig.creationHash,
         synchConfig.ethAddress,
         loggerLevel,
-        operatorMode);
+        operatorMode,
+        synchConfig.rollup.timeouts,
+    );
 
     ////////////////
     ///// POS SYNCH
@@ -169,7 +189,9 @@ let pool;
         synchConfig.rollupPoS.abi,
         synchConfig.rollupPoS.creationHash,
         synchConfig.ethAddressCaller,
-        loggerLevel);
+        loggerLevel,
+        synchConfig.rollupPoS.timeouts,
+    );
 
     /////////////////
     ///// LOAD WALLET
@@ -205,6 +227,7 @@ let pool;
 
     // Initilaize classes if wallet is loaded
     if (wallet !== undefined) {
+
         //////////////////////
         ///// OPERATOR MANAGER
         //////////////////////
@@ -235,13 +258,21 @@ let pool;
             pool,
             poolConfig.pathConversionTable,
             loggerLevel,
+            poolConfig.timeouts,
         );
 
         ////////////////////
         ///// LOOP MANAGER
         ///////////////////
-        loopManager = new LoopManager(rollupSynch, posSynch, pool, 
-            opManager, cliServerProof, loggerLevel);
+        loopManager = new LoopManager(
+            rollupSynch,
+            posSynch,
+            pool, 
+            opManager,
+            cliServerProof,
+            loggerLevel,
+            synchConfig.ethNodeUrl,
+            synchConfig.rollup.timeouts);
         
         const seed = utils.getSeedFromPrivKey(wallet.privateKey);
         await loopManager.loadSeedHashChain(seed);

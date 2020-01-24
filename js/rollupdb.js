@@ -36,7 +36,7 @@ class RollupDB {
             ...insertsState,
             ...insertsExit,
             [ Constants.DB_Batch.add(bigInt(bb.batchNumber)), [bb.stateTree.root, bb.exitTree.root]],
-            [ Constants.DB_Master, this.lastBatch]
+            [ Constants.DB_Master, bb.batchNumber]
         ]);
         this.lastBatch = bb.batchNumber;
         this.stateRoot = bb.stateTree.root;
