@@ -5,7 +5,7 @@ const fs = require("fs");
 const Web3 = require("web3");
 const ethers = require("ethers");
 const { error } = require("./list-errors");
-const config = "./config.json";
+const configDefault = "./config.json";
 
 const { register, registerWithDifferentBeneficiary, registerRelay, unregister, withdraw, getEtherBalance } = require("./utils");
 const { getSeedFromPrivKey, loadHashChain } = require("../rollup-utils/rollup-utils");
@@ -36,6 +36,7 @@ register command
         Beneficiary address
     --controller or -c <address> (optional)
         Controller address
+
 unregister command
 ================
     cli-pos unregister <options>
@@ -50,6 +51,7 @@ unregister command
         GasPrice used = default gas price * gasmultiplier
     --id or -i <ID>
         Operator ID
+
 withdraw command
 ================
     cli-pos withdraw <options>
@@ -64,6 +66,7 @@ withdraw command
         GasPrice used = default gas price * gasmultiplier
     --id or -i <ID>
         Operator ID
+
 balance command
 ================
     cli-pos balance <options>
@@ -82,8 +85,10 @@ balance command
     .alias("gm", "gasmultiplier")
     .alias("b", "beneficiary")
     .alias("c", "controller")
+    .alias("f", "fileconfig")
     .epilogue("Rollup operator cli tool");
 
+const config = (argv.fileconfig) ? argv.fileconfig : "noconfig";
 const pathWallet = (argv.wallet) ? argv.wallet : "nowallet";
 const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
 const stake = (argv.stake) ? argv.stake : "nostake";
@@ -97,8 +102,14 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
 (async () => {
     let actualConfig = {};
     try {
-        if(fs.existsSync(config)) {
-            actualConfig = JSON.parse(fs.readFileSync(config, "utf8"));
+        let pathConfig;
+        if(config === "noconfig") {
+            pathConfig = configDefault;
+        } else {
+            pathConfig = config;
+        }
+        if(fs.existsSync(pathConfig)) {
+            actualConfig = JSON.parse(fs.readFileSync(pathConfig, "utf8"));
         } else {
             console.log("No config file\n\n");
             throw new Error(error.NO_CONFIG_FILE);
@@ -123,13 +134,13 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             const seed = getSeedFromPrivKey(wallet.privateKey);
             const hashChain = loadHashChain(seed);
             let txSigned;
-            if(controller == "nocontroller" && beneficiary == "nobeneficiary"){
+            if(controller === "nocontroller" && beneficiary === "nobeneficiary"){
                 txSigned = await register(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
                     gasMultiplier, stake, url);
-            } else if(controller == "nocontroller" && beneficiary != "nobeneficiary"){
+            } else if(controller === "nocontroller" && beneficiary !== "nobeneficiary"){
                 txSigned = await registerWithDifferentBeneficiary(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
                     gasMultiplier, stake, url, beneficiary);
-            } else if(controller != "nocontroller" && beneficiary != "nobeneficiary"){
+            } else if(controller !== "nocontroller" && beneficiary !== "nobeneficiary"){
                 txSigned = await registerRelay(hashChain[hashChain.length - 1], wallet, actualConfig, gasLimit,
                     gasMultiplier, stake, url, beneficiary, controller);
             } else {

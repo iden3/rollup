@@ -19,8 +19,8 @@ describe("REGISTER", async function () {
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                    done();
                 });
-                done();
             }); 
         }); 
     });
@@ -34,8 +34,8 @@ describe("REGISTER", async function () {
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                    done();
                 });
-                done();
             }); 
         }); 
     });
@@ -50,8 +50,8 @@ describe("REGISTER", async function () {
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                    done();
                 });
-                done();
             }); 
         }); 
     });
@@ -66,29 +66,44 @@ describe("REGISTER", async function () {
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                    done();
                 });
-                done();
             }); 
         }); 
     });
-
 
     it("Should register with gas limit and gas multipliers parameters", (done) => {
         const outBalance = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
         outBalance.stdout.on("data", (balance) => {
             const gasLimit = 2000000;
-            const gasMultiplier = 2000000;
+            const gasMultiplier = 2;
             const out = process.exec(`cd ..; node cli-pos.js register -w ${walletTest} `
-                + `-p ${pass} -s 2 -u localhost -gl ${gasLimit} -gm ${gasMultiplier}`);
+                + `-p ${pass} -s 2 -u localhost --gl ${gasLimit} --gm ${gasMultiplier}`);
             out.stdout.on("data", (data) => {
                 expect(data.includes("Transaction hash: ")).to.be.equal(true);
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                    done();
                 });
-                done();
             }); 
         }); 
+    });
+
+    it("Should register with different config path", (done) => {
+        const outBalance = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
+        outBalance.stdout.on("data", (balance) => {
+            const out = process.exec(`cd ..; node cli-pos.js register -f config-test.json -w ${walletTest} -p ${pass} -s 2 -u localhost`);
+            out.stdout.on("data", (data) => {
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
+                const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
+                outBalance2.stdout.on("data", (balance2) => {
+                    expect(parseInt(balance)).to.be.equal(parseInt(balance2)+2);
+                    process.exec("cd ..; mv config-test.json config.json");
+                    done();
+                });
+            });
+        });
     });
 
     it("Register invalid command", (done) => {
