@@ -68,7 +68,7 @@ contract("Synchronizer - archive mode", (accounts) => {
         const inputSm = buildInputSm(batch, beneficiary);
         ptr = ptr - 1;
         await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${batch.getDataAvailable().toString("hex")}`,
-            proofA, proofB, proofC, inputSm);
+            proofA, proofB, proofC, inputSm, {from: op1});
         await opRollupDb.consolidate(batch);
     }
 
