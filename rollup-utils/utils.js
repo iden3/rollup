@@ -2,7 +2,7 @@
 const { bigInt, bn128 } = require("snarkjs");
 
 const F = bn128.Fr;
-const Poseidon = require("../node_modules/circomlib/src/poseidon");
+const Poseidon = require("circomlib/src/poseidon");
 
 const hash = Poseidon.createHash(6, 8, 57);
 

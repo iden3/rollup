@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
+const { fix2float } = require('../../../../js/utils');
 const { Wallet } = require('../../wallet.js');
 /**
  * @dev deposit on an existing balance tree leaf
@@ -23,8 +24,9 @@ async function transfer(urlNode, addressSC, balance, tokenId, walletJson, passwo
         value: ethers.utils.parseEther('0.11'), // 0.1 minimum fee for on-chain Tx
     };
 
+    const balanceF = fix2float(balance);
     try {
-        return contractWithSigner.transfer(fromId, toId, balance, tokenId, overrides);
+        return contractWithSigner.transfer(fromId, toId, balanceF, tokenId, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

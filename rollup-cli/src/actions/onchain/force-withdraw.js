@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
+const { fix2float } = require('../../../../js/utils');
 const { Wallet } = require('../../wallet.js');
 /**
  * @dev on-chain transaction to build a leaf on exit tree
@@ -22,8 +23,9 @@ async function forceWithdraw(urlNode, addressSC, balance, walletJson, password, 
         value: ethers.utils.parseEther('0.11'), // 0.1 minimum fee for on-chain Tx
     };
 
+    const balanceF = fix2float(balance);
     try {
-        return await contractWithSigner.forceWithdraw(idFrom, balance, overrides);
+        return await contractWithSigner.forceWithdraw(idFrom, balanceF, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

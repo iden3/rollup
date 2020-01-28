@@ -6,15 +6,14 @@ function timeout(ms) {
 }
 
 function buildInputSm(bb) {
-    const feePlan = rollupUtils.buildFeeInputSm(bb.feePlan);
     return [
-        bb.getInput().oldStRoot.toString(),
+        bb.getOldStateRoot().toString(),
         bb.getNewStateRoot().toString(),
         bb.getNewExitRoot().toString(),
         bb.getOnChainHash().toString(),
         bb.getOffChainHash().toString(),
-        feePlan[0],
-        feePlan[1],
+        bb.getFeePlanCoins().toString(),
+        bb.getFeePlanFees().toString(),
         bb.getCountersOut().toString(),
     ];
 }

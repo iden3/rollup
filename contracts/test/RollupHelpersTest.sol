@@ -45,7 +45,7 @@ contract RollupHelpersTest is RollupHelpers{
     return calcTokenTotalFee(tokenIds, fee, nTxToken, nToken);
   }
 
-  function buildTreeStateTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
+  function buildTreeStateTest(uint256 amount, uint16 token, uint256 Ax, uint256 Ay,
     address withAddress, uint32 nonce) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
     Entry memory entry = buildTreeState(amount, token, Ax, Ay, withAddress, nonce);
     return (entry.e1,
@@ -55,7 +55,7 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function hashTreeStateTest(uint16 amount, uint16 token, uint256 Ax, uint256 Ay,
+  function hashTreeStateTest(uint256 amount, uint16 token, uint256 Ax, uint256 Ay,
     address withAddress, uint32 nonce) public view returns (bytes32) {
     Entry memory entry = buildTreeState(amount, token, Ax, Ay, withAddress, nonce);
     return bytes32(hashEntry(entry));
@@ -64,7 +64,7 @@ contract RollupHelpersTest is RollupHelpers{
   function buildTxDataTest(
     uint24 fromId,
     uint24 toId,
-    uint16 amount,
+    uint16 amountF,
     uint16 token,
     uint32 nonce,
     uint16 maxFee,
@@ -72,7 +72,7 @@ contract RollupHelpersTest is RollupHelpers{
     bool onChain,
     bool newAccount
   ) public pure returns (bytes32){
-    return buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onChain, newAccount);
+    return buildTxData(fromId, toId, amountF, token, nonce, maxFee, rqOffset, onChain, newAccount);
   }
 
   function buildOnChainDataTest(
@@ -102,5 +102,9 @@ contract RollupHelpersTest is RollupHelpers{
   ) public view returns (uint256){
     Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
     return hashEntry(entry);
+  }
+
+  function float2FixTest(uint16 float) public pure returns (uint256){
+    return float2Fix(float);
   }
 }

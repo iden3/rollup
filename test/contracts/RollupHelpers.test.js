@@ -360,6 +360,28 @@ contract("RollupHelpers functions", (accounts) => {
         expect(BigInt(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
     });
 
+    it("float to fix", async () => {
+        const testVector = [
+            [0x307B, "123000000"],
+            [0x1DC6, "454500"],
+            [0xFFFF, "10235000000000000000000000000000000"],
+            [0x0000, "0"],
+            [0x0400, "0"],
+            [0x0001, "1"],
+            [0x0401, "1"],
+            [0x0800, "0"],
+            [0x0c00, "5"],
+            [0x0801, "10"],
+            [0x0c01, "15"],
+        ];
+        
+        for (let i = 0; i < testVector.length; i ++) {
+            const resSm = await insHelpers.float2FixTest(testVector[i][0]);
+            expect(BigInt(resSm).toString()).to.be.equal(testVector[i][1]);
+        }
+    });
+
+
     describe("Build and hash onChain", async () => {
         const fromId = 1;
         const toId = 2;

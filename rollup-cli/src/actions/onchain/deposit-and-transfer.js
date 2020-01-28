@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
+const { fix2float } = require('../../../../js/utils');
 const { Wallet } = require('../../wallet.js');
 /**
  * @dev deposit on an existing loadAmount tree leaf
@@ -27,9 +28,10 @@ async function depositAndTransfer(urlNode, addressSC, loadAmount, amount, tokenI
         value: ethers.utils.parseEther('0.11'), // 0.1 minimum fee for on-chain Tx
     };
 
+    const amountF = fix2float(amount);
     try {
         return await contractWithSigner.depositAndTransfer(loadAmount, tokenId,
-            address, pubKeyBabyjub, toId, amount, overrides);
+            address, pubKeyBabyjub, toId, amountF, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

@@ -2,6 +2,7 @@
 const {
     hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff,
 } = require("./utils");
+const { float2fix, fix2float } = require("../js/utils");
 const eddsa = require("circomlib").eddsa;
 const crypto = require("crypto");
 const web3 = require("web3");
@@ -82,10 +83,10 @@ function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onCha
     // element 0
     const fromStr = fromId ? padZeroes(fromId.toString("16"), 16) : padZeroes("", 16);
     const toStr = toId ? padZeroes(toId.toString("16"), 16) : padZeroes("", 16);
-    const amountStr = amount ? padZeroes(amount.toString("16"), 4) : padZeroes("", 4);
+    const amountStr = amount ? padZeroes(fix2float(amount).toString("16"), 4) : padZeroes("", 4);
     const tokenStr = token ? padZeroes(token.toString("16"), 8) : padZeroes("", 8);
     const nonceStr = nonce ? padZeroes(nonce.toString("16"), 12) : padZeroes("", 12);
-    const maxFeeStr = maxFee ? padZeroes(maxFee.toString("16"), 4) : padZeroes("", 4);
+    const maxFeeStr = maxFee ? padZeroes(fix2float(maxFee).toString("16"), 4) : padZeroes("", 4);
     let last = rqOffset ? (rqOffset & 0x07) : 0x00;
     last = onChain ? ( last | 0x08 ): last;
     last = newAccount ? ( last | 0x10 ): last;
@@ -100,10 +101,10 @@ function decodeTxData(txDataEncodedHex) {
 
     txData.fromId = txDataBi.and(BigInt(1).shl(64).sub(BigInt(1)));
     txData.toId = txDataBi.shr(64).and(BigInt(1).shl(64).sub(BigInt(1)));
-    txData.amount = txDataBi.shr(128).and(BigInt(1).shl(16).sub(BigInt(1)));
+    txData.amount = float2fix(txDataBi.shr(128).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
     txData.tokenId = txDataBi.shr(144).and(BigInt(1).shl(32).sub(BigInt(1)));
     txData.nonce = txDataBi.shr(176).and(BigInt(1).shl(48).sub(BigInt(1)));
-    txData.maxFee = txDataBi.shr(224).and(BigInt(1).shl(16).sub(BigInt(1)));
+    txData.maxFee = float2fix(txDataBi.shr(224).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
     txData.rqOffset = txDataBi.shr(240).and(BigInt(1).shl(3).sub(BigInt(1)));
     txData.onChain = txDataBi.shr(243).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
     txData.newAccount = txDataBi.shr(244).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;

@@ -66,7 +66,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 totalFillingOnChainFee;
 
     // Fees recollected for every on-chain transaction
-    uint public constant FEE_ONCHAIN_TX = 0.1 ether;
+    uint constant public FEE_ONCHAIN_TX = 0.1 ether;
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;
@@ -242,6 +242,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     ) public payable{
         require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
         require(idBalanceTree < lastBalanceTreeIndex, 'identifier leaf does not exist on balance tree');
         require(treeInfo[idBalanceTree].tokenId == tokenId, 'token type does not match');
@@ -257,25 +258,24 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @dev Transfer between two accounts already defined in balance tree
      * @param fromId account sender
      * @param toId account receiver
-     * @param amount amount to send
+     * @param amountF amount to send encoded as half precision float
      * @param tokenId token identifier
     */
     function transfer(
         uint64 fromId,
         uint64 toId,
-        uint16 amount,
+        uint16 amountF,
         uint32 tokenId
     ) public payable{
         require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
-        require(amount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
         require(fromId < lastBalanceTreeIndex, 'From account does not exist on balance tree');
         require(toId < lastBalanceTreeIndex, 'To account does not exist on balance tree');
         require(treeInfo[fromId].tokenId == tokenId, 'token type does not match');
         require(treeInfo[toId].tokenId == tokenId, 'token type does not match');
         require(msg.sender == treeInfo[fromId].ethAddress, 'Sender does not match identifier balance tree');
         // build txData for transfer
-        bytes32 txDataTransfer = buildTxData(fromId, toId, amount, tokenId, 0, 0, 0, true, false);
+        bytes32 txDataTransfer = buildTxData(fromId, toId, amountF, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataTransfer), 0, msg.sender, treeInfo[fromId].babyPubKey, msg.value);
     }
 
@@ -288,7 +288,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param ethAddress allowed address to control new balance tree leaf
      * @param babyPubKey public key babyjubjub of the sender represented as point (Ax, Ay)
      * @param toId account receiver
-     * @param amount amount to transfer
+     * @param amountF amount to send encoded as half precision float
     */
     function depositAndTransfer(
         uint128 loadAmount,
@@ -296,7 +296,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         address ethAddress,
         uint256[2] memory babyPubKey,
         uint64 toId,
-        uint16 amount
+        uint16 amountF
     ) public payable{
         require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
@@ -313,7 +313,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
         // build txData for DepositAndtransfer
-        bytes32 txDataDepositAndTransfer = buildTxData(lastBalanceTreeIndex, toId, amount, tokenId, 0, 0, 0, true, true);
+        bytes32 txDataDepositAndTransfer = buildTxData(lastBalanceTreeIndex, toId, amountF, tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, ethAddress, babyPubKey, msg.value);
         lastBalanceTreeIndex++;
     }
@@ -323,18 +323,18 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @dev Withdraw balance from identifier balance tree
      * user has to prove ownership of ethAddress of idBalanceTree
      * @param idBalanceTree account identifier on the balance tree which will do the withdraw
-     * @param amount total amount coded as float 16 bits
+     * @param amountF total amount coded as float 16 bits
      */
     function forceWithdraw(
         uint64 idBalanceTree,
-        uint16 amount
+        uint16 amountF
     ) public payable{
         require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
         require(msg.sender == treeInfo[idBalanceTree].ethAddress, 'Sender does not match identifier balance tree');
         require(idBalanceTree < lastBalanceTreeIndex, 'identifier leaf does not exist on balance tree');
         // build txData for withdraw
-        bytes32 txDataWithdraw = buildTxData(idBalanceTree, 0, amount, treeInfo[idBalanceTree].tokenId,
+        bytes32 txDataWithdraw = buildTxData(idBalanceTree, 0, amountF, treeInfo[idBalanceTree].tokenId,
             0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataWithdraw), 0, msg.sender, treeInfo[idBalanceTree].babyPubKey, msg.value);
     }
@@ -352,7 +352,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      */
     function withdraw(
         uint64 idBalanceTree,
-        uint16 amount,
+        uint256 amount,
         uint numExitRoot,
         uint256[] memory siblings
     ) public {
