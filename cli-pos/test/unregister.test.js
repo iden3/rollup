@@ -21,6 +21,18 @@ describe("UNREGISTER", async function () {
         });
     });
 
+    it("Should unregister with different config path", (done) => {
+        const register = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js register -f config-test.json -w ${walletTest} -p ${pass} -s 2 -u localhost`);
+        register.stdout.on("data", () => {
+            const out = process.exec(`cd ..; node cli-pos.js unregister -f config-test.json -w ${walletTest} -p ${pass} -i 3`);
+            out.stdout.on("data", (data) => {
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
+                process.exec("cd ..; mv config-test.json config.json");
+                done();
+            });
+        });
+    });
+
     it("No double unregister", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
         out.stdout.on("data", (data) => {

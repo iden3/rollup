@@ -19,11 +19,28 @@ describe("WITHDRAW", async function () {
                 const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on("data", (balance2) => {
                     expect(parseInt(balance2)).to.be.equal(parseInt(balance)+2);
+                    done();
                 });
-                done();
             }); 
         }); 
     });
+
+    it("Should Withdraw with different config path", (done) => {
+        const outBalance = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
+        outBalance.stdout.on("data", (balance) => {
+            const out = process.exec(`cd ..; node cli-pos.js withdraw -f config-test.json -w ${walletTest} -p ${pass} -i 3`);
+            out.stdout.on("data", (data) => {
+                expect(data.includes("Transaction hash: ")).to.be.equal(true);
+                const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
+                outBalance2.stdout.on("data", (balance2) => {
+                    expect(parseInt(balance2)).to.be.equal(parseInt(balance)+2);
+                    process.exec("cd ..; mv config-test.json config.json");
+                    done();
+                });
+            }); 
+        }); 
+    });
+
 
     it("No double withdraw", (done) => {
         const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
