@@ -12,7 +12,7 @@ const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
 
 // timeouts test
-const timeoutDelay = 7500;
+const timeoutDelay = 10000;
 let timeoutSynch;
 let timeoutCheck;
 

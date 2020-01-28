@@ -66,7 +66,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 totalFillingOnChainFee;
 
     // Fees recollected for every on-chain transaction
-    uint constant FEE_ONCHAIN_TX = 0.1 ether;
+    uint public constant FEE_ONCHAIN_TX = 0.1 ether;
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;

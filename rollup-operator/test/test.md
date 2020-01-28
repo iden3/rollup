@@ -16,13 +16,13 @@ Test Rollup synchronizer on `light` mode:
   - `truffle test ./rollup-operator/test/synch-light.test.js`
 
 Test Rollup synchronizer on `full` mode:
-  - `truffle test ./rollup-operator/test/synch-light.test.js`
+  - `truffle test ./rollup-operator/test/synch-full.test.js`
 
 Test Rollup synchronizer on `archive` mode:
-  - `truffle test ./rollup-operator/test/synch-light.test.js`
+  - `truffle test ./rollup-operator/test/synch-archive.test.js`
 
 Test operator manager:
-  - `truffle test ./rollup-operator/test/op-manager.test.js `
+  - `truffle test ./rollup-operator/test/op-manager.test.js`
 
 ## Test server proof
 

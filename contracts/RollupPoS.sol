@@ -17,7 +17,7 @@ contract RollupPoS is RollupPoSHelpers{
     uint constant public SLOT_DEADLINE = 20;
 
     // Minimum stake to enter the raffle
-    uint constant MIN_STAKE = 1 ether;
+    uint public constant MIN_STAKE = 1 ether;
 
     // First block where the first era begins
     uint public genesisBlock;
@@ -578,6 +578,8 @@ contract RollupPoS is RollupPoSHelpers{
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+        // message sender must be the controller address
+        require(msg.sender == op.controllerAddress, 'message sender must be controllerAddress');
         // operator must know data to generate current hash
         require(keccak256(abi.encodePacked(previousRndHash)) == op.rndHash,
             'hash revealed not match current committed hash');
@@ -610,6 +612,8 @@ contract RollupPoS is RollupPoSHelpers{
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+        // message sender must be the controller address
+        require(msg.sender == op.controllerAddress, 'message sender must be controllerAddress');
         uint32 updateEra = currentEra() + 2;
         _updateRaffles();
         Raffle storage raffle = raffles[updateEra];
