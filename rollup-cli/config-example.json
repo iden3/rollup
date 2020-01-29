@@ -1,0 +1,8 @@
+{
+ "wallet": "wallet.json",
+ "urlOperator": "http://127.0.0.1:9000",
+ "nodeEth": "http://127.0.0.1:8545",
+ "addressSC": "0x0000000000000000000000000000000000000001",
+ "abiPath": "abi.json",
+ "depositEthAddress": "0x0000000000000000000000000000000000000002"
+}

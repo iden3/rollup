@@ -45,7 +45,7 @@ Run ganache testnet: `ganache-cli`
   - Run onchain TX test that uses CLI: `truffle test cli-onchain.test.js`
 
 ### Bot
-Run ganache testnet: `ganache-cli`
+Run ganache testnet: `ganache-cli  --defaultBalanceEther 10000`
 
 - Next command will build necessary resources for trigger `bot` test: 
 `truffle test rollup-cli/tools/helpers/build-resources-bot.test.js`

@@ -12,35 +12,35 @@ const walletPath = path.join(__dirname, '../resources/wallet-test.json');
 const walletEthPath = path.join(__dirname, '../resources/ethWallet.json');
 const walletBabyjubPath = path.join(__dirname, '../resources/babyjubWallet.json');
 
+const passphrase = 'foo';
+
 async function createWallet() {
     if (!fs.existsSync(resources)) {
         await fs.mkdirSync(resources);
     }
     const wallet = await Wallet.createRandom();
-    const encWallet = await wallet.toEncryptedJson('foo');
+    const encWallet = await wallet.toEncryptedJson(passphrase);
     await fs.writeFileSync(walletPath, JSON.stringify(encWallet, null, 1), 'utf-8');
     await fs.writeFileSync(walletPathDefault, JSON.stringify(encWallet, null, 1), 'utf-8');
     await fs.writeFileSync(walletEthPath, JSON.stringify(encWallet.ethWallet, null, 1), 'utf-8');
     await fs.writeFileSync(walletBabyjubPath, JSON.stringify(encWallet.babyjubWallet, null, 1), 'utf-8');
 }
 
-async function createConfig(address) {
+async function createConfig(address, depositEthAddress) {
     if (!fs.existsSync(resources)) {
         await fs.mkdirSync(resources);
     }
     let actualConfig = {
         wallet: './test/resources/wallet-test.json',
-        operator: 'http://127.0.0.1:9000',
-        address: '',
+        urlOperator: 'http://127.0.0.1:9000',
+        addressSC: '',
         nodeEth: 'http://localhost:8545',
-        abi: './test/resources/rollupabi.json',
-        id: '1',
+        abiPath: './test/resources/rollupabi.json',
+        depositEthAddress: '',
     };
 
-    if (fs.existsSync(configPath)) {
-        actualConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    }
-    actualConfig.address = address;
+    actualConfig.addressSC = address;
+    actualConfig.depositEthAddress = depositEthAddress;
     await fs.writeFileSync(configTestPath, JSON.stringify(actualConfig, null, 1), 'utf-8');
     await fs.writeFileSync(configPath, JSON.stringify(actualConfig, null, 1), 'utf-8');
 }

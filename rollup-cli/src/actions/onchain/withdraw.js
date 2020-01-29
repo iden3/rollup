@@ -6,35 +6,46 @@ const CliExternalOperator = require('../../../../rollup-operator/src/cli-externa
  * @dev withdraw on-chain transaction to get retrieve the users balance from exit tree
  * before this call an off-chain transaction must be done to Id 0 or a onchain forceWithdraw
  * that transactions will build a leaf on exit tree
- * @param urlNode URL of the ethereum node
+ * @param nodeEth URL of the ethereum node
  * @param addressSC rollup address
  * @param tokenId token type
  * @param walletJson from this one can obtain the ethAddress and babyPubKey
- * @param password for decrypt the Wallet
+ * @param passphrase for decrypt the Wallet
  * @param abi abi of rollup contract'
  * @param urlOperator URl from operator
  * @param idFrom balance tree identifier
  * @param numExitRoot exit tree root depth to look for exit tree account
  */
-async function withdraw(urlNode, addressSC, walletJson, password, abi, urlOperator, idFrom, numExitRoot) {
+async function withdraw(nodeEth, addressSC, walletJson, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit = 5000000, gasMultiplier = 1) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     let walletEth = walletRollup.ethWallet.wallet;
-    const provider = new ethers.providers.JsonRpcProvider(urlNode);
+    const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
+    const overrides = {
+        gasLimit: gasLimit,
+        gasPrice: await _getGasPrice(gasMultiplier, provider),
+    };
 
     try {
         const res = await apiOperator.getExitInfo(idFrom, numExitRoot);
         const infoExitTree = res.data;
         if (infoExitTree.found) {
             return await contractWithSigner.withdraw(infoExitTree.state.idx, infoExitTree.state.amount, numExitRoot,
-                infoExitTree.siblings);
+                 infoExitTree.siblings, overrides);
         }
         throw new Error(`No exit tree leaf was found in batch: ${numExitRoot} with id: ${idFrom}`);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }
+}
+
+async function _getGasPrice(multiplier, provider){
+    const strAvgGas = await provider.getGasPrice();
+    const avgGas = BigInt(strAvgGas);
+    const res = (avgGas * BigInt(multiplier))
+    return await ethers.utils.bigNumberify(res.toString());
 }
 
 module.exports = {
