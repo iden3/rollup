@@ -168,16 +168,16 @@ contract RollupHelpers {
     // get number of transaction depending on token
     uint nTx = uint16(bytes2(nTxToken << ptr));
     // get fee depending on token
-    uint fee = uint16(bytes2(fees << ptr));
+    uint fee = float2Fix(uint16(bytes2(fees << ptr)));
     // get token id
     uint tokenId = uint16(bytes2(tokenIds << ptr));
 
-    return (tokenId, nTx*fee);
+    return (tokenId, nTx * fee);
   }
 
   /**
    * @dev build entry for the exit tree leaf
-   * @param amount amunt
+   * @param amount amount
    * @param token token type
    * @param Ax x coordinate public key babyJub
    * @param Ay y coordinate public key babyJub
@@ -185,13 +185,13 @@ contract RollupHelpers {
    * @param nonce nonce parameter
    * @return entry structure
    */
-  function buildTreeState(uint16 amount, uint32 token, uint256 Ax, uint Ay,
+  function buildTreeState(uint256 amount, uint32 token, uint256 Ax, uint Ay,
     address ethAddress, uint48 nonce) internal pure returns (Entry memory entry) {
      // build element 1
     entry.e1 = bytes32(bytes4(token)) >> (256 - 32);
     entry.e1 |= bytes32(bytes6(nonce)) >> (256 - 48 - 32);
     // build element 2
-    entry.e2 = bytes32(uint256(amount));
+    entry.e2 = bytes32(amount);
     // build element 3
     entry.e3 = bytes32(Ax);
     // build element 4
@@ -204,10 +204,10 @@ contract RollupHelpers {
    * @dev build entry for the exit tree leaf
    * @param fromId sender
    * @param toId reseiver
-   * @param amount number of token to send
+   * @param amountF number of token to send
    * @param token token identifier
    * @param nonce nonce parameter
-   * @param maxFee maximum fee
+   * @param maxFeeF maximum fee
    * @param rqOffset atomic swap paramater
    * @param onChain flag to indicate that transaction is an onChain one
    * @param newAccount flag to indicate if transaction is of deposit type
@@ -216,10 +216,10 @@ contract RollupHelpers {
   function buildTxData(
     uint64 fromId,
     uint64 toId,
-    uint16 amount,
+    uint16 amountF,
     uint32 token,
     uint48 nonce,
-    uint16 maxFee,
+    uint16 maxFeeF,
     uint8 rqOffset,
     bool onChain,
     bool newAccount
@@ -227,10 +227,10 @@ contract RollupHelpers {
     // build element
     element = bytes32(bytes8(fromId)) >> (256 - 64);
     element |= bytes32(bytes8(toId)) >> (256 - 64 - 64);
-    element |= bytes32(bytes2(amount)) >> (256 - 16 - 64 - 64);
+    element |= bytes32(bytes2(amountF)) >> (256 - 16 - 64 - 64);
     element |= bytes32(bytes4(token)) >> (256 - 32 - 16 - 64 - 64);
     element |= bytes32(bytes6(nonce)) >> (256 - 48 - 32 - 16 - 64 - 64);
-    element |= bytes32(bytes2(maxFee)) >> (256 - 16 - 48 - 32 - 16 - 64 - 64);
+    element |= bytes32(bytes2(maxFeeF)) >> (256 - 16 - 48 - 32 - 16 - 64 - 64);
 
     bytes1 last = bytes1(rqOffset) & 0x07;
     last = onChain ? (last | 0x08): last;
@@ -269,6 +269,25 @@ contract RollupHelpers {
     entry.e5 = bytes32(Ax);
     // build element 6
     entry.e6 = bytes32(Ay);
+  }
+
+  /**
+   * @dev Decode half floating precision
+   * @param float Float half precision encode number
+   * @return Decoded floating half precision
+   */
+  function float2Fix(uint16 float) public pure returns (uint256) {
+    uint256 m = float & 0x3FF;
+    uint256 e = float >> 11;
+    uint256 e5 = (float >> 10) & 1;
+
+    uint256 exp = 10 ** e;
+    uint256 fix = m * exp;
+
+    if ((e5 == 1) && (e != 0)){
+      fix = fix + (exp / 2);
+    }
+    return fix;
   }
 
   /**

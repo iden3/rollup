@@ -5,6 +5,7 @@ const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
+const { float2fix } = require("../../js/utils");
 const { timeout } = require("../src/utils");
 const Constants = require("./constants");
 
@@ -336,7 +337,7 @@ class Synchronizer {
         for (const event of onChain) {
             const tx = await this._getTxOnChain(event);
             batch.addTx(tx);
-            const newAccount = rollupUtils.decodeTxData(event.txData).newAccount;
+            const newAccount = tx.newAccount;
             if (this.mode !== Constants.mode.light)
                 if ((Number(tx.toIdx) === 0) && (newAccount == false) && tx.amount !== 0 && tx.loadAmount === 0) 
                     await this._addExitEntry(tx, batch.batchNumber);
@@ -366,7 +367,8 @@ class Synchronizer {
             ax: bigInt(event.Ax).toString(16),
             ay: bigInt(event.Ay).toString(16),
             ethAddress: event.ethAddress,
-            onChain: true
+            onChain: true,
+            newAccount: txData.newAccount,
         };
     }
 
@@ -416,7 +418,7 @@ class Synchronizer {
             const tx = {
                 fromIdx: txsBuff.readUIntBE(8*i, 3),
                 toIdx: txsBuff.readUIntBE(8*i + 3, 3),
-                amount: txsBuff.readUIntBE(8*i + 6, 2),
+                amount: float2fix(txsBuff.readUIntBE(8*i + 6, 2)),
                 step,
             };
             txs.push(tx);
@@ -426,10 +428,10 @@ class Synchronizer {
 
     async _addFeePlan(bb, feePlanCoins, feePlanFee) {
         const tmpCoins = bigInt(feePlanCoins);
-        const tmpFee = bigInt(feePlanFee);
+        const tmpFeeF = bigInt(feePlanFee);
         for (let i = 0; i < 16; i++){
             const coin = tmpCoins.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1)));
-            const fee = tmpFee.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1)));
+            const fee = float2fix(tmpFeeF.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
             await bb.addCoin(coin, fee);
         }
     }
@@ -437,8 +439,8 @@ class Synchronizer {
     async _setUserFee(bb, txs){
         for (const tx of txs) {
             const stateId = await this.getStateById(tx.fromIdx);
-            const userFee = await bb.getOperatorFee(stateId.coin, tx.step);
-            tx.userFee = Number(userFee);
+            // const userFee = await bb.getOperatorFee(stateId.coin, tx.step);
+            // tx.userFee = Number(userFee);
             tx.coin = Number(stateId.coin);
         }
     }

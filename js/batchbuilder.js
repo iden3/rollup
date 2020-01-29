@@ -479,6 +479,21 @@ module.exports = class BatchBuilder {
         return this.input;
     }
 
+    getOldStateRoot() {
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return this.input.oldStRoot;
+    }
+        
+    getFeePlanCoins() {
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return this.input.feePlanCoins;
+    }
+        
+    getFeePlanFees() {
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return this.input.feePlanFees;
+    }
+
     getNewStateRoot() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.stateTree.root;
