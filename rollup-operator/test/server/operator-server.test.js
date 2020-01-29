@@ -132,6 +132,13 @@ contract("Operator", (accounts) => {
         encryptedWallet = await wallet1.toEncryptedJson(pass);
         rollupEncWallets.push(encryptedWallet);
         await initRollupWallet(wallet1);
+
+        // Init third rollup wallet
+        mnemonic = "witness ethics route excite episode differ guide deer into shoulder eternal tone";
+        const wallet2 = await Wallet.fromMnemonic(mnemonic);
+        rollupWallets.push(wallet2);
+        encryptedWallet = await wallet2.toEncryptedJson(pass);
+        rollupEncWallets.push(encryptedWallet);
     });
 
     it("Should get empty operator list", async () => { 
@@ -343,6 +350,13 @@ contract("Operator", (accounts) => {
         const walletAx1 = rollupWallets[1].babyjubWallet.publicKey[0].toString(16);
         const walletAy1 = rollupWallets[1].babyjubWallet.publicKey[1].toString(16);
 
+        // Account non existing on rollup
+        const id2 = 3;
+        const walletEth2 = rollupWallets[2].ethWallet.wallet;
+        const walletEthAddress2 = walletEth2.address.toString();
+        const walletAx2 = rollupWallets[2].babyjubWallet.publicKey[0].toString(16);
+        const walletAy2 = rollupWallets[2].babyjubWallet.publicKey[1].toString(16);
+
         // By Id
         const resId0 = await cliExternalOp.getAccountByIdx(id0);
         expect(resId0.data.ax).to.be.equal(walletAx0);
@@ -353,6 +367,14 @@ contract("Operator", (accounts) => {
         expect(resId1.data.ax).to.be.equal(walletAx1);
         expect(resId1.data.ay).to.be.equal(walletAy1);
         expect(resId1.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
+
+        try {
+            await cliExternalOp.getAccountByIdx(id2);
+            expect(true).to.be.equal(false);
+        } catch (error) {
+            expect(error.response.status).to.be.equal(404);
+            expect(error.response.data).to.be.equal("Account not found");
+        }
 
         // By Public key Babyjubjub
         let filters;
@@ -386,6 +408,19 @@ contract("Operator", (accounts) => {
         expect(account.ay).to.be.equal(walletAy1);
         expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
+        filters = {
+            ax: walletAx2,
+            ay: walletAy2,
+        };
+
+        try {
+            await cliExternalOp.getAccounts(filters);
+            expect(true).to.be.equal(false);
+        } catch (error) {
+            expect(error.response.status).to.be.equal(404);
+            expect(error.response.data).to.be.equal("Accounts not found");
+        }
+
         // By Ethereum Address
         filters = {
             ethAddr: walletEthAddress0,
@@ -413,6 +448,18 @@ contract("Operator", (accounts) => {
         expect(account.ay).to.be.equal(walletAy1);
         expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
 
+        filters = {
+            ethAddr: walletEthAddress2,
+        };
+
+        try {
+            await cliExternalOp.getAccounts(filters);
+            expect(true).to.be.equal(false);
+        } catch (error) {
+            expect(error.response.status).to.be.equal(404);
+            expect(error.response.data).to.be.equal("Accounts not found");
+        }
+
         // By both Public key Babyjubjub and Ethereum Address
         filters = {
             ax: walletAx0,
@@ -437,8 +484,10 @@ contract("Operator", (accounts) => {
 
         try {
             await cliExternalOp.getAccounts(filters);
+            expect(true).to.be.equal(false);
         } catch (error) {
-            expect((error.response.data).includes("No account has been found")).to.be.equal(true);
+            expect(error.response.status).to.be.equal(404);
+            expect(error.response.data).to.be.equal("Accounts not found");
         }
     });
 

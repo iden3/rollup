@@ -305,8 +305,10 @@ contract("Synchronizer - full mode", (accounts) => {
         const events = [];
         const tx = {
             fromIdx: 1,
-            toIdx: 2,
+            toIdx: 0,
             amount: 3,
+            coin: 0,
+            nonce: 0,
         };
         events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events);
@@ -325,16 +327,9 @@ contract("Synchronizer - full mode", (accounts) => {
     it("Should check exit batches by id", async () => {
         let idx = 1;
         const arrayExists1 = await synch.getExitsBatchById(idx);
+        expect(arrayExists1.length).to.be.above(0);
         // Check exit tree for all bacthes
         for (const numBatch of arrayExists1){
-            const res = await synch.getExitTreeInfo(numBatch, idx);
-            expect(res.found).to.be.equal(true);
-        }
-        
-        idx = 2;
-        const arrayExists2 = await synch.getExitsBatchById(idx);
-        // Check exit tree for all bacthes
-        for (const numBatch of arrayExists2){
             const res = await synch.getExitTreeInfo(numBatch, idx);
             expect(res.found).to.be.equal(true);
         }

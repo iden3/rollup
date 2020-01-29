@@ -187,7 +187,7 @@ class SynchPoS {
     }
 
     _fillInfo(currentBlock, blockNextUpdate, currentEra, lastSynchEra){
-        this.info = `${chalk.magenta("POS SYNCH")} | `;
+        this.info = `${chalk.magenta("POS SYNCH".padEnd(12))} | `;
         this.info += `current block number: ${currentBlock} | `;
         this.info += `next block update: ${blockNextUpdate} | `;
         this.info += `current era: ${currentEra} | `;

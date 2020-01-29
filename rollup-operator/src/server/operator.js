@@ -37,17 +37,25 @@ options
     --passphrase or -p <passphrase string>
         Passphrase to decrypt the wallet
     
-    --clear [true | false]
+    --clear or -c [true | false]
         Erase persistent databases
         Default: false
+    
+    --pathconfig or --pc <path>
+        Path to configuration environment file
+        Default: ./config.env
     `)
     .alias("p", "passphrase")
+    .alias("pc", "pathconfig")
+    .alias("c", "clear")
     .epilogue("Rollup operator");
 
 // Log vars
 const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
 
 // Global vars
+const pathEnvFileDefault = `${__dirname}/config.env`;
+
 let posSynch;
 let rollupSynch;
 let poolSynch;
@@ -58,9 +66,14 @@ let pool;
 
 (async () => {
     let info;
+
+    // Parse client command arguments
+    const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
+    const pathEnvFile = (argv.pathconfig) ? argv.pathconfig : pathEnvFileDefault;
+    const clearFlag = (argv.clear) ? argv.clear : false;
+
     // load environment data
-    const pathEnvironmentFile = `${__dirname}/config.env`;
-    require("dotenv").config({ path: pathEnvironmentFile });
+    require("dotenv").config({ path: pathEnvFile });
 
     // config mode
     const operatorMode = Constants.mode[process.env.OPERATOR_MODE];
@@ -102,8 +115,6 @@ let pool;
     }
 
     // delete database folders if `--clear true`
-    const clearFlag = (argv.clear) ? argv.clear : false;
-
     if (clearFlag === "true"){
         if (synchConfig.rollup.synchDb)
             rmRf.sync(synchConfig.rollup.synchDb);
@@ -198,12 +209,12 @@ let pool;
     /////////////////
 
     // Load wallet ( if specified ) and check if password provided is correct
+    let flagForge = false;
     info = infoInit;
     info += "Initialize operator as: ";
     const walletPath = process.env.WALLET_PATH;
     let wallet = undefined;
     if (walletPath !== undefined) {
-        const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
         if (!fs.existsSync(walletPath) || !fs.lstatSync(walletPath).isFile()) {
             logger.error("Wallet path provided does not work\n");
             process.exit(0);
@@ -217,6 +228,7 @@ let pool;
             process.exit(0);
         }
 
+        flagForge = true;
         info += chalk.bgWhite.black("FORGER AND SYNCHRONIZER");
         info += " | Operator public address: ";
         info += chalk.white.bold(wallet.address);
@@ -226,7 +238,7 @@ let pool;
     logger.info(info);
 
     // Initilaize classes if wallet is loaded
-    if (wallet !== undefined) {
+    if (flagForge) {
 
         //////////////////////
         ///// OPERATOR MANAGER
@@ -276,16 +288,15 @@ let pool;
         
         const seed = utils.getSeedFromPrivKey(wallet.privateKey);
         await loopManager.loadSeedHashChain(seed);
-        info = infoInit;
-        info += "Start Rollup PoS manager";
-        logger.info(info);
-        loopManager.startLoop();
     }
 
     startRollup();
     startRollupPoS();
-    startPool();
-    loadServer();
+    loadServer(flagForge);
+    if (flagForge) {
+        startLoopManager();
+        startPool();
+    }
 })();
 
 async function getGeneralInfo() {
@@ -311,7 +322,7 @@ async function getGeneralInfo() {
 }
 
 function startRollupPoS(){
-    // start synchronizer loop
+    // start synchronizer PoS loop
     let info = infoInit;
     info += "Start Rollup PoS synchronizer";
     logger.info(info);
@@ -319,148 +330,187 @@ function startRollupPoS(){
 }
 
 function startRollup(){
-    // start synchronizer loop
+    // start synchronizer Rollup loop
     let info = infoInit;
-    info += "Start Rollup synchronizer";
+    info += "Start Rollup state synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
 }
 
+function startLoopManager(){
+    // start synchronizer Manager loop
+    let info = infoInit;
+    info += "Start Rollup PoS manager";
+    logger.info(info);
+    loopManager.startLoop();
+}
+
 function startPool(){
-    // start synchronizer loop
+    // start synchronizer Pool loop
     let info = infoInit;
     info += "Start Pool synchronizer";
     logger.info(info);
     poolSynch.synchLoop();
 }
 
-function loadServer(){
+function loadServer(flagForge){
+    // Get server environment variables
+    const expose = (process.env.EXPOSE_API_SERVER !== "true") ? false : true;
+    const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
+
     /////////////////
     ///// LOAD SERVER
     /////////////////
-    const appExternal = express();
-    appExternal.use(bodyParser.json());
-    appExternal.use(cors());
-    appExternal.use(morgan("dev"));
-    const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
+    if (flagForge || expose) {
+        const appExternal = express();
+        appExternal.use(bodyParser.json());
+        appExternal.use(cors());
+        appExternal.use(morgan("dev"));
 
-    appExternal.get("/accounts/:id", async (req, res) => {
-        const id = req.params.id;
-        try {
-            const info = await rollupSynch.getStateById(id);
-            res.status(200).json(stringifyBigInts(info));
-        } catch (error){
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.status(400).send("Error getting accounts information");
-        }
-    });
- 
-    appExternal.get("/accounts", async (req, res) => {
-        const ax = req.query.ax;
-        const ay = req.query.ay;
-        const ethAddr = req.query.ethAddr; 
+        if (expose){
+            let infoHttpPost = infoInit;
+            infoHttpPost += "Load external http GET methods";
+            logger.http(infoHttpPost);
 
-        let accounts;
-
-        if (ax === undefined && ay === undefined && ethAddr === undefined )
-            res.status(400).send("No filters has been submitted");
-
-        // Filter first by AxAy or/and ethAddress
-        if ((ax !== undefined && ay === undefined) || (ax === undefined && ay !== undefined)){
-            res.status(400).send("Babyjub key is not completed. Please provide both Ax and Ay");
-        } else {
-            try {
-                if (ax !== undefined && ay !== undefined) {
-                    accounts = await rollupSynch.getStateByAxAy(ax, ay);
-                    if (ethAddr !== undefined){
-                        accounts = accounts.filter(account => {
-                            if (account.ethAddress.toLowerCase() == ethAddr.toLowerCase())
-                                return account;
-                        });
-                    }
-                } else {
-                    accounts = await rollupSynch.getStateByEthAddr(ethAddr);
+            appExternal.get("/accounts/:id", async (req, res) => {
+                const id = req.params.id;
+                try {
+                    const info = await rollupSynch.getStateById(id);
+                    if (info === null)
+                        res.status(404).send("Account not found");
+                    else   
+                        res.status(200).json(stringifyBigInts(info));
+                } catch (error){
+                    logger.error(`Message error: ${error.message}`);
+                    logger.debug(`Message error: ${error.stack}`);
+                    res.status(400).send("Error getting accounts information");
                 }
-                if (accounts.length > 0)
-                    res.status(200).json(stringifyBigInts(accounts));
-                else
-                    res.status(400).send("No account has been found");
-
-            } catch (error) {
-                logger.error(`Message error: ${error.message}`);
-                logger.debug(`Message error: ${error.stack}`);
-                res.status(400).send("Error getting accounts information");
-            }
+            });
+     
+            appExternal.get("/accounts", async (req, res) => {
+                const ax = req.query.ax;
+                const ay = req.query.ay;
+                const ethAddr = req.query.ethAddr; 
+    
+                let accounts;
+    
+                if (ax === undefined && ay === undefined && ethAddr === undefined )
+                    res.status(400).send("No filters has been submitted");
+    
+                // Filter first by AxAy or/and ethAddress
+                if ((ax !== undefined && ay === undefined) || (ax === undefined && ay !== undefined)){
+                    res.status(400).send("Babyjub key is not completed. Please provide both Ax and Ay");
+                } else {
+                    try {
+                        if (ax !== undefined && ay !== undefined) {
+                            accounts = await rollupSynch.getStateByAxAy(ax, ay);
+                            if (accounts === null)
+                                res.status(404).send("Accounts not found");
+                            if (ethAddr !== undefined){
+                                accounts = accounts.filter(account => {
+                                    if (account.ethAddress.toLowerCase() == ethAddr.toLowerCase())
+                                        return account;
+                                });
+                            }
+                        } else {
+                            accounts = await rollupSynch.getStateByEthAddr(ethAddr);
+                            if (accounts === null)
+                                res.status(404).send("Accounts not found");
+                        }
+                        if (accounts.length > 0)
+                            res.status(200).json(stringifyBigInts(accounts));
+                        else
+                            res.status(404).send("Accounts not found");
+    
+                    } catch (error) {
+                        logger.error(`Message error: ${error.message}`);
+                        logger.debug(`Message error: ${error.stack}`);
+                        res.status(400).send("Error getting accounts information");
+                    }
+                }
+            });
+    
+            appExternal.get("/state", async (req, res) => {
+                try {
+                    const generalInfo = await getGeneralInfo(); 
+                    res.status(200).json(generalInfo);
+                } catch (error){
+                    logger.error(`Message error: ${error.message}`);
+                    logger.debug(`Message error: ${error.stack}`);
+                    res.status(400).send("Error getting general information");
+                }
+            });
+    
+            appExternal.get("/operators", async (req, res) => {
+                try {
+                    const operatorList = await posSynch.getOperators();
+                    res.status(200).json(stringifyBigInts(operatorList));
+                } catch (error) {
+                    logger.error(`Message error: ${error.message}`);
+                    logger.debug(`Message error: ${error.stack}`);
+                    res.status(400).send("Error getting operators list");
+                }
+            });
+    
+            appExternal.get("/exits/:id/:numbatch", async (req, res) => {
+                const numBatch = req.params.numbatch;
+                const id = req.params.id;
+                try {
+                    const resFind = await rollupSynch.getExitTreeInfo(numBatch, id);
+                    if (resFind === null)
+                        res.status(404).send("No information was found");    
+                    else 
+                        res.status(200).json(stringifyBigInts(resFind));
+                        
+                } catch (error) {
+                    logger.error(`Message error: ${error.message}`);
+                    logger.debug(`Message error: ${error.stack}`);
+                    res.status(400).send("Error getting exit tree information");
+                }
+            });
+    
+            appExternal.get("/exits/:id", async (req, res) => {
+                const id = req.params.id;
+                try {
+                    const resFind = await rollupSynch.getExitsBatchById(id);
+                    if (resFind.length > 0)
+                        res.status(200).json(stringifyBigInts(resFind));
+                    else
+                        res.status(404).send("No exits batch found");
+                } catch (error) {
+                    logger.error(`Message error: ${error.message}`);
+                    logger.debug(`Message error: ${error.stack}`);
+                    res.status(400).send("Error getting exit batches");
+                }
+            });
         }
-    });
 
-    appExternal.get("/state", async (req, res) => {
-        try {
-            const generalInfo = await getGeneralInfo(); 
-            res.status(200).json(generalInfo);
-        } catch (error){
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.status(400).send("Error getting general information");
+        if (flagForge){
+            let infoHttpPost = infoInit;
+            infoHttpPost += "Load external http POST method";
+            logger.http(infoHttpPost);
+
+            appExternal.post("/pool", async (req, res) => {
+                const tx = unstringifyBigInts(req.body);
+                try {
+                    const isAdded = await pool.addTx(tx);
+                    if (isAdded === false)
+                        res.status(400).send("Error adding transaction to pool");   
+                    else
+                        res.sendStatus(200);
+                } catch (error) {
+                    logger.error(`Message error: ${error.message}`);
+                    logger.debug(`Message error: ${error.stack}`);
+                    res.status(400).send("Error receiving off-chain transaction");
+                }
+            });
         }
-    });
 
-    appExternal.get("/operators", async (req, res) => {
-        try {
-            const operatorList = await posSynch.getOperators();
-            res.status(200).json(stringifyBigInts(operatorList));
-        } catch (error) {
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.status(400).send("Error getting operators list");
-        }
-    });
-
-    appExternal.get("/exits/:id/:numbatch", async (req, res) => {
-        const numBatch = req.params.numbatch;
-        const id = req.params.id;
-        try {
-            const resFind = await rollupSynch.getExitTreeInfo(numBatch, id);
-            res.status(200).json(stringifyBigInts(resFind));
-        } catch (error) {
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.status(400).send("Error getting exit tree information");
-        }
-    });
-
-    appExternal.get("/exits/:id", async (req, res) => {
-        const id = req.params.id;
-        try {
-            const resFind = await rollupSynch.getExitsBatchById(id);
-            res.status(200).json(stringifyBigInts(resFind));
-        } catch (error) {
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.status(400).send("Error getting exit batches");
-        }
-    });
-
-    appExternal.post("/pool", async (req, res) => {
-        const tx = unstringifyBigInts(req.body);
-        try {
-            const isAdded = await pool.addTx(tx);
-            if (isAdded === false)
-                res.status(400).send("Error adding transaction to pool");   
-            else
-                res.sendStatus(200);
-        } catch (error) {
-            logger.error(`Message error: ${error.message}`);
-            logger.debug(`Message error: ${error.stack}`);
-            res.status(400).send("Error receiving off-chain transaction");
-        }
-    });
-
-    const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {
-        const address = serverExternal.address().address;
-        let infoHttp = infoInit;
-        infoHttp += `Server external running on http://${address}:${portExternal}`;
-        logger.http(infoHttp);
-    });
+        const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {
+            const address = serverExternal.address().address;
+            let infoHttp = infoInit;
+            infoHttp += `Server external running on http://${address}:${portExternal}`;
+            logger.http(infoHttp);
+        });
+    }
 }
