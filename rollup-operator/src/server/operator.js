@@ -24,6 +24,7 @@ const CliServerProof = require("../cli-proof-server");
 const LoopManager = require("../loop-manager");
 const Constants = require("../constants");
 const utils = require("../../../rollup-utils/rollup-utils");
+const { checkEnvVariables } = require("./utils");
 
 const { argv } = require("yargs")
     .usage(`
@@ -44,6 +45,10 @@ options
     --pathconfig or --pc <path>
         Path to configuration environment file
         Default: ./config.env
+    
+    --onlysynch [true | false]
+        Start operator in synch mode
+        Default: false
     `)
     .alias("p", "passphrase")
     .alias("pc", "pathconfig")
@@ -71,15 +76,10 @@ let pool;
     const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
     const pathEnvFile = (argv.pathconfig) ? argv.pathconfig : pathEnvFileDefault;
     const clearFlag = (argv.clear) ? argv.clear : false;
-
-    // load environment data
-    require("dotenv").config({ path: pathEnvFile });
-
-    // config mode
-    const operatorMode = Constants.mode[process.env.OPERATOR_MODE];
+    const onlySynch = (argv.onlysynch) ? argv.onlysynch : false;
 
     // config winston
-    const loggerLevel = process.env.LOG_LEVEL;
+    const loggerLevel = (process.env.LOG_LEVEL) ? process.env.LOG_LEVEL : "info";
 
     var options = {
         console: {
@@ -97,6 +97,30 @@ let pool;
         ]
     });
 
+    // Check if environment mandatory data already exist
+    if (checkEnvVariables()){
+        // load environment data from configuration file
+        if (fs.existsSync(pathEnvFile))
+            require("dotenv").config({ path: pathEnvFile });
+        else
+            logger.error("Missing environment file\n");
+    }
+
+    // Check again environment mandatory data
+    if (checkEnvVariables()){
+        logger.error("Missing environment variables\n");
+        process.exit(0);
+    }
+
+    // Set default environment data if it is not specified
+    const envExpose = (process.env.EXPOSE_API_SERVER === "false") ? false : true;
+    const envOpMode = (process.env.OPERATOR_MODE) ? process.env.OPERATOR_MODE : "archive";
+    const envGasMul = (process.env.GAS_MULTIPLIER) ? process.env.GAS_MULTIPLIER : 1;
+    const envGasLimit = (process.env.GAS_LIMIT) ? process.env.GAS_LIMIT : "default";
+
+    // config mode
+    const operatorMode = Constants.mode[envOpMode];
+
     // load rollup synchronizers configuration file
     let synchConfig;
     if (process.env.CONFIG_SYNCH) {
@@ -107,7 +131,6 @@ let pool;
 
     // load pool configuration file
     let poolConfig;
-
     if (process.env.CONFIG_POOL) {
         poolConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_POOL, "utf8"));
     } else {
@@ -214,7 +237,7 @@ let pool;
     info += "Initialize operator as: ";
     const walletPath = process.env.WALLET_PATH;
     let wallet = undefined;
-    if (walletPath !== undefined) {
+    if (walletPath !== undefined && !onlySynch) {
         if (!fs.existsSync(walletPath) || !fs.lstatSync(walletPath).isFile()) {
             logger.error("Wallet path provided does not work\n");
             process.exit(0);
@@ -248,8 +271,8 @@ let pool;
             synchConfig.rollupPoS.address,
             synchConfig.rollupPoS.abi,
             wallet,
-            process.env.GAS_MULTIPLIER,
-            process.env.GAS_LIMIT);
+            envGasMul,
+            envGasLimit);
 
         /////////////////////////
         ///// CLIENT PROOF SERVER
@@ -292,7 +315,7 @@ let pool;
 
     startRollup();
     startRollupPoS();
-    loadServer(flagForge);
+    loadServer(flagForge, envExpose);
     if (flagForge) {
         startLoopManager();
         startPool();
@@ -353,9 +376,8 @@ function startPool(){
     poolSynch.synchLoop();
 }
 
-function loadServer(flagForge){
+function loadServer(flagForge, expose){
     // Get server environment variables
-    const expose = (process.env.EXPOSE_API_SERVER !== "true") ? false : true;
     const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
 
     /////////////////
