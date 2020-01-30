@@ -63,6 +63,7 @@
     "tweetnacl": "^1.0.1",
     "tweetnacl-util": "^0.15.0",
     "v8-compile-cache": "^2.1.0",
+    "web3": "^1.2.5",
     "winston": "^3.2.1"
   }
 }
