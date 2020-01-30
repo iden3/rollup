@@ -179,7 +179,7 @@ class Synchronizer {
     }
 
     _fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved){
-        this.info = `${chalk.blue("SYNCH")} | `;
+        this.info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
         this.info += `current block number: ${currentBlock} | `;
         this.info += `last block synched: ${lastSynchBlock} | `;
         this.info += `current batch depth: ${currentBatchDepth} | `;

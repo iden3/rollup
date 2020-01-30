@@ -85,7 +85,7 @@ class SynchPool {
     }
 
     _fillInfo(flagRead){
-        this.info = `${chalk.cyan("POOL SYNCH")} | `;
+        this.info = `${chalk.cyan("POOL SYNCH".padEnd(12))} | `;
         this.info += flagRead ? "Success" : "Fail";
         this.info += " loading pool conversion table"; 
 

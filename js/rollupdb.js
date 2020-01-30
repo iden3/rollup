@@ -57,6 +57,7 @@ class RollupDB {
         const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x" + ay));
 
         const idxs = await this.db.get(keyAxAy);
+        if (!idxs) return null;
         const promises = [];
         for (let i=0; i<idxs.length; i++) {
             promises.push(this.getStateByIdx(idxs[i]));
@@ -69,6 +70,7 @@ class RollupDB {
         const keyEthAddr = Constants.DB_EthAddr.add(bigInt(ethAddr));
 
         const idxs = await this.db.get(keyEthAddr);
+        if (!idxs) return null;
         const promises = [];
         for (let i=0; i<idxs.length; i++) {
             promises.push(this.getStateByIdx(idxs[i]));
@@ -80,12 +82,11 @@ class RollupDB {
     async getExitTreeInfo(numBatch, idx){
         const keyRoot = Constants.DB_Batch.add(bigInt(numBatch));
         const rootValues = await this.db.get(keyRoot);
+        if (!rootValues) return null;
         const rootExitTree = rootValues[1];
-
         const dbExit = new SMTTmpDb(this.db);
         const tmpExitTree = new SMT(dbExit, rootExitTree);
         const resFindExit = await tmpExitTree.find(bigInt(idx));
-        
         // get leaf information
         if (resFindExit.found) {
             const foundValueId = poseidonHash([resFindExit.foundValue, idx]);
@@ -94,8 +95,8 @@ class RollupDB {
             state.idx = Number(idx);
             resFindExit.state = state;
             delete resFindExit.foundValue;
-            delete resFindExit.isOld0;
         }
+        delete resFindExit.isOld0;
         return resFindExit;
     }
 

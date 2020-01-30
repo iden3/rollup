@@ -103,7 +103,7 @@ class LoopManager{
 
         // eslint-disable-next-line no-constant-condition
         while(true) {
-            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
+            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`.padEnd(20);
             let currentBlock = 0;
             let timeTx = 0;
             // Fill log information depending on the state
@@ -133,12 +133,19 @@ class LoopManager{
                 info += " | Attempts to send: ";
                 info += chalk.white.bold(this.infoCurrentBatch.retryTimes);
                 break;
+            
+            case state.GET_PROOF:
+                timeTx = performance.now();
+                info += " | Proof pending: ";
+                info += `${chalk.white.bold(`${((timeTx - this.infoCurrentBatch.startTime)/1000).toFixed(2)} s`)}`;
+                break;
 
             case state.MINING:
                 info += " | info ==> Transaction hash: ";
                 info += chalk.white.bold(this.txHash);
                 timeTx = performance.now();
-                info += ` | transaction pending: ${((timeTx - this.startTx)/1000).toFixed(2)} s`;
+                info += " | transaction pending: ";
+                info += `${chalk.white.bold(`${((timeTx - this.startTx)/1000).toFixed(2)} s`)}`;
                 break;
             }
 
@@ -309,6 +316,7 @@ class LoopManager{
         const res = await this.cliServerProof.setInput(stringifyBigInts(this.infoCurrentBatch.batchData.getInput()));
         // retry build or send inputs to server-proof
         if (res.status == 200) {
+            this.infoCurrentBatch.startTime = performance.now();
             this.timeouts.NEXT_STATE = 0;
             this.state = state.GET_PROOF;
         } else {
@@ -387,6 +395,7 @@ class LoopManager{
         this.infoCurrentBatch.builded = false;
         this.infoCurrentBatch.batchData = undefined;
         this.infoCurrentBatch.waiting = false;
+        this.infoCurrentBatch.startTime = 0;
         if (this.infoCurrentBatch.retryTimes !== undefined) this.infoCurrentBatch.retryTimes += 1;
         else this.infoCurrentBatch.retryTimes = 0;
     }
