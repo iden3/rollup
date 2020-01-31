@@ -44,7 +44,6 @@
     "snarkjs": "^0.1.20",
     "tweetnacl": "^1.0.1",
     "tweetnacl-util": "^0.15.0",
-    "web3": "^1.2.1",
     "yargs": "^14.2.0"
   }
 }

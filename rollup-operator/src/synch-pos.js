@@ -28,7 +28,7 @@ class SynchPoS {
         this.creationHash = creationHash;
         this.ethAddress = ethAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
-        this.contractPoS = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
+        this.contractPoS = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress, {handleRevert: true});
         this.winners = [];
         this.slots = [];
         this.operators = {};
@@ -252,7 +252,7 @@ class SynchPoS {
         // update next era winners
         for (let i = 0; i < 2*this.slotsPerEra; i++){
             const slot = this.slotsPerEra*eraUpdate + i;
-
+            
             if (i < this.slotsPerEra){
                 this.winners.shift(); // remove first era winners
                 this.slots.shift();
