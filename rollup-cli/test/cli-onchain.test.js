@@ -135,10 +135,11 @@ contract('Rollup', async (accounts) => {
 
         walletJson = JSON.parse(fs.readFileSync(walletPathDefault, 'utf8'));
         const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
-
-        await createRollupAbi(RollupTest.abi);
-
         walletEth = walletRollup.ethWallet.wallet;
+
+        await createConfig(insRollupTest.address, walletEth.address);
+        await createRollupAbi(RollupTest.abi);
+        
     });
 
     it('Distribute token rollup', async () => {
@@ -184,7 +185,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        process.execSync(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId} --dethaddr ${walletEth.address}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type deposit -p ${password} -l ${depositAmount} --tokenid ${tokenId}`);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
@@ -212,8 +213,7 @@ contract('Rollup', async (accounts) => {
 
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
-
-        process.execSync(`cd ..; node cli.js onchaintx --type depositontop --pass ${password} --amount ${onTopAmount} --tokenid ${tokenId}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type depositontop -p ${password} -l ${onTopAmount} --tokenid ${tokenId} -r 1`);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
@@ -237,7 +237,7 @@ contract('Rollup', async (accounts) => {
         // - it creates an exit root, it is created
         const amount = 10;
         // Should trigger error since id2 is the sender, does not match id1
-        process.execSync(`cd ..; node cli.js onchaintx --type forcewithdraw --pass ${password} --amount ${amount}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type forcewithdraw -p ${password} -a ${amount} --id 1`);
         const event = await insRollupTest.getPastEvents('OnChainTx');
         // forge block with no transactions
         // forge block force withdraw
@@ -255,7 +255,7 @@ contract('Rollup', async (accounts) => {
         // Note the amount of tokens is taken from dummy api-client
         const numExitRoot = 6;
 
-        process.execSync(`cd ..; node cli.js onchaintx --type withdraw --pass ${password} --numexitroot ${numExitRoot}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type withdraw -p ${password} --numexitroot ${numExitRoot} --id 1`);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -286,7 +286,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        process.execSync(`cd ..; node cli.js onchaintx --type deposit --pass ${password} --amount ${depositAmount} --tokenid ${tokenId}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type deposit -p ${password} -l ${depositAmount} --tokenid ${tokenId}`);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
@@ -307,8 +307,9 @@ contract('Rollup', async (accounts) => {
         const amount = 2;
         const tokenId = 0;
         const to = 2;
+        const from = 1;
 
-        process.execSync(`cd ..; node cli.js onchaintx --type TRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type TRANSFER -p ${password} -a ${amount} --tokenid ${tokenId} -s ${from} -r ${to}`);
     });
 
     it('Should depositAndTransfer', async () => {
@@ -331,7 +332,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        process.execSync(`cd ..; node cli.js onchaintx --type DEPOSITANDTRANSFER --pass ${password} --amount ${amount} --tokenid ${tokenId} --to ${to} --loadamount ${loadamount}`);
+        process.execSync(`cd ..; node cli.js onchaintx --type DEPOSITANDTRANSFER -p ${password} -a ${amount} --tokenid ${tokenId} -r ${to} -l ${loadamount}`);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);

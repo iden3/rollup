@@ -39,6 +39,8 @@ abiDecoder.addABI(RollupTest.abi);
 const proofA = ['0', '0'];
 const proofB = [['0', '0'], ['0', '0']];
 const proofC = ['0', '0'];
+const gasLimit = 5000000;
+const gasMultiplier = 1;
 
 function buildFullInputSm(bb, beneficiary) {
     const input = buildInputSm(bb);
@@ -198,7 +200,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
-            walletJson, password, walletEth.address, abi);
+            walletJson, password, walletEth.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
@@ -235,7 +237,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await depositOnTop(web3.currentProvider.host, addressSC, onTopAmount, tokenId,
-            walletJson, password, abi, idFrom);
+            walletJson, password, abi, idFrom, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
         // Check token balances for walletEth and rollup smart contract
@@ -264,7 +266,7 @@ contract('Rollup', async (accounts) => {
         const idFrom = 1;
 
         await forceWithdraw(web3.currentProvider.host, addressSC, amount,
-            walletJson, password, abi, idFrom);
+            walletJson, password, abi, idFrom, gasLimit, gasMultiplier);
 
         // forge block with no transactions
         // forge block force withdraw
@@ -288,7 +290,7 @@ contract('Rollup', async (accounts) => {
         const numExitRoot = 6;
 
         await withdraw(web3.currentProvider.host, addressSC,
-            walletJson, password, abi, UrlOperator, idFrom, numExitRoot);
+            walletJson, password, abi, UrlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -318,7 +320,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
-            walletJson, password, walletEth.address, abi);
+            walletJson, password, walletEth.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
@@ -344,7 +346,7 @@ contract('Rollup', async (accounts) => {
         const toId = 2;
         // from 1 to 2
         await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJson, password, abi, fromId, toId);
+            walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
         await forgeBlock();
@@ -374,7 +376,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await depositAndTransfer(web3.currentProvider.host, addressSC, depositAmount,
-            amount, tokenId, walletJson, password, walletEth.address, abi, toId);
+            amount, tokenId, walletJson, password, walletEth.address, abi, toId, gasLimit, gasMultiplier);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         // Check token balances for walletEth and rollup smart contract
@@ -409,7 +411,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
-            walletJson, password, walletEthTest.address, abi);
+            walletJson, password, walletEthTest.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
@@ -437,12 +439,12 @@ contract('Rollup', async (accounts) => {
         // from 1 to 2
         try {
             await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
-                walletJson, password, abi, fromId, toId);
+                walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
         } catch (error) {
             expect((error.message).includes('Sender does not match identifier balance tree')).to.be.equal(true);
         }
         await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJsonTest, password, abi, fromId, toId);
+            walletJsonTest, password, abi, fromId, toId, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
         await forgeBlock();
@@ -472,7 +474,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await depositAndTransfer(web3.currentProvider.host, addressSC, depositAmount,
-            amount, tokenId, walletJson, password, walletEthTest.address, abi, toId);
+            amount, tokenId, walletJson, password, walletEthTest.address, abi, toId, gasLimit, gasMultiplier);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         // Check token balances for walletEth and rollup smart contract
@@ -499,12 +501,12 @@ contract('Rollup', async (accounts) => {
         // from 1 to 2
         try {
             await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
-                walletJson, password, abi, fromId, toId);
+                walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
         } catch (error) {
             expect((error.message).includes('Sender does not match identifier balance tree')).to.be.equal(true);
         }
         await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJsonTest, password, abi, fromId, toId);
+            walletJsonTest, password, abi, fromId, toId, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
         await forgeBlock();

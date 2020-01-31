@@ -8,32 +8,32 @@ const { transfer } = require('./actions/onchain/transfer.js');
 const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.js');
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
 
-async function sendTx(urlOperator, to, amount, wallet, passString, tokenId, userFee, fromId) {
-    return send(urlOperator, to, amount, wallet, passString, tokenId, userFee, fromId);
+async function sendTx(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom) {
+    return send(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom);
 }
 
-async function depositTx(node, address, amount, tokenid, wallet, passString, ethAddress, abi) {
-    return deposit(node, address, amount, tokenid, wallet, passString, ethAddress, abi);
+async function depositTx(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
+    return deposit(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, ethAddress, abi, gasLimit, gasMultiplier);
 }
 
-async function depositOnTopTx(node, address, amount, tokenid, wallet, passString, abi, IdTo) {
-    return depositOnTop(node, address, amount, tokenid, wallet, passString, abi, IdTo);
+async function depositOnTopTx(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, abi, idTo, gasLimit, gasMultiplier) {
+    return depositOnTop(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, abi, idTo, gasLimit, gasMultiplier);
 }
 
-async function withdrawTx(node, address, wallet, passString, abi, urlOperator, fromId, numExitRoot) {
-    return withdraw(node, address, wallet, passString, abi, urlOperator, fromId, numExitRoot);
+async function withdrawTx(nodeEth, addressSC, wallet, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier) {
+    return withdraw(nodeEth, addressSC, wallet, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
 }
 
-async function forceWithdrawTx(node, address, amount, wallet, passString, abi, fromId) {
-    return forceWithdraw(node, address, amount, wallet, passString, abi, fromId);
+async function forceWithdrawTx(nodeEth, addressSC, amount, wallet, passphrase, abi, idFrom, gasLimit, gasMultiplier) {
+    return forceWithdraw(nodeEth, addressSC, amount, wallet, passphrase, abi, idFrom, gasLimit, gasMultiplier);
 }
 
-async function transferTx(node, address, amount, tokenid, wallet, passString, abi, fromId, toId) {
-    return transfer(node, address, amount, tokenid, wallet, passString, abi, fromId, toId);
+async function transferTx(nodeEth, addressSC, amount, tokenid, wallet, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier) {
+    return transfer(nodeEth, addressSC, amount, tokenid, wallet, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier);
 }
 
-async function depositAndTransferTx(node, address, loadAmount, amount, tokenid, wallet, passString, ethAddress, abi, toId) {
-    return depositAndTransfer(node, address, loadAmount, amount, tokenid, wallet, passString, ethAddress, abi, toId);
+async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase, ethAddress, abi, toId, gasLimit, gasMultiplier) {
+    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase, ethAddress, abi, toId, gasLimit, gasMultiplier);
 }
 
 async function showAccounts(urlOperator, filters) {
