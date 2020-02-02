@@ -138,8 +138,8 @@ info command
     .alias('l', 'loadamount')
     .alias('tk', 'tokenid')
     .alias('n', 'numexitroot')
-    .alias("gl", "gaslimit")
-    .alias("gm", "gasmultiplier")
+    .alias('gl', 'gaslimit')
+    .alias('gm', 'gasmultiplier')
     .epilogue('Rollup client cli tool');
 
 const passphrase = (argv.passphrase) ? argv.passphrase : 'nopassphrase';
@@ -168,17 +168,17 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
 (async () => {
     try {
         let actualConfig = {};
-        if(argv._[0].toUpperCase() === 'CREATEKEYS') {
+        if (argv._[0].toUpperCase() === 'CREATEKEYS') {
             let encWallet;
             let wallet;
-            //createkeys ethereum
+            // createkeys ethereum
             if (keytype.toUpperCase() === 'ETHEREUM') {
-                if(passphrase === 'nopassphrase') {
+                if (passphrase === 'nopassphrase') {
                     console.log('Please provide a passphrase to encrypt keys\n\n');
                     throw new Error(error.NO_PASS);
                 } else {
-                    if(walletpath === 'nowalletpath') {
-                        walletpath = walletEthPathDefault
+                    if (walletpath === 'nowalletpath') {
+                        walletpath = walletEthPathDefault;
                     }
                     if (mnemonic !== 'nomnemonic') {
                         if (mnemonic.split(' ').length !== 12) {
@@ -205,14 +205,14 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     }
                     fs.writeFileSync(walletpath, JSON.stringify(JSON.parse(encWallet), null, 1), 'utf-8');
                 }
-            //createkeys babyjubjub
+            // createkeys babyjubjub
             } else if (keytype.toUpperCase() === 'BABYJUBJUB') {
-                if(passphrase === 'nopassphrase') {
+                if (passphrase === 'nopassphrase') {
                     console.log('Please provide a passphrase to encrypt keys\n\n');
                     throw new Error(error.NO_PASS);
                 } else {
-                    if(walletpath === 'nowalletpath') {
-                        walletpath = walletBabyjubPathDefault
+                    if (walletpath === 'nowalletpath') {
+                        walletpath = walletBabyjubPathDefault;
                     }
                     if (mnemonic !== 'nomnemonic') {
                         if (mnemonic.split(' ').length !== 12) {
@@ -221,7 +221,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         } else {
                             console.log('create babyjub wallet mnemonic');
                             wallet = BabyJubWallet.fromMnemonic(mnemonic);
-                            encWallet = await  wallet.toEncryptedJson(passphrase);
+                            encWallet = await wallet.toEncryptedJson(passphrase);
                         }
                     } else if (importWallet !== 'noimport') {
                         if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
@@ -239,14 +239,14 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     }
                     fs.writeFileSync(walletpath, JSON.stringify(JSON.parse(encWallet), null, 1), 'utf-8');
                 }
-            //createkeys rollup
+            // createkeys rollup
             } else if (keytype.toUpperCase() === 'ROLLUP') {
-                if(passphrase === 'nopassphrase') {
+                if (passphrase === 'nopassphrase') {
                     console.log('Please provide a passphrase to encrypt keys\n\n');
                     throw new Error(error.NO_PASS);
                 } else {
-                    if(walletpath === 'nowalletpath') {
-                        walletpath = walletPathDefault
+                    if (walletpath === 'nowalletpath') {
+                        walletpath = walletPathDefault;
                     }
                     if (mnemonic !== 'nomnemonic') {
                         if (mnemonic.split(' ').length !== 12) {
@@ -315,10 +315,10 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 console.log('Please provide a passphrase\n\n');
                 throw new Error(error.NO_PASS);
             } else {
-                if(walletpath === 'nowalletpath') {
+                if (walletpath === 'nowalletpath') {
                     if (fs.existsSync(configPath)) {
                         actualConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                        if(actualConfig.wallet !== undefined) {
+                        if (actualConfig.wallet !== undefined) {
                             walletpath = actualConfig.wallet;
                         }
                     }
@@ -326,10 +326,10 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 let wallet;
                 console.log('The following keys have been found:');
                 if (keytype.toUpperCase() === 'ROLLUP') {
-                    if(walletpath === 'nowalletpath') {
-                        walletpath = walletPathDefault
+                    if (walletpath === 'nowalletpath') {
+                        walletpath = walletPathDefault;
                     }
-                    if(!fs.existsSync(walletpath)) {
+                    if (!fs.existsSync(walletpath)) {
                         console.log('Please provide a valid path\n\n');
                         throw new Error(error.INVALID_PATH);
                     }
@@ -342,10 +342,10 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     console.log(`Public Key: ${wallet.babyjubWallet.publicKey}`);
                     console.log(`Public Key Compressed: ${wallet.babyjubWallet.publicKeyCompressed.toString('hex')}`);
                 } else if (keytype.toUpperCase() === 'ETHEREUM') {
-                    if(walletpath === 'nowalletpath') {
-                        walletpath = walletEthPathDefault
+                    if (walletpath === 'nowalletpath') {
+                        walletpath = walletEthPathDefault;
                     }
-                    if(!fs.existsSync(walletpath)) {
+                    if (!fs.existsSync(walletpath)) {
                         console.log('Please provide a valid path\n\n');
                         throw new Error(error.INVALID_PATH);
                     }
@@ -358,7 +358,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     if (walletpath === 'nowalletpath') {
                         walletpath = walletBabyjubPathDefault;
                     }
-                    if(!fs.existsSync(walletpath)) {
+                    if (!fs.existsSync(walletpath)) {
                         console.log('Please provide a valid path\n\n');
                         throw new Error(error.INVALID_PATH);
                     }
@@ -386,11 +386,11 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 }
                 checkparamsOffchain(type, actualConfig);
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
-                const urlOperator = actualConfig.urlOperator;
+                const { urlOperator } = actualConfig;
                 if (type.toUpperCase() === 'SEND') {
                     const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, userFee, sender);
                     console.log(JSON.stringify(res));
-                } else if (type.toUpperCase() === 'BEFOREWITHDRAW'){
+                } else if (type.toUpperCase() === 'BEFOREWITHDRAW') {
                     const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee, sender);
                     console.log(JSON.stringify(res));
                 } else {
@@ -398,7 +398,6 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 }
             }
             process.exit(0);
-
         } else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
             if (type !== 'notype' && type.toUpperCase() !== 'DEPOSIT' && type.toUpperCase() !== 'DEPOSITONTOP' && type.toUpperCase() !== 'WITHDRAW'
             && type.toUpperCase() !== 'FORCEWITHDRAW' && type.toUpperCase() !== 'TRANSFER' && type.toUpperCase() !== 'DEPOSITANDTRANSFER') {
@@ -429,7 +428,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         wallet, passphrase, abi, id, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressSC, wallet, 
+                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressSC, wallet,
                         passphrase, abi, actualConfig.urlOperator, id, numExitRoot, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
@@ -464,10 +463,10 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         filters.ax = wallet.babyjubWallet.public.ax;
                         filters.ay = wallet.babyjubWallet.public.ay;
                     } else if (filter.toUpperCase() === 'ETHEREUM') {
-                        if(wallet.ethWallet.address.startsWith("0x")) {
+                        if (wallet.ethWallet.address.startsWith('0x')) {
                             filters.ethAddr = wallet.ethWallet.address;
                         } else {
-                            filters.ethAddr = '0x' + wallet.ethWallet.address;
+                            filters.ethAddr = `0x${wallet.ethWallet.address}`;
                         }
                     } else {
                         throw new Error(error.INVALID_FILTER);
@@ -487,7 +486,6 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
         console.log(Object.keys(error)[err.message]);
         process.exit(err.message);
     }
-
 })();
 
 function checkparamsOnchain(type, actualConfig) {

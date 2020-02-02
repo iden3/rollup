@@ -271,7 +271,7 @@ class LoopManager{
             const fromBlockWinner = await this.posSynch.getBlockBySlot(slotWinner);
             const toBlockWinner = await this.posSynch.getBlockBySlot(slotWinner + 1) - this.slotDeadline;
             
-            if (this.registerId.includes(opWinner) && (toBlockWinner > currentBlock)){
+            if (this.registerId.includes(opWinner) && (currentBlock < toBlockWinner)){
                 foundSlotWinner = true;
                 this._setInfoBatch(fromBlockWinner, toBlockWinner, opWinner);
             }
@@ -328,16 +328,16 @@ class LoopManager{
     async _stateProof() {
         const res = await this.cliServerProof.getStatus();
         const statusServer = res.data.state;
+        const currentBlock = await this.posSynch.getCurrentBlock();
         if (statusServer == stateServer.FINISHED) {
             // get proof, commit data and forge block
             const proof = res.data.proof;
             const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
             const publicInputs = buildInputSm(this.infoCurrentBatch.batchData);
 
-            // Check I am still the winner, otherwise abort sending proof
-            const currentBlock = await this.posSynch.getCurrentBlock();
-
-            if (currentBlock > this.infoCurrentBatch.toBlock){
+            // Check I am still the winner
+            const deadlineReach = await this._blockDeadline(currentBlock);
+            if (deadlineReach){
                 this.timeouts.NEXT_STATE = 5000;
                 this.state = state.SYNCHRONIZING;
                 this._resetInfoBatch();
@@ -385,7 +385,29 @@ class LoopManager{
             // re-send input to server-proof
             this.state = state.BUILD_BATCH;
             this.infoCurrentBatch.retryTimes += 1;
-        } else this.timeouts.NEXT_STATE = 5000; // Server in pending state
+        } else { // Server in pending sate
+            this.timeouts.NEXT_STATE = 5000;
+            // Check I am still the winner
+            const deadlineReach = await this._blockDeadline(currentBlock);
+            if (deadlineReach){
+                // Cancel proof calculation
+                await this.cliServerProof.cancel();
+                this.state = state.SYNCHRONIZING;
+                this._resetInfoBatch();
+                return;
+            }
+        }
+    }
+
+    async _blockDeadline(currentBlock){
+        if (currentBlock >= this.infoCurrentBatch.toBlock){
+            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
+            info += " | info ==> ";
+            info += `${chalk.white.bold("Reach slot deadline block. Cancelling proof computation")}`;
+            this.logger.info(info);
+            return true;
+        }
+        return false;
     }
 
     _setInfoBatch(fromBlock, toBlock, opId){

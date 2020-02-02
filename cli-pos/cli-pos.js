@@ -203,7 +203,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
         }
         
     } catch (err) {
-        console.log(err.message)
+        console.log(err.message);
         console.log(Object.keys(error)[err.message]);
         process.exit(err.message);
     }
