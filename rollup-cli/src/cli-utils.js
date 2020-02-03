@@ -8,8 +8,8 @@ const { transfer } = require('./actions/onchain/transfer.js');
 const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.js');
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
 
-async function sendTx(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom) {
-    return send(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom);
+async function sendTx(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce) {
+    return send(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce);
 }
 
 async function depositTx(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
@@ -32,8 +32,10 @@ async function transferTx(nodeEth, addressSC, amount, tokenid, wallet, passphras
     return transfer(nodeEth, addressSC, amount, tokenid, wallet, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier);
 }
 
-async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase, ethAddress, abi, toId, gasLimit, gasMultiplier) {
-    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase, ethAddress, abi, toId, gasLimit, gasMultiplier);
+async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase, ethAddress, abi,
+    toId, gasLimit, gasMultiplier) {
+    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase,
+        ethAddress, abi, toId, gasLimit, gasMultiplier);
 }
 
 async function showAccounts(urlOperator, filters) {

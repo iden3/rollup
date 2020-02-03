@@ -25,8 +25,8 @@ describe('Send', async function () {
     });
 
     it('Should call send', async () => {
-        const status = await send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom);
-        expect(status).to.be.equal(200);
+        const res = await send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom);
+        expect(res.status).to.be.equal(200);
     });
 
     after(async () => {
