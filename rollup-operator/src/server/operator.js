@@ -7,6 +7,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const rmRf = require("rimraf");
+const ip = require("ip");
 
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
@@ -78,9 +79,32 @@ let pool;
     const clearFlag = (argv.clear) ? argv.clear : false;
     const onlySynch = (argv.onlysynch) ? argv.onlysynch : false;
 
-    // config winston
-    const loggerLevel = (process.env.LOG_LEVEL) ? process.env.LOG_LEVEL : "info";
+    // Check if environment mandatory data already exist
+    if (checkEnvVariables()){
+        // load environment data from configuration file
+        if (fs.existsSync(pathEnvFile))
+            require("dotenv").config({ path: pathEnvFile });
+        else {
+            console.error("Missing environment file");
+            process.exit(0);
+        }   
+    }
 
+    // Check again environment mandatory data
+    if (checkEnvVariables()){
+        console.error("Missing environment variables");
+        process.exit(0);
+    }
+
+    // Set default environment data if it is not specified
+    const loggerLevel = (process.env.LOG_LEVEL) ? process.env.LOG_LEVEL : "info";
+    const envExpose = (process.env.EXPOSE_API_SERVER === "false") ? false : true;
+    const envOpMode = (process.env.OPERATOR_MODE) ? process.env.OPERATOR_MODE : "archive";
+    const envGasMul = (process.env.GAS_MULTIPLIER) ? process.env.GAS_MULTIPLIER : 1;
+    const envGasLimit = (process.env.GAS_LIMIT) ? process.env.GAS_LIMIT : "default";
+    const flagLAN = (process.env.LAN === "true") ? true : false;
+
+    // config winston
     var options = {
         console: {
             level: loggerLevel,
@@ -96,27 +120,6 @@ let pool;
             new winston.transports.Console(options.console)
         ]
     });
-
-    // Check if environment mandatory data already exist
-    if (checkEnvVariables()){
-        // load environment data from configuration file
-        if (fs.existsSync(pathEnvFile))
-            require("dotenv").config({ path: pathEnvFile });
-        else
-            logger.error("Missing environment file\n");
-    }
-
-    // Check again environment mandatory data
-    if (checkEnvVariables()){
-        logger.error("Missing environment variables\n");
-        process.exit(0);
-    }
-
-    // Set default environment data if it is not specified
-    const envExpose = (process.env.EXPOSE_API_SERVER === "false") ? false : true;
-    const envOpMode = (process.env.OPERATOR_MODE) ? process.env.OPERATOR_MODE : "archive";
-    const envGasMul = (process.env.GAS_MULTIPLIER) ? process.env.GAS_MULTIPLIER : 1;
-    const envGasLimit = (process.env.GAS_LIMIT) ? process.env.GAS_LIMIT : "default";
 
     // config mode
     const operatorMode = Constants.mode[envOpMode];
@@ -315,7 +318,8 @@ let pool;
 
     startRollup();
     startRollupPoS();
-    loadServer(flagForge, envExpose);
+    loadServer(flagForge, envExpose, flagLAN);
+
     if (flagForge) {
         startLoopManager();
         startPool();
@@ -376,7 +380,7 @@ function startPool(){
     poolSynch.synchLoop();
 }
 
-function loadServer(flagForge, expose){
+function loadServer(flagForge, expose, flagLAN){
     // Get server environment variables
     const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
 
@@ -426,23 +430,20 @@ function loadServer(flagForge, expose){
                     try {
                         if (ax !== undefined && ay !== undefined) {
                             accounts = await rollupSynch.getStateByAxAy(ax, ay);
-                            if (accounts === null)
-                                res.status(404).send("Accounts not found");
-                            if (ethAddr !== undefined){
+                            if (ethAddr !== undefined && accounts !== null){
                                 accounts = accounts.filter(account => {
                                     if (account.ethAddress.toLowerCase() == ethAddr.toLowerCase())
                                         return account;
                                 });
                             }
-                        } else {
+                        } else 
                             accounts = await rollupSynch.getStateByEthAddr(ethAddr);
-                            if (accounts === null)
-                                res.status(404).send("Accounts not found");
-                        }
-                        if (accounts.length > 0)
-                            res.status(200).json(stringifyBigInts(accounts));
+                
+                        if (accounts === null || accounts.length === 0)
+                            res.status(404).send("Accounts not found");    
                         else
-                            res.status(404).send("Accounts not found");
+                            res.status(200).json(stringifyBigInts(accounts));
+                            
     
                     } catch (error) {
                         logger.error(`Message error: ${error.message}`);
@@ -528,11 +529,20 @@ function loadServer(flagForge, expose){
             });
         }
 
-        const serverExternal = appExternal.listen(portExternal, "127.0.0.1", () => {
-            const address = serverExternal.address().address;
+        const serverLocalHost = appExternal.listen(portExternal, "127.0.0.1", () => {
+            const address = serverLocalHost.address().address;
             let infoHttp = infoInit;
             infoHttp += `Server external running on http://${address}:${portExternal}`;
             logger.http(infoHttp);
         });
+
+        if (flagLAN){
+            const serverLAN = appExternal.listen(portExternal, ip.address(), () => {
+                const address = serverLAN.address().address;
+                let infoHttp = infoInit;
+                infoHttp += `Server running on http://${address}:${portExternal}`;
+                logger.http(infoHttp);
+            });
+        }
     }
 }

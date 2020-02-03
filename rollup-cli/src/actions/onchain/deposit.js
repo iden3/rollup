@@ -1,5 +1,6 @@
 const ethers = require('ethers');
 const { Wallet } = require('../../wallet.js');
+const { getGasPrice } = require('./utils');
 
 /**
  * @dev deposit on-chain transaction
@@ -13,7 +14,8 @@ const { Wallet } = require('../../wallet.js');
  * @param ethAddress allowed address to control new balance tree leaf
  * @param abi abi of rollup contract
 */
-async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletJson, passphrase, ethAddress, abi, gasLimit = 5000000, gasMultiplier = 1) {
+async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletJson,
+    passphrase, ethAddress, abi, gasLimit = 5000000, gasMultiplier = 1) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
@@ -22,24 +24,17 @@ async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletJson, pass
     walletEth = walletEth.connect(provider);
     const address = ethAddress || await walletEth.getAddress();
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
-    const fee_onchain_tx = await contractWithSigner.FEE_ONCHAIN_TX();
+    const feeOnchainTx = await contractWithSigner.FEE_ONCHAIN_TX();
     const overrides = {
-        gasLimit: gasLimit,
-        gasPrice: await _getGasPrice(gasMultiplier, provider),
-        value: fee_onchain_tx
+        gasLimit,
+        gasPrice: await getGasPrice(gasMultiplier, provider),
+        value: feeOnchainTx,
     };
     try {
         return await contractWithSigner.deposit(loadAmount, tokenId, address, pubKeyBabyjub, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }
-}
-
-async function _getGasPrice(multiplier, provider){
-    const strAvgGas = await provider.getGasPrice();
-    const avgGas = BigInt(strAvgGas);
-    const res = (avgGas * BigInt(multiplier))
-    return await ethers.utils.bigNumberify(res.toString());
 }
 
 module.exports = {

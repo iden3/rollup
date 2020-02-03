@@ -30,7 +30,7 @@ async function createConfig(address, depositEthAddress) {
     if (!fs.existsSync(resources)) {
         await fs.mkdirSync(resources);
     }
-    let actualConfig = {
+    const actualConfig = {
         wallet: './test/resources/wallet-test.json',
         urlOperator: 'http://127.0.0.1:9000',
         addressSC: '',

@@ -139,7 +139,6 @@ contract('Rollup', async (accounts) => {
 
         await createConfig(insRollupTest.address, walletEth.address);
         await createRollupAbi(RollupTest.abi);
-        
     });
 
     it('Distribute token rollup', async () => {

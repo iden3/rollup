@@ -11,7 +11,7 @@ class TXPool {
             maxSlots,               // Absolute maximum number of TXs in the pool
             executableSlots,        // Max num of Executable TX in the pool
             nonExecutableSlots      // Max num of Non Executable TX in the pool
-            timeout                 // ms to keep a tx
+            timeout                 // seconds to keep a tx
         }
 
 
@@ -23,7 +23,7 @@ class TXPool {
         this.maxSlots = cfg.maxSlots || 64;
         this.executableSlots = cfg.executableSlots || 16;
         this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
-        this.timeout = 3*3600*1000;
+        this.timeout = cfg.timeout || 3*3600;
 
         this.rollupDB = rollupDB;
         this.txs = [];
@@ -42,7 +42,6 @@ class TXPool {
         } else {
             this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
         }
-
         const slotKeys = [];
         for (let i = 0; i<this.slotsMap.length; i++) {
             if (this.slotsMap[i].isZero()) continue;
@@ -55,12 +54,9 @@ class TXPool {
             }
         }
         const encodedTxs = await this.rollupDB.db.multiGet(slotKeys);
-
-        const tmpState = new TmpState(this.rollupDB);
         for (const encodeTx of encodedTxs){
             const tx = this._array2Tx(encodeTx);
-            const canProcessRes = await tmpState.canProcess(tx);
-            if (canProcessRes !== "NO") this.txs.push(tx);
+            this.txs.push(tx);
         }
 
         await this.purge();
@@ -250,8 +246,8 @@ class TXPool {
                 tx.removed = true;
                 continue;
             }
-            const st = await tmpState.getState(tx.fromIdx);
-            if (tx.nonce < st.nonce) {
+            const canBeProcessed = await tmpState.canProcess(tx);
+            if (canBeProcessed === "NO") {
                 tx.removed = true;
                 continue;
             }
@@ -309,7 +305,7 @@ class TXPool {
                                 }
                             }
                         }
-                        tmpState.process(avTxs[i][n]);
+                        await tmpState.process(avTxs[i][n]);
 
                         // Readjust the Fees for tx with lower nonce and low fee
                         const af = avTxs[i][n].adjustedFee / (n - firstNonce +1);
@@ -472,8 +468,7 @@ class TXPool {
 
             for (let i=0; i<txsByCoin[coin].length; i++) {
                 const tx = txsByCoin[coin][i];
-
-                nTx ++;
+                nTx++;
                 if ( tx.normalizedFee > 0 ) nNonZero++;
                 if (( tx.normalizedFee < normalizedFee )&&
                     ( tx.normalizedFee > 0 ))
@@ -506,7 +501,6 @@ class TXPool {
                 }
             }
         }
-
         let forgedTxs = [];
         const PTable = {};
 

@@ -149,7 +149,7 @@ class SynchPoS {
                     totalSynch = (((lastSynchEra) / (currentEra + 1)) * 100);
                 }
 
-                if (currentBlock > blockNextUpdate){
+                if (currentBlock >= blockNextUpdate){
                     const logs = await this.contractPoS.getPastEvents("allEvents", {
                         fromBlock: lastSynchEra ? (blockNextUpdate - this.blocksNextInfo) : this.creationBlock,
                         toBlock: blockNextUpdate - 1,
