@@ -14,17 +14,21 @@ const CliExternalOperator = require('../../../../rollup-operator/src/cli-externa
  * @param userFee amount of fee that the user is willing to pay
  * @param idFrom Self balance tree identifier
 */
-async function send(urlOperator, idTo, amount, walletJson, password, tokenId, userFee, idFrom) {
+async function send(urlOperator, idTo, amount, walletJson, password, tokenId, userFee, idFrom, nonce) {
     const apiOperator = new CliExternalOperator(urlOperator);
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
 
     const responseLeaf = await apiOperator.getAccountByIdx(idFrom);
+    let nonceToSend;
+    if (nonce !== undefined) nonceToSend = nonce;
+    else nonceToSend = responseLeaf.data.nonce;
+
     const tx = {
         fromIdx: responseLeaf.data.idx,
         toIdx: idTo,
         coin: tokenId,
         amount,
-        nonce: responseLeaf.data.nonce,
+        nonce: nonceToSend,
         userFee,
         rqOffset: 0,
         onChain: 0,
@@ -34,8 +38,12 @@ async function send(urlOperator, idTo, amount, walletJson, password, tokenId, us
     walletRollup.signRollupTx(tx); // sign included in transaction
     const parseTx = stringifyBigInts(tx);// convert bigint to Strings
 
-    const res = await apiOperator.sendTx(parseTx);
-    return res.status;
+    const resTx = await apiOperator.sendTx(parseTx);
+    const res = {
+        status: resTx.status,
+        nonce: nonceToSend,
+    };
+    return res;
 }
 
 module.exports = { send };

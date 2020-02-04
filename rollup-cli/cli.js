@@ -78,6 +78,7 @@ offchainTx command
     -r or --recipient <recipient ID>
     -s or --sender <sender ID>
     -e or --fee <user fee>
+    --no or --nonce <nonce TX> (optional)
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
         Default: config.json
@@ -138,6 +139,7 @@ info command
     .alias('l', 'loadamount')
     .alias('tk', 'tokenid')
     .alias('n', 'numexitroot')
+    .alias('no', 'nonce')
     .alias('gl', 'gaslimit')
     .alias('gm', 'gasmultiplier')
     .epilogue('Rollup client cli tool');
@@ -162,6 +164,7 @@ const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid
 const userFee = argv.fee ? argv.fee : 'nouserfee';
 const numExitRoot = argv.numexitroot ? argv.numexitroot : 'nonumexitroot';
 const filter = argv.filter ? argv.filter : 'nofilter';
+const nonce = (argv.nonce || argv.nonce === 0) ? argv.nonce : undefined;
 const gasLimit = (argv.gaslimit) ? argv.gaslimit : 5000000;
 const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
 
@@ -388,11 +391,11 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
                 const { urlOperator } = actualConfig;
                 if (type.toUpperCase() === 'SEND') {
-                    const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, userFee, sender);
-                    console.log(JSON.stringify(res));
+                    const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, userFee, sender, nonce);
+                    console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                 } else if (type.toUpperCase() === 'BEFOREWITHDRAW') {
-                    const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee, sender);
-                    console.log(JSON.stringify(res));
+                    const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee, sender, nonce);
+                    console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                 } else {
                     throw new Error(error.INVALID_TYPE);
                 }

@@ -302,7 +302,7 @@ describe('OFFCHAINTX', async function () {
     it('offchaintx send', (done) => {
         const out = process.exec(`cd ..; node cli.js offchaintx --type send -p ${pass} --amount 2 --sender 2 --recipient 12 --tokenid 0 --fee 1 -c ${configTest}`);
         out.stdout.on('data', (data) => {
-            expect('200\n').to.be.equal(data);
+            expect('Status: 200, Nonce: 0\n').to.be.equal(data);
             done();
         });
     });
