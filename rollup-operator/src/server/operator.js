@@ -194,7 +194,7 @@ let pool;
         synchConfig.rollup.abi,
         synchConfig.rollupPoS.address,
         synchConfig.rollupPoS.abi,
-        synchConfig.creationHash,
+        synchConfig.rollup.creationHash,
         synchConfig.ethAddress,
         loggerLevel,
         operatorMode,
