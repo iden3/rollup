@@ -54,7 +54,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Hash of all on chain transactions ( will be forged in the next batch )
     // Forces 'operator' to add all on chain transactions
-    uint256 miningOnChainTxsHash;
+    uint256 public miningOnChainTxsHash;
 
     // Hash of all on chain transactions ( will be forged in two batches )
     // Forces 'operator' to add all on chain transactions
@@ -66,7 +66,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 totalFillingOnChainFee;
 
     // Fees recollected for every on-chain transaction
-    uint constant public FEE_ONCHAIN_TX = 0.1 ether;
+    uint constant public FEE_ONCHAIN_TX = 0.01 ether;
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;
