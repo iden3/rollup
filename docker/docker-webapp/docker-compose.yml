@@ -1,0 +1,12 @@
+version: '3'
+services:
+  webapp:
+    container_name: webapp
+    build:
+      context: .
+      args:
+        - branch=${BRANCH}
+    env_file: 
+      - ./.env
+    ports:
+      - '3000:3000'

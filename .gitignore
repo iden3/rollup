@@ -78,3 +78,7 @@ rollup-cli/src/resources/
 
 cli-pos/wallet-test.json
 cli-pos/config.json
+
+synch-config.json
+pool-config.json
+wallet.json
