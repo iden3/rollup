@@ -22,6 +22,7 @@ const initialState = {
   tokensR: '0',
   tokensA: '0',
   txs: [],
+  chainId: -1,
   errorInfoAccount: '',
 };
 
@@ -81,6 +82,7 @@ function general(state = initialState, action) {
         config: action.payload.config,
         abiRollup: action.payload.abiRollup,
         abiTokens: action.payload.abiTokens,
+        chainId: action.payload.chainId,
         isLoadingFiles: false,
         errorFiles: '',
       };
@@ -131,6 +133,29 @@ function general(state = initialState, action) {
         ...state,
         isLoadingInfoAccount: false,
         errorInfoAccount: action.error,
+        tokens: '0',
+        tokensR: '0',
+        tokensA: '0',
+      };
+    case CONSTANTS.CHECK_APPROVED_TOKENS_ERROR:
+      return {
+        ...state,
+        errorApprovedTokens: true,
+      };
+    case CONSTANTS.CHECK_ETHER_ERROR:
+      return {
+        ...state,
+        errorEther: true,
+      };
+    case CONSTANTS.INIT_APPROVED_TOKENS_ERROR:
+      return {
+        ...state,
+        errorApprovedTokens: false,
+      };
+    case CONSTANTS.INIT_ETHER_ERROR:
+      return {
+        ...state,
+        errorEther: false,
       };
     default:
       return state;

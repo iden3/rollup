@@ -11,6 +11,7 @@ const walletPathDefault = path.join(__dirname, '../../wallet.json');
 const walletPath = path.join(__dirname, '../resources/wallet-test.json');
 const walletEthPath = path.join(__dirname, '../resources/ethWallet.json');
 const walletBabyjubPath = path.join(__dirname, '../resources/babyjubWallet.json');
+const noncePath = path.join(__dirname, '../../nonceJson.json');
 
 const passphrase = 'foo';
 
@@ -61,6 +62,9 @@ async function deleteResources() {
     }
     if (fs.existsSync(configPath)) {
         await fs.unlinkSync(configPath);
+    }
+    if (fs.existsSync(noncePath)) {
+        await fs.unlinkSync(noncePath);
     }
 }
 

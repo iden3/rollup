@@ -6,7 +6,7 @@ import {
 } from 'semantic-ui-react';
 import { handleSendSend } from '../../../state/tx/actions';
 
-const web3 = require("web3");
+const web3 = require('web3');
 
 class ModalSend extends Component {
     static propTypes = {
@@ -53,9 +53,9 @@ class ModalSend extends Component {
     handleClick = async () => {
       const { wallet, config, password } = this.props;
 
-      const idTo = this.idToRef.current.value;
-      const tokenId = this.tokenIdRef.current.value;
-      const idFrom = this.idFromRef.current.value;
+      const idTo = Number(this.idToRef.current.value);
+      const tokenId = Number(this.tokenIdRef.current.value);
+      const idFrom = Number(this.idFromRef.current.value);
       const amount = web3.utils.toWei(this.amountRef.current.value, 'ether');
       const fee = web3.utils.toWei(this.feeRef.current.value, 'ether');
       const { operator } = config;

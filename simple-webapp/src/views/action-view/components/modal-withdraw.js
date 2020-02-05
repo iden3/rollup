@@ -4,6 +4,7 @@ import { connect } from 'react-redux';
 import {
   Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
+import ModalError from './modal-error';
 import { handleSendWithdraw, handleGetExitRoot } from '../../../state/tx/actions';
 
 class ModalWithdraw extends Component {
@@ -26,9 +27,13 @@ class ModalWithdraw extends Component {
       numExitRoot: -1,
       idFrom: -1,
       initModal: true,
+      modalError: false,
+      error: "",
     };
     this.idFromRef = React.createRef();
   }
+
+  toggleModalError = () =>  { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
     handleClick = async () => {
       try {
@@ -36,34 +41,47 @@ class ModalWithdraw extends Component {
           wallet, config, abiRollup, password,
         } = this.props;
 
-        const idFrom = this.state.idFrom;
-        const numExitRoot = this.state.numExitRoot;
+        const idFrom = Number(this.state.idFrom);
+        const numExitRoot = Number(this.state.numExitRoot);
         const { nodeEth } = config;
         const addressSC = config.address;
         const { operator } = config;
+        this.toggleModalChange();
         this.props.toggleModalWithdraw();
         const res = await this.props.handleSendWithdraw(nodeEth, addressSC, wallet, password,
           abiRollup, operator, idFrom, numExitRoot);
         this.props.getInfoAccount();
+        if(res.message !== undefined){
+          if(res.message.includes("insufficient funds")){
+            this.setState({error:"1"});
+            this.toggleModalError();
+          }
+        }
+        console.log(res)
+      } catch (err) {
         // eslint-disable-next-line no-console
-        console.log(res);
-      } catch(err) {
         console.log(err);
       }
     }
 
     getExitRoot = async () => {
-        const exitRoots = await this.props.handleGetExitRoot(this.props.config.operator, this.idFromRef.current.value);
-        this.setState({ exitRoots, idFrom: this.idFromRef.current.value }, () => { this.toggleModalChange(); });
+      const exitRoots = await this.props.handleGetExitRoot(this.props.config.operator, this.idFromRef.current.value);
+      this.setState({ exitRoots, idFrom: this.idFromRef.current.value }, () => { this.toggleModalChange(); });
     }
 
     exitRoot = () => {
+      let dropdown;
       if (this.state.exitRoots === []) {
-        return <Dropdown placeholder='Num Exit Root'/>;
+        dropdown = (<Dropdown placeholder="Num Exit Root" />);
       } else {
-        return (<Dropdown placeholder='Num Exit Root' options={this.state.exitRoots}
-          onChange={this.handleChange}/>);
+        dropdown = (
+          <Dropdown
+            placeholder="Num Exit Root"
+            options={this.state.exitRoots}
+            onChange={this.handleChange} />
+        );
       }
+      return dropdown;
     }
 
     handleChange = (e, { value }) => this.setState({ numExitRoot: value })
@@ -124,11 +142,16 @@ class ModalWithdraw extends Component {
     }
 
     toggleModalChange = () => { this.setState((prev) => ({ initModal: !prev.initModal })); }
-    toogleCloseModal = () => { this.toggleModalChange(); this.props.toggleModalWithdraw()}
+
+    toogleCloseModal = () => { this.toggleModalChange(); this.props.toggleModalWithdraw(); }
 
     render() {
       return (
         <div>
+          <ModalError
+            error={this.state.error}
+            modalError={this.state.modalError}
+            toggleModalError={this.toggleModalError} />
           {this.modal()}
         </div>
       );
@@ -140,7 +163,6 @@ const mapStateToProps = (state) => ({
   config: state.general.config,
   abiRollup: state.general.abiRollup,
   password: state.general.password,
-  exitRoot: state.general.exitRoot,
 });
 
 export default connect(mapStateToProps, { handleSendWithdraw, handleGetExitRoot })(ModalWithdraw);

@@ -6,4 +6,3 @@ export default combineReducers({
   general: general.reducer,
   transactions: transactions.reducer,
 });
-

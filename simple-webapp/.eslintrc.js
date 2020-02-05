@@ -11,13 +11,6 @@ const path = require('path');
 
 module.exports = {
   "extends": "airbnb",
-  "settings": {
-    "import/resolver": {
-      "webpack": {
-        "config": path.join(__dirname, "config/webpack.config.js")
-      }
-    }// to use the aliases created in the webpack.config file
-  },
   "env": {
     "es6": true,
     "browser": true,
@@ -51,6 +44,12 @@ module.exports = {
     "no-bitwise": [0],
     "no-mixed-operators": [0],
     "no-use-before-define": ["error", { "functions": false, "classes": false }],
+    "consistent-return": [0],
+    "no-async-promise-executor": [0],
+    "new-cap": [0],
+    "import/no-extraneous-dependencies": [0],
+    "import/prefer-default-export": [0],
+    "react/no-did-update-set-state": [0],
     "react/prefer-stateless-function": [0],
     "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
     "react/require-default-props": [0],

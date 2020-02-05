@@ -1,8 +1,10 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { Table, Icon, Modal, Button } from 'semantic-ui-react';
+import {
+  Table, Icon, Modal, Button,
+} from 'semantic-ui-react';
 
-const web3 = require("web3");
+const web3 = require('web3');
 
 class ModalInfoId extends Component {
   static propTypes = {

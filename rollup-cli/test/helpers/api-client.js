@@ -63,6 +63,12 @@ app.get('/exits/:id', (req, res) => {
     }
 });
 
+app.get('/state', (_, res) => {
+    const rollupSynch = {};
+    rollupSynch.lastBatchSynched = '435';
+    res.send({ rollupSynch });
+});
+
 app.get('/exits/:id/:numbatch', (req, res) => {
     const numExitTree = req.params.numbatch;
     const idBalanceTree = req.params.id;

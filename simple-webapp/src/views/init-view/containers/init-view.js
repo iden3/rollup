@@ -10,7 +10,7 @@ import ModalImport from '../components/modal-import';
 import ModalCreate from '../components/modal-create';
 
 import {
-  handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleCreateWallet
+  handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleCreateWallet,
 } from '../../../state/general/actions';
 import { handleInitStateTx } from '../../../state/tx/actions';
 
@@ -28,6 +28,7 @@ class InitView extends Component {
     handleLoadWallet: PropTypes.func.isRequired,
     handleLoadFiles: PropTypes.func.isRequired,
     handleLoadOperator: PropTypes.func.isRequired,
+    handleCreateWallet: PropTypes.func.isRequired,
     resetWallet: PropTypes.func.isRequired,
   }
 
@@ -171,5 +172,5 @@ const mapStateToProps = (state) => ({
 
 
 export default connect(mapStateToProps, {
-  handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleInitStateTx, handleCreateWallet
+  handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleInitStateTx, handleCreateWallet,
 })(InitView);

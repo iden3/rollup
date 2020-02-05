@@ -79,7 +79,8 @@ class ActionView extends Component {
   toggleModalSend = () => { this.setState((prev) => ({ modalSend: !prev.modalSend })); }
 
   handleClickGetTokens = () => {
-    this.props.handleGetTokens(this.props.config.nodeEth, this.props.config.tokensAddress, this.props.wallet, this.props.password);
+    this.props.handleGetTokens(this.props.config.nodeEth, this.props.config.tokensAddress,
+      this.props.wallet, this.props.password);
     this.getInfoAccount();
   }
 
@@ -121,9 +122,11 @@ class ActionView extends Component {
           tokensA={this.props.tokensA}
           isLoadingInfoAccount={this.props.isLoadingInfoAccount}
           getInfoAccount={this.getInfoAccount}
-          txs={this.props.txs} 
-          tokensAddress={this.props.config.tokensAddress}/>
+          txs={this.props.txs}
+          tokensAddress={this.props.config.tokensAddress} />
         <ModalDeposit
+          balance={this.props.balance}
+          tokensA={this.props.tokensA}
           modalDeposit={this.state.modalDeposit}
           toggleModalDeposit={this.toggleModalDeposit}
           getInfoAccount={this.getInfoAccount} />

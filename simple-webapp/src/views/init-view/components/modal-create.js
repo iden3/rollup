@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Button, Modal, Form, Icon, Message
+  Button, Modal, Form, Icon, Message,
 } from 'semantic-ui-react';
 
 class ModalCreate extends Component {
