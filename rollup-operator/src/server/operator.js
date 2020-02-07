@@ -103,6 +103,7 @@ let pool;
     const envGasMul = (process.env.GAS_MULTIPLIER) ? process.env.GAS_MULTIPLIER : 1;
     const envGasLimit = (process.env.GAS_LIMIT) ? process.env.GAS_LIMIT : "default";
     const flagLAN = (process.env.LAN === "true") ? true : false;
+    const pollingTimeout = (process.env.POLLING_TIMEOUT) ? process.env.POLLING_TIMEOUT : 60;
 
     // config winston
     var options = {
@@ -310,7 +311,8 @@ let pool;
             cliServerProof,
             loggerLevel,
             synchConfig.ethNodeUrl,
-            synchConfig.rollup.timeouts);
+            synchConfig.rollup.timeouts,
+            pollingTimeout);
         
         const seed = utils.getSeedFromPrivKey(wallet.privateKey);
         await loopManager.loadSeedHashChain(seed);

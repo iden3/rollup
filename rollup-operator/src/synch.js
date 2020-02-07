@@ -516,6 +516,18 @@ class Synchronizer {
         if ((lastBatchSaved + 1) < currentBatch) return false;
         return true;
     }
+
+    async getCurrentStateRoot() {
+        const lastBatch = await this.rollupContract.methods.getStateDepth()
+            .call({from: this.ethAddress});
+        return await this.rollupContract.methods.getStateRoot(lastBatch)
+            .call({from: this.ethAddress});
+    }
+
+    async getMiningOnchainHash() {
+        return await this.rollupContract.methods.miningOnChainTxsHash()
+            .call({from: this.ethAddress});
+    }
 }
 
 module.exports = Synchronizer;
