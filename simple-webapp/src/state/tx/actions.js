@@ -4,7 +4,6 @@ import * as operator from '../../utils/bundle-op';
 
 const ethers = require('ethers');
 const gasLimit = 5000000;
-const gasMultiplier = 3;
 
 function sendDeposit() {
   return {
@@ -27,7 +26,7 @@ function sendDepositError(error) {
   };
 }
 
-export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, password, ethAddress, abiRollup) {
+export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, password, ethAddress, abiRollup, gasMultiplier) {
   return function (dispatch) {
     dispatch(sendDeposit());
     return new Promise(async (resolve) => {
@@ -112,15 +111,20 @@ function sendWithdrawError(error) {
   };
 }
 
-export function handleSendWithdraw(nodeEth, addressSC, wallet, password, abiRollup, op, idFrom, numExitRoot) {
+export function handleSendWithdraw(nodeEth, addressSC, wallet, password, abiRollup, op, idFrom, numExitRoot, gasMultiplier) {
   return function (dispatch) {
     dispatch(sendWithdraw());
     return new Promise(async (resolve) => {
       try {
-        const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, wallet, password, abiRollup,
-          op, idFrom, numExitRoot, gasLimit, gasMultiplier);
-        dispatch(sendWithdrawSuccess(res));
-        resolve(res);
+        if(numExitRoot === -1) {
+          dispatch(sendWithdrawError("No numExitRoot"));
+          resolve("No numExitRoot");
+        } else {
+          const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, wallet, password, abiRollup,
+            op, idFrom, numExitRoot, gasLimit, gasMultiplier);
+          dispatch(sendWithdrawSuccess(res));
+          resolve(res);
+        }
       } catch (error) {
         dispatch(sendWithdrawError(error.message));
         resolve(error.message);
@@ -194,7 +198,7 @@ function approveError(error) {
   };
 }
 
-export function handleApprove(addressTokens, abiTokens, encWallet, amountToken, addressRollup, password, node) {
+export function handleApprove(addressTokens, abiTokens, encWallet, amountToken, addressRollup, password, node, gasMultiplier) {
   return function (dispatch) {
     dispatch(approve());
     return new Promise(async (resolve) => {
@@ -204,7 +208,12 @@ export function handleApprove(addressTokens, abiTokens, encWallet, amountToken, 
         let walletEth = new ethers.Wallet(wallet.ethWallet.privateKey);
         walletEth = walletEth.connect(provider);
         const contractTokens = new ethers.Contract(addressTokens, abiTokens, walletEth);
-        const res = await contractTokens.approve(addressRollup, amountToken);
+        const gasPrice = await rollup.onchain.utils.getGasPrice(gasMultiplier, provider);
+        const overrides = {
+          gasLimit,
+          gasPrice: gasPrice._hex,
+        };
+        const res = await contractTokens.approve(addressRollup, amountToken, overrides);
         dispatch(approveSuccess(res));
         resolve(res);
       } catch (error) {

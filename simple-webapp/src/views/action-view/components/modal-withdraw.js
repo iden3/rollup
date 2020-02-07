@@ -49,12 +49,14 @@ class ModalWithdraw extends Component {
         this.toggleModalChange();
         this.props.toggleModalWithdraw();
         const res = await this.props.handleSendWithdraw(nodeEth, addressSC, wallet, password,
-          abiRollup, operator, idFrom, numExitRoot);
+          abiRollup, operator, idFrom, numExitRoot, this.props.gasMultiplier);
         this.props.getInfoAccount();
-        if(res.message !== undefined){
-          if(res.message.includes("insufficient funds")){
-            this.setState({error:"1"});
-            this.toggleModalError();
+        if(res !== undefined) {
+          if(res.message !== undefined){
+            if(res.message.includes("insufficient funds")){
+              this.setState({error:"1"});
+              this.toggleModalError();
+            }
           }
         }
         console.log(res)

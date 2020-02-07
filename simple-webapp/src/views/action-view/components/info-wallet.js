@@ -4,6 +4,7 @@ import {
   Table, Button, Container, Icon, Popup,
 } from 'semantic-ui-react';
 import ModalInfoId from './modal-info-id';
+import ButtonGM from './gmButtons';
 
 const web3 = require('web3');
 
@@ -139,6 +140,14 @@ class InfoWallet extends Component {
               </Table.Cell>
               <Table.Cell colSpan="3">
                 {this.importedWallet()}
+              </Table.Cell>
+            </Table.Row>
+            <Table.Row>
+              <Table.Cell colSpan="1" width="3">
+                Transaction Fee: 
+              </Table.Cell>
+              <Table.Cell colSpan="3">
+                <ButtonGM />
               </Table.Cell>
             </Table.Row>
             <Table.Row>

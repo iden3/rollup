@@ -292,3 +292,16 @@ export function initErrors() {
     dispatch(initEtherError());
   };
 }
+
+function setGasMultiplier(num) {
+  return {
+    type: CONSTANTS.SET_GAS_MULTIPLIER,
+    payload: num,
+  }
+}
+
+export function selectGasMultiplier(num) {
+  return function (dispatch) {
+    dispatch(setGasMultiplier(num));
+  }
+}

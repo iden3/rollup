@@ -24,6 +24,7 @@ const initialState = {
   txs: [],
   chainId: -1,
   errorInfoAccount: '',
+  gasMultiplier: 2,
 };
 
 function general(state = initialState, action) {
@@ -157,6 +158,11 @@ function general(state = initialState, action) {
         ...state,
         errorEther: false,
       };
+    case CONSTANTS.SET_GAS_MULTIPLIER:
+      return {
+        ...state,
+        gasMultiplier: action.payload,
+      }
     default:
       return state;
   }

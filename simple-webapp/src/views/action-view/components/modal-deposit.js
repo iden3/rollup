@@ -55,7 +55,7 @@ class ModalDeposit extends Component {
       } else {
         this.props.toggleModalDeposit();
         const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet,
-          password, undefined, abiRollup);
+          password, undefined, abiRollup, this.props.gasMultiplier);
         this.props.getInfoAccount();
         if(res.message !== undefined){
           if(res.message.includes("insufficient funds")){
@@ -111,7 +111,7 @@ const mapStateToProps = (state) => ({
   wallet: state.general.wallet,
   config: state.general.config,
   abiRollup: state.general.abiRollup,
-  password: state.general.password,
+  password: state.general.password
 });
 
 export default connect(mapStateToProps, { handleSendDeposit })(ModalDeposit);
