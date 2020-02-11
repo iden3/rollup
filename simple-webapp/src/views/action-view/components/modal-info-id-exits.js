@@ -4,32 +4,32 @@ import {
   Table, Icon, Modal, Button,
 } from 'semantic-ui-react';
 
-const web3 = require('web3');
-
-class ModalInfoId extends Component {
+class ModalInfoIdExits extends Component {
   static propTypes = {
-    txs: PropTypes.array,
+    txsExits: PropTypes.array,
     noImported: PropTypes.bool.isRequired,
   };
 
   static defaultProps = {
-    txs: [{ idx: 0, amount: 0 }],
+    txsExits: [{ idx: 0, batch: 0, amount: 0 }],
   };
 
   getIdTokens = () => {
     try {
-      const { txs } = this.props;
-      return txs.map((key, index) => {
+      const { txsExits } = this.props;
+      return txsExits.map((key, index) => {
         return (
           <Table.Row key={index}>
             <Table.Cell>{key.idx}</Table.Cell>
-            <Table.Cell>{web3.utils.fromWei(key.amount, 'ether')}</Table.Cell>
+            <Table.Cell>{key.batch}</Table.Cell>
+            <Table.Cell>{key.amount}</Table.Cell>
           </Table.Row>
         );
       });
     } catch (err) {
       return (
         <Table.Row>
+          <Table.Cell>0</Table.Cell>
           <Table.Cell>0</Table.Cell>
           <Table.Cell>0</Table.Cell>
         </Table.Row>
@@ -46,6 +46,7 @@ class ModalInfoId extends Component {
             <Table.Header>
               <Table.Row>
                 <Table.HeaderCell>ID</Table.HeaderCell>
+                <Table.HeaderCell>BATCH</Table.HeaderCell>
                 <Table.HeaderCell>TOKENS</Table.HeaderCell>
               </Table.Row>
             </Table.Header>
@@ -59,4 +60,4 @@ class ModalInfoId extends Component {
   }
 }
 
-export default ModalInfoId;
+export default ModalInfoIdExits;

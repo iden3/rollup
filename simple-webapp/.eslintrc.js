@@ -42,6 +42,7 @@ module.exports = {
     "no-return-assign": [0],
     "no-console": [2, { "allow": ["warn", "error"] }],
     "no-bitwise": [0],
+    "quote-props": [0],
     "no-mixed-operators": [0],
     "no-use-before-define": ["error", { "functions": false, "classes": false }],
     "consistent-return": [0],

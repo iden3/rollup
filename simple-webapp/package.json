@@ -22,7 +22,9 @@
     "semantic-ui-css": "^2.4.1",
     "semantic-ui-react": "^0.88.1",
     "truffle-hdwallet-provider": "^1.0.17",
-    "web3": "^1.2.4"
+    "web3": "^1.2.4",
+    "bundle-cli": "file:../rollup-cli/",
+    "bundle-op": "file:../rollup-operator/"
   },
   "scripts": {
     "start": "react-scripts start",

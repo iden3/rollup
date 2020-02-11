@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Button, Modal, Form, Icon, Message,
+  Button, Modal, Form, Icon, Message, Progress,
 } from 'semantic-ui-react';
 
 class ModalImport extends Component {
@@ -13,20 +13,26 @@ class ModalImport extends Component {
       handleChangeWallet: PropTypes.func.isRequired,
       handleClickImport: PropTypes.func.isRequired,
       toggleModalImport: PropTypes.func.isRequired,
+      desc: PropTypes.string,
+      step: PropTypes.number.isRequired,
     }
 
     isLoading = () => {
       if (this.props.isLoadingWallet === true) {
         return (
-          <Message warning>
-            <Icon name="circle notched" loading />
-            We are checking your wallet...
-          </Message>
+          <div>
+            <Message warning>
+              <Icon name="circle notched" loading />
+              Your wallet is being checked...
+              This may take a few seconds!
+            </Message>
+            <p>{this.props.desc}</p>
+            <Progress value={this.props.step} total="3" progress="ratio" color="blue" active />
+          </div>
         );
       } if (this.props.errorWallet !== '') {
         return (
           <Message error>
-            <Icon name="close" />
             Invalid Wallet or Password
           </Message>
         );
@@ -59,7 +65,7 @@ class ModalImport extends Component {
               <Icon name="check" />
               Import
             </Button>
-            <Button color="red" onClick={this.props.toggleModalImport}>
+            <Button color="grey" basic onClick={this.props.toggleModalImport}>
               <Icon name="close" />
               Close
             </Button>

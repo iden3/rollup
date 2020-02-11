@@ -13,7 +13,11 @@ function float2fix(fl) {
     const e = (fl >> 11);
     const e5 = (fl >> 10) & 1;
 
-    const exp = bigInt(10).pow(bigInt(e));
+    // const exp = bigInt(10).pow(bigInt(e));
+    let exp = bigInt(1);
+    for ( let i = 0; i < e; i++ ){
+        exp = exp*bigInt(10);
+    }
     let res = bigInt(m).mul(exp);
     if (e5 && e) {
         res = res.add(exp.div(bigInt(2)));
