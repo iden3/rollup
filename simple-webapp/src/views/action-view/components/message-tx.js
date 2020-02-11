@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import { Message, Icon } from 'semantic-ui-react';
+import { Message, Icon, Divider } from 'semantic-ui-react';
+import { handleCloseMessage } from '../../../state/tx/actions';
 
 class MessageTx extends Component {
   static propTypes = {
@@ -12,13 +13,21 @@ class MessageTx extends Component {
     isLoadingGetTokens: PropTypes.bool.isRequired,
     successSend: PropTypes.bool.isRequired,
     successTx: PropTypes.bool.isRequired,
+    successDeposit: PropTypes.bool.isRequired,
     error: PropTypes.string.isRequired,
+    errorFiles: PropTypes.string.isRequired,
     tx: PropTypes.object.isRequired,
     chainId: PropTypes.number.isRequired,
+    messageOpen: PropTypes.bool.isRequired,
+    handleCloseMessage: PropTypes.func.isRequired,
+    batch: PropTypes.number.isRequired,
   }
 
   getUrl = () => {
     let net;
+    if (this.props.chainId === -1) {
+      return '';
+    }
     if (this.props.chainId === 5) {
       net = 'goerli.';
     } else if (this.props.chainId === 3) {
@@ -39,6 +48,19 @@ class MessageTx extends Component {
   }
 
   getMessage = () => {
+    if (this.props.errorFiles !== '') {
+      return (
+        <Message icon color="red">
+          <Icon name="exclamation" />
+          <Message.Content>
+            <Message.Header>
+              Error!
+              {this.props.errorFiles}
+            </Message.Header>
+          </Message.Content>
+        </Message>
+      );
+    }
     if (this.props.isLoadingDeposit === true || this.props.isLoadingWithdraw === true
       || this.props.isLoadingSend === true || this.props.isLoadingApprove === true
       || this.props.isLoadingGetTokens === true) {
@@ -50,39 +72,62 @@ class MessageTx extends Component {
           </Message.Content>
         </Message>
       );
-    // } else if (this.props.errorDeposit !== '' || this.props.errorWithdraw !== '' || this.props.errorSend !== '' || this.props.errorApprove !== '' || this.props.errorGetTokens !== '') {
-    } if (this.props.error !== '') {
+    } if (this.props.error !== '' && this.props.messageOpen) {
       return (
-        <Message icon color="red">
+        <Message icon color="red" onDismiss={this.props.handleCloseMessage}>
           <Icon name="exclamation" />
           <Message.Content>
             <Message.Header>Error!</Message.Header>
+            <p>{this.props.error}</p>
           </Message.Content>
         </Message>
       );
-    } if (this.props.successTx === true) {
+    } if (this.props.successTx === true && this.props.messageOpen) {
       return (
-        <Message icon color="green">
+        <Message icon color="green" onDismiss={this.props.handleCloseMessage}>
           <Icon name="check" />
           <Message.Content>
-            <Message.Header>Transaction send!</Message.Header>
-            <p>Transaction is being forged... Please click Reload in few seconds!</p>
+            <Message.Header>Transaction sent!</Message.Header>
+            <p>
+              Transaction is being forged...
+            </p>
+            <p>Please click Reload in few seconds!</p>
             {this.getUrl()}
           </Message.Content>
         </Message>
       );
-    } if (this.props.successSend === true) {
+    } if (this.props.successDeposit === true && this.props.messageOpen) {
       return (
-        <Message icon color="green">
+        <Message icon color="green" onDismiss={this.props.handleCloseMessage}>
           <Icon name="check" />
           <Message.Content>
-            <Message.Header>Transaction send!</Message.Header>
-            <p>Transaction is being forged... Please click Reload in few seconds!</p>
+            <Message.Header>Transaction sent!</Message.Header>
+            <p>
+              {`Transaction is being forged... You can see the result at batch ${this.props.batch + 2}`}
+            </p>
+            <p>Please click Reload in few seconds!</p>
+            {this.getUrl()}
+          </Message.Content>
+        </Message>
+      );
+    } if (this.props.successSend === true && this.props.messageOpen) {
+      return (
+        <Message icon color="green" onDismiss={this.props.handleCloseMessage}>
+          <Icon name="check" />
+          <Message.Content>
+            <Message.Header>
+              Transaction sent! If you send before the next batch, it may not be done correctly.
+            </Message.Header>
+            <p>
+              {`Transaction is being forged... You can see the result in the batch 
+              ${this.props.batch + 1} or ${this.props.batch + 2}`}
+            </p>
+            <p>Please click Reload in few seconds!</p>
           </Message.Content>
         </Message>
       );
     }
-    return '';
+    return <Divider />;
   }
 
   render() {
@@ -101,9 +146,13 @@ const mapStateToProps = (state) => ({
   isLoadingGetTokens: state.transactions.isLoadingGetTokens,
   successSend: state.transactions.successSend,
   successTx: state.transactions.successTx,
+  successDeposit: state.transactions.successDeposit,
   error: state.transactions.error,
+  errorFiles: state.general.errorFiles,
   tx: state.transactions.tx,
+  batch: state.transactions.batch,
+  messageOpen: state.transactions.messageOpen,
   chainId: state.general.chainId,
 });
 
-export default connect(mapStateToProps, { })(MessageTx);
+export default connect(mapStateToProps, { handleCloseMessage })(MessageTx);

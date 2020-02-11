@@ -10,8 +10,14 @@ const initialState = {
   exitRoots: [],
   isLoadingGetExitRoot: false,
   successGetExitRoot: false,
+  isLoadingGetIDs: false,
+  ids: [],
+  successGetIds: false,
   successTx: false,
+  successDeposit: false,
   successSend: false,
+  messageOpen: false,
+  batch: 0,
   error: '',
 };
 
@@ -21,22 +27,26 @@ function transactions(state = initialState, action) {
       return {
         ...state,
         isLoadingDeposit: true,
-        successTx: false,
+        successDeposit: false,
         error: '',
       };
     case CONSTANTS.SEND_DEPOSIT_SUCCESS:
       return {
         ...state,
         isLoadingDeposit: false,
-        tx: action.payload,
-        successTx: true,
+        tx: action.payload.res,
+        batch: action.payload.currentBatch,
+        successDeposit: true,
+        successTx: false,
+        messageOpen: true,
         error: '',
       };
     case CONSTANTS.SEND_DEPOSIT_ERROR:
       return {
         ...state,
         isLoadingDeposit: false,
-        successTx: false,
+        successDeposit: false,
+        messageOpen: true,
         error: action.error,
       };
     case CONSTANTS.SEND_WITHDRAW:
@@ -50,8 +60,10 @@ function transactions(state = initialState, action) {
       return {
         ...state,
         isLoadingWithdraw: false,
-        tx: action.payload,
+        tx: action.payload.res,
+        batch: action.payload.currentBatch,
         successTx: true,
+        messageOpen: true,
         error: '',
       };
     case CONSTANTS.SEND_WITHDRAW_ERROR:
@@ -59,6 +71,7 @@ function transactions(state = initialState, action) {
         ...state,
         isLoadingWithdraw: false,
         successTx: false,
+        messageOpen: true,
         error: action.error,
       };
     case CONSTANTS.SEND_SEND:
@@ -74,6 +87,9 @@ function transactions(state = initialState, action) {
         isLoadingSend: false,
         successSend: true,
         successTx: false,
+        successDeposit: false,
+        messageOpen: true,
+        batch: action.payload,
         error: '',
       };
     case CONSTANTS.SEND_SEND_ERROR:
@@ -81,6 +97,7 @@ function transactions(state = initialState, action) {
         ...state,
         isLoadingSend: false,
         successSend: false,
+        messageOpen: true,
         error: action.error,
       };
     case CONSTANTS.APPROVE:
@@ -95,6 +112,7 @@ function transactions(state = initialState, action) {
         ...state,
         isLoadingApprove: false,
         successTx: true,
+        messageOpen: true,
         tx: action.payload,
         error: '',
       };
@@ -103,6 +121,7 @@ function transactions(state = initialState, action) {
         ...state,
         isLoadingApprove: false,
         successTx: false,
+        messageOpen: true,
         error: action.error,
       };
     case CONSTANTS.GET_TOKENS:
@@ -118,6 +137,7 @@ function transactions(state = initialState, action) {
         isLoadingGetTokens: false,
         tx: action.payload,
         successTx: true,
+        messageOpen: true,
         error: '',
       };
     case CONSTANTS.GET_TOKENS_ERROR:
@@ -125,29 +145,35 @@ function transactions(state = initialState, action) {
         ...state,
         isLoadingGetTokens: false,
         successTx: false,
+        messageOpen: true,
         error: action.error,
       };
-    case CONSTANTS.GET_EXIT_ROOT:
+    case CONSTANTS.GET_IDS:
       return {
         ...state,
-        isLoadingGetExitRoot: true,
-        successGetExitRoot: false,
+        isLoadingGetIds: true,
+        successGetIds: false,
         error: '',
       };
-    case CONSTANTS.GET_EXIT_ROOT_SUCCESS:
+    case CONSTANTS.GET_IDS_SUCCESS:
       return {
         ...state,
-        isLoadingGetExitRoot: false,
-        exitRoots: action.payload,
-        successGetExitRoot: true,
+        isLoadingGetIDs: false,
+        ids: action.payload,
+        successGetIds: true,
         error: '',
       };
-    case CONSTANTS.GET_EXIT_ROOT_ERROR:
+    case CONSTANTS.GET_IDS_ERROR:
       return {
         ...state,
-        isLoadingGetExitRoot: false,
-        successGetExitRoot: false,
+        isLoadingGetIds: false,
+        successGetIds: false,
         error: action.error,
+      };
+    case CONSTANTS.CLOSE_MESSAGE:
+      return {
+        ...state,
+        messageOpen: false,
       };
     case CONSTANTS.GET_INIT:
       return {
@@ -159,9 +185,14 @@ function transactions(state = initialState, action) {
         isLoadingApprove: false,
         isLoadingGetTokens: false,
         successTx: false,
+        successDeposit: false,
+        messageOpen: false,
         exitRoots: [],
         isLoadingGetExitRoot: false,
         successGetExitRoot: false,
+        isLoadingGetIDs: false,
+        ids: [],
+        successGetIds: false,
         error: '',
       };
     default:

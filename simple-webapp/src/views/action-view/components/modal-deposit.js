@@ -7,19 +7,21 @@ import {
 
 import ModalError from './modal-error';
 import { handleSendDeposit } from '../../../state/tx/actions';
+import { handleInfoOperator } from '../../../state/general/actions';
 
 const web3 = require('web3');
 
 class ModalDeposit extends Component {
     static propTypes = {
-      wallet: PropTypes.object.isRequired,
       config: PropTypes.object.isRequired,
       abiRollup: PropTypes.array.isRequired,
-      password: PropTypes.string.isRequired,
       modalDeposit: PropTypes.bool.isRequired,
       toggleModalDeposit: PropTypes.func.isRequired,
       handleSendDeposit: PropTypes.func.isRequired,
-      getInfoAccount: PropTypes.func.isRequired,
+      handleInfoOperator: PropTypes.func.isRequired,
+      tokensA: PropTypes.string.isRequired,
+      gasMultiplier: PropTypes.number.isRequired,
+      desWallet: PropTypes.object.isRequired,
     }
 
     constructor(props) {
@@ -28,38 +30,36 @@ class ModalDeposit extends Component {
       this.tokenIdRef = React.createRef();
       this.state = {
         modalError: false,
-        error: "",
-      }
+        error: '',
+      };
     }
 
-    toggleModalError = () =>  { this.setState((prev) => ({ modalError: !prev.modalError })); }
+    toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
     handeClick = async () => {
       const {
-        wallet, config, abiRollup, password,
+        config, abiRollup, desWallet,
       } = this.props;
       let amount;
       try {
         amount = web3.utils.toWei(this.amountRef.current.value, 'ether');
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.log(err);
-        amount = 0;
+        amount = "0";
       }
       const tokenId = Number(this.tokenIdRef.current.value);
-      const { nodeEth } = config;
+      const { nodeEth, operator } = config;
       const addressSC = config.address;
-      if (parseInt(amount,10) > parseInt(this.props.tokensA,10)) {
-        this.setState({error:"0"});
+      if (parseInt(amount, 10) > parseInt(this.props.tokensA, 10)) {
+        this.setState({ error: '0' });
         this.toggleModalError();
       } else {
         this.props.toggleModalDeposit();
-        const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet,
-          password, undefined, abiRollup, this.props.gasMultiplier);
-        this.props.getInfoAccount();
-        if(res.message !== undefined){
-          if(res.message.includes("insufficient funds")){
-            this.setState({error:"1"});
+        const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, tokenId, desWallet,
+          undefined, abiRollup, this.props.gasMultiplier, operator);
+        this.props.handleInfoOperator(operator);
+        if (res.message !== undefined) {
+          if (res.message.includes('insufficient funds')) {
+            this.setState({ error: '1' });
             this.toggleModalError();
           }
         }
@@ -96,7 +96,7 @@ class ModalDeposit extends Component {
                 <Icon name="sign-in" />
                 Deposit
               </Button>
-              <Button color="red" onClick={this.props.toggleModalDeposit}>
+              <Button color="grey" basic onClick={this.props.toggleModalDeposit}>
                 <Icon name="close" />
                 Close
               </Button>
@@ -108,10 +108,9 @@ class ModalDeposit extends Component {
 }
 
 const mapStateToProps = (state) => ({
-  wallet: state.general.wallet,
   config: state.general.config,
   abiRollup: state.general.abiRollup,
-  password: state.general.password
+  desWallet: state.general.desWallet,
 });
 
-export default connect(mapStateToProps, { handleSendDeposit })(ModalDeposit);
+export default connect(mapStateToProps, { handleSendDeposit, handleInfoOperator })(ModalDeposit);
