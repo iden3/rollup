@@ -79,13 +79,14 @@ class ActionView extends Component {
   toggleModalSend = () => { this.setState((prev) => ({ modalSend: !prev.modalSend })); }
 
   handleClickGetTokens = () => {
-    this.props.handleGetTokens(this.props.config.nodeEth, this.props.config.tokensAddress, this.props.wallet, this.props.password);
+    this.props.handleGetTokens(this.props.config.nodeEth, this.props.config.tokensAddress,
+      this.props.wallet, this.props.password);
     this.getInfoAccount();
   }
 
   handleClickApprove = async (addressTokens, amountToken) => {
     const res = await this.props.handleApprove(addressTokens, this.props.abiTokens, this.props.wallet,
-      amountToken, this.props.config.address, this.props.password, this.props.config.nodeEth);
+      amountToken, this.props.config.address, this.props.password, this.props.config.nodeEth, this.props.gasMultiplier);
     // eslint-disable-next-line no-console
     console.log(res);
   }
@@ -121,16 +122,20 @@ class ActionView extends Component {
           tokensA={this.props.tokensA}
           isLoadingInfoAccount={this.props.isLoadingInfoAccount}
           getInfoAccount={this.getInfoAccount}
-          txs={this.props.txs} 
-          tokensAddress={this.props.config.tokensAddress}/>
+          txs={this.props.txs}
+          tokensAddress={this.props.config.tokensAddress} />
         <ModalDeposit
+          balance={this.props.balance}
+          tokensA={this.props.tokensA}
           modalDeposit={this.state.modalDeposit}
           toggleModalDeposit={this.toggleModalDeposit}
-          getInfoAccount={this.getInfoAccount} />
+          getInfoAccount={this.getInfoAccount} 
+          gasMultiplier={this.props.gasMultiplier} />
         <ModalWithdraw
           modalWithdraw={this.state.modalWithdraw}
           toggleModalWithdraw={this.toggleModalWithdraw}
-          getInfoAccount={this.getInfoAccount} />
+          getInfoAccount={this.getInfoAccount}
+          gasMultiplier={this.props.gasMultiplier} />
         <ModalSend
           modalSend={this.state.modalSend}
           toggleModalSend={this.toggleModalSend}
@@ -153,6 +158,7 @@ const mapStateToProps = (state) => ({
   tokensA: state.general.tokensA,
   txs: state.general.txs,
   isLoadingInfoAccount: state.general.isLoadingInfoAccount,
+  gasMultiplier: state.general.gasMultiplier,
 });
 
 export default connect(mapStateToProps, { handleGetTokens, handleApprove, handleInfoAccount })(ActionView);

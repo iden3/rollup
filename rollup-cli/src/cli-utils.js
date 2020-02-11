@@ -8,8 +8,8 @@ const { transfer } = require('./actions/onchain/transfer.js');
 const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.js');
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
 
-async function sendTx(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce) {
-    return send(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce);
+async function sendTx(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
+    return send(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce, nonceObject);
 }
 
 async function depositTx(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {

@@ -4,8 +4,9 @@ import {
   Table, Button, Container, Icon, Popup,
 } from 'semantic-ui-react';
 import ModalInfoId from './modal-info-id';
+import ButtonGM from './gmButtons';
 
-const web3 = require("web3");
+const web3 = require('web3');
 
 class InfoWallet extends Component {
   static propTypes = {
@@ -13,7 +14,9 @@ class InfoWallet extends Component {
     isLoadingInfoAccount: PropTypes.bool.isRequired,
     tokens: PropTypes.string,
     tokensR: PropTypes.string,
+    tokensA: PropTypes.string,
     balance: PropTypes.string,
+    tokensAddress: PropTypes.string,
     txs: PropTypes.array,
     handleClickApprove: PropTypes.func.isRequired,
     handleClickGetTokens: PropTypes.func.isRequired,
@@ -45,6 +48,7 @@ class InfoWallet extends Component {
         this.setState({ address: `0x${this.props.wallet.ethWallet.address}` });
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.log(e);
     }
   }
@@ -59,8 +63,8 @@ class InfoWallet extends Component {
   }
 
   handleClick = () => {
-    this.props.handleClickApprove(this.addressTokensRef.current.value, web3.utils.toWei(this.amountTokensRef.current.value, 'ether'));
-    // this.props.handleClickApprove(this.addressTokensRef.current.value, this.amountTokensRef.current.value);
+    this.props.handleClickApprove(this.addressTokensRef.current.value,
+      web3.utils.toWei(this.amountTokensRef.current.value, 'ether'));
   }
 
   handleClickTokens = () => {
@@ -103,7 +107,6 @@ class InfoWallet extends Component {
   isLoadingTokensA = () => {
     if (this.state.loading === false) {
       return web3.utils.fromWei(this.props.tokensA, 'ether');
-      // return this.props.tokensA;
     }
     return <Icon name="circle notched" loading />;
   }
@@ -140,6 +143,14 @@ class InfoWallet extends Component {
               </Table.Cell>
             </Table.Row>
             <Table.Row>
+              <Table.Cell colSpan="1" width="3">
+                Transaction Fee: 
+              </Table.Cell>
+              <Table.Cell colSpan="3">
+                <ButtonGM />
+              </Table.Cell>
+            </Table.Row>
+            <Table.Row>
               <Table.Cell>
                 Balance
               </Table.Cell>
@@ -164,11 +175,13 @@ class InfoWallet extends Component {
                 {this.isLoadingTokensR()}
               </Table.Cell>
               <Table.Cell textAlign="right">
-                <Button content="GET TOKENS" onClick={this.handleClickTokens} 
-                disabled={this.state.loading || this.props.balance === "0.0"} />
-                <Popup content="You need ether to get tokens" trigger=
-                  {<Icon name="info" circular/>}
-                />
+                <Button
+                  content="GET TOKENS"
+                  onClick={this.handleClickTokens}
+                  disabled={this.state.loading || this.props.balance === '0.0'} />
+                <Popup
+                  content="You need ether to get tokens"
+                  trigger={<Icon name="info" circular />} />
               </Table.Cell>
             </Table.Row>
             <Table.Row>
@@ -180,7 +193,7 @@ class InfoWallet extends Component {
               </Table.Cell>
               <Table.Cell textAlign="right">
                 <a href="https://goerli-faucet.slock.it/" target="_blank" rel="noopener noreferrer">
-                  <Button content="GET ETHER"/>
+                  <Button content="GET ETHER" />
                 </a>
               </Table.Cell>
             </Table.Row>
@@ -222,7 +235,7 @@ class InfoWallet extends Component {
             </Table.Row>
           </Table.Body>
         </Table>
-        <br/>
+        <br />
       </Container>
     );
   }
