@@ -29,7 +29,7 @@ class OperatorManager {
             value: this.web3.utils.toHex(this.web3.utils.toWei(stakeValue.toString(), "ether")),
             data: this.rollupPoS.methods.addOperator(rndHash, url).encodeABI()
         };
-        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        return await this.signTransaction(tx);
     }
 
     async getTxUnregister(opId) {
@@ -40,7 +40,7 @@ class OperatorManager {
             gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.removeOperator(opId.toString()).encodeABI()
         };
-        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        return await this.signTransaction(tx);
     }
 
     async getTxWithdraw(opId) {
@@ -51,7 +51,7 @@ class OperatorManager {
             gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.withdraw(opId.toString()).encodeABI()
         };
-        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        return await this.signTransaction(tx);
     }
 
 
@@ -63,7 +63,7 @@ class OperatorManager {
             gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.commitBatch(prevHash, compressedTx).encodeABI()
         };
-        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        return await this.signTransaction(tx);
     }
 
     async getTxForge(proofA, proofB, proofC, input) {
@@ -74,7 +74,7 @@ class OperatorManager {
             gasPrice: await this._getGasPrice(),
             data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input).encodeABI()
         };
-        return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
+        return await this.signTransaction(tx);
     }
 
     async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
@@ -86,6 +86,11 @@ class OperatorManager {
             data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
                 proofA, proofB, proofC, input).encodeABI()
         };
+        const txSign = await this.signTransaction(tx);
+        return [txSign, tx];
+    }
+    
+    async signTransaction(tx) {
         return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 }

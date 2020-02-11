@@ -54,7 +54,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Hash of all on chain transactions ( will be forged in the next batch )
     // Forces 'operator' to add all on chain transactions
-    uint256 miningOnChainTxsHash;
+    uint256 public miningOnChainTxsHash;
 
     // Hash of all on chain transactions ( will be forged in two batches )
     // Forces 'operator' to add all on chain transactions

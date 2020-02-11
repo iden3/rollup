@@ -1,3 +1,4 @@
+/*global BigInt*/
 const { performance } = require("perf_hooks");
 const Web3 = require("web3");
 const winston = require("winston");
@@ -43,9 +44,12 @@ class LoopManager{
         logLevel,
         nodeUrl,
         timeouts,
+        pollingTimeout
     ) {
         this.nodeUrl = nodeUrl;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
+        this.web3.eth.handleRevert = true;
+        this.web3.eth.transactionPollingTimeout = pollingTimeout;
         this.rollupSynch = rollupSynch;
         this.posSynch = posSynch;
         this.poolTx = poolTx;
@@ -56,7 +60,8 @@ class LoopManager{
         this.state = state.SYNCHRONIZING;
         this.hashChain = [];
         this.infoCurrentBatch = {};
-
+        this.currentTx = {};
+        
         this._initTimeouts(timeouts);
         this._initLogger(logLevel);
     }
@@ -142,10 +147,12 @@ class LoopManager{
 
             case state.MINING:
                 info += " | info ==> Transaction hash: ";
-                info += chalk.white.bold(this.txHash);
+                info += chalk.white.bold(this.currentTx.txHash);
                 timeTx = performance.now();
+                if (this.currentTx.attempts)
+                    info += `| ${this.currentTx.attempts} attempts`;
                 info += " | transaction pending: ";
-                info += `${chalk.white.bold(`${((timeTx - this.startTx)/1000).toFixed(2)} s`)}`;
+                info += `${chalk.white.bold(`${((timeTx - this.currentTx.startTx)/1000).toFixed(2)} s`)}`;
                 break;
             }
 
@@ -188,6 +195,7 @@ class LoopManager{
 
                 // wait to mining transaction
                 case state.MINING:
+                    await this._monitorTx();
                     this.timeouts.NEXT_STATE = 5000;
                     break;
                 }
@@ -337,7 +345,7 @@ class LoopManager{
 
             // Check I am still the winner
             const deadlineReach = await this._blockDeadline(currentBlock);
-            if (deadlineReach){
+            if (deadlineReach) {
                 this.timeouts.NEXT_STATE = 5000;
                 this.state = state.SYNCHRONIZING;
                 this._resetInfoBatch();
@@ -346,32 +354,49 @@ class LoopManager{
 
             const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
 
-            const txSign = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
-                commitData, proof.proofA, proof.proofB, proof.proofC, publicInputs);
+            const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
+                commitData, proof.proofA, proof.proofB, proof.proofC, publicInputs); 
+
+            this._setInfoTx(tx, txSign.transactionHash, indexHash);
 
             this.state = state.MINING;
             this.timeouts.NEXT_STATE = 1000;
-            
-            this.startTx = performance.now();
-            this.txHash = "Pending...";
-
             const self = this;
+            try { //sanity check
+                await this.web3.eth.call(this.currentTx.tx);
+            } catch (error) { //error evm transaction
+                this._errorTx(error.message); 
+                return;
+            }
             this.web3.eth.sendSignedTransaction(txSign.rawTransaction)
-                .once("transactionHash", txHash => {
-                    self.txHash = txHash;
-                })
                 .then( receipt => {
-                    if (receipt.status == true){
+                    if (receipt.status == true) {
                         self._logTxOK();
-                        self.startTx = 0;
-                        this.timeouts.NEXT_STATE = 5000;
+                        self.timeouts.NEXT_STATE = 5000;
                         self.state = state.SYNCHRONIZING;
+                        self._resetInfoTx();
                         self._resetInfoBatch();
-                    } else self._errorTx(self);
+                    } else { // unreachable code
+                        self._errorTx("unreachable code");
+                    }
                 })
-                .catch( () => {
-                    self.startTx = 0;
-                    self._errorTx(self);
+                .catch( async (error) => {
+                    if (error.message.includes("Transaction was not mined within")) { //polling timeout
+                        self.overwriteTx = true;
+                        self._logTxOverwrite();
+                    } else { 
+                        if(error.receipt) { //EVM error
+                            await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) //catch the error
+                                .then( () => {
+                                    self._errorTx("unreachable code"); 
+                                })
+                                .catch( error => {
+                                    self._errorTx(error.message);
+                                });
+                        } else { //no EVM error
+                            self._errorTx(error.message); 
+                        }
+                    }
                 });
         } else if (statusServer == stateServer.ERROR) {
             this.timeouts.NEXT_STATE = 5000;
@@ -389,14 +414,96 @@ class LoopManager{
             this.timeouts.NEXT_STATE = 5000;
             // Check I am still the winner
             const deadlineReach = await this._blockDeadline(currentBlock);
-            if (deadlineReach){
+            const checkState = await this._checkStateRollup();  //true --> the state matches with the SC
+
+            if (deadlineReach || !checkState)
+            {
                 // Cancel proof calculation
                 await this.cliServerProof.cancel();
                 this.state = state.SYNCHRONIZING;
                 this._resetInfoBatch();
+                this._resetInfoTx();
                 return;
             }
         }
+    }
+
+    async _monitorTx(){
+
+        if (!this.overwriteTx)
+            return; 
+
+        this.overwriteTx = false;
+        if (this.currentTx.attempts > 5) {
+            this._errorTx("it has been overwritten more than 5 times");
+            return; 
+        }
+        const dataTx = await this.web3.eth.getTransaction(this.currentTx.txHash);
+        if (!dataTx) {
+            this._errorTx();
+            return;
+        }
+        if (dataTx.blocknumber) { //already mined!
+            this.timeouts.NEXT_STATE = 5000;
+            this.state = state.SYNCHRONIZING;
+            this._logTxOK();
+            this._resetInfoTx();
+            this._resetInfoBatch();
+            return;
+        }
+        this._updateTx(txSign.transactionHash);
+        const txSign = await this.opManager.signTransaction(this.currentTx.tx);
+        this._logResendTx();
+        const self = this;
+
+        try { //sanity check
+            await this.web3.eth.call(this.currentTx.tx);
+        } catch (error) { //error EVM transaction
+            const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
+            if (error.message.includes("hash revealed not match current committed hash") 
+            && indexHash == this.currentTx.indexHash + 1)  //already mined!
+            {
+                self.timeouts.NEXT_STATE = 5000;
+                self.state = state.SYNCHRONIZING;
+                self._logTxOK();
+                self._resetInfoTx();
+                self._resetInfoBatch();   
+                return;
+            } else {
+                this._errorTx(error.message);
+                return;
+            }
+        }
+        this.web3.eth.sendSignedTransaction(txSign.rawTransaction)
+            .then( receipt => {
+                if (receipt.status == true) {
+                    self.timeouts.NEXT_STATE = 5000;
+                    self.state = state.SYNCHRONIZING;
+                    self._logTxOK();
+                    self._resetInfoTx();
+                    self._resetInfoBatch();
+                } else { //unreachable code
+                    self._errorTx("unreachable code");
+                }   
+            })
+            .catch( async (error) => {
+                if (error.message.includes("Transaction was not mined within")) { //polling timeout
+                    self.overwriteTx = true;
+                    self._logTxOverwrite();
+                } else { 
+                    if (error.receipt) { //EVM error
+                        await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) //catch the error
+                            .then( () => {
+                                self._errorTx("unreachable code"); //unreachable code
+                            })
+                            .catch( error => {
+                                self._errorTx(error.message);
+                            });
+                    } else { //another error no EVM
+                        self._errorTx(error.message); 
+                    }
+                }
+            });
     }
 
     async _blockDeadline(currentBlock){
@@ -426,6 +533,53 @@ class LoopManager{
         this.infoCurrentBatch = {};
     }
 
+    _resetInfoTx(){
+        this.currentTx = {};
+    }
+
+    _setInfoTx(tx, transactionHash, indexHash){
+        this.currentTx.startTx = performance.now();
+        this.currentTx.txHash = transactionHash;
+        this.currentTx.tx = tx;
+        this.currentTx.attempts = 0;
+        this.currentTx.indexHash = indexHash;
+    }
+
+    _updateTx(transactionHash){
+        // set double gas price 
+        this.currentTx.tx.gasPrice = (BigInt(this.currentTx.tx.gasPrice) * BigInt(2)).toString(); 
+        this.currentTx.startTx = performance.now();
+        this.currentTx.attempts += 1;
+        this.currentTx.txHash = transactionHash;
+    }
+
+    async _checkStateRollup(){
+        const currentStateRoot = await this.rollupSynch.getCurrentStateRoot();
+        const currentOnchainHash = await this.rollupSynch.getMiningOnchainHash();
+
+        if (BigInt(currentStateRoot) === this.infoCurrentBatch.batchData.getNewStateRoot() &&
+        BigInt(currentOnchainHash) === this.infoCurrentBatch.batchData.getOnChainHash()) {
+            return true;
+        } else { 
+            return false;
+        }
+    }
+
+    _errorTx(reason) { 
+        this._logTxKO(reason); 
+        this._resetInfoTx();
+        this._resetInfoBatch();
+        this.timeouts.NEXT_STATE = 0;
+        this.state = state.SYNCHRONIZING;
+    }
+
+    _logTxOverwrite(){
+        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
+        info += " | info ==> ";
+        info += `${chalk.white.bold("Overwriting Tx")}`;
+        this.logger.info(info);
+    }
+
     _logTxOK(){
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
         info += " | info ==> ";
@@ -433,18 +587,21 @@ class LoopManager{
         this.logger.info(info);
     }
 
-    _logTxKO(){
+    _logTxKO(reason){
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
         info += " | info ==> ";
-        info += `${chalk.white.bold("Error at transaction, try to forge batch again")}`;
+        if (reason)
+            info += `${chalk.white.bold(`Error at transaction: ${reason}`)}`;
+        else   
+            info += `${chalk.white.bold("Error at transaction, try to forge batch again")}`;
         this.logger.info(info);
     }
 
-    _errorTx(self) {
-        self._logTxKO();
-        this.timeouts.NEXT_STATE = 0;
-        self.state = state.SYNCHRONIZING;
-        self.infoCurrentBatch.fromBlock = undefined;
+    _logResendTx(){
+        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
+        info += " | info ==> ";
+        info += `${chalk.white.bold("Overwrite previous transaction doubling the gas price")}`;
+        this.logger.info(info);
     }
 }
 
