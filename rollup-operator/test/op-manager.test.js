@@ -182,9 +182,9 @@ contract("Operator Manager", async (accounts) => {
 
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
-        const txSign = await opManager.getTxCommitAndForge(hashChain[7], commitData, proofA,
+        const res = await opManager.getTxCommitAndForge(hashChain[7], commitData, proofA,
             proofB, proofC, input);
-        const resForge = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        const resForge = await web3.eth.sendSignedTransaction(res[0].rawTransaction);
         await timeTravel.addBlocks(10); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
         const logs = await insRollupPoS.getPastEvents("dataCommitted", {

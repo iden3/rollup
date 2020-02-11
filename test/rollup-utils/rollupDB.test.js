@@ -340,7 +340,7 @@ describe("RollupDb - rollback functionality", async function () {
         rollupDb = await RollupDB(db);
     });
 
-    it("should add three deposit", async () => {
+    it("should add three deposits", async () => {
         const bb = await rollupDb.buildBatch(4, 8);
 
         bb.addTx({ fromIdx: 1, loadAmount: 10, coin: 0, ax: account1.ax, ay: account1.ay,
@@ -354,7 +354,7 @@ describe("RollupDb - rollback functionality", async function () {
         await rollupDb.consolidate(bb);
     });
 
-    it("should add three deposit", async () => {
+    it("should add off-chain transaction", async () => {
         const lastBatch = 6;
         const numBatchToForge = 4;
         // move forward 'numBatchToForge' batch
@@ -379,11 +379,8 @@ describe("RollupDb - rollback functionality", async function () {
         expect(rollupDb.lastBatch).to.be.equal(lastBatch);
     });
 
-    it("rollback and check accounts", async () => {
-        const initialAmount =10;
-        const oldStateId1 = await rollupDb.getStateByIdx(1);
-        const oldStateId2 = await rollupDb.getStateByIdx(2);
-        const oldStateId3 = await rollupDb.getStateByIdx(3);
+    it("should rollback and check accounts", async () => {
+        const initialAmount = 10;
 
         // rollback database
         await rollupDb.rollbackToBatch(5);
@@ -413,8 +410,8 @@ describe("RollupDb - rollback functionality", async function () {
         const finalStateId2 = await rollupDb.getStateByIdx(2);
         const finalStateId3 = await rollupDb.getStateByIdx(3);
         
-        // expect(finalStateId1.amount.toString()).to.be.equal((initialAmount - amountToWithdraw).toString());
-        // expect(finalStateId2.amount.toString()).to.be.equal(initialAmount.toString());
-        // expect(finalStateId3.amount.toString()).to.be.equal(initialAmount.toString());
+        expect(finalStateId1.amount.toString()).to.be.equal((initialAmount - amountToWithdraw).toString());
+        expect(finalStateId2.amount.toString()).to.be.equal(initialAmount.toString());
+        expect(finalStateId3.amount.toString()).to.be.equal(initialAmount.toString());
     });
 });

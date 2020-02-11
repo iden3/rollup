@@ -50,6 +50,9 @@ class RollupDB {
         await this._updateIdx(numBatch);
         // update AxAy database
         await this._updateAxAy(numBatch);
+        // update ethAddr databse
+        await this._updateEthAddr(numBatch);
+
         // update num batch and root
         await this.db.multiIns([
             [Constants.DB_Master, numBatch]
@@ -67,7 +70,8 @@ class RollupDB {
         const valStates = await this.db.get(key);
         if (!valStates) return null;
         // get last state
-        const lastState = this._findLastState(valStates);
+        // const lastState = this._findLastState(valStates);
+        const lastState = valStates.slice(-1)[0];
         if (!lastState) return null;
         // last state key
         const keyLastState = poseidonHash([idx, lastState]);
@@ -176,7 +180,7 @@ class RollupDB {
             }
         }
 
-        // reset num batch - idx for future states
+        // reset numBatch-idx for future states
         const keysToDel = [];
         for (let i = this.lastBatch; i > numBatch; i--){
             const keyNumBatchIdx = Constants.DB_NumBatch_Idx.add(bigInt(i));
@@ -186,7 +190,7 @@ class RollupDB {
     }
 
     async _updateAxAy(numBatch) {
-        // update idx states
+        // update axAy states
         const alreadyUpdated = [];
         for (let i = this.lastBatch; i > numBatch; i--){
             const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(bigInt(i));
@@ -207,7 +211,7 @@ class RollupDB {
             }
         }
 
-        // reset num batch - AxAy for future states
+        // reset numBatch-AxAy for future states
         const keysToDel = [];
         for (let i = this.lastBatch; i > numBatch; i--){
             const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(bigInt(i));
@@ -216,7 +220,43 @@ class RollupDB {
         await this.db.multiDel(keysToDel);
     }
 
-    async _purgeStates(states, numBatch){
+    async _updateEthAddr(numBatch) {
+        // update ethAddr states
+        const alreadyUpdated = [];
+        for (let i = this.lastBatch; i > numBatch; i--){
+            const keyNumBatchEthAddr = Constants.DB_NumBatch_EthAddr.add(bigInt(i));
+            const ethAddrToUpdate = await this.db.get(keyNumBatchEthAddr);
+            if (!ethAddrToUpdate) continue;
+            for (const ethAddr of ethAddrToUpdate) {
+                if (!alreadyUpdated.includes(ethAddr)){  
+                    const keyEthAddr = Constants.DB_EthAddr.add(ethAddr);
+                    const states = await this.db.get(keyEthAddr);
+                    this._purgeStates(states, numBatch);
+                    await this.db.multiIns([
+                        [keyEthAddr, states],
+                    ]);
+                    alreadyUpdated.push(ethAddr);
+                }
+            }
+        }
+
+        // reset numBatch-ethAddr for future states
+        const keysToDel = [];
+        for (let i = this.lastBatch; i > numBatch; i--){
+            const keyNumBatchEthAddr = Constants.DB_NumBatch_EthAddr.add(bigInt(i));
+            keysToDel.push(keyNumBatchEthAddr);
+        }
+        await this.db.multiDel(keysToDel);
+    }
+
+    async _purgeStates(states, _numBatch){
+        const numBatch = bigInt(_numBatch);
+        if (states.length === 0) return;
+        if (states.slice(-1)[0].lesser(numBatch)) return;
+        if (states[0].greater(numBatch)) {
+            states.splice(0, states.length);
+            return;
+        }
         let indexFound = null;
         for (let i = states.length - 1; i >= 0; i--){
             if (states[i].lesserOrEquals(numBatch)){
@@ -227,11 +267,6 @@ class RollupDB {
         if (indexFound !== null){
             states.splice(indexFound);
         }
-    }
-
-    async test(numBatch) {
-        const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(bigInt(numBatch));
-        return await this.db.get(keyNumBatchAxAy);
     }
 }
 
