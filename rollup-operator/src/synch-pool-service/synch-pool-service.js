@@ -148,16 +148,31 @@ class SynchPool {
         this.info += `last block synched: ${lastSynchBlock}`;
         this.info += addedTokens;
 
-        this.logger.info(this.info);        
+        this.logger.info(this.info);
+    }
+
+    _logError(message){
+        let info = `${chalk.cyan("POOL SYNCH")} | `;
+        info += "info ==>  ";
+        info += chalk.white.bold(message);
+        this.logger.info(info); 
     }
 
     async _updateTokensPrice() {
-        const listMarkets = await this.apiBitfinex.getTraddingPairs();
+        let listMarkets;
+        try {
+            listMarkets = await this.apiBitfinex.getTraddingPairs();
+        } catch (error) {
+            this._logError("api to get tokens price is not responding");
+            listMarkets = null;
+        }
+
         for (const id in this.tokensList) {
             const tokenSymbol = this.tokensList[id].tokenSymbol;
-            let infoToken;
+            let infoToken = undefined;
             // get api information
-            infoToken = await this._getInfoToken(tokenSymbol, listMarkets);
+            if (listMarkets)
+                infoToken = await this._getInfoToken(tokenSymbol, listMarkets);
             if (infoToken) {
                 this.tokensList[id].price = infoToken;
             } else {
