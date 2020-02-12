@@ -556,11 +556,15 @@ class LoopManager{
     async _checkStateRollup(){
         const currentStateRoot = await this.rollupSynch.getCurrentStateRoot();
         const currentOnchainHash = await this.rollupSynch.getMiningOnchainHash();
-
-        if (BigInt(currentStateRoot) === this.infoCurrentBatch.batchData.getNewStateRoot() &&
+        
+        if (BigInt(currentStateRoot) === this.infoCurrentBatch.batchData.getOldStateRoot() &&
         BigInt(currentOnchainHash) === this.infoCurrentBatch.batchData.getOnChainHash()) {
             return true;
         } else { 
+            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
+            info += " | info ==> ";
+            info += `${chalk.white.bold("Current information of state root and/or onChain hash does not match with SC")}`;
+            this.logger.info(info);
             return false;
         }
     }
