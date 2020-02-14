@@ -422,8 +422,11 @@ function loadServer(flagForge, expose, flagLAN){
     
                 let accounts;
     
-                if (ax === undefined && ay === undefined && ethAddr === undefined )
+                if (ax === undefined && ay === undefined && ethAddr === undefined ){
                     res.status(400).send("No filters has been submitted");
+                    return;
+                }
+                    
     
                 // Filter first by AxAy or/and ethAddress
                 if ((ax !== undefined && ay === undefined) || (ax === undefined && ay !== undefined)){

@@ -70,7 +70,6 @@ class RollupDB {
         const valStates = await this.db.get(key);
         if (!valStates) return null;
         // get last state
-        // const lastState = this._findLastState(valStates);
         const lastState = valStates.slice(-1)[0];
         if (!lastState) return null;
         // last state key
@@ -89,7 +88,7 @@ class RollupDB {
         const valStates = await this.db.get(keyAxAy);
         if (!valStates) return null;
         // get last state
-        const lastState = this._findLastState(valStates);
+        const lastState = valStates.slice(-1)[0];
         if (!lastState) return null;
         // last state key
         const keyLastState = poseidonHash([keyAxAy, lastState]);
@@ -108,7 +107,7 @@ class RollupDB {
         const valStates = await this.db.get(keyEth);
         if (!valStates) return null;
         // get last state
-        const lastState = this._findLastState(valStates);
+        const lastState = valStates.slice(-1)[0];
         if (!lastState) return null;
         // last state key
         const keyLastState = poseidonHash([keyEth, lastState]);
@@ -123,6 +122,8 @@ class RollupDB {
     }
 
     async getExitTreeInfo(numBatch, idx){
+        if (numBatch > this.lastBatch)
+            return null;
         const keyRoot = Constants.DB_Batch.add(bigInt(numBatch));
         const rootValues = await this.db.get(keyRoot);
         if (!rootValues) return null;
