@@ -58,14 +58,15 @@ async function createConfig(){
     const encWallet = await etherWallet.encrypt(process.env.PASSWORD);
     const addressFee = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, `m/44'/60'/0'/0/${process.env.INDEX_ACCOUNT_TOKEN_FEES}`).address;
     const web3Wallet = web3.eth.accounts.privateKeyToAccount(etherWallet.privateKey);
-
+    
     const rollupContract =  new web3.eth.Contract(rollup.abi);
     const rollupPoSContract =  new web3.eth.Contract(rollupPoS.abi);
-
+    let nonceToSend = await web3.eth.getTransactionCount(etherWallet.address);
     console.log("Deploying Poseidon");
     const PoseidonTx = {
         data: poseidonUnit.createCode(),
         from: web3Wallet.address,
+        nonce: nonceToSend++,
         gasLimit: gasLimit.poseidon,
         gasPrice: await getGasPrice(gasMul),
     };
@@ -79,6 +80,7 @@ async function createConfig(){
     const VerifierTx = {
         data: verifier.bytecode,
         from: web3Wallet.address,
+        nonce: nonceToSend++,
         gasLimit: gasLimit.verifier,
         gasPrice: await getGasPrice(gasMul),
     };
@@ -95,6 +97,7 @@ async function createConfig(){
             arguments: [resVerifier.contractAddress, resPoseidon.contractAddress, maxTx, maxOnChainTx, addressFee]
         }).encodeABI(),
         from: web3Wallet.address,
+        nonce: nonceToSend++,
         gasLimit: gasLimit.rollup,
         gasPrice: await getGasPrice(gasMul),
     };
@@ -111,6 +114,7 @@ async function createConfig(){
             arguments: [resRollup.contractAddress, maxTx]
         }).encodeABI(),
         from: web3Wallet.address,
+        nonce: nonceToSend++,
         gasLimit: gasLimit.rollupPoS,
         gasPrice: await getGasPrice(gasMul),
     };
@@ -124,6 +128,7 @@ async function createConfig(){
     const loadForgeMechanismPoSTx = {
         from: web3Wallet.address,
         to: resRollup.contractAddress,
+        nonce: nonceToSend++,
         gasLimit: gasLimit.loadForgeMechanismPoSTx,
         data: rollupContract.methods.loadForgeBatchMechanism(resRollupPoS.contractAddress).encodeABI(),
         gasPrice: await getGasPrice(gasMul),
@@ -142,6 +147,7 @@ async function createConfig(){
         const addTokenTx = {
             from: web3Wallet.address,
             to: resRollup.contractAddress,
+            nonce: nonceToSend++,
             gasLimit: gasLimit.addTokenTx,
             data: rollupContract.methods.addToken(process.env.TOKEN_ADDRESS).encodeABI(),
             value: feeAddToken,
