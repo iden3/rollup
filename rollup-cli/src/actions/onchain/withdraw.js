@@ -34,8 +34,9 @@ async function withdraw(nodeEth, addressSC, walletJson, passphrase, abi,
     try {
         const res = await apiOperator.getExitInfo(idFrom, numExitRoot);
         const infoExitTree = res.data;
+        const newNumExitRoot = numExitRoot + 1;
         if (infoExitTree.found) {
-            return await contractWithSigner.withdraw(infoExitTree.state.idx, infoExitTree.state.amount, numExitRoot,
+            return await contractWithSigner.withdraw(infoExitTree.state.idx, infoExitTree.state.amount, newNumExitRoot,
                 infoExitTree.siblings, overrides);
         }
         throw new Error(`No exit tree leaf was found in batch: ${numExitRoot} with id: ${idFrom}`);
