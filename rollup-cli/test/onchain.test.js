@@ -287,7 +287,7 @@ contract('Rollup', async (accounts) => {
 
         // Note that `amount` on the exit is hardcoded on dummy api-client
         const idFrom = 1;
-        const numExitRoot = 6;
+        const numExitRoot = 5;
 
         await withdraw(web3.currentProvider.host, addressSC,
             walletJson, password, abi, UrlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);

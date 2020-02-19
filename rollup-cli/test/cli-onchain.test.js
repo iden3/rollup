@@ -252,7 +252,7 @@ contract('Rollup', async (accounts) => {
         // - Transaction to withdraw amount indicated in previous step
         // const amount = 10;
         // Note the amount of tokens is taken from dummy api-client
-        const numExitRoot = 6;
+        const numExitRoot = 5;
 
         process.execSync(`cd ..; node cli.js onchaintx --type withdraw -p ${password} --numexitroot ${numExitRoot} --id 1`);
 
