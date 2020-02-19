@@ -14,6 +14,8 @@ const Constants = require("./constants");
 const bytesOffChainTx = 3*2 + 2;
 
 // db keys
+const batchStateKey = "batch-state";
+
 const lastBlockKey = "last-block-synch";
 const lastBatchKey = "last-state-batch";
 const exitInfoKey = "exit";
@@ -138,44 +140,94 @@ class Synchronizer {
         // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
-                // get last block synched and current blockchain block
+                // get last block synched, current block, last batch synched
                 let totalSynch = 0;
-                let lastSynchBlock = await this.getLastSynchBlock();
+                let lastBatchSaved = await this.getLastBatch();
                 const currentBlock = await this.web3.eth.getBlockNumber();
-
-                if (lastSynchBlock < this.creationBlock) {
-                    await this.db.insert(lastBlockKey, this._toString(lastSynchBlock));
-                    lastSynchBlock = this.creationBlock;
-                }
-
                 const currentBatchDepth = await this.rollupContract.methods.getStateDepth()
                     .call({from: this.ethAddress}, currentBlock);
-                let lastBatchSaved = await this.getLastBatch();
+
+                // get last state saved
+                const stateSaved = await this.getStateFromBatch(lastBatchSaved);
+
+                // check last batch number matches. Last state saved should match state in contract
+                const stateDepth = parseInt(await this.rollupContract.methods.getStateDepth()
+                    .call({from: this.ethAddress}, stateSaved.blockNumber));
+
+                if (stateSaved.root && (stateDepth - 1) !== lastBatchSaved){
+                    // clear database
+                    await this._clearRollback(lastBatchSaved);
+                    this._infoRollback(lastBatchSaved - 1, "Contract State depth does not match last state depth saved");
+                    await this._rollback(lastBatchSaved);
+                    continue;
+                }
+                    
+                // Check root matches with the one saved
+                const stateRoot = bigInt(await this.rollupContract.methods.getStateRoot(stateDepth)
+                    .call({ from: this.ethAddress }, stateSaved.blockNumber));
+                    
+                const stateRootHex = `0x${bigInt(stateRoot).toString(16)}`;
+
+                if (stateSaved.root && (stateRootHex !== stateSaved.root)) {
+                    // clear database
+                    await this._clearRollback(lastBatchSaved);
+                    this._infoRollback(lastBatchSaved - 1, "Contract root does not match last root saved");
+                    await this._rollback(lastBatchSaved);
+                    continue;
+                }
+
+                // Check current mining onChain hash
+                const stateMiningOnChainHash = bigInt(await this.rollupContract.methods.miningOnChainTxsHash()
+                    .call({ from: this.ethAddress }, stateSaved.blockNumber));
+
+                const stateMiningOnChainHashHex = `0x${bigInt(stateMiningOnChainHash).toString(16)}`;
+                if (stateSaved.root && (stateMiningOnChainHashHex !== stateSaved.miningOnChainHash)) {
+                    // clear database
+                    await this._clearRollback(lastBatchSaved);
+                    this._infoRollback(lastBatchSaved - 1, "Contract miningOnChainHash does not match with the saved one");
+                    await this._rollback(lastBatchSaved);
+                    continue;
+                }
 
                 if (currentBatchDepth - 1 > lastBatchSaved) {
-                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved, lastSynchBlock);
+                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved, stateSaved.blockNumber);
+                    // If no event is found, tree is not updated
+                    if (!targetBlockNumber) continue;
                     // get all logs from last batch
-                    const logs = await this.rollupContract.getPastEvents("allEvents", {
-                        fromBlock: lastSynchBlock + 1,
+                    const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
+                        fromBlock: stateSaved.blockNumber + 1,
+                        toBlock: targetBlockNumber,
+                    });
+                    const logsOnChain = await this.rollupContract.getPastEvents("OnChainTx", {
+                        fromBlock: stateSaved.blockNumber,
                         toBlock: targetBlockNumber,
                     });
                     // update events
-                    await this._updateEvents(logs, lastBatchSaved + 1, targetBlockNumber);
+                    const updateFlag = await this._updateEvents([...logsForge,...logsOnChain], lastBatchSaved + 1, targetBlockNumber);
+                    if (!updateFlag) continue;
                     lastBatchSaved = await this.getLastBatch();
                 }
 
                 totalSynch = (currentBatchDepth == 0) ? 100 : (((lastBatchSaved + 1) / currentBatchDepth) * 100);
                 this.totalSynch = totalSynch.toFixed(2);
 
-                this._fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved);
+                this._fillInfo(currentBlock, stateSaved.blockNumber, currentBatchDepth, lastBatchSaved);
 
-                if (totalSynch === 100) await timeout(this.timeouts.NEXT_LOOP);
+                if (lastBatchSaved >= currentBatchDepth - 1) await timeout(this.timeouts.NEXT_LOOP);
             } catch (e) {
                 this.logger.error(`SYNCH Message error: ${e.message}`);
                 this.logger.debug(`SYNCH Message error: ${e.stack}`);
                 await timeout(this.timeouts.ERROR);
             }
         }
+    }
+
+    _infoRollback(numBatch, message){
+        let info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
+        info += `${chalk.bgYellow.black("rollback info")}`;
+        info += ` ==> Rollback to batch ${numBatch} | `;
+        info += `${message}`;
+        this.logger.info(info);
     }
 
     _fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved){
@@ -187,31 +239,53 @@ class Synchronizer {
         this.info += `Synched: ${chalk.white.bold(`${this.totalSynch} %`)}`;
     }
 
-    async _getTargetBlock(lastBatchSaved, lastSynchBlock){
-        // Check if next target block number is in cache memory
-        let targetBlockNumber = this.forgeEventsCache.get(lastBatchSaved + 1);
-        if (!targetBlockNumber){
-            // read events to get block number for each batch forged
-            const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
-                fromBlock: lastSynchBlock + 1,
-                toBlock: "latest",
-            });
-            for (const log of logsForge) {
-                const key = Number(log.returnValues.batchNumber);
-                const value = Number(log.returnValues.blockNumber);
-                this.forgeEventsCache.set(key, value);
-            }
-        }
-        // purge cache memory
-        const lastEventPurged = this.forgeEventsCache.get(lastPurgedKey);
-        for (let i = lastBatchSaved; i > lastEventPurged; i--) {
-            this.forgeEventsCache.delete(i);
-        }
-        this.forgeEventsCache.set(lastPurgedKey, lastBatchSaved);
-        // return block number according batch forged
-        return this.forgeEventsCache.get(lastBatchSaved + 1);
+    _logError(message){
+        let info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
+        info += `${chalk.bgRed.black("error info")}`;
+        info += ` ==> ${message}`;
+        this.logger.info(info);
     }
 
+    async _getTargetBlock(lastBatchSaved, lastSynchBlock){
+        let targetBlockNumber = undefined;
+        const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
+            fromBlock: lastSynchBlock + 1,
+            toBlock: "latest",
+        });
+
+        for (const log of logsForge){
+            const batchNumber = Number(log.returnValues.batchNumber);
+            if (batchNumber === lastBatchSaved + 1){
+                targetBlockNumber = Number(log.returnValues.blockNumber);
+                break;
+            }
+        }
+        return targetBlockNumber;
+    }
+
+    async _clearRollback(batchNumber) {
+        // clear last batch saved
+        await this.db.delete(`${batchStateKey}${separator}${batchNumber}`);
+        // clear onChain events
+        await this.db.delete(`${eventOnChainKey}${separator}${batchNumber}`);
+        // clear forge events
+        await this.db.delete(`${eventForgeBatchKey}${separator}${batchNumber}`);
+    }
+
+    async _rollback(batchNumber) {
+        const rollbackBatch = batchNumber - 1;
+        const state = await this.getStateFromBatch(rollbackBatch);
+        if (state) {
+            await this.treeDb.rollbackToBatch(rollbackBatch);
+            await this.db.insert(lastBatchKey, this._toString(rollbackBatch));
+        } else
+            throw new Error("can not rollback to a non-existent state");
+    }
+
+    async getStateFromBatch(numBatch) {
+        const key = `${batchStateKey}${separator}${numBatch}`;
+        return this._fromString(await this.db.getOrDefault(key, this._toString({root: false, blockNumber: this.creationBlock})));
+    }
 
     async getLastSynchBlock() {
         return this._fromString(await this.db.getOrDefault(lastBlockKey, this.creationBlock.toString()));
@@ -222,35 +296,39 @@ class Synchronizer {
     }
 
     async _updateEvents(logs, nextBatchSynched, blockNumber){
-        // save events on database
-        let index = 0;
+        try {
+            // save events on database
+            const numBatchesToSynch = await this._saveEvents(logs, nextBatchSynched);
+            for (const batchSynch of  numBatchesToSynch){
+                const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${batchSynch}`);
+                const tmpOnChainArray = await this.db.getOrDefault(`${eventOnChainKey}${separator}${batchSynch-1}`);
 
-        for (const event of logs){
-            await this._saveEvents(event, index);
-            index += 1;
-        }
-        // Update rollupTree and last batch synched
-        const eventForge = [];
-        const eventOnChain = [];
-        // add off-chain tx
-        const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${nextBatchSynched}`);
-        for (const key of keysForge) {
-            eventForge.push(this._fromString(await this.db.get(key)));
-        }
-        // add on-chain tx
-        const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${nextBatchSynched-1}`);
-        for (const key of keysOnChain) {
-            eventOnChain.push(this._fromString(await this.db.get(key)));
-        }
-        // Add events to rollup-tree
-        if ((eventForge.length > 0) || (eventOnChain.length > 0)) 
-            await this._updateTree(eventForge, eventOnChain);
-        
-        if (this.mode !== Constants.mode.archive)
-            await this._purgeEvents(nextBatchSynched);
+                let eventOnChain = [];
+                let eventForge = [];
+                if (tmpForgeArray)
+                    eventForge = this._fromString(tmpForgeArray);
+                if (tmpOnChainArray)
+                    eventOnChain = this._fromString(tmpOnChainArray);
 
-        await this.db.insert(lastBlockKey, this._toString(blockNumber));
-        await this.db.insert(lastBatchKey, this._toString(nextBatchSynched));
+                // Update rollupTree
+                // Add events to rollup-tree
+                if (eventForge.length > 0){
+                    await this._updateTree(eventForge, eventOnChain);
+                    const miningOnChainHash = await this._getMiningOnChainHash(batchSynch);
+                    const root = `0x${this.treeDb.getRoot().toString(16)}`;
+                    await this.db.insert(`${batchStateKey}${separator}${batchSynch}`, this._toString({root, blockNumber, miningOnChainHash}));
+                    await this.db.insert(lastBlockKey, this._toString(blockNumber));
+                    await this.db.insert(lastBatchKey, this._toString(batchSynch));
+                }
+            }
+            if (this.mode !== Constants.mode.archive)
+                await this._purgeEvents(nextBatchSynched + numBatchesToSynch.length - 1);
+            return true;
+        } catch (error) {
+            this._logError(`error updating batch number: ${nextBatchSynched}`);
+            this._logError("Events are not saved. Retry in the next synchronization loop");
+            return false;
+        }
     }
 
     async _purgeEvents(batchKey){
@@ -258,33 +336,67 @@ class Synchronizer {
         const lastEventPurged = Number(await this.db.getOrDefault(lastPurgedEventKey, "-1"));
         // purge off-chain
         for (let i = batchKey; i > lastEventPurged; i--) {
-            const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${i}`);
-            for (const key of keysForge) {
-                await this.db.delete(key);
-            }
+            await this.db.delete(`${eventForgeBatchKey}${separator}${i}`);
         }
         // purge on-chain
         for (let i = (batchKey - 1); i > (lastEventPurged - 1); i--) {
-            const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${i}`);
-            for (const key of keysOnChain) {
-                await this.db.delete(key);
-            }
+            await this.db.delete(`${eventOnChainKey}${separator}${i}`);
         }
         // update last batch purged
         await this.db.insert(lastPurgedEventKey, this._toString(batchKey));
     }
 
-    async _saveEvents(event, index) {
-        if (event.event == "OnChainTx") {
-            const eventOnChainData = this._getOnChainEventData(event.returnValues);
-            const batchNumber = eventOnChainData.batchNumber;
-            await this.db.insert(`${eventOnChainKey}${separator}${batchNumber}${separator}${index}`,
-                this._toString(eventOnChainData));
-        } else if (event.event == "ForgeBatch") {
-            const batchNumber = event.returnValues.batchNumber;
-            await this.db.insert(`${eventForgeBatchKey}${separator}${batchNumber}${separator}${index}`,
-                this._toString(event.transactionHash));
+    async _saveEvents(logs, nextBatchSynched) {
+        let batchesForged = [];
+        const eventsOnChain = {};
+
+        for(const event of logs){
+            // Add onChain events
+            if (event.event == "OnChainTx"){
+                const eventOnChainData = this._getOnChainEventData(event.returnValues);
+                const numBatchForged = event.returnValues.batchNumber;
+                if (numBatchForged >= nextBatchSynched){
+                    if (!eventsOnChain[numBatchForged])
+                        eventsOnChain[numBatchForged] = [];
+                    eventsOnChain[numBatchForged].push(eventOnChainData);
+                }
+            }
+
+            // Save forge batch
+            if (event.event == "ForgeBatch"){
+                const eventForge = [];
+                const numBatchForged = event.returnValues.batchNumber;
+                if (numBatchForged >= nextBatchSynched){
+                    batchesForged.push(numBatchForged);
+                    eventForge.push(event.transactionHash);
+                    await this.db.insert(`${eventForgeBatchKey}${separator}${numBatchForged}`,
+                        this._toString(eventForge));
+                }
+            }
         }
+        // Save onChain events
+        for (const batchNumber of Object.keys(eventsOnChain)){
+            const arrayOnChain = eventsOnChain[batchNumber];
+            await this.db.insert(`${eventOnChainKey}${separator}${batchNumber}`,
+                this._toString(arrayOnChain));
+        }
+
+        // return forge events to save
+        return batchesForged;
+    }
+
+    async _getMiningOnChainHash(batchNumber){
+        const tmpOnChainArray = await this.db.getOrDefault(`${eventOnChainKey}${separator}${batchNumber}`);
+        let eventsOnChain = [];
+        if (tmpOnChainArray)
+            eventsOnChain = this._fromString(tmpOnChainArray);
+        const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
+        for (const event of eventsOnChain) {
+            const tx = await this._getTxOnChain(event);
+            bb.addTx(tx);
+        }
+        await bb.build();
+        return `0x${bb.getOnChainHash().toString(16)}`;
     }
 
     _getOnChainEventData(onChainData) {
@@ -322,7 +434,7 @@ class Synchronizer {
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event);
             await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-            await this._setUserFee(batch, offChainTxs.txs);
+            await this._setUserFee(offChainTxs.txs);
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
                 if (this.mode !== Constants.mode.light){
@@ -330,7 +442,7 @@ class Synchronizer {
                         await this._addExitEntry(tx, batch.batchNumber);
                     }
                 }
-                    
+                        
             }
         }
 
@@ -344,6 +456,7 @@ class Synchronizer {
         }
         await batch.build();
         await this.treeDb.consolidate(batch);
+        return true;
     }
 
     async _addExitEntry(tx, batch){
@@ -406,7 +519,6 @@ class Synchronizer {
                 compressedTx = elem.value;
             }
         });
-
         const headerBytes = Math.ceil(this.maxTx/8);
         const txs = [];
         const buffCompressedTxs = Buffer.from(compressedTx.slice(2), "hex");
@@ -436,11 +548,9 @@ class Synchronizer {
         }
     }
 
-    async _setUserFee(bb, txs){
+    async _setUserFee(txs){
         for (const tx of txs) {
             const stateId = await this.getStateById(tx.fromIdx);
-            // const userFee = await bb.getOperatorFee(stateId.coin, tx.step);
-            // tx.userFee = Number(userFee);
             tx.coin = Number(stateId.coin);
         }
     }
@@ -471,9 +581,13 @@ class Synchronizer {
         const currentBlock = await this.web3.eth.getBlockNumber();
         const currentBatchDepth = await this.rollupContract.methods.getStateDepth().call({from: this.ethAddress}, currentBlock);
         // add on-chain txs
-        const keysOnChain = await this.db.listKeys(`${eventOnChainKey}${separator}${currentBatchDepth-1}`);
-        for (const key of keysOnChain) {
-            bb.addTx(await this._getTxOnChain(this._fromString(await this.db.get(key))));
+        let eventsOnChain = [];
+        const tmpEventsOnChain = await this.db.getOrDefault(`${eventOnChainKey}${separator}${currentBatchDepth-1}`);
+        if (tmpEventsOnChain)
+            eventsOnChain = this._fromString(tmpEventsOnChain);
+
+        for (const event of eventsOnChain) {
+            bb.addTx(await this._getTxOnChain(event));
         }
         return bb;
     }
@@ -482,13 +596,16 @@ class Synchronizer {
         const res = [];
         // add off-chain tx
         if (this.mode === Constants.mode.archive){
-            const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels); 
-            const keysForge = await this.db.listKeys(`${eventForgeBatchKey}${separator}${numBatch}`);
-            for (const key of keysForge) {
-                const tmp = this._fromString(await this.db.get(key));
-                const offChainTxs = await this._getTxOffChain(tmp);
+            const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
+            const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${numBatch}`);
+            let eventForge = [];
+            if (tmpForgeArray) 
+                eventForge = this._fromString(tmpForgeArray);
+
+            for (const hashTx of eventForge) {
+                const offChainTxs = await this._getTxOffChain(hashTx);
                 await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-                await this._setUserFee(bb, offChainTxs.txs);
+                await this._setUserFee(offChainTxs.txs);
                 for (const tx of offChainTxs.txs) res.push(tx);
             }
         }

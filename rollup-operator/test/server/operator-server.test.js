@@ -29,8 +29,7 @@ const timeoutLoop = 10000;
 
 
 // This test assumes 'server-proof' is running locally on port 10001
-// This test assumes 'operator' api-admin is running locally on port 9000
-// This test assumes 'operator' api-external is running locally on port 9001
+// This test assumes 'operator' api-external is running locally on port 9000
 
 contract("Operator", (accounts) => {
 
@@ -81,7 +80,7 @@ contract("Operator", (accounts) => {
     let cliExternalOp;
 
     // Url
-    const urlExternalOp = "http://127.0.0.1:9001";
+    const urlExternalOp = "http://127.0.0.1:9000";
 
     // Constants to move to a specific era
     const slotPerEra = 20;

@@ -301,7 +301,7 @@ contract("Synchronizer - light mode", (accounts) => {
         expect(resEthAddress3[0].ay).to.be.equal(ayStr);
     });
 
-    it("Should add off-chain withdraw tx and synch", async () => {
+    it("Should add off-chain tx and synch", async () => {
         const events = [];
         const tx = {
             fromIdx: 1,

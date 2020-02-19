@@ -362,9 +362,9 @@ class LoopManager{
             this.state = state.MINING;
             this.timeouts.NEXT_STATE = 1000;
             const self = this;
-            try { //sanity check
+            try { // sanity check
                 await this.web3.eth.call(this.currentTx.tx);
-            } catch (error) { //error evm transaction
+            } catch (error) { // error evm transaction
                 this._errorTx(error.message); 
                 return;
             }
@@ -487,19 +487,19 @@ class LoopManager{
                 }   
             })
             .catch( async (error) => {
-                if (error.message.includes("Transaction was not mined within")) { //polling timeout
+                if (error.message.includes("Transaction was not mined within")) { // polling timeout
                     self.overwriteTx = true;
                     self._logTxOverwrite();
                 } else { 
-                    if (error.receipt) { //EVM error
-                        await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) //catch the error
+                    if (error.receipt) { // EVM error
+                        await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) // catch the error
                             .then( () => {
-                                self._errorTx("unreachable code"); //unreachable code
+                                self._errorTx("unreachable code"); // unreachable code
                             })
                             .catch( error => {
                                 self._errorTx(error.message);
                             });
-                    } else { //another error no EVM
+                    } else { // another error no EVM
                         self._errorTx(error.message); 
                     }
                 }
@@ -508,9 +508,9 @@ class LoopManager{
 
     async _blockDeadline(currentBlock){
         if (currentBlock >= this.infoCurrentBatch.toBlock){
-            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
-            info += " | info ==> ";
-            info += `${chalk.white.bold("Reach slot deadline block. Cancelling proof computation")}`;
+            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
+            info += `${chalk.bgYellow.black("warning info")}`;
+            info += ` ==> ${chalk.white.bold("Reach slot deadline block. Cancelling proof computation")}`;
             this.logger.info(info);
             return true;
         }
@@ -561,9 +561,9 @@ class LoopManager{
         BigInt(currentOnchainHash) === this.infoCurrentBatch.batchData.getOnChainHash()) {
             return true;
         } else { 
-            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
-            info += " | info ==> ";
-            info += `${chalk.white.bold("Current information of state root and/or onChain hash does not match with SC")}`;
+            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
+            info += `${chalk.bgYellow.black("state info")}`;
+            info += " ==> Current information of state root and/or onChain hash does not match with SC";
             this.logger.info(info);
             return false;
         }
@@ -592,12 +592,12 @@ class LoopManager{
     }
 
     _logTxKO(reason){
-        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
-        info += " | info ==> ";
+        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
+        info += `${chalk.bgRed.black("transaction info")}`;
         if (reason)
-            info += `${chalk.white.bold(`Error at transaction: ${reason}`)}`;
+            info += `${chalk.white.bold(` ==> Error at transaction: ${reason}`)}`;
         else   
-            info += `${chalk.white.bold("Error at transaction, try to forge batch again")}`;
+            info += `${chalk.white.bold(" ==> Error at transaction, try to forge batch again")}`;
         this.logger.info(info);
     }
 
