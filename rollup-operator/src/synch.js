@@ -190,7 +190,7 @@ class Synchronizer {
                 }
 
                 if (currentBatchDepth > lastBatchSaved) {
-                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved, stateSaved.blockNumber);
+                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber);
                     // If no event is found, tree is not updated
                     if (!targetBlockNumber) continue;
                     // get all logs from last batch
@@ -246,7 +246,7 @@ class Synchronizer {
         this.logger.info(info);
     }
 
-    async _getTargetBlock(lastBatchSaved, lastSynchBlock){
+    async _getTargetBlock(batchToSynch, lastSynchBlock){
         let targetBlockNumber = undefined;
         const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
             fromBlock: lastSynchBlock + 1,
@@ -255,7 +255,7 @@ class Synchronizer {
 
         for (const log of logsForge){
             const batchNumber = Number(log.returnValues.batchNumber);
-            if (batchNumber === lastBatchSaved){
+            if (batchNumber === batchToSynch){
                 targetBlockNumber = Number(log.returnValues.blockNumber);
                 break;
             }
@@ -355,7 +355,7 @@ class Synchronizer {
             // Add onChain events
             if (event.event == "OnChainTx"){
                 const eventOnChainData = this._getOnChainEventData(event.returnValues);
-                const numBatchForged = event.returnValues.batchNumber;
+                const numBatchForged = Number(event.returnValues.batchNumber);
                 if (numBatchForged >= nextBatchSynched - 1){
                     if (!eventsOnChain[numBatchForged])
                         eventsOnChain[numBatchForged] = [];
@@ -367,10 +367,10 @@ class Synchronizer {
             if (event.event == "ForgeBatch"){
                 const eventForge = [];
                 const numBatchForged = Number(event.returnValues.batchNumber);
-                if (numBatchForged + 1 >= nextBatchSynched){
-                    batchesForged.push(numBatchForged + 1);
+                if (numBatchForged >= nextBatchSynched){
+                    batchesForged.push(numBatchForged);
                     eventForge.push(event.transactionHash);
-                    await this.db.insert(`${eventForgeBatchKey}${separator}${numBatchForged + 1}`,
+                    await this.db.insert(`${eventForgeBatchKey}${separator}${numBatchForged}`,
                         this._toString(eventForge));
                 }
             }

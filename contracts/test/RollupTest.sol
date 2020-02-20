@@ -60,7 +60,7 @@ contract RollupTest is Rollup {
         currentOnChainTx = 0;
 
         // event with all compressed transactions given its batch number
-        emit ForgeBatch(getStateDepth() - 1, block.number);
+        emit ForgeBatch(getStateDepth(), block.number);
     }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
