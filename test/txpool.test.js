@@ -237,4 +237,53 @@ describe("txPool test", function () {
 
         assert.deepEqual(calcSlots, expectedSlots);
     });
+
+    it("Should send thousand valid transactions", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1] = await initBlock(rollupDB);
+        /// Batch
+        const cfg = {
+            maxSlots : 512,
+            executableSlots: 256,
+            nonExecutableSlots: 256,
+            timeout: 10000,
+        };
+
+        const txPool = await TxPool(rollupDB, conversion, cfg);
+
+        const txs = [];
+
+        for (let i = 0; i < 256; i++) {
+            let tx = {
+                fromIdx: 1,
+                toIdx: 3,
+                coin: 0,
+                amount: 1,
+                nonce: i,
+                userFee: Math.floor(Math.random() * 10) + 1,
+                rqOffset: 0,
+                onChain: 0,
+                newAccount: 0,
+            };
+            account1.signTx(tx);
+            txs.push(tx);
+        } 
+
+        for (let i = 0; i < txs.length; i++) {
+            await txPool.addTx(txs[i]);
+        }
+
+        const bb = await rollupDB.buildBatch(512, 24);
+        await txPool.fillBatch(bb);
+
+        await rollupDB.consolidate(bb);
+        await txPool.purge();
+
+        const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
+        assert.equal(calcSlots.length, 256);
+        assert.equal(txPool.txs.length, 0);
+    });
 });

@@ -343,7 +343,12 @@ class TXPool {
             }
             avTxs = [].concat(...Object.values(avTxs));
             avTxs.sort( (a,b) => {
-                return b.adjustedFee - a.adjustedFee;
+                if ((b.adjustedFee - a.adjustedFee == 0) && a.fromIdx == b.fromIdx){
+                    return a.nonce - b.nonce;
+                }
+                else{
+                    return b.adjustedFee - a.adjustedFee;
+                }
             });
             for (let i=0; i<nAv-this.executableSlots; i++) {
                 avTxs[avTxs.length -i-1].removed = true;
@@ -417,7 +422,14 @@ class TXPool {
                 availableTxs.push(this.txs[i]);
             }
         }
-        const fnSort = (a,b) => { return a.adjustedFee - b.adjustedFee; };
+        const fnSort = (a,b) => {
+            if ((b.adjustedFee - a.adjustedFee == 0) && a.fromIdx == b.fromIdx){
+                return b.nonce - a.nonce;
+            }
+            else{
+                return a.adjustedFee - b.adjustedFee;
+            } 
+        };
 
         // Sort the TXs reverse normalized Fee (First is the most profitable)
         availableTxs.sort(fnSort);
