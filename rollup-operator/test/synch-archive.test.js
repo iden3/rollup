@@ -367,16 +367,16 @@ contract("Synchronizer - archive mode", (accounts) => {
     });
 
     it("Should get off-chain tx by batch", async () => {
-        // get off-chain tx forged in batch 5
-        const res0 = await synch.getOffChainTxByBatch(5);
+        // get off-chain tx forged in batch 6
+        const res0 = await synch.getOffChainTxByBatch(6);
         expect(res0[0].fromIdx.toString()).to.be.equal("1");
         expect(res0[0].toIdx.toString()).to.be.equal("2");
         expect(res0[0].amount.toString()).to.be.equal(to18(3).toString());
 
-        // get off-chain tx forged in batch 7
-        const res1 = await synch.getOffChainTxByBatch(7);
+        // get off-chain tx forged in batch 8
+        const res1 = await synch.getOffChainTxByBatch(8);
         // Should retrieve two off-chain tx
-        // expect(res1.length).to.be.equal(2);
+        expect(res1.length).to.be.equal(2);
         // tx 0
         expect(res1[0].fromIdx.toString()).to.be.equal("1");
         expect(res1[0].toIdx.toString()).to.be.equal("2");
