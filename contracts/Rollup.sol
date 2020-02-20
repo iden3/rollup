@@ -406,6 +406,23 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
             'zk-snark proof is not valid');
 
+        // Update state roots
+        stateRoots.push(bytes32(input[1]));
+
+        // Update exit roots
+        exitRoots.push(bytes32(input[2]));
+
+        // Clean fillingOnChainTxsHash an its fees
+        uint payOnChainFees = totalMinningOnChainFee;
+
+        miningOnChainTxsHash = fillingOnChainTxsHash;
+        fillingOnChainTxsHash = 0;
+        totalMinningOnChainFee = totalFillingOnChainFee;
+        totalFillingOnChainFee = 0;
+
+        // Update number of on-chain transactions
+        currentOnChainTx = 0;
+
         // Calculate fees and pay them
         bytes32[2] memory feePlan = [bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])];
         bytes32 nTxPerToken = bytes32(input[nTxperTokenInput]);
@@ -421,26 +438,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         }
 
         // Pay onChain transactions fees
-        uint payOnChainFees = totalMinningOnChainFee;
         beneficiaryAddress.transfer(payOnChainFees);
 
-        // Update state roots
-        stateRoots.push(bytes32(input[1]));
-
-        // Update exit roots
-        exitRoots.push(bytes32(input[2]));
-
-        // Clean fillingOnChainTxsHash an its fees
-        miningOnChainTxsHash = fillingOnChainTxsHash;
-        fillingOnChainTxsHash = 0;
-        totalMinningOnChainFee = totalFillingOnChainFee;
-        totalFillingOnChainFee = 0;
-
-        // Update number of on-chain transactions
-        currentOnChainTx = 0;
-
         // event with all compressed transactions given its batch number
-        emit ForgeBatch(getStateDepth() - 1, block.number);
+        emit ForgeBatch(getStateDepth(), block.number);
     }
 
     //////////////
