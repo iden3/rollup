@@ -201,6 +201,10 @@ module.exports = class BatchBuilder {
             newState1.nonce++;
             this._incCounter(tx.coin, this.input.step[i]);
         }
+
+        if (tx.fromIdx === tx.toIdx)
+            oldState2 = Object.assign({}, newState1);
+
         const newState2 = Object.assign({}, oldState2);
         newState2.amount = oldState2.amount.add(effectiveAmount);
         if (op1=="INSERT") {
