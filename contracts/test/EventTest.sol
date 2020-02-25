@@ -30,7 +30,7 @@ contract EventTest {
   ) public {
 
     stateRoots.push(bytes32(newRoot));
-    emit ForgeBatch(getStateDepth() - 1, compressedTxs);
+    emit ForgeBatch(getStateDepth(), compressedTxs);
   }
 
   function getStateRoot(uint numBatch) public view returns (bytes32) {

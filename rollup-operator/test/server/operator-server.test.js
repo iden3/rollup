@@ -27,7 +27,6 @@ const timeoutSynch = 20000;
 const timeoutBlocks = 10000;
 const timeoutLoop = 10000;
 
-
 // This test assumes 'server-proof' is running locally on port 10001
 // This test assumes 'operator' api-external is running locally on port 9000
 
@@ -223,7 +222,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getState();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 0) {
+            if (info.rollupSynch.lastBatchSynched > 1) {
                 batchForged = true;
                 break;
             } 
@@ -257,7 +256,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getState();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 3) {
+            if (info.rollupSynch.lastBatchSynched > 4) {
                 batchForged = true;
                 break;
             } 
@@ -292,7 +291,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getState();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 6) {
+            if (info.rollupSynch.lastBatchSynched > 7) {
                 batchForged = true;
                 break;
             } 

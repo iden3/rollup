@@ -537,7 +537,7 @@ contract("Rollup", (accounts) => {
         
         // Off-chain are included next bacth forged
         expect(BigInt(rollupDB.lastBatch).toString()).to.be.
-            equal(BigInt(resForge.logs[0].args.batchNumber).add(BigInt(1)).toString());
+            equal(BigInt(resForge.logs[0].args.batchNumber).toString());
         
         // Recover hash off-chain from calldata
         // note: data compressedTx will be available on forge Batch Mechanism
@@ -683,7 +683,7 @@ contract("Rollup", (accounts) => {
             
         // Off-chain are included next bacth forged
         expect(BigInt(rollupDB.lastBatch).toString()).to.be.
-            equal(BigInt(resForge.logs[0].args.batchNumber).add(BigInt(1)).toString());
+            equal(BigInt(resForge.logs[0].args.batchNumber).toString());
         // Recover hash off-chain from calldata
         // note: data compressedTx will be available on forge Batch Mechanism
         const blockNumber = resForge.logs[0].args.blockNumber.toString();
