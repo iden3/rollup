@@ -25,7 +25,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Each batch forged will have a correlated 'exit tree' represented by the exit root
     bytes32[] exitRoots;
-    mapping(uint256 => bool) exitNullifier;
+    mapping(uint256 => bool) public exitNullifier;
 
     // Define struct to store data for each id
     struct leafInfo{
