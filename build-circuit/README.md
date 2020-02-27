@@ -14,29 +14,40 @@ General command line:
 
 ## Commands
 
-### Compile
-- Creates folder for given inputs such as: `rollup-nTx-levels`
-- Compiles rollup circuit and store it into above folder:
-  - `circuit-nTx-levels.circom`: circom circuit description
-  - `circuit-nTx-levels.json`: circuit compiled
+### Create
+- Creates folder and store circuit for `nTx` and `levels`:
+  - folder: `rollup-nTx-levels`
+  - circuit: `circuit-nTx-levels`
 
 Example command: 
-`node --max-old-space-size=4096 build-circuit.js compile 1 8`
+`node build-circuit.js create 16 24`
+
+### Compile
+- Compiles rollup circuit and store it into above folder:
+  - `circuit-nTx-levels.r1cs`: circuit compiled
+  - `circuit-nTx-levels.cpp`: calculate witness cpp
+
+Example command: 
+`node build-circuit.js compile 16 24`
 
 ### Setup
-- Load rollup circuit stored on `rollup-nTx-levels`
-- Do setup retrieveing proving key and verification key:
-  - `pk-nTx-levels.json`
+- Perform local setup to retrieve proving key and verification key:
+  - `pk-nTx-levels.bin`
   - `vk-nTx-levels.json`
 
 Example command:
-`node --max-old-space-size=4096 build-circuit.js setup 1 8`
+`node build-circuit.js setup 16 24`
 
 ### Inputs
 - Creates and stores an empty input for a circuit
 
 Example command:
-`node build-circuit.js input 1 8`
+`node build-circuit.js input 16 24`
+
+### Witness
+- Compiles C witness program and creates an example witness given the inputs generated with `input command`
+  - `circuit-nTx-levels`: executable to compute witness
+  - `witness-nTx-levels.bin`: witness in binary format
 
 ## Config
 - `config.json` file is loaded to load some configuration variables:
@@ -45,6 +56,7 @@ Example command:
 {
   "pathSrc":"/home/source",
   "pathCir":"/home/cir",
+  "pathCircom":"/home/circom",
   "list": "0"
 }
 ```
