@@ -31,7 +31,7 @@ async function compileCircuit(nTx, levels) {
     const cirName = `${circuitName}-${nTx}-${levels}.circom`;
 
     const cmd = `cd ${pathName} && \
-    node  --max-old-space-size=50000 \
+    node  --max-old-space-size=100000 \
     ../../../circom/cli.js \
     ${cirName} \
     -c -r -v`; 
