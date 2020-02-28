@@ -1,5 +1,4 @@
 const poseidonUnit = require("./node_modules/circomlib/src/poseidon_gencontract.js");
-const verifier = require("./build/contracts/VerifierHelper.json");
 const rollup = require("./build/contracts/Rollup.json");
 const rollupPoS = require("./build/contracts/RollupPoS.json");
 const ethers = require("ethers");
@@ -24,7 +23,7 @@ const pathRollupPoSSynch = path.join(__dirname, "./rollup-operator/src/server/tm
 // | LoadForgeMechanismPoSTx | 64416    |
 const gasLimit = {
     poseidon: 2000000,
-    verifier: 200000,
+    verifier: 2000000,
     rollup: 5000000,
     rollupPoS: 5000000,
     addTokenTx: 200000,
@@ -59,6 +58,8 @@ async function createConfig(){
     const addressFee = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, `m/44'/60'/0'/0/${process.env.INDEX_ACCOUNT_TOKEN_FEES}`).address;
     const web3Wallet = web3.eth.accounts.privateKeyToAccount(etherWallet.privateKey);
     
+    const verifier = require(`./build/contracts/Verifier_${maxTx}_24.json`);
+
     const rollupContract =  new web3.eth.Contract(rollup.abi);
     const rollupPoSContract =  new web3.eth.Contract(rollupPoS.abi);
     let nonceToSend = await web3.eth.getTransactionCount(etherWallet.address);
