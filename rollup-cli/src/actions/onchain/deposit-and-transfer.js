@@ -1,7 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
 const { fix2float } = require('../../../../js/utils');
-const { Wallet } = require('../../wallet.js');
 const { getGasPrice } = require('./utils');
 
 /**
@@ -16,9 +15,8 @@ const { getGasPrice } = require('./utils');
  * @param abi abi of rollup contract
  * @param UrlOperator URl from operator
 */
-async function depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenId, walletJson,
-    passphrase, ethAddress, abi, toId, gasLimit = 5000000, gasMultiplier = 1) {
-    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+async function depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenId, walletRollup,
+    ethAddress, abi, toId, gasLimit = 5000000, gasMultiplier = 1) {
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);

@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
-const { Wallet } = require('../../wallet.js');
 const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
 const { getGasPrice } = require('./utils');
 
@@ -18,10 +17,9 @@ const { getGasPrice } = require('./utils');
  * @param idFrom balance tree identifier
  * @param numExitRoot exit tree root depth to look for exit tree account
  */
-async function withdraw(nodeEth, addressSC, walletJson, passphrase, abi,
-    urlOperator, idFrom, numExitRoot, gasLimit = 5000000, gasMultiplier = 1) {
+async function withdraw(nodeEth, addressSC, walletRollup, abi, urlOperator,
+    idFrom, numExitRoot, gasLimit = 5000000, gasMultiplier = 1) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);

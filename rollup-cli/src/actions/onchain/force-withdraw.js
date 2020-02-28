@@ -1,7 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
 const { fix2float } = require('../../../../js/utils');
-const { Wallet } = require('../../wallet.js');
 const { getGasPrice } = require('./utils');
 
 /**
@@ -14,8 +13,7 @@ const { getGasPrice } = require('./utils');
  * @param abi abi of rollup contract
  * @param UrlOperator URl from operator
  */
-async function forceWithdraw(nodeEth, addressSC, amount, walletJson, passphrase, abi, idFrom, gasLimit = 5000000, gasMultiplier = 1) {
-    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+async function forceWithdraw(nodeEth, addressSC, amount, walletRollup, abi, idFrom, gasLimit = 5000000, gasMultiplier = 1) {
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);

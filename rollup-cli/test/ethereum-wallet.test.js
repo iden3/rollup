@@ -19,6 +19,7 @@ describe('Ethereum wallet', function () {
         expect(wallet.mnemonic).to.not.be.equal(undefined);
         expect(wallet.privateKey).to.not.be.equal(undefined);
         expect(wallet.publicKey).to.not.be.equal(undefined);
+        expect(wallet.address).to.not.be.equal(undefined);
         expect(wallet.publicKeyCompressed).to.not.be.equal(undefined);
     });
 
