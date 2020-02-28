@@ -26,7 +26,7 @@ class RollupDB {
         if (!bb.builded) {
             await bb.build();
         }
-        const insertsState = Object.keys(bb.dbState.inserts).map(function(key) {
+        const insertsState = Object.keys(bb.dbState.inserts).reverse().map(function(key) {
             return [bigInt(key), bb.dbState.inserts[key]];
         });
         const insertsExit = Object.keys(bb.dbExit.inserts).map(function(key) {
