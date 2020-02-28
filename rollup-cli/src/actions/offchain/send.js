@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-syntax */
 const { stringifyBigInts } = require('snarkjs');
-const { Wallet } = require('../../wallet.js');
 const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
 
 async function _checkNonce(responseLeaf, currentBatch, nonceObject) {
@@ -42,9 +41,8 @@ function _addNonce(nonceObject, currentBatch, nonce, fromId) {
  * @param userFee amount of fee that the user is willing to pay
  * @param idFrom Self balance tree identifier
 */
-async function send(urlOperator, idTo, amount, walletJson, password, tokenId, userFee, fromId, nonce, nonceObject) {
+async function send(urlOperator, idTo, amount, walletRollup, tokenId, userFee, fromId, nonce, nonceObject) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
     const generalInfo = await apiOperator.getState();
     const currentBatch = generalInfo.data.rollupSynch.lastBatchSynched;
     let nonceToSend;

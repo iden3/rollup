@@ -9,6 +9,7 @@ class EthereumWallet {
         this.wallet = wallet;
 
         this.mnemonic = wallet.mnemonic;
+        this.address = wallet.signingKey.address;
         this.privateKey = wallet.privateKey;
         this.publicKey = wallet.signingKey.publicKey;
         this.publicKeyCompressed = wallet.signingKey.keyPair.compressedPublicKey;

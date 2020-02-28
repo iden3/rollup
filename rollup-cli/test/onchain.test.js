@@ -17,17 +17,12 @@ const { Wallet } = require('../src/wallet.js');
 const rollupUtils = require('../../rollup-utils/rollup-utils.js');
 const RollupDB = require('../../js/rollupdb');
 const { createWallet, deleteResources } = require('./config/build-resources');
-
-const { deposit } = require('../src/actions/onchain/deposit.js');
-const { depositOnTop } = require('../src/actions/onchain/deposit-on-top.js');
-const { withdraw } = require('../src/actions/onchain/withdraw.js');
 const { buildInputSm } = require('../../rollup-operator/src/utils');
-const { forceWithdraw } = require('../src/actions/onchain/force-withdraw.js');
-const { transfer } = require('../src/actions/onchain/transfer.js');
-const { depositAndTransfer } = require('../src/actions/onchain/deposit-and-transfer.js');
+const {
+    depositTx, depositOnTopTx, withdrawTx, forceWithdrawTx, transferTx, depositAndTransferTx,
+} = require('../src/cli-utils');
 
 const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
-
 const { expect } = chai;
 
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
@@ -199,7 +194,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
+        await depositTx(web3.currentProvider.host, addressSC, depositAmount, tokenId,
             walletJson, password, walletEth.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -236,7 +231,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await depositOnTop(web3.currentProvider.host, addressSC, onTopAmount, tokenId,
+        await depositOnTopTx(web3.currentProvider.host, addressSC, onTopAmount, tokenId,
             walletJson, password, abi, idFrom, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -265,7 +260,7 @@ contract('Rollup', async (accounts) => {
         const amount = 10;
         const idFrom = 1;
 
-        await forceWithdraw(web3.currentProvider.host, addressSC, amount,
+        await forceWithdrawTx(web3.currentProvider.host, addressSC, amount,
             walletJson, password, abi, idFrom, gasLimit, gasMultiplier);
 
         // forge block with no transactions
@@ -289,7 +284,7 @@ contract('Rollup', async (accounts) => {
         const idFrom = 1;
         const numExitRoot = 6;
 
-        await withdraw(web3.currentProvider.host, addressSC,
+        await withdrawTx(web3.currentProvider.host, addressSC,
             walletJson, password, abi, UrlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
@@ -319,7 +314,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
+        await depositTx(web3.currentProvider.host, addressSC, depositAmount, tokenId,
             walletJson, password, walletEth.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -345,7 +340,7 @@ contract('Rollup', async (accounts) => {
         const fromId = 1;
         const toId = 2;
         // from 1 to 2
-        await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
+        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
             walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -375,7 +370,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await depositAndTransfer(web3.currentProvider.host, addressSC, depositAmount,
+        await depositAndTransferTx(web3.currentProvider.host, addressSC, depositAmount,
             amount, tokenId, walletJson, password, walletEth.address, abi, toId, gasLimit, gasMultiplier);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
@@ -410,7 +405,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await deposit(web3.currentProvider.host, addressSC, depositAmount, tokenId,
+        await depositTx(web3.currentProvider.host, addressSC, depositAmount, tokenId,
             walletJson, password, walletEthTest.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -438,12 +433,12 @@ contract('Rollup', async (accounts) => {
         const toId = 2;
         // from 1 to 2
         try {
-            await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
+            await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
                 walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
         } catch (error) {
             expect((error.message).includes('Sender does not match identifier balance tree')).to.be.equal(true);
         }
-        await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
+        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
             walletJsonTest, password, abi, fromId, toId, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -473,7 +468,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await depositAndTransfer(web3.currentProvider.host, addressSC, depositAmount,
+        await depositAndTransferTx(web3.currentProvider.host, addressSC, depositAmount,
             amount, tokenId, walletJson, password, walletEthTest.address, abi, toId, gasLimit, gasMultiplier);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
@@ -500,12 +495,12 @@ contract('Rollup', async (accounts) => {
         const toId = 2;
         // from 1 to 2
         try {
-            await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
+            await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
                 walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
         } catch (error) {
             expect((error.message).includes('Sender does not match identifier balance tree')).to.be.equal(true);
         }
-        await transfer(web3.currentProvider.host, addressSC, amount, tokenId,
+        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
             walletJsonTest, password, abi, fromId, toId, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');

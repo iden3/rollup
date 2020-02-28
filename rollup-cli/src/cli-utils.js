@@ -7,34 +7,42 @@ const { forceWithdraw } = require('./actions/onchain/force-withdraw.js');
 const { transfer } = require('./actions/onchain/transfer.js');
 const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.js');
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
+const { Wallet } = require('./wallet');
 
-async function sendTx(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
-    return send(urlOperator, to, amount, wallet, passphrase, tokenId, userFee, idFrom, nonce, nonceObject);
+async function sendTx(urlOperator, to, amount, walletJson, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return send(urlOperator, to, amount, walletRollup, tokenId, userFee, idFrom, nonce, nonceObject);
 }
 
-async function depositTx(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
-    return deposit(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, ethAddress, abi, gasLimit, gasMultiplier);
+async function depositTx(nodeEth, addressSC, loadAmount, tokenid, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return deposit(nodeEth, addressSC, loadAmount, tokenid, walletRollup, ethAddress, abi, gasLimit, gasMultiplier);
 }
 
-async function depositOnTopTx(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, abi, idTo, gasLimit, gasMultiplier) {
-    return depositOnTop(nodeEth, addressSC, loadAmount, tokenid, wallet, passphrase, abi, idTo, gasLimit, gasMultiplier);
+async function depositOnTopTx(nodeEth, addressSC, loadAmount, tokenid, walletJson, passphrase, abi, idTo, gasLimit, gasMultiplier) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return depositOnTop(nodeEth, addressSC, loadAmount, tokenid, walletRollup, abi, idTo, gasLimit, gasMultiplier);
 }
 
-async function withdrawTx(nodeEth, addressSC, wallet, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier) {
-    return withdraw(nodeEth, addressSC, wallet, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
+async function withdrawTx(nodeEth, addressSC, walletJson, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return withdraw(nodeEth, addressSC, walletRollup, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
 }
 
-async function forceWithdrawTx(nodeEth, addressSC, amount, wallet, passphrase, abi, idFrom, gasLimit, gasMultiplier) {
-    return forceWithdraw(nodeEth, addressSC, amount, wallet, passphrase, abi, idFrom, gasLimit, gasMultiplier);
+async function forceWithdrawTx(nodeEth, addressSC, amount, walletJson, passphrase, abi, idFrom, gasLimit, gasMultiplier) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return forceWithdraw(nodeEth, addressSC, amount, walletRollup, abi, idFrom, gasLimit, gasMultiplier);
 }
 
-async function transferTx(nodeEth, addressSC, amount, tokenid, wallet, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier) {
-    return transfer(nodeEth, addressSC, amount, tokenid, wallet, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier);
+async function transferTx(nodeEth, addressSC, amount, tokenid, walletJson, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return transfer(nodeEth, addressSC, amount, tokenid, walletRollup, abi, idFrom, idTo, gasLimit, gasMultiplier);
 }
 
-async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase, ethAddress, abi,
+async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, walletJson, passphrase, ethAddress, abi,
     toId, gasLimit, gasMultiplier) {
-    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, wallet, passphrase,
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, walletRollup,
         ethAddress, abi, toId, gasLimit, gasMultiplier);
 }
 
