@@ -3,6 +3,7 @@ const chai = require('chai');
 const path = require('path');
 const { send } = require('../src/actions/offchain/send.js');
 const { createWallet, deleteResources } = require('./config/build-resources');
+const { Wallet } = require('../src/wallet');
 
 const { expect } = chai;
 
@@ -25,7 +26,8 @@ describe('Send', async function () {
     });
 
     it('Should call send', async () => {
-        const res = await send(UrlOperator, idTo, amount, wallet, password, tokenId, userFee, idFrom);
+        const walletRollup = await Wallet.fromEncryptedJson(wallet, password);
+        const res = await send(UrlOperator, idTo, amount, walletRollup, tokenId, userFee, idFrom);
         expect(res.status).to.be.equal(200);
     });
 

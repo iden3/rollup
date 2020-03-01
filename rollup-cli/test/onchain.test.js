@@ -17,7 +17,7 @@ const { Wallet } = require('../src/wallet.js');
 const rollupUtils = require('../../rollup-utils/rollup-utils.js');
 const RollupDB = require('../../js/rollupdb');
 const { createWallet, deleteResources } = require('./config/build-resources');
-const { buildInputSm } = require('../../rollup-operator/src/utils');
+const { buildPublicInputsSm } = require('../../rollup-operator/src/utils');
 const {
     depositTx, depositOnTopTx, withdrawTx, forceWithdrawTx, transferTx, depositAndTransferTx,
 } = require('../src/cli-utils');
@@ -38,7 +38,7 @@ const gasLimit = 5000000;
 const gasMultiplier = 1;
 
 function buildFullInputSm(bb, beneficiary) {
-    const input = buildInputSm(bb);
+    const input = buildPublicInputsSm(bb);
     return {
         beneficiary,
         proofA,

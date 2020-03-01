@@ -17,7 +17,7 @@ const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
-const { timeout, buildInputSm, manageEvent } = require("../src/utils");
+const { timeout, buildPublicInputsSm, manageEvent } = require("../src/utils");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const Constants = require("../src/constants");
 
@@ -65,7 +65,7 @@ contract("Synchronizer - light mode", (accounts) => {
             });
         }
         await batch.build();
-        const inputSm = buildInputSm(batch, beneficiary);
+        const inputSm = buildPublicInputsSm(batch, beneficiary);
         ptr = ptr - 1;
         await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${batch.getDataAvailable().toString("hex")}`,
             proofA, proofB, proofC, inputSm, {from: op1});

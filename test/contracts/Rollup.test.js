@@ -6,7 +6,7 @@
 
 const chai = require("chai");
 const utils = require("../../rollup-utils/utils");
-const { buildInputSm } = require("../../rollup-operator/src/utils");
+const { buildPublicInputsSm } = require("../../rollup-operator/src/utils");
 const rollupUtils = require("../../rollup-utils/rollup-utils.js");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 
@@ -29,7 +29,7 @@ const proofB = [["0", "0"], ["0", "0"]];
 const proofC = ["0", "0"];
 
 function buildFullInputSm(bb, beneficiary) {
-    const input = buildInputSm(bb);
+    const input = buildPublicInputsSm(bb);
     return {
         beneficiary: beneficiary,
         proofA,
@@ -79,6 +79,7 @@ contract("Rollup", (accounts) => {
         });
     }
 
+    const offChainHashInput = 3;
     const maxTx = 10;
     const maxOnChainTx = 3;
     let nLevels;
@@ -485,12 +486,12 @@ contract("Rollup", (accounts) => {
     
     
     it("Should forge withdraw off-chain transaction with fee", async () => {
-    // Steps:
-    // - Transaction from 'id3' to '0' --> force withdraw offchain
-    // - Update rollupTree
-    // - forge batch to include transaction
-    // - Check block number information, balance of beneficiary and batch number
-    // - Test double withdraw in the same batch
+        // Steps:
+        // - Transaction from 'id3' to '0' --> force withdraw offchain
+        // - Update rollupTree
+        // - forge batch to include transaction
+        // - Check block number information, balance of beneficiary and batch number
+        // - Test double withdraw in the same batch
 
         // current Tokens: leaf 3: 9 tokens
         // after this test: leaf 4: 5 tokens
@@ -551,8 +552,8 @@ contract("Rollup", (accounts) => {
             }
         });
 
-        // Off-chain hash is 4th position of the input
-        expect(inputSm.input[4]).to.be.equal(inputRetrieved[4]);
+        // Off-chain hash is 3th position of the input
+        expect(BigInt(inputSm.input[offChainHashInput]).toString()).to.be.equal(BigInt(inputRetrieved[offChainHashInput]).toString());
 
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-4).toString()); //2 fees + 2 amountTransfer = 4
@@ -695,8 +696,8 @@ contract("Rollup", (accounts) => {
                 inputRetrieved = elem.value;
             }
         });
-        // Off-chain hash is 4th position of the input
-        expect(inputSm.input[4]).to.be.equal(inputRetrieved[4]);
+        // Off-chain hash is 3th position of the input
+        expect(BigInt(inputSm.input[offChainHashInput]).toString()).to.be.equal(BigInt(inputRetrieved[offChainHashInput]).toString());
     
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-2).toString()); //1 fees + 1 amountTransfer = 2

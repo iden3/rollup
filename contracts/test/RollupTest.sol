@@ -45,10 +45,10 @@ contract RollupTest is Rollup {
         beneficiaryAddress.transfer(payOnChainFees);
 
         // Update state roots
-        stateRoots.push(bytes32(input[1]));
+        stateRoots.push(bytes32(input[newStateRootInput]));
 
         // Update exit roots
-        exitRoots.push(bytes32(input[2]));
+        exitRoots.push(bytes32(input[newExitRootInput]));
 
         // Clean fillingOnChainTxsHash an its fees
         miningOnChainTxsHash = fillingOnChainTxsHash;

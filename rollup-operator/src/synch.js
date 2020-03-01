@@ -13,6 +13,10 @@ const Constants = require("./constants");
 //            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
 
+const offChainHashInput = 3;
+const feePlanCoinsInput = 6;
+const feePlanFeesInput = 7;
+
 // db keys
 const batchStateKey = "batch-state";
 
@@ -494,9 +498,9 @@ class Synchronizer {
                 inputRetrieved = elem.value;
             }
         });
-        const inputOffChainHash = inputRetrieved[4];
-        const inputFeePlanCoin = inputRetrieved[5];
-        const inputFeePlanFee = inputRetrieved[6];
+        const inputOffChainHash = inputRetrieved[offChainHashInput];
+        const inputFeePlanCoin = inputRetrieved[feePlanCoinsInput];
+        const inputFeePlanFee = inputRetrieved[feePlanFeesInput];
 
         const fromBlock = txForge.blockNumber - this.blocksPerSlot;
         const toBlock = txForge.blockNumber;
