@@ -16,7 +16,7 @@ const pathRollupPoSSynch = path.join(__dirname, "./rollup-operator/src/server/tm
 // | Contract                | Gas Used |
 // | ----------------------- | -------- |
 // | Poseidon                | 1873872  |
-// | Verifier                | 159847   |
+// | Verifier                | 1244675  |
 // | Rollup                  | 4130071  |
 // | RollupPoS               | 4121055  |
 // | addTokenTx              | 102456   |
