@@ -294,6 +294,8 @@ describe("Rollup Basic circuit TXs", function () {
         account2.signTx(tx2);
         account1.signTx(tx3);
         bb2.addTx(tx);
+        bb2.addTx(tx2);
+        bb2.addTx(tx3);
 
         bb2.addCoin(0, 5);
        

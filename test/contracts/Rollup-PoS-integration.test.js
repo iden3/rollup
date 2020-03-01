@@ -30,17 +30,17 @@ async function getEtherBalance(address) {
     return Number(balance);
 }
 
-function buildInputSm(bb) {
+function buildPublicInputsSm(bb) {
     const feePlan = rollupUtils.buildFeeInputSm(bb.feePlan);
     return [
-        bb.getInput().oldStRoot.toString(),
         bb.getNewStateRoot().toString(),
         bb.getNewExitRoot().toString(),
         bb.getOnChainHash().toString(),
         bb.getOffChainHash().toString(),
+        bb.getCountersOut().toString(),
+        bb.getInput().oldStRoot.toString(),
         feePlan[0],
         feePlan[1],
-        bb.getCountersOut().toString(),
     ];
 }
 
@@ -157,6 +157,8 @@ contract("Rollup - RollupPoS", (accounts) => {
     });
 
     it("Forge batches by operator PoS", async () => {
+        const offChainHashInput = 3;
+
         const proofA = ["0", "0"];
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
@@ -173,7 +175,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         // build inputs
         const block = await rollupDB.buildBatch(maxTx, nLevels);
         await block.build();
-        const inputs = buildInputSm(block);
+        const inputs = buildPublicInputsSm(block);
 
         // Check balances
         const balOpBeforeForge = await getEtherBalance(operator1);
@@ -185,7 +187,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         const tx = manageEvent(eventTmp.logs[0]);
         block1.addTx(tx);
         await block1.build();
-        const inputs1 = buildInputSm(block1);
+        const inputs1 = buildPublicInputsSm(block1);
 
         // Forge batch by operator 1
         await insRollupPoS.commitBatch(hashChain[2], `0x${block1.getDataAvailable().toString("hex")}`, {from: operator1});
@@ -211,7 +213,7 @@ contract("Rollup - RollupPoS", (accounts) => {
                 inputRetrieved = elem.value;
             }
         });
-        const offChainHashCommited = inputRetrieved[4];
+        const offChainHashCommited = inputRetrieved[offChainHashInput];
         // // Step4: Check all events triggered by the RollupPos 'dataCommited'
         const logs2 = await insRollupPoS.getPastEvents("dataCommitted", {
             fromBlock: 0,

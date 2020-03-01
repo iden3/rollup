@@ -44,7 +44,7 @@ const testProof = {
     proofA: ["0", "0"],
     proofB: [["0", "0"], ["0", "0"]],
     proofC: ["0", "0"],
-    input: undefined,
+    publicInputs: undefined,
 };
 
 async function genProof() {
@@ -68,7 +68,6 @@ app.use(cors());
 app.use(morgan("dev"));
 
 app.post("/input", async (req, res) => {
-    testProof.input = req.body;
     logger.info("input received");
     currentState = state.PENDING;
     genProof();

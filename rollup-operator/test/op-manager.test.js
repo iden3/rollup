@@ -1,6 +1,7 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
+/* global BigInt */
 
 const chai = require("chai");
 const ethers = require("ethers");
@@ -19,7 +20,7 @@ abiDecoder.addABI(Rollup.abi);
 
 const OperatorManager = require("../src/operator-manager");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
-const { buildInputSm } = require("../src/utils");
+const { buildPublicInputsSm } = require("../src/utils");
 
 contract("Operator Manager", async (accounts) => { 
 
@@ -40,6 +41,7 @@ contract("Operator Manager", async (accounts) => {
     const maxTx = 10;
     const maxOnChainTx = 5;
     const nLevels = 24;
+    const offChainHashInput = 3;
 
     let insPoseidonUnit;
     let insRollupPoS;
@@ -145,7 +147,7 @@ contract("Operator Manager", async (accounts) => {
         const proofC = ["0", "0"];
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
         await batch.build();
-        const input = await buildInputSm(batch);
+        const input = await buildPublicInputsSm(batch);
 
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
@@ -161,7 +163,7 @@ contract("Operator Manager", async (accounts) => {
         });
         let found = false;
         logs.forEach(elem => {
-            if (elem.returnValues.hashOffChain == input[4].toString()) {
+            if (BigInt(elem.returnValues.hashOffChain).toString() == BigInt(input[offChainHashInput]).toString()) {
                 found = true;
             }
         });
@@ -177,7 +179,7 @@ contract("Operator Manager", async (accounts) => {
         const proofC = ["0", "0"];
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
         await batch.build();
-        const input = await buildInputSm(batch);
+        const input = await buildPublicInputsSm(batch);
         const commitData = `0x${batch.getDataAvailable().toString("hex")}`;
 
         await timeTravel.addBlocks(blockPerEra); // era 2
@@ -193,7 +195,7 @@ contract("Operator Manager", async (accounts) => {
         });
         let found = false;
         logs.forEach(elem => {
-            if (elem.returnValues.hashOffChain == input[4].toString()) {
+            if (BigInt(elem.returnValues.hashOffChain).toString() == BigInt(input[offChainHashInput]).toString()) {
                 found = true;
             }
         });

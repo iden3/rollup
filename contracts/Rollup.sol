@@ -82,14 +82,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 public NLevels = 24;
 
     // Input snark definition
-    uint256 constant oldStateRootInput = 0;
-    uint256 constant newStateRootInput = 1;
-    uint256 constant newExitRootInput = 2;
-    uint256 constant onChainHashInput = 3;
-    uint256 constant offChainHashInput = 4;
-    uint256 constant feePlanCoinsInput = 5;
-    uint256 constant feePlanFeesInput = 6;
-    uint256 constant nTxperTokenInput = 7;
+    uint256 constant newStateRootInput = 0;
+    uint256 constant newExitRootInput = 1;
+    uint256 constant onChainHashInput = 2;
+    uint256 constant offChainHashInput = 3;
+    uint256 constant nTxperTokenInput = 4;
+    uint256 constant oldStateRootInput = 5;
+    uint256 constant feePlanCoinsInput = 6;
+    uint256 constant feePlanFeesInput = 7;
 
     /**
      * @dev Event called when any on-chain transaction has benn done
@@ -407,10 +407,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
             'zk-snark proof is not valid');
 
         // Update state roots
-        stateRoots.push(bytes32(input[1]));
+        stateRoots.push(bytes32(input[newStateRootInput]));
 
         // Update exit roots
-        exitRoots.push(bytes32(input[2]));
+        exitRoots.push(bytes32(input[newExitRootInput]));
 
         // Clean fillingOnChainTxsHash an its fees
         uint payOnChainFees = totalMinningOnChainFee;

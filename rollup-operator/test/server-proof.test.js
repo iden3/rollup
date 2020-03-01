@@ -44,8 +44,7 @@ describe("Server proof", async function () {
         await timeout(6000);
         const res = await axios.get(`http://localhost:${port}/status`);
         expect(res.data.state).to.be.equal(state.FINISHED);
-        expect(res.data.proof.input.key1).to.be.equal(input.key1);
-        expect(res.data.proof.input.key2).to.be.equal(input.key2);
+        expect(res.data.proof.publicInputs).to.be.equal(undefined);
     });
 
     it("Should cancel server adn get IDLE state", async () => {
@@ -85,8 +84,7 @@ describe("Server proof with client", async function () {
         await timeout(timeoutWait);
         const res = await client.getStatus();
         expect(res.data.state).to.be.equal(state.FINISHED);
-        expect(res.data.proof.input.key1).to.be.equal(input.key1);
-        expect(res.data.proof.input.key2).to.be.equal(input.key2);
+        expect(res.data.proof.publicInputs).to.be.equal(undefined);
     });
 
     it("Should post input and cancel while PENDING", async () => {

@@ -15,7 +15,7 @@ const poseidonUnit = require('circomlib/src/poseidon_gencontract');
 const abiDecoder = require('abi-decoder');
 const path = require('path');
 
-const { buildInputSm } = require('../../rollup-operator/src/utils');
+const { buildPublicInputsSm } = require('../../rollup-operator/src/utils');
 const rollupUtils = require('../../rollup-utils/rollup-utils.js');
 const RollupDB = require('../../js/rollupdb');
 const { Wallet } = require('../src/wallet.js');
@@ -38,7 +38,7 @@ const proofC = ['0', '0'];
 
 
 function buildFullInputSm(bb, beneficiary) {
-    const input = buildInputSm(bb);
+    const input = buildPublicInputsSm(bb);
     return {
         beneficiary,
         proofA,
