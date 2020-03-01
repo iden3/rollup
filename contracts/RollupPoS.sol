@@ -7,6 +7,9 @@ contract RollupPoS is RollupPoSHelpers{
     // Rollup smart contract address
     RollupInterface rollupInterface;
 
+    // Input snark definition
+    uint256 constant offChainHashInput = 3;
+
     // Maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
 
@@ -618,7 +621,7 @@ contract RollupPoS is RollupPoSHelpers{
         _updateRaffles();
         Raffle storage raffle = raffles[updateEra];
         // Check input off-chain hash matches hash commited
-        require(commitSlot[slot].offChainHash == input[4],
+        require(commitSlot[slot].offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
