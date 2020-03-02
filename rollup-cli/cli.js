@@ -7,7 +7,7 @@ const { BabyJubWallet } = require('../rollup-utils/babyjub-wallet');
 const { Wallet } = require('./src/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
-    showAccounts, transferTx, depositAndTransferTx, showExitsBatch,
+    showAccounts, transferTx, depositAndTransferTx, showExitsBatch, approveTx,
 } = require('./src/cli-utils');
 const { error } = require('./src/list-errors');
 
@@ -69,7 +69,7 @@ setparam command
 offchainTx command
 =============
     rollup-cli offchaintx <options>
-    -t or --type [send | beforewithdraw]
+    -t or --type [send | withdrawOffChain]
         Defines which transaction should be done
     -p or --passphrase <passphrase string>
         Passphrasse to decrypt wallet
@@ -293,15 +293,15 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             } else if (param.toUpperCase() === 'WALLET' && value !== 'novalue') {
                 actualConfig.wallet = value;
             } else if (param.toUpperCase() === 'ABIPATH' && value !== 'novalue') {
-                actualConfig.abiPath = value;
+                actualConfig.abiRollupPath = value;
             } else if (param.toUpperCase() === 'URLOPERATOR' && value !== 'novalue') {
                 actualConfig.urlOperator = value;
             } else if (param.toUpperCase() === 'NODEETH' && value !== 'novalue') {
                 actualConfig.nodeEth = value;
             } else if (param.toUpperCase() === 'ADDRESS' && value !== 'novalue') {
-                actualConfig.addressSC = value;
-            } else if (param.toUpperCase() === 'DEPOSITETHADDRESS' && value !== 'novalue') {
-                actualConfig.depositEthAddress = value;
+                actualConfig.addressRollup = value;
+            } else if (param.toUpperCase() === 'CONTROLLERADDRESS' && value !== 'novalue') {
+                actualConfig.controllerAddress = value;
             } else if (param === 'noparam') {
                 console.log('Please provide a param\n\n');
                 throw new Error(error.NO_PARAM);
@@ -406,7 +406,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
                     }
-                } else if (type.toUpperCase() === 'BEFOREWITHDRAW') {
+                } else if (type.toUpperCase() === 'WITHDRAWOFFCHAIN') {
                     const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee,
                         sender, nonce, actualNonce);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
@@ -420,7 +420,8 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'ONCHAINTX') {
             if (type !== 'notype' && type.toUpperCase() !== 'DEPOSIT' && type.toUpperCase() !== 'DEPOSITONTOP' && type.toUpperCase() !== 'WITHDRAW'
-            && type.toUpperCase() !== 'FORCEWITHDRAW' && type.toUpperCase() !== 'TRANSFER' && type.toUpperCase() !== 'DEPOSITANDTRANSFER') {
+            && type.toUpperCase() !== 'FORCEWITHDRAW' && type.toUpperCase() !== 'TRANSFER' && type.toUpperCase() !== 'DEPOSITANDTRANSFER'
+            && type.toUpperCase() !== 'APPROVE') {
                 throw new Error(error.INVALID_KEY_TYPE);
             } else if (type === 'notype') {
                 console.log('It is necessary to specify the type of action\n\n');
@@ -433,31 +434,36 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     throw new Error(error.NO_PARAMS_FILE);
                 }
                 checkparamsOnchain(type, actualConfig);
-                const abi = JSON.parse(fs.readFileSync(actualConfig.abiPath, 'utf-8'));
+                const abi = JSON.parse(fs.readFileSync(actualConfig.abiRollupPath, 'utf-8'));
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+                const abiTokens = JSON.parse(fs.readFileSync(actualConfig.abiTokensPath, 'utf-8'));
                 if (type.toUpperCase() === 'DEPOSIT') {
-                    const Tx = await depositTx(actualConfig.nodeEth, actualConfig.addressSC, loadamount,
-                        tokenId, wallet, passphrase, actualConfig.depositEthAddress, abi, gasLimit, gasMultiplier);
+                    const Tx = await depositTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
+                        tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITONTOP') {
-                    const Tx = await depositOnTopTx(actualConfig.nodeEth, actualConfig.addressSC, loadamount,
+                    const Tx = await depositOnTopTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
                         tokenId, wallet, passphrase, abi, recipient, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'FORCEWITHDRAW') {
-                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.addressSC, amount,
+                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
                         wallet, passphrase, abi, id, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressSC, wallet,
+                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, wallet,
                         passphrase, abi, actualConfig.urlOperator, id, numExitRoot, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
-                    const Tx = await transferTx(actualConfig.nodeEth, actualConfig.addressSC, amount,
+                    const Tx = await transferTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
                         tokenId, wallet, passphrase, abi, sender, recipient, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITANDTRANSFER') {
-                    const Tx = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.addressSC, loadamount, amount,
-                        tokenId, wallet, passphrase, actualConfig.depositEthAddress, abi, recipient, gasLimit, gasMultiplier);
+                    const Tx = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount, amount,
+                        tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, recipient, gasLimit, gasMultiplier);
+                    console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
+                } else if (type.toUpperCase() === 'APPROVE') {
+                    const Tx = await approveTx(actualConfig.nodeEth, actualConfig.addressTokens, amount, actualConfig.addressRollup,
+                        wallet, passphrase, abiTokens, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else {
                     throw new Error(error.INVALID_TYPE);
@@ -515,8 +521,8 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(loadamount, -1, 'loadamount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
-        checkparam(actualConfig.addressSC, undefined, 'contract address (with setparam command)');
-        checkparam(actualConfig.abiPath, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         break;
     case 'DEPOSITONTOP':
@@ -524,16 +530,16 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(loadamount, -1, 'loadamount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
-        checkparam(actualConfig.addressSC, undefined, 'contract address (with setparam command)');
-        checkparam(actualConfig.abiPath, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(recipient, 'norecipient', 'recipient');
         break;
     case 'WITHDRAW':
         checkparam(passphrase, 'nopassphrase', 'passphrase');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
-        checkparam(actualConfig.addressSC, undefined, 'contract address (with setparam command)');
-        checkparam(actualConfig.abiPath, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         checkparam(id, 'noid', 'your id');
@@ -543,8 +549,8 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(passphrase, 'nopassphrase', 'passphrase');
         checkparam(amount, -1, 'amount');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
-        checkparam(actualConfig.addressSC, undefined, 'contract address (with setparam command)');
-        checkparam(actualConfig.abiPath, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(id, 'noid', 'your id');
         break;
@@ -553,8 +559,8 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
-        checkparam(actualConfig.addressSC, undefined, 'contract address (with setparam command)');
-        checkparam(actualConfig.abiPath, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(sender, 'nosender', 'sender');
         checkparam(recipient, 'norecipient', 'recipient');
@@ -565,10 +571,18 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(loadamount, -1, 'loadamount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
-        checkparam(actualConfig.addressSC, undefined, 'contract address (with setparam command)');
-        checkparam(actualConfig.abiPath, undefined, 'abi path (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(recipient, 'norecipient', 'recipient');
+        break;
+    case 'APPROVE':
+        checkparam(passphrase, 'nopassphrase', 'passphrase');
+        checkparam(amount, -1, 'amount');
+        checkparam(actualConfig.nodeEth, undefined, 'node (with setparam command)');
+        checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
+        checkparam(actualConfig.abiTokensPath, undefined, 'abi tokens path in config.json');
+        checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         break;
     default:
         throw new Error(error.INVALID_TYPE);
@@ -587,7 +601,7 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         checkparam(sender, 'nosender', 'sender');
         break;
-    case 'BEFOREWITHDRAW':
+    case 'WITHDRAWOFFCHAIN':
         checkparam(passphrase, 'nopassphrase', 'passphrase');
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
