@@ -96,7 +96,7 @@ onchainTx command
     -a or --amount <amount>
         Amount to move inside rollup
     --tk or --tokenid <token ID>
-    -n or --numexitroot <num exit root>
+    -n or --numexitbatch <num exit batch>
     -r or --recipient <recipient ID>
     -s or --sender <sender ID>
     --id <ID>
@@ -139,7 +139,7 @@ info command
     .alias('a', 'amount')
     .alias('l', 'loadamount')
     .alias('tk', 'tokenid')
-    .alias('n', 'numexitroot')
+    .alias('n', 'numexitbatch')
     .alias('no', 'nonce')
     .alias('gl', 'gaslimit')
     .alias('gm', 'gasmultiplier')
@@ -163,7 +163,7 @@ const amount = (argv.amount) ? argv.amount : -1;
 const loadamount = (argv.loadamount) ? argv.loadamount : -1;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
 const userFee = argv.fee ? argv.fee : 'nouserfee';
-const numExitRoot = argv.numexitroot ? argv.numexitroot : 'nonumexitroot';
+const numExitBatch = argv.numexitbatch ? argv.numexitbatch : 'nonumexitbatch';
 const filter = argv.filter ? argv.filter : 'nofilter';
 const nonce = (argv.nonce || argv.nonce === 0) ? argv.nonce : undefined;
 const gasLimit = (argv.gaslimit) ? argv.gaslimit : 5000000;
@@ -339,13 +339,13 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     }
                     const readWallet = fs.readFileSync(walletpath, 'utf-8');
                     wallet = await Wallet.fromEncryptedJson(JSON.parse(readWallet), passphrase);
-                    console.log('Ethereum key');
-                    console.log(`Address: ${wallet.ethWallet.address}`);
-                    console.log('Babyjub Key: ');
-                    console.log('Public Key: ');
-                    console.log(`Ax: ${wallet.babyjubWallet.publicKey[0].toString(16)}`);
-                    console.log(`Ay: ${wallet.babyjubWallet.publicKey[1].toString(16)}`);
-                    console.log(`Public Key Compressed: ${wallet.babyjubWallet.publicKeyCompressed.toString('hex')}`);
+                    console.log('Ethereum key:');
+                    console.log(`  Address: ${wallet.ethWallet.address}`);
+                    console.log('Babyjub Key:');
+                    console.log('  Public Key: ');
+                    console.log(`    Ax: ${wallet.babyjubWallet.publicKey[0].toString(16)}`);
+                    console.log(`    Ay: ${wallet.babyjubWallet.publicKey[1].toString(16)}`);
+                    console.log(`  Public Key Compressed: ${wallet.babyjubWallet.publicKeyCompressed.toString('hex')}`);
                 } else if (keytype.toUpperCase() === 'ETHEREUM') {
                     if (walletpath === 'nowalletpath') {
                         walletpath = walletEthPathDefault;
@@ -452,7 +452,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
                     const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, wallet,
-                        passphrase, abi, actualConfig.urlOperator, id, numExitRoot, gasLimit, gasMultiplier);
+                        passphrase, abi, actualConfig.urlOperator, id, numExitBatch, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
                     const Tx = await transferTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
@@ -502,7 +502,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
                 } else if (type.toUpperCase() === 'EXITS') {
                     const res = await showExitsBatch(actualConfig.urlOperator, id);
-                    console.log(`Batches found with exit transactions: \n ${res.data}`);
+                    console.log(`Number exits batch found: \n ${res.data}`);
                 }
             }
             process.exit(0);
@@ -545,7 +545,7 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         checkparam(id, 'noid', 'your id');
-        checkparam(numExitRoot, 'nonumexitroot', 'num exit root');
+        checkparam(numExitBatch, 'nonumexitbatch', 'num exit batch');
         break;
     case 'FORCEWITHDRAW':
         checkparam(passphrase, 'nopassphrase', 'passphrase');
