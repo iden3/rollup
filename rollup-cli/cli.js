@@ -340,10 +340,11 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     const readWallet = fs.readFileSync(walletpath, 'utf-8');
                     wallet = await Wallet.fromEncryptedJson(JSON.parse(readWallet), passphrase);
                     console.log('Ethereum key');
-                    console.log(`Public Key: ${wallet.ethWallet.publicKey}`);
-                    console.log(`Public Key Compressed: ${wallet.ethWallet.publicKeyCompressed}`);
+                    console.log(`Address: ${wallet.ethWallet.address}`);
                     console.log('Babyjub Key: ');
-                    console.log(`Public Key: ${wallet.babyjubWallet.publicKey}`);
+                    console.log('Public Key: ');
+                    console.log(`Ax: ${wallet.babyjubWallet.publicKey[0].toString(16)}`);
+                    console.log(`Ay: ${wallet.babyjubWallet.publicKey[1].toString(16)}`);
                     console.log(`Public Key Compressed: ${wallet.babyjubWallet.publicKeyCompressed.toString('hex')}`);
                 } else if (keytype.toUpperCase() === 'ETHEREUM') {
                     if (walletpath === 'nowalletpath') {
@@ -509,6 +510,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             throw new Error(error.INVALID_COMMAND);
         }
     } catch (err) {
+        console.log(err.message);
         console.log(Object.keys(error)[err.message]);
         process.exit(err.message);
     }
