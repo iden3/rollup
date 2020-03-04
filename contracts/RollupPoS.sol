@@ -5,7 +5,7 @@ import './lib/RollupPoSHelpers.sol';
 contract RollupPoS is RollupPoSHelpers{
 
     // Rollup smart contract address
-    RollupInterface rollupInterface;
+    RollupInterface public rollupInterface;
 
     // Maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
@@ -22,7 +22,7 @@ contract RollupPoS is RollupPoSHelpers{
     // First block where the first era begins
     uint public genesisBlock;
     // Last raffle that has been initialized
-    uint32 lastInitializedRaffle;
+    uint32 public lastInitializedRaffle;
 
     // Defines operator structure
     struct Operator {
@@ -61,13 +61,13 @@ contract RollupPoS is RollupPoSHelpers{
     // Array of operators
     Operator[] public operators;
     // Store all staker tree nodes
-    IntermediateNode[] nodes;
+    IntermediateNode[] public nodes;
 
     // List of raffles depending on era index
-    mapping (uint32 => Raffle) raffles;
+    mapping (uint32 => Raffle) public raffles;
     // Indicates if at least one batch has been forged on an slot
     // used for slashing operators
-    mapping (uint32 =>  bool) fullFilled;
+    mapping (uint32 =>  bool) public fullFilled;
 
     /**
      * @dev Event called when an operator is added to the staker tree

@@ -15,16 +15,16 @@ contract ERC20 {
 
 contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // External contracts used
-    VerifierInterface verifier;
+    VerifierInterface public verifier;
 
     // Forge batch mechanism owner
-    address ownerForgeBatch;
+    address public ownerForgeBatch;
 
     // Each batch forged will have the root state of the 'balance tree'
-    bytes32[] stateRoots;
+    bytes32[] public stateRoots;
 
     // Each batch forged will have a correlated 'exit tree' represented by the exit root
-    bytes32[] exitRoots;
+    bytes32[] public exitRoots;
     mapping(uint256 => bool) public exitNullifier;
 
     // Define struct to store data for each id
@@ -34,23 +34,23 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint256[2] babyPubKey;
     }
     // store account information
-    mapping(uint64 => leafInfo) treeInfo;
+    mapping(uint64 => leafInfo) public treeInfo;
 
     // Maxim Deposit allowed
     uint constant MAX_AMOUNT_DEPOSIT = (1 << 128);
 
     // List of valid ERC20 tokens that can be deposit in 'balance tree'
     address[] public tokens;
-    mapping(uint => address) tokenList;
+    mapping(uint => address) public tokenList;
     uint constant MAX_TOKENS = 0xFFFFFFFF;
     uint public feeAddToken = 0.01 ether;
 
     // Address to receive token fees
-    address payable feeTokenAddress;
+    address payable public feeTokenAddress;
 
     // Set the leaf position for an account into the 'balance tree'
     // '0' is reserved for off-chain withdraws
-    uint64 lastBalanceTreeIndex = 1;
+    uint64 public lastBalanceTreeIndex = 1;
 
     // Hash of all on chain transactions ( will be forged in the next batch )
     // Forces 'operator' to add all on chain transactions
@@ -58,12 +58,12 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Hash of all on chain transactions ( will be forged in two batches )
     // Forces 'operator' to add all on chain transactions
-    uint256 fillingOnChainTxsHash = 0;
+    uint256 public fillingOnChainTxsHash = 0;
 
     // Fees of all on-chain transactions which goes to the operator that will forge the batch
-    uint256 totalMinningOnChainFee;
+    uint256 public totalMinningOnChainFee;
     // Fees of all on-chain transactions that will be on minninf the next batch
-    uint256 totalFillingOnChainFee;
+    uint256 public totalFillingOnChainFee;
 
     // Fees recollected for every on-chain transaction
     uint constant public FEE_ONCHAIN_TX = 0.01 ether;
