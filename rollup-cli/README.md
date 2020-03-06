@@ -42,9 +42,9 @@ From the command line, type the following commands.
 
 ```bash=
 # Create Wallet
-node cli.js createkeys --keytype rollup --passphrase foo
+node cli.js createkeys --keytype rollup 
 # Print keys
-node cli.js printkeys --keytype rollup --passphrase foo
+node cli.js printkeys --keytype rollup 
 ```
 
 Before we interact with the rollup contract, you'll need to make sure you have some ether stored in the ethereum address you printed in the above command. The best way to do this is by using the [goerli faucet](https://goerli-faucet.slock.it/).
@@ -62,21 +62,21 @@ From the command line, type the following commands (**remembering to type them i
 # Approve tokens
 node cli.js onchaintx --type approve --p foo --amount <amount> 
 # Do a deposit
-node cli.js onchaintx --type deposit --passphrase foo --loadamount <amount> --tokenid 0 
+node cli.js onchaintx --type deposit  --loadamount <amount> --tokenid 0 
 # Check your current IDs, probably have to wait about two minutes 
 # Since the deposit was sent
 node cli.js info --type accounts --filter ethereum
 # Do rollup transactions
-node cli.js offchaintx --type send --sender <sender ID> --recipient <recipient ID> --amount <amount> --fee <fee> --passphrase foo --tokenid 0 
+node cli.js offchaintx --type send --sender <sender ID> --recipient <recipient ID> --amount <amount> --fee <fee>  --tokenid 0 
 # Transfer tokens to the Exit Tree, where can be withdrawed from the 
 # Smart Contract. 
 # The transactions should be reflected in 30 seg ~ 1 min
-node cli.js offchaintx --type withdrawoffchain --sender <sender ID> --amount <amount> --fee <fee> --passphrase foo --tokenid 0 
+node cli.js offchaintx --type withdrawoffchain --sender <sender ID> --amount <amount> --fee <fee>  --tokenid 0 
 # Check leaf exit tree information. 
 node cli.js info --type exits --id <ID leaf> 
 # Withdraw your tokens from the rollup to your ethereum address, it's
 # necessary the numExitRoot from the last command.
-node cli.js onchaintx --type withdraw --id <ID leaf> --numexitbatch <numexitbatch> --passphrase foo 
+node cli.js onchaintx --type withdraw --id <ID leaf> --numexitbatch <numexitbatch>  
 ```
 For more information on what each individual command does, follow our main tutorial [from here](https://github.com/iden3/rollup/tree/testnet/rollup-cli).
  
@@ -95,7 +95,6 @@ For more information on what each individual command does, follow our main tutor
 
 #### Options
 - keytype `[-k | --keytype] [Ethereum | Babyjub | Rollup]`
-- password `[-p | --passphrase] <string>`
 - mnemonic `[-m | --mnemonic] <mnemonic 12 words>`
 - import `[-i | --import] <path wallet to import>`
 - walletpath `[-w | --walletpath] <path to save wallet>`
@@ -121,13 +120,13 @@ For more information on what each individual command does, follow our main tutor
 Create a random wallet in current path:
 
 ```bash=
-node cli.js createkeys --keytype rollup --passphrase <password>
+node cli.js createkeys --keytype rollup
 ```
 
 or specify a path:
 
 ```bash=
-node cli.js createkeys --keytype rollup --passphrase <password> --walletpath wallet_test.json
+node cli.js createkeys --keytype rollup --walletpath wallet_test.json
 ```
 
 #### or also import your wallet
@@ -166,26 +165,26 @@ The configuration file must contain the following fields:
 Print the keys of the wallet with the `printkeys` command. If the wallet path is defined in the default configuration file, you may also use the following command:
 
 ```bash=
-node cli.js printkeys --keytype rollup -p <password>
+node cli.js printkeys --keytype rollup
 ```
 
 If it is in another configuration file:
 
 ```bash=
-node cli.js printkeys --keytype rollup -p <password> --configpath <configpath>
+node cli.js printkeys --keytype rollup --configpath <configpath>
 ```
 
 In order to print the keys of another wallet, add the path of that wallet:
 
 ```bash=
-node cli.js printkeys --keytype rollup -p <password> -w <wallet path>
+node cli.js printkeys --keytype rollup -w <wallet path>
 ```
 
 ### Approve
 The default `tokenAddress` in `config-example.json` is an ERC20 token contract for testing and is itself a token faucet. If this address is specified, the approve function will get the ERC20 tokens and approve them to the Rollup address.
 
 ```bash=
-node cli.js onchaintx --type approve -p <password> --amount <amount>
+node cli.js onchaintx --type approve --amount <amount>
 ```
 
 If another address is specified, it's up to the user to earn the tokens herself and add it to the Rollup contract.
@@ -196,7 +195,7 @@ If another address is specified, it's up to the user to earn the tokens herself 
 At least the following parameters are needed:
 
 ```bash=
-node cli.js onchaintx --type deposit -p <password> --loadamount <loadamount> --tokenid <token ID>
+node cli.js onchaintx --type deposit --loadamount <loadamount> --tokenid <token ID>
 ```
 
 Another path can be specified:
@@ -211,7 +210,7 @@ The `gasMultiplier` and the `gasLimit` can be set with:
 You'll need the following parameters:
 
 ```bash=
-node cli.js onchaintx --type depositontop -p <password> --recipient <recipient ID> --loadamount <loadamount> --tokenid <token ID>
+node cli.js onchaintx --type depositontop --recipient <recipient ID> --loadamount <loadamount> --tokenid <token ID>
 ```
 
 You can specify another path using:
@@ -229,7 +228,7 @@ To withdraw you must follow the following steps:
 3. Withdraw onchain with this information. You'll need the following parameters are needed:
 
 ```bash=
-node cli.js onchaintx --type withdraw -p <password> --id <leaf ID> --numexitbatch <numexitbatch>
+node cli.js onchaintx --type withdraw --id <leaf ID> --numexitbatch <numexitbatch>
 ```
 
 To specify another path, use:
@@ -246,7 +245,7 @@ The `gasMultiplier` and the `gasLimit` can be set with:
 You'll need the following parameters:
 
 ```bash=
-node cli.js offchaintx --type send -p <password> --sender <sender ID> --recipient <recipient ID> --amount <amount> --fee <user Fee> --tokenid <token ID>
+node cli.js offchaintx --type send --sender <sender ID> --recipient <recipient ID> --amount <amount> --fee <user Fee> --tokenid <token ID>
 ```
 
 To specify another path, use:
@@ -261,7 +260,7 @@ The minimum fee is 1 token.
 You'll need the following parameters:
 
 ```bash=
-node cli.js offchaintx --type withdrawOffchain -p <password> --sender <sender ID> --amount <amount> --fee <user Fee> --tokenid <token ID>
+node cli.js offchaintx --type withdrawOffchain --sender <sender ID> --amount <amount> --fee <user Fee> --tokenid <token ID>
 ```
 
 To specify another path, use:

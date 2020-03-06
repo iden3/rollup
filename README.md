@@ -74,14 +74,14 @@ npm i
 Create a rollup wallet with:
 
 ```bash=
-node cli.js createkeys --keytype rollup --passphrase foo
+node cli.js createkeys --keytype rollup
 ```
 
 ### 2.3. Get ether<a id="2_3"></a>
  To print your ethereum address, execute:
 
 ```bash=
-node cli.js printkeys --keytype rollup --passphrase foo --configpath config-example.json
+node cli.js printkeys --keytype rollup --configpath config-example.json
 ```
 
 You should see a message with the following stucture:
@@ -106,7 +106,7 @@ If everything goes fine, the balance should be reflected in:
 Get and approve [ERC20 Weenus tokens](https://github.com/bokkypoobah/WeenusTokenFaucet) with:
 
 ```bash=
-node cli.js onchaintx --type approve --p foo --amount <amount> --configpath config-example.json
+node cli.js onchaintx --type approve --amount <amount> --configpath config-example.json
 ```
 
 Note that `<amount>` must be a value within `0 <= amount <= 10^21.`
@@ -121,7 +121,7 @@ Use this link to track the transaction:
 ### 2.5. Deposit onchain<a id="2_5"></a>
 Create an account on rollup:
 ```bash=
-node cli.js onchaintx --type deposit --passphrase foo --loadamount <amount> --tokenid 0 --configpath config-example.json
+node cli.js onchaintx --type deposit --loadamount <amount> --tokenid 0 --configpath config-example.json
 ```
 The total amount should be less than the amount approved in the last step.
 
@@ -146,7 +146,7 @@ You can check your balance by your rollup ID as well:
 Use the following command send a rollup transaction:
 
 ```bash=
-node cli.js offchaintx --type send --sender <rollup ID> --recipient <rollup ID> --amount <amount> --fee <fee> --passphrase foo --tokenid 0 -c config-example.json
+node cli.js offchaintx --type send --sender <rollup ID> --recipient <rollup ID> --amount <amount> --fee <fee> --tokenid 0 -c config-example.json
 ```
 Transaction could be done to an existent rollup ID, such as 1: `--recipient 1`
 
@@ -157,7 +157,7 @@ Offchain transactions should take anywhere between 30 seconds and 1 min to forge
 ### 2.8. Initiliaze withdrawal offchain<a id="2_8"></a>
 For offchain withdrawals, use the following command:
 ```bash=
-node cli.js offchaintx --type withdrawoffchain --sender <rollup ID> --amount <amount> --fee <fee> --passphrase foo --tokenid 0 -c config-example.json
+node cli.js offchaintx --type withdrawoffchain --sender <rollup ID> --amount <amount> --fee <fee> --tokenid 0 -c config-example.json
 ```
 
 This effectively transfer tokens to the Exit tree. From there, they can be withdrawn using the on-chain contract.
@@ -183,7 +183,7 @@ We're now ready to withdraw the tokens from the rollup chain to our wallet.
 To do this, execute the following command:
 
 ```bash=
-node cli.js onchaintx --type withdraw --id <rollup ID> --numexitbatch <numexitbatch> --passphrase foo -c config-example.json
+node cli.js onchaintx --type withdraw --id <rollup ID> --numexitbatch <numexitbatch> -c config-example.json
 ```
 
 Note that you'll need to replace `<numexitbatch>` with the batch number you obtained in the previous step.
