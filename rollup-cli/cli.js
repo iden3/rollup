@@ -179,6 +179,11 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             // createkeys ethereum
             if (keytype.toUpperCase() === 'ETHEREUM') {
                 const passphrase = await getPassword();
+                console.log('repeat your password please: ');
+                const passphrase2 = await getPassword();
+                if (passphrase !== passphrase2) {
+                    throw new Error(error.PASSWORD_NOT_MATCH);
+                }
                 if (walletpath === 'nowalletpath') {
                     walletpath = walletEthPathDefault;
                 }
@@ -209,6 +214,11 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             // createkeys babyjubjub
             } else if (keytype.toUpperCase() === 'BABYJUBJUB') {
                 const passphrase = await getPassword();
+                console.log('repeat your password please');
+                const passphrase2 = await getPassword();
+                if (passphrase !== passphrase2) {
+                    throw new Error(error.PASSWORD_NOT_MATCH);
+                }
                 if (walletpath === 'nowalletpath') {
                     walletpath = walletBabyjubPathDefault;
                 }
@@ -239,6 +249,11 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             // createkeys rollup
             } else if (keytype.toUpperCase() === 'ROLLUP') {
                 const passphrase = await getPassword();
+                console.log('repeat your password please');
+                const passphrase2 = await getPassword();
+                if (passphrase !== passphrase2) {
+                    throw new Error(error.PASSWORD_NOT_MATCH);
+                }
                 if (walletpath === 'nowalletpath') {
                     walletpath = walletPathDefault;
                 }
