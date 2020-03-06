@@ -52,6 +52,11 @@ async function showAccounts(urlOperator, filters) {
     return apiOperator.getAccounts(filters);
 }
 
+async function showAccountsByIdx(urlOperator, idx) {
+    const apiOperator = new CliExternalOperator(urlOperator);
+    return apiOperator.getAccountByIdx(idx);
+}
+
 async function showExitsBatch(urlOperator, id) {
     const apiOperator = new CliExternalOperator(urlOperator);
     return apiOperator.getExits(id);
@@ -69,6 +74,7 @@ module.exports = {
     withdrawTx,
     forceWithdrawTx,
     showAccounts,
+    showAccountsByIdx,
     transferTx,
     depositAndTransferTx,
     showExitsBatch,

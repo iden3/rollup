@@ -4,18 +4,15 @@
 const fs = require('fs');
 const readline = require('readline');
 const { Writable } = require('stream');
-const { EthereumWallet } = require('./src/ethereum-wallet');
-const { BabyJubWallet } = require('../rollup-utils/babyjub-wallet');
 const { Wallet } = require('./src/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
     showAccounts, transferTx, depositAndTransferTx, showExitsBatch, approveTx,
+    showAccountsByIdx,
 } = require('./src/cli-utils');
 const { error } = require('./src/list-errors');
 
 const walletPathDefault = './wallet.json';
-const walletEthPathDefault = './ethWallet.json';
-const walletBabyjubPathDefault = './babyjubWallet.json';
 const configPathDefault = './config.json';
 const noncePathDefault = './nonceJson.json';
 
@@ -29,13 +26,9 @@ createkeys command
 =============
     rollup-cli createkeys <option>
         create new wallet for rollup client
-    -k or --keytype [ethereum | babyjubjub | rollup]
-        select type of wallet
     -w or --walletpath <path> (optional)
         Path to store wallet
         Default: [ethWallet.json | babyjubWallet.json | wallet.json]
-    -p or --passphrase <passphrase string>
-        Passphrase to encrypt private key
     -m or --mnemonic <mnemonic>
         Mnemonic 12 words
     -i or --import <walletPath>
@@ -45,10 +38,6 @@ printkeys command
 =============
     rollup-cli printkeys <options>
         Print public keys
-    -k or --keytype [ethereum | babyjubjub | rollup]
-        Define which wallet type needs to be readed
-    -p or --passphrase <passphrase string>
-        Passphrase to decrypt keys
     You can choose:
         -w or --walletpath <path>
             Path of your wallet
@@ -73,8 +62,6 @@ offchainTx command
     rollup-cli offchaintx <options>
     -t or --type [send | withdrawOffChain]
         Defines which transaction should be done
-    -p or --passphrase <passphrase string>
-        Passphrasse to decrypt wallet
     -a or --amount <amount>
         Amount to send
     --tk or --tokenid <token ID>
@@ -91,8 +78,6 @@ onchainTx command
     rollup-cli onchaintx <options>
     --type or -t [deposit | depositontop | withdraw | forcewithdraw | transfer | depositandtransfer]
         Defines which transaction should be done
-    -p or --passphrase <passphrase string>
-        Passphrasse to decrypt wallet
     -l or --loadamount <amount>
         Amount to deposit within the rollup
     -a or --amount <amount>
@@ -116,9 +101,9 @@ info command
     -t or --type [accounts | exits]
         get accounts information
         get batches where an account has been done an exit transaction 
-    -f or --filter [babyjubjub | ethereum]
+    -f or --filter [babyjubjub | ethereum | id]
         only used on account information
-    --id <ID>
+    --id <rollup id>
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
         Default: config.json
@@ -126,7 +111,6 @@ info command
     .help('h')
     .alias('h', 'help')
     .alias('p', 'passphrase')
-    .alias('k', 'keytype')
     .alias('w', 'walletpath')
     .alias('c', 'configpath')
     .alias('m', 'mnemonic')
@@ -147,7 +131,6 @@ info command
     .alias('gm', 'gasmultiplier')
     .epilogue('Rollup client cli tool');
 
-const keytype = (argv.keytype) ? argv.keytype : 'nokeytype';
 let walletpath = (argv.walletpath) ? argv.walletpath : 'nowalletpath';
 const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
 const importWallet = (argv.import) ? argv.import : 'noimport';
@@ -177,114 +160,39 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             let encWallet;
             let wallet;
             // createkeys ethereum
-            if (keytype.toUpperCase() === 'ETHEREUM') {
-                const passphrase = await getPassword();
-                console.log('repeat your password please: ');
-                const passphrase2 = await getPassword();
-                if (passphrase !== passphrase2) {
-                    throw new Error(error.PASSWORD_NOT_MATCH);
-                }
-                if (walletpath === 'nowalletpath') {
-                    walletpath = walletEthPathDefault;
-                }
-                if (mnemonic !== 'nomnemonic') {
-                    if (mnemonic.split(' ').length !== 12) {
-                        console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
-                        throw new Error(error.INVALID_MNEMONIC);
-                    } else {
-                        console.log('create ethereum wallet mnemonic');
-                        wallet = EthereumWallet.fromMnemonic(mnemonic);
-                        encWallet = await wallet.toEncryptedJson(passphrase);
-                    }
-                } else if (importWallet !== 'noimport') {
-                    if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                        console.log('Path provided dont work\n\n');
-                        throw new Error(error.INVALID_PATH);
-                    }
-                    console.log('create ethereum wallet import');
-                    const readWallet = fs.readFileSync(importWallet, 'utf8');
-                    wallet = await EthereumWallet.fromEncryptedJson(readWallet, passphrase);
-                    encWallet = await wallet.toEncryptedJson(passphrase);
-                } else {
-                    console.log('create ethereum wallet random');
-                    wallet = EthereumWallet.createRandom();
-                    encWallet = await wallet.toEncryptedJson(passphrase);
-                }
-                fs.writeFileSync(walletpath, JSON.stringify(JSON.parse(encWallet), null, 1), 'utf-8');
-            // createkeys babyjubjub
-            } else if (keytype.toUpperCase() === 'BABYJUBJUB') {
-                const passphrase = await getPassword();
-                console.log('repeat your password please');
-                const passphrase2 = await getPassword();
-                if (passphrase !== passphrase2) {
-                    throw new Error(error.PASSWORD_NOT_MATCH);
-                }
-                if (walletpath === 'nowalletpath') {
-                    walletpath = walletBabyjubPathDefault;
-                }
-                if (mnemonic !== 'nomnemonic') {
-                    if (mnemonic.split(' ').length !== 12) {
-                        console.log('Invalid Menmonic, enter the mnemonic between "" \n\n');
-                        throw new Error(error.INVALID_MNEMONIC);
-                    } else {
-                        console.log('create babyjub wallet mnemonic');
-                        wallet = BabyJubWallet.fromMnemonic(mnemonic);
-                        encWallet = await wallet.toEncryptedJson(passphrase);
-                    }
-                } else if (importWallet !== 'noimport') {
-                    if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                        console.log('Path provided dont work\n\n');
-                        throw new Error(error.INVALID_PATH);
-                    }
-                    console.log('create babyjub wallet import');
-                    const readWallet = fs.readFileSync(importWallet, 'utf-8');
-                    wallet = BabyJubWallet.fromEncryptedJson(readWallet, passphrase);
-                    encWallet = await wallet.toEncryptedJson(passphrase);
-                } else {
-                    console.log('create babyjub wallet random');
-                    wallet = BabyJubWallet.createRandom();
-                    encWallet = await wallet.toEncryptedJson(passphrase);
-                }
-                fs.writeFileSync(walletpath, JSON.stringify(JSON.parse(encWallet), null, 1), 'utf-8');
-            // createkeys rollup
-            } else if (keytype.toUpperCase() === 'ROLLUP') {
-                const passphrase = await getPassword();
-                console.log('repeat your password please');
-                const passphrase2 = await getPassword();
-                if (passphrase !== passphrase2) {
-                    throw new Error(error.PASSWORD_NOT_MATCH);
-                }
-                if (walletpath === 'nowalletpath') {
-                    walletpath = walletPathDefault;
-                }
-                if (mnemonic !== 'nomnemonic') {
-                    if (mnemonic.split(' ').length !== 12) {
-                        console.log('Invalid Mnemonic, enter the mnemonic between "" \n\n');
-                        throw new Error(error.INVALID_MNEMONIC);
-                    } else {
-                        console.log('create rollup wallet mnemonic');
-                        wallet = await Wallet.fromMnemonic(mnemonic);
-                        encWallet = await wallet.toEncryptedJson(passphrase);
-                    }
-                } else if (importWallet !== 'noimport') {
-                    if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                        console.log('Path provided dont work\n\n');
-                        throw new Error(error.INVALID_PATH);
-                    }
-                    console.log('create rollup wallet import');
-                    const readWallet = fs.readFileSync(importWallet, 'utf-8');
-                    wallet = await Wallet.fromEncryptedJson(JSON.parse(readWallet), passphrase);
-                    encWallet = await wallet.toEncryptedJson(passphrase);
-                } else {
-                    console.log('create rollup wallet random');
-                    wallet = await Wallet.createRandom();
-                    encWallet = await wallet.toEncryptedJson(passphrase);
-                }
-                fs.writeFileSync(walletpath, JSON.stringify(encWallet, null, 1), 'utf-8');
-            } else {
-                console.log('Invalid keytype\n\n');
-                throw new Error(error.INVALID_KEY_TYPE);
+            const passphrase = await getPassword();
+            console.log('repeat your password please');
+            const passphrase2 = await getPassword();
+            if (passphrase !== passphrase2) {
+                throw new Error(error.PASSWORD_NOT_MATCH);
             }
+            if (walletpath === 'nowalletpath') {
+                walletpath = walletPathDefault;
+            }
+            if (mnemonic !== 'nomnemonic') {
+                if (mnemonic.split(' ').length !== 12) {
+                    console.log('Invalid Mnemonic, enter the mnemonic between "" \n\n');
+                    throw new Error(error.INVALID_MNEMONIC);
+                } else {
+                    console.log('create rollup wallet mnemonic');
+                    wallet = await Wallet.fromMnemonic(mnemonic);
+                    encWallet = await wallet.toEncryptedJson(passphrase);
+                }
+            } else if (importWallet !== 'noimport') {
+                if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
+                    console.log('Path provided dont work\n\n');
+                    throw new Error(error.INVALID_PATH);
+                }
+                console.log('create rollup wallet import');
+                const readWallet = fs.readFileSync(importWallet, 'utf-8');
+                wallet = await Wallet.fromEncryptedJson(JSON.parse(readWallet), passphrase);
+                encWallet = await wallet.toEncryptedJson(passphrase);
+            } else {
+                console.log('create rollup wallet random');
+                wallet = await Wallet.createRandom();
+                encWallet = await wallet.toEncryptedJson(passphrase);
+            }
+            fs.writeFileSync(walletpath, JSON.stringify(encWallet, null, 1), 'utf-8');
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'SETPARAM') {
             if (fs.existsSync(configPath)) {
@@ -328,48 +236,21 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 }
             }
             console.log('The following keys have been found:');
-            if (keytype.toUpperCase() === 'ROLLUP') {
-                if (walletpath === 'nowalletpath') {
-                    walletpath = walletPathDefault;
-                }
-                if (!fs.existsSync(walletpath)) {
-                    console.log('Please provide a valid path\n\n');
-                    throw new Error(error.INVALID_PATH);
-                }
-                const readWallet = JSON.parse(fs.readFileSync(walletpath, 'utf-8'));
-                console.log('Ethereum key:');
-                console.log(`  Address: ${readWallet.ethWallet.address}`);
-                console.log('Babyjub Key:');
-                console.log('  Public Key: ');
-                console.log(`    Ax: ${readWallet.babyjubWallet.public.ax.toString(16)}`);
-                console.log(`    Ay: ${readWallet.babyjubWallet.public.ay.toString(16)}`);
-            } else if (keytype.toUpperCase() === 'ETHEREUM') {
-                if (walletpath === 'nowalletpath') {
-                    walletpath = walletEthPathDefault;
-                }
-                if (!fs.existsSync(walletpath)) {
-                    console.log('Please provide a valid path\n\n');
-                    throw new Error(error.INVALID_PATH);
-                }
-                const readWallet = JSON.parse(fs.readFileSync(walletpath, 'utf-8'));
-                console.log('Ethereum key');
-                console.log(`Public Key: ${readWallet.address}`);
-            } else if (keytype.toUpperCase() === 'BABYJUBJUB') {
-                if (walletpath === 'nowalletpath') {
-                    walletpath = walletBabyjubPathDefault;
-                }
-                if (!fs.existsSync(walletpath)) {
-                    console.log('Please provide a valid path\n\n');
-                    throw new Error(error.INVALID_PATH);
-                }
-                const readWallet = JSON.parse(fs.readFileSync(walletpath, 'utf-8'));
-                console.log('Babyjub key');
-                console.log(`Public Key: ${readWallet.publicKey}`);
-                console.log(`Public Key Compressed: ${readWallet.publicKeyCompressed.toString('hex')}`);
-            } else {
-                console.log('Invalid keytype\n\n');
-                throw new Error(error.INVALID_KEY_TYPE);
+            if (walletpath === 'nowalletpath') {
+                walletpath = walletPathDefault;
             }
+            if (!fs.existsSync(walletpath)) {
+                console.log('Please provide a valid path\n\n');
+                throw new Error(error.INVALID_PATH);
+            }
+            const readWallet = JSON.parse(fs.readFileSync(walletpath, 'utf-8'));
+            console.log('Ethereum key:');
+            console.log(`  Address: 0x${readWallet.ethWallet.address}`);
+            console.log('Babyjubjub Key:');
+            console.log('  Public Key: ');
+            console.log(`    Ax: ${readWallet.babyjubWallet.public.ax}`);
+            console.log(`    Ay: ${readWallet.babyjubWallet.public.ay}`);
+            console.log(`  Public Key Compressed: 0x${readWallet.babyjubWallet.publicCompressed}`);
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'OFFCHAINTX') {
             if (type === 'notype') {
@@ -484,17 +365,23 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     if (filter.toUpperCase() === 'BABYJUBJUB') {
                         filters.ax = wallet.babyjubWallet.public.ax;
                         filters.ay = wallet.babyjubWallet.public.ay;
+                        const res = await showAccounts(actualConfig.urlOperator, filters);
+                        console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
                     } else if (filter.toUpperCase() === 'ETHEREUM') {
                         if (wallet.ethWallet.address.startsWith('0x')) {
                             filters.ethAddr = wallet.ethWallet.address;
                         } else {
                             filters.ethAddr = `0x${wallet.ethWallet.address}`;
                         }
+                        const res = await showAccounts(actualConfig.urlOperator, filters);
+                        console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
+                    } else if (filter.toUpperCase() === 'ID') {
+                        checkparam(id, 'noid', 'your id');
+                        const res = await showAccountsByIdx(actualConfig.urlOperator, id);
+                        console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
                     } else {
                         throw new Error(error.INVALID_FILTER);
                     }
-                    const res = await showAccounts(actualConfig.urlOperator, filters);
-                    console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
                 } else if (type.toUpperCase() === 'EXITS') {
                     const res = await showExitsBatch(actualConfig.urlOperator, id);
                     console.log(`Number exits batch found: \n ${res.data}`);
@@ -606,7 +493,7 @@ function checkparamsOffchain(type, actualConfig) {
 function checkParamsInfo(type, actualConfig) {
     switch (type.toUpperCase()) {
     case 'ACCOUNTS':
-        checkparam(filter, 'nofilter', 'babyjubjub or ethereum');
+        checkparam(filter, 'nofilter', 'babyjubjub or ethereum or id');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         break;

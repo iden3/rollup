@@ -74,6 +74,7 @@ class BabyJubWallet {
                 ax: this.publicKey[0].toString(16),
                 ay: this.publicKey[1].toString(16),
             },
+            publicCompressed: this.publicKeyCompressed.toString("hex"),
             crypto: {
                 cipher: algo,
                 cipherparams: {
