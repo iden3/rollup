@@ -19,8 +19,7 @@ const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rol
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
 const cliPoS = require("../../../cli-pos/utils");
-const cliDeposit = require("../../../rollup-cli/src/actions/onchain/deposit");
-const cliSendOffChainTx = require("../../../rollup-cli/src/actions/offchain/send");
+const { depositTx, sendTx } = require("../../../rollup-cli/src/cli-utils");
 
 // test timeouts
 const timeoutSynch = 20000;
@@ -177,11 +176,11 @@ contract("Operator", (accounts) => {
         const ethAddress = undefined;
 
         // account idx = 1
-        let resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+        let resDeposit = await depositTx(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
             rollupEncWallets[0], pass, ethAddress, Rollup.abi);
         await resDeposit.wait();
         // account idx = 2
-        resDeposit = await cliDeposit.deposit(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+        resDeposit = await depositTx(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
             rollupEncWallets[1], pass, ethAddress, Rollup.abi);
         await resDeposit.wait();
     });
@@ -246,7 +245,7 @@ contract("Operator", (accounts) => {
             userFee: 2, 
         };
         // send transaction with client
-        await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, rollupEncWallets[0],
+        await sendTx(urlOp, configTx.to, configTx.amount, rollupEncWallets[0],
             pass, configTx.token, configTx.userFee, configTx.from);
     });
 
@@ -281,7 +280,7 @@ contract("Operator", (accounts) => {
             userFee: 1, 
         };
         // send transaction with client
-        await cliSendOffChainTx.send(urlOp, configTx.to, configTx.amount, rollupEncWallets[1],
+        await sendTx(urlOp, configTx.to, configTx.amount, rollupEncWallets[1],
             pass, configTx.token, configTx.userFee, configTx.from);
     });
     

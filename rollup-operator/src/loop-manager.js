@@ -3,7 +3,7 @@ const { performance } = require("perf_hooks");
 const Web3 = require("web3");
 const winston = require("winston");
 const chalk = require("chalk");
-const { timeout, buildInputSm } = require("../src/utils"); 
+const { timeout, buildPublicInputsSm, generateCall } = require("../src/utils"); 
 const { stringifyBigInts } = require("snarkjs");
 const { loadHashChain } = require("../../rollup-utils/rollup-utils");
 
@@ -339,9 +339,20 @@ class LoopManager{
         const currentBlock = await this.posSynch.getCurrentBlock();
         if (statusServer == stateServer.FINISHED) {
             // get proof, commit data and forge block
-            const proof = res.data.proof;
+            const proofServer = generateCall(res.data.proof);
             const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
-            const publicInputs = buildInputSm(this.infoCurrentBatch.batchData);
+            
+            // Check if proof has the inputs
+            const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
+            if (!proofServer.publicInputs){ // get inputs from batchBuilder
+                proofServer.publicInputs = publicInputsBb;
+            } else {
+                // sanity check
+                for (let i = 0; i < publicInputsBb.length; i++){
+                    if (publicInputsBb[i] !== proofServer.publicInputs[i])
+                        this._errorTx("Proof public inputs does not match with batch public inputs");
+                }
+            }
 
             // Check I am still the winner
             const deadlineReach = await this._blockDeadline(currentBlock);
@@ -355,7 +366,7 @@ class LoopManager{
             const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
 
             const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
-                commitData, proof.proofA, proof.proofB, proof.proofC, publicInputs); 
+                commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs); 
 
             this._setInfoTx(tx, txSign.transactionHash, indexHash);
 

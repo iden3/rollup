@@ -126,7 +126,7 @@ contract RollupPoSTest is RollupPoS {
         _updateRaffles();
         Raffle storage raffle = raffles[updateEra];
         // Check input off-chain hash matches hash commited
-        require(commitSlot[slot].offChainHash == input[4],
+        require(commitSlot[slot].offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
