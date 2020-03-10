@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.1;
 
 import './Memory.sol';
 
@@ -56,7 +56,7 @@ contract RollupPoSHelpers {
   /**
    * @dev perform the babylonian method to calculate in a simple and efficient way the square root
    * @param x number to calculate the square root
-   * @return square root of x
+   * @return y square root of x
    */
   function sqrt(uint x) internal pure returns (uint y) {
     uint z = (x + 1) / 2;

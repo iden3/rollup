@@ -1,4 +1,4 @@
-pragma solidity ^0.5.1;
+pragma solidity ^0.6.1;
 
 import "../RollupBurnAuction.sol";
 
@@ -8,7 +8,7 @@ contract RollupBurnAuctionTest is RollupBurnAuction {
 
     uint public blockNumber;
 
-    function getBlockNumber() public view returns (uint) {
+    function getBlockNumber() public view override returns (uint) {
         return blockNumber;
     }
 
@@ -22,7 +22,7 @@ contract RollupBurnAuctionTest is RollupBurnAuction {
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
         uint[8] calldata input
-     ) external {
+     ) external override {
         require(auction[currentSlot()].initialized, "Auction has not been initialized");
         require(msg.sender == auction[currentSlot()].operator, "Sender is not current winner");
     }

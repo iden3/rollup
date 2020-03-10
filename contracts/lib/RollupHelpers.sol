@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.1;
 
 import './Memory.sol';
 
@@ -211,7 +211,7 @@ contract RollupHelpers {
    * @param rqOffset atomic swap paramater
    * @param onChain flag to indicate that transaction is an onChain one
    * @param newAccount flag to indicate if transaction is of deposit type
-   * @return entry structure
+   * @return element
    */
   function buildTxData(
     uint64 fromId,

@@ -1,4 +1,4 @@
-pragma solidity ^0.5.1;
+pragma solidity ^0.6.1;
 import './RollupInterface.sol';
 import './lib/RollupPoSHelpers.sol';
 
@@ -112,7 +112,7 @@ contract RollupPoS is RollupPoSHelpers{
      * @dev Retrieve block number
      * @return current block number
      */
-    function getBlockNumber() public view returns (uint) {
+    function getBlockNumber() public view virtual returns (uint) {
         return block.number;
     }
 
@@ -195,7 +195,7 @@ contract RollupPoS is RollupPoSHelpers{
      * @param n index node
      * @param idOp index operator
      * @param level level where the operator has to be added
-     * @return new root of the staker tree once the operator has been added
+     * @return newRoot new root of the staker tree once the operator has been added
      */
     function _addToNode(Raffle storage raffle, uint32 n, uint32 idOp, uint32 level) private returns(uint32 newRoot) {
         IntermediateNode storage N = nodes[n];
@@ -479,7 +479,7 @@ contract RollupPoS is RollupPoSHelpers{
      * @dev find operator on the staker tree given an input number
      * @param nodeId index node
      * @param inputNum input number
-     * @return operator id
+     * @return winner operator id
      */
     function nodeRaffle(uint32 nodeId, uint64 inputNum) public view returns(uint32 winner) {
         IntermediateNode storage N = nodes[nodeId];
@@ -502,7 +502,7 @@ contract RollupPoS is RollupPoSHelpers{
     /**
      * @dev Retrieve index operator winner given a slot
      * @param slot slot number
-     * @return index operator winner
+     * @return winner -- index operator winner
      */
     function getRaffleWinner(uint32 slot) public view returns (uint32 winner) {
         // No negative era
@@ -611,7 +611,7 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2][2] memory proofB,
         uint[2] memory proofC,
         uint[8] memory input
-     ) public {
+     ) public virtual {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
