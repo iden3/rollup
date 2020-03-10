@@ -42,9 +42,9 @@ From the command line, type the following commands.
 
 ```bash=
 # Create Wallet
-node cli.js createkeys --keytype rollup 
+node cli.js createkeys 
 # Print keys
-node cli.js printkeys --keytype rollup 
+node cli.js printkeys 
 ```
 
 Before we interact with the rollup contract, you'll need to make sure you have some ether stored in the ethereum address you printed in the above command. The best way to do this is by using the [goerli faucet](https://goerli-faucet.slock.it/).
@@ -94,7 +94,6 @@ For more information on what each individual command does, follow our main tutor
 - `info`: To print info about accounts or exits
 
 #### Options
-- keytype `[-k | --keytype] [Ethereum | Babyjub | Rollup]`
 - mnemonic `[-m | --mnemonic] <mnemonic 12 words>`
 - import `[-i | --import] <path wallet to import>`
 - walletpath `[-w | --walletpath] <path to save wallet>`
@@ -111,7 +110,7 @@ For more information on what each individual command does, follow our main tutor
 - num exit batch `[-n | --numexitbatch] <num>`
 - nonce `[--no | --nonce] <nonce>`
 - ethereum address for deposit `--controllerAddress <address>`
-- accounts information filter `--filter [babyjubjub | ethereum]`
+- accounts information filter `--filter [babyjubjub | ethereum | id]`
 - gasLimit `[--gl | --gaslimit] <gas limit>`
 - gasMultiplier `[--gm | --gasmultiplier] <gas multiplier>`
 - ID `--id <ID>`
@@ -120,13 +119,13 @@ For more information on what each individual command does, follow our main tutor
 Create a random wallet in current path:
 
 ```bash=
-node cli.js createkeys --keytype rollup
+node cli.js createkeys
 ```
 
 or specify a path:
 
 ```bash=
-node cli.js createkeys --keytype rollup --walletpath wallet_test.json
+node cli.js createkeys --walletpath wallet_test.json
 ```
 
 #### or also import your wallet
@@ -165,19 +164,19 @@ The configuration file must contain the following fields:
 Print the keys of the wallet with the `printkeys` command. If the wallet path is defined in the default configuration file, you may also use the following command:
 
 ```bash=
-node cli.js printkeys --keytype rollup
+node cli.js printkeys
 ```
 
 If it is in another configuration file:
 
 ```bash=
-node cli.js printkeys --keytype rollup --configpath <configpath>
+node cli.js printkeys --configpath <configpath>
 ```
 
 In order to print the keys of another wallet, add the path of that wallet:
 
 ```bash=
-node cli.js printkeys --keytype rollup -w <wallet path>
+node cli.js printkeys -w <wallet path>
 ```
 
 ### Approve
@@ -281,6 +280,11 @@ node cli.js info --type accounts --filter babyjubjub
 #### Get accounts ethereum:
 ```bash=
 node cli.js info --type accounts --filter ethereum
+```
+
+#### Get accounts by rollup Id:
+```bash=
+node cli.js info --type accounts --filter id --id <rollup ID>
 ```
 
 #### Exits by ID

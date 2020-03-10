@@ -74,14 +74,14 @@ npm i
 Create a rollup wallet with:
 
 ```bash=
-node cli.js createkeys --keytype rollup
+node cli.js createkeys
 ```
 
 ### 2.3. Get ether<a id="2_3"></a>
  To print your ethereum address, execute:
 
 ```bash=
-node cli.js printkeys --keytype rollup --configpath config-example.json
+node cli.js printkeys --configpath config-example.json
 ```
 
 You should see a message with the following stucture:
@@ -92,6 +92,8 @@ The following keys have been found:
     Address:
   Babyjub Key: 
     Public Key:
+      Ax:
+      Ay:
     Public Key Compressed:
 ```
 
@@ -132,14 +134,18 @@ Rollup addresses are simply Merkle tree leaf IDs. To find out what your rollup I
 ```bash=
 node cli.js info --type accounts --filter ethereum -c config-example.json
 ```
-Or
+or
 ```bash=
 node cli.js info --type accounts --filter babyjubjub -c config-example.json
 ```
 
-You will find your rollup ID under the field `idx`
+You will find your rollup ID under the field `idx`.
 
-You can check your balance by your rollup ID as well:
+You can check your balance by your rollup ID as well: 
+```
+node cli.js info --type accounts --filter id --id <rollup ID> -c config-example.json
+```
+or
 [https://zkrollup.iden3.net/accounts/](https://zkrollup.iden3.net/accounts/1){your rollup ID}
 
 ### 2.7. Send a rollup transaction to an operator<a id="2_7"></a>
