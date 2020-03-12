@@ -313,7 +313,6 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 checkparamsOnchain(type, actualConfig);
                 const abi = JSON.parse(fs.readFileSync(actualConfig.abiRollupPath, 'utf-8'));
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
-                const abiTokens = JSON.parse(fs.readFileSync(actualConfig.abiTokensPath, 'utf-8'));
                 if (type.toUpperCase() === 'DEPOSIT') {
                     const Tx = await depositTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
                         tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, gasLimit, gasMultiplier);
@@ -339,6 +338,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, recipient, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'APPROVE') {
+                    const abiTokens = JSON.parse(fs.readFileSync(actualConfig.abiTokensPath, 'utf-8'));
                     const Tx = await approveTx(actualConfig.nodeEth, actualConfig.addressTokens, amount, actualConfig.addressRollup,
                         wallet, passphrase, abiTokens, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));

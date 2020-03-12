@@ -6,7 +6,7 @@ const { Wallet } = require('../../src/wallet');
 const resources = path.join(__dirname, '../resources');
 const configTestPath = path.join(__dirname, '../resources/config-test.json');
 const configPath = path.join(__dirname, '../../config.json');
-const abiPath = path.join(__dirname, '../resources/rollupabi.json');
+const abiRollupPath = path.join(__dirname, '../resources/rollupabi.json');
 const walletPathDefault = path.join(__dirname, '../../wallet.json');
 const walletPath = path.join(__dirname, '../resources/wallet-test.json');
 const walletEthPath = path.join(__dirname, '../resources/ethWallet.json');
@@ -34,13 +34,13 @@ async function createConfig(address, depositEthAddress) {
     const actualConfig = {
         wallet: './test/resources/wallet-test.json',
         urlOperator: 'http://127.0.0.1:9000',
-        addressSC: '',
+        addressRollup: '',
         nodeEth: 'http://localhost:8545',
-        abiPath: './test/resources/rollupabi.json',
+        abiRollupPath: './test/resources/rollupabi.json',
         depositEthAddress: '',
     };
 
-    actualConfig.addressSC = address;
+    actualConfig.addressRollup = address;
     actualConfig.depositEthAddress = depositEthAddress;
     await fs.writeFileSync(configTestPath, JSON.stringify(actualConfig, null, 1), 'utf-8');
     await fs.writeFileSync(configPath, JSON.stringify(actualConfig, null, 1), 'utf-8');
@@ -50,7 +50,7 @@ async function createRollupAbi(abi) {
     if (!fs.existsSync(resources)) {
         await fs.mkdirSync(resources);
     }
-    await fs.writeFileSync(abiPath, JSON.stringify(abi, null, 1), 'utf-8');
+    await fs.writeFileSync(abiRollupPath, JSON.stringify(abi, null, 1), 'utf-8');
 }
 
 async function deleteResources() {

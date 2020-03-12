@@ -1,7 +1,7 @@
 const error = {
     ERROR: 0,
     INVALID_KEY_TYPE: 1,
-    NO_PASS: 2,
+    PASSWORD_NOT_MATCH: 2,
     INVALID_MNEMONIC: 3,
     INVALID_PATH: 4,
     NO_PARAM: 5,
@@ -13,7 +13,6 @@ const error = {
     NO_TYPE: 11,
     NO_WALLET: 12,
     INVALID_FILTER: 13,
-    PASSWORD_NOT_MATCH: 14,
 };
 
 module.exports = { error };
