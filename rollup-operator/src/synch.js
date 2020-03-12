@@ -274,6 +274,35 @@ class Synchronizer {
         await this.db.delete(`${eventOnChainKey}${separator}${batchNumber-1}`);
         // clear forge events
         await this.db.delete(`${eventForgeBatchKey}${separator}${batchNumber}`);
+        // clear exits batch
+        await this._clearExits(batchNumber - 1);
+    }
+
+    async _clearExits(batchNumber){
+        const keysExits = await this.db.listKeys(`${exitInfoKey}${separator}`);
+        for (const exitIdKey of keysExits) {
+            const arrayExits = this._fromString(await this.db.get(exitIdKey));
+            this._purgeArray(arrayExits, batchNumber);
+            await this.db.insert(exitIdKey, this._toString(arrayExits));
+        }
+    }
+
+    _purgeArray(array, numBatch){
+        if (array.length === 0) return;
+        if (array.slice(-1)[0] <= numBatch) return;
+        if (array[0] > numBatch) {
+            array.splice(0, array.length);
+            return;
+        }
+        let indexFound = null;
+        for (let i = array.length - 1; i >= 0; i--){
+            if (array[i] <= numBatch){
+                indexFound = i+1;
+                break;
+            }
+        }
+        if (indexFound !== null)
+            array.splice(indexFound);
     }
 
     async _rollback(batchNumber) {
@@ -464,14 +493,17 @@ class Synchronizer {
         return true;
     }
 
-    async _addExitEntry(tx, batch){
+    async _addExitEntry(tx, batchNumber){
         const key = `${exitInfoKey}${separator}${tx.fromIdx}`;
-        const exitIdValue = await this.db.getOrDefault(key, "");
+        const oldExitIdArray = await this.db.getOrDefault(key, "");
     
-        if (exitIdValue === "")
-            await this.db.insert(key, `${batch}`);
-        else
-            await this.db.insert(key, `${exitIdValue}${separator}${batch}`);
+        let newExitIdArray = [];
+        if (oldExitIdArray !== "")
+            newExitIdArray = [...this._fromString(oldExitIdArray)];
+
+        newExitIdArray.push(batchNumber);
+
+        await this.db.insert(key, this._toString(newExitIdArray));
     }
 
     async _getTxOnChain(event) {
@@ -618,14 +650,12 @@ class Synchronizer {
     }
 
     async getExitsBatchById(idx){
-        const exitsBatches = [];
+        let exitsBatches = [];
         if (this.mode !== Constants.mode.light) {
             const key = `${exitInfoKey}${separator}${idx}`;
             const value = await this.db.getOrDefault(key, "");
-            if (value !== ""){
-                const numBatches = value.split(`${separator}`);
-                for (const batch of numBatches) exitsBatches.push(Number(batch));
-            }
+            if (value !== "")
+                exitsBatches = [...this._fromString(value)];
         }
         return exitsBatches;
     }
