@@ -1,4 +1,4 @@
-pragma solidity ^0.5.1;
+pragma solidity ^0.6.1;
 
 import "../RollupPoS.sol";
 
@@ -8,7 +8,7 @@ contract RollupPoSTest is RollupPoS {
 
     uint public blockNumber;
 
-    function getBlockNumber() public view returns (uint) {
+    function getBlockNumber() public view override returns (uint) {
         return blockNumber;
     }
 
@@ -24,7 +24,7 @@ contract RollupPoSTest is RollupPoS {
      * @dev update raffles mapping
      * initialize raffle according its era
      */
-    function _updateRaffles() private {
+    function _updateRafflesTest() private {
         uint32 ce = currentEra();
         if (lastInitializedRaffle >= ce+2) return;
         for (uint32 i = ce; i <= ce+2; i++) {
@@ -118,12 +118,12 @@ contract RollupPoSTest is RollupPoS {
         uint[2][2] memory proofB,
         uint[2] memory proofC,
         uint[8] memory input
-    ) public {
+    ) public override {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
         uint32 updateEra = currentEra() + 2;
-        _updateRaffles();
+        _updateRafflesTest();
         Raffle storage raffle = raffles[updateEra];
         // Check input off-chain hash matches hash commited
         require(commitSlot[slot].offChainHash == input[offChainHashInput],

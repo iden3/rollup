@@ -111,7 +111,6 @@ contract("RollupPoSHelpers functions", () => {
     it("Should calculate effective stake for amount < 1 finney", async () => {
         let input = web3.utils.toWei("0.5", "finney");
         let resStake = await insPoSHelpers.effectiveStakeTest(input);
-        expect (await insPoSHelpers.methods["effectiveStakeTest(uint256)"].estimateGas(input)).to.be.below(31000);
         expect(parseInt(stringifyBigInts(resStake))).to.be.equal(0);
     });
 
@@ -125,7 +124,6 @@ contract("RollupPoSHelpers functions", () => {
                     let result = parseInt(stringifyBigInts(resStake));
                     let expected = Math.floor(Math.pow(parseInt(input)/1e+15,1.25));
                     // bigger the input, lower the relative error
-                    expect(await insPoSHelpers.methods["effectiveStakeTest(uint256)"].estimateGas(input)).to.be.below(31000);
                     expect(Math.abs((result-expected)/result)).to.be.below(0.0015);
                 }
             }

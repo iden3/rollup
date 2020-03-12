@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.1;
 
 import '../Rollup.sol';
 
@@ -13,7 +13,7 @@ contract RollupTest is Rollup {
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
         uint[8] calldata input
-    ) external {
+    ) external override {
         // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
             'old state root does not match current state root');
@@ -64,7 +64,7 @@ contract RollupTest is Rollup {
     }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
-    return ERC20(tokenList[tokenId]).transfer(receiver, amount);
+    return IERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
   function getMinningOnChainTxsHash() public view returns (uint256) {

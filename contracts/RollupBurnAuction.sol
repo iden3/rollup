@@ -1,4 +1,4 @@
-pragma solidity ^0.5.1;
+pragma solidity ^0.6.1;
 import './RollupInterface.sol';
 
 contract RollupBurnAuction {
@@ -75,7 +75,7 @@ contract RollupBurnAuction {
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
         uint[8] calldata input
-     ) external {
+     ) external virtual {
         require(auction[currentSlot()].initialized, "Auction has not been initialized");
         require(msg.sender == auction[currentSlot()].operator, "Sender is not current winner");
         rollupInterface.forgeBatch(beneficiaryAddress, proofA, proofB, proofC, input);
@@ -103,7 +103,7 @@ contract RollupBurnAuction {
      * @dev Retrieve block number. THIS FUNCTION IS USEFULL FOR DEBUGGING PURPOSES
      * @return current block number
      */
-    function getBlockNumber() public view returns (uint) {
+    function getBlockNumber() public view virtual returns (uint) {
         return block.number;
     }
 }

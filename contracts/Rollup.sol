@@ -1,17 +1,10 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.1;
 
-import '../node_modules/openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import '../node_modules/@openzeppelin/contracts/ownership/Ownable.sol';
+import '../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import './lib/RollupHelpers.sol';
 import './RollupInterface.sol';
 import './VerifierInterface.sol';
-
-/**
- * @dev Define interface ERC20 contract
- */
-contract ERC20 {
-    function transfer(address recipient, uint256 amount) external returns (bool);
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-}
 
 contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // External contracts used
@@ -156,7 +149,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Allow MAX_TOKENS different types of tokens
         require(tokens.length <= MAX_TOKENS, 'token list is full');
         require(msg.value >= feeAddToken, 'Amount is not enough to cover token fees');
-        uint tokenId = tokens.push(tokenAddress) - 1;
+        tokens.push(tokenAddress);
+        uint tokenId = tokens.length - 1;
         tokenList[tokenId] = tokenAddress;
         feeTokenAddress.transfer(msg.value);
         // increase fees for next token deposit
@@ -393,7 +387,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
         uint[8] calldata input
-    ) external isForgeBatch {
+    ) external override virtual isForgeBatch {
         // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
             'old state root does not match current state root');
@@ -500,7 +494,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @return true if succesfull
      */
     function depositToken(uint32 tokenId, uint128 amount) private returns(bool){
-        return ERC20(tokenList[tokenId]).transferFrom(msg.sender, address(this), amount);
+        return IERC20(tokenList[tokenId]).transferFrom(msg.sender, address(this), amount);
     }
 
     /**
@@ -512,6 +506,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @return true if succesfull
      */
     function withdrawToken(uint32 tokenId, address receiver, uint256 amount) private returns(bool){
-        return ERC20(tokenList[tokenId]).transfer(receiver, amount);
+        return IERC20(tokenList[tokenId]).transfer(receiver, amount);
     }
 }

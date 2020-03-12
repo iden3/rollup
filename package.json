@@ -10,6 +10,7 @@
     "test:circuits": "mocha --max-old-space-size=4096 --timeout 20000 ./test",
     "test:utils": "mocha --timeout 20000 ./test/rollup-utils",
     "test:contracts": "truffle test ./test/contracts/*.test.js",
+    "test:coverage": "truffle run coverage --file='./test/contracts/*.test.js'",
     "build:webapp": "browserify rollup-cli/index.js -s rollup > simple-webapp/src/utils/bundle-cli.js && browserify rollup-operator/index.js -s operator > simple-webapp/src/utils/bundle-op.js && simple-webapp/src/utils/disable-eslint.sh"
   },
   "repository": {
@@ -33,12 +34,15 @@
   },
   "homepage": "https://github.com/iden3/rollup#readme",
   "devDependencies": {
+    "@openzeppelin/contracts": "^3.0.0-beta.0",
     "blakejs": "^1.1.0",
     "eslint": "^6.5.1",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-mocha": "^6.2.0",
-    "mocha": "^6.2.0"
+    "ganache-cli": "^6.9.1",
+    "mocha": "^6.2.0",
+    "solidity-coverage": "^0.7.2"
   },
   "dependencies": {
     "abi-decoder": "^2.2.0",
@@ -59,7 +63,8 @@
     "morgan": "^1.9.1",
     "openzeppelin-solidity": "^2.3.0",
     "snarkjs": "^0.1.20",
-    "truffle": "^5.0.40",
+    "solc": "^0.6.1",
+    "truffle": "^5.1.16",
     "truffle-hdwallet-provider": "^1.0.17",
     "tweetnacl": "^1.0.1",
     "tweetnacl-util": "^0.15.0",
