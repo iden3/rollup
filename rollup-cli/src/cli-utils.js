@@ -8,6 +8,7 @@ const { transfer } = require('./actions/onchain/transfer.js');
 const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.js');
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
 const { Wallet } = require('./wallet');
+const { approve } = require('./actions/onchain/approve.js');
 
 async function sendTx(urlOperator, to, amount, walletJson, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
@@ -51,9 +52,19 @@ async function showAccounts(urlOperator, filters) {
     return apiOperator.getAccounts(filters);
 }
 
+async function showAccountsByIdx(urlOperator, idx) {
+    const apiOperator = new CliExternalOperator(urlOperator);
+    return apiOperator.getAccountByIdx(idx);
+}
+
 async function showExitsBatch(urlOperator, id) {
     const apiOperator = new CliExternalOperator(urlOperator);
     return apiOperator.getExits(id);
+}
+
+async function approveTx(nodeEth, addressTokens, amount, spender, walletJson, passphrase, abi, gasLimit, gasMultiplier) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return approve(nodeEth, addressTokens, amount, spender, walletRollup, abi, gasLimit, gasMultiplier);
 }
 
 module.exports = {
@@ -63,7 +74,9 @@ module.exports = {
     withdrawTx,
     forceWithdrawTx,
     showAccounts,
+    showAccountsByIdx,
     transferTx,
     depositAndTransferTx,
     showExitsBatch,
+    approveTx,
 };

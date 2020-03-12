@@ -443,7 +443,7 @@ class Synchronizer {
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
                 if (this.mode !== Constants.mode.light){
-                    if (Number(tx.toIdx) === 0) {
+                    if (bigInt(tx.toIdx) === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) {
                         await this._addExitEntry(tx, batch.batchNumber);
                     }
                 }
@@ -454,9 +454,8 @@ class Synchronizer {
         for (const event of onChain) {
             const tx = await this._getTxOnChain(event);
             batch.addTx(tx);
-            const newAccount = tx.newAccount;
             if (this.mode !== Constants.mode.light)
-                if ((Number(tx.toIdx) === 0) && (newAccount == false) && tx.amount !== 0 && tx.loadAmount === 0) 
+                if (tx.toIdx === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) 
                     await this._addExitEntry(tx, batch.batchNumber);
         }
         await batch.build();

@@ -9,12 +9,14 @@ describe("BabyJubjub wallet", () => {
     const pass = "passphrase";
     let ax;
     let ay;
+    let publicCompressed;
 
     it("Should create wallet from mnemonic", () => {
         const wallet = BabyJubWallet.fromMnemonic(mnemonic);
         expect(wallet.privateKey.toString("hex")).to.be.equal(privTest);
         ax = wallet.publicKey[0].toString("16");
         ay = wallet.publicKey[1].toString("16");
+        publicCompressed = wallet.publicKeyCompressed.toString("hex");
     });
 
     it("Should create wallet from random", () => {
@@ -46,6 +48,7 @@ describe("BabyJubjub wallet", () => {
         const wallet = BabyJubWallet.fromMnemonic(mnemonic);
         const jsonEnc = wallet.toEncryptedJson(pass);
         const jsonObj = JSON.parse(jsonEnc);
+        expect(publicCompressed).to.be.equal(jsonObj.publicCompressed);
         expect(ax).to.be.equal(jsonObj.public.ax);
         expect(ay).to.be.equal(jsonObj.public.ay);
     });
