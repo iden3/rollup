@@ -1,17 +1,10 @@
 pragma solidity ^0.6.1;
 
 import '../node_modules/@openzeppelin/contracts/ownership/Ownable.sol';
+import '../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import './lib/RollupHelpers.sol';
 import './RollupInterface.sol';
 import './VerifierInterface.sol';
-
-/**
- * @dev Define interface ERC20 contract
- */
-abstract contract ERC20 {
-    function transfer(address recipient, uint256 amount) external virtual returns (bool);
-    function transferFrom(address sender, address recipient, uint256 amount) external virtual returns (bool);
-}
 
 contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // External contracts used
@@ -501,7 +494,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @return true if succesfull
      */
     function depositToken(uint32 tokenId, uint128 amount) private returns(bool){
-        return ERC20(tokenList[tokenId]).transferFrom(msg.sender, address(this), amount);
+        return IERC20(tokenList[tokenId]).transferFrom(msg.sender, address(this), amount);
     }
 
     /**
@@ -513,6 +506,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @return true if succesfull
      */
     function withdrawToken(uint32 tokenId, address receiver, uint256 amount) private returns(bool){
-        return ERC20(tokenList[tokenId]).transfer(receiver, amount);
+        return IERC20(tokenList[tokenId]).transfer(receiver, amount);
     }
 }

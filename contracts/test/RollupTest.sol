@@ -64,7 +64,7 @@ contract RollupTest is Rollup {
     }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
-    return ERC20(tokenList[tokenId]).transfer(receiver, amount);
+    return IERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
   function getMinningOnChainTxsHash() public view returns (uint256) {

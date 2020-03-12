@@ -492,11 +492,12 @@ describe('OFFCHAINTX', async function () {
             if ((data.toString()).includes('Password:')) {
                 command.stdin.write(`${pass}\n`);
             }
-            if (data.toString().includes('Status: 200, Nonce: 0')) { done(); }
+            if (data.toString().includes('Status: 200, Nonce: 0')) {
+                done();
+            }
         });
         command.on('exit', (code) => {
             expect(code).to.be.equal(0);
-            done();
         });
     });
 
