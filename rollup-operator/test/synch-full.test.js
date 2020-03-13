@@ -301,7 +301,7 @@ contract("Synchronizer - full mode", (accounts) => {
         expect(resEthAddress3[0].ay).to.be.equal(ayStr);
     });
 
-    it("Should add off-chain withdraw tx and synch", async () => {
+    it("Should add two off-chain withdraw tx and synch", async () => {
         const events = [];
         const tx = {
             fromIdx: 1,
@@ -312,6 +312,19 @@ contract("Synchronizer - full mode", (accounts) => {
         };
         events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events);
+        await timeout(timeoutSynch);
+        await checkSynch(synch, opRollupDb);
+
+        const events2 = [];
+        const tx2 = {
+            fromIdx: 1,
+            toIdx: 0,
+            amount: 1,
+            coin: 0,
+            nonce: 0,
+        };
+        events2.push({event:"OffChainTx", tx: tx2});
+        await forgeBlock(events2);
         await timeout(timeoutSynch);
         await checkSynch(synch, opRollupDb);
     });
@@ -325,11 +338,15 @@ contract("Synchronizer - full mode", (accounts) => {
     });
 
     it("Should check exit batches by id", async () => {
+        const numExitBatch0 = 5;
+        const numExitBatch1 = 6;
         let idx = 1;
-        const arrayExists1 = await synch.getExitsBatchById(idx);
-        expect(arrayExists1.length).to.be.above(0);
+        const arrayExits = await synch.getExitsBatchById(idx);
+        expect(arrayExits.length).to.be.equal(2);
+        expect(arrayExits.includes(numExitBatch0)).to.be.equal(true);
+        expect(arrayExits.includes(numExitBatch1)).to.be.equal(true);
         // Check exit tree for all bacthes
-        for (const numBatch of arrayExists1){
+        for (const numBatch of arrayExits){
             const res = await synch.getExitTreeInfo(numBatch, idx);
             expect(res.found).to.be.equal(true);
         }
