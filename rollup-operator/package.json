@@ -16,7 +16,7 @@
     "cli"
   ],
   "author": "krlosMata",
-  "license": "GPL-3.0",
+  "license": "AGPL-3.0",
   "devDependencies": {
     "chai": "^4.2.0",
     "eslint": "^6.0.1",
