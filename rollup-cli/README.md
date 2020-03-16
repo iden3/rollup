@@ -27,9 +27,9 @@ Next, create a file named `config.json`  in the current directory with the follo
     "urlOperator": "https://zkrollup.iden3.net",
     "nodeEth": "https://goerli.infura.io/v3/<your infura Token>",
     "addressRollup": "0xE0C17C3a4f06b859124Df351Ca83864e6de46AB2s",
-    "abiRollupPath": "./RollupAbi.json",
+    "abiRollupPath": "./helpers/abis/RollupAbi.json",
     "controllerAddress": 0,
-    "abiTokensPath": "./ERC20Abi.json",
+    "abiTokensPath": "./helpers/abis/ERC20Abi.json",
     "addressTokens": "0xaFF4481D10270F50f203E0763e2597776068CBc5",
     "wallet": "./wallet.json"
 }

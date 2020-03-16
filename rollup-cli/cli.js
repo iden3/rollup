@@ -10,7 +10,7 @@ const {
     showAccounts, transferTx, depositAndTransferTx, showExitsBatch, approveTx,
     showAccountsByIdx,
 } = require('./src/cli-utils');
-const { error } = require('./src/list-errors');
+const { error } = require('./helpers/list-errors');
 
 const walletPathDefault = './wallet.json';
 const configPathDefault = './config.json';

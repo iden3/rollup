@@ -10,9 +10,9 @@ const CliExternalOperator = require('../../rollup-operator/src/cli-external-oper
 const { Wallet } = require('./wallet');
 const { approve } = require('./actions/onchain/approve.js');
 
-async function sendTx(urlOperator, to, amount, walletJson, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
+async function sendTx(urlOperator, idTo, amount, walletJson, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return send(urlOperator, to, amount, walletRollup, tokenId, userFee, idFrom, nonce, nonceObject);
+    return send(urlOperator, idTo, amount, walletRollup, tokenId, userFee, idFrom, nonce, nonceObject);
 }
 
 async function depositTx(nodeEth, addressSC, loadAmount, tokenid, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
@@ -41,10 +41,10 @@ async function transferTx(nodeEth, addressSC, amount, tokenid, walletJson, passp
 }
 
 async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, walletJson, passphrase, ethAddress, abi,
-    toId, gasLimit, gasMultiplier) {
+    idTo, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, walletRollup,
-        ethAddress, abi, toId, gasLimit, gasMultiplier);
+        ethAddress, abi, idTo, gasLimit, gasMultiplier);
 }
 
 async function showAccounts(urlOperator, filters) {

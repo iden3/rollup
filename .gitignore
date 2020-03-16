@@ -77,6 +77,7 @@ rollup-cli/tools/resourcesBot/
 rollup-cli/tools/walletSlash.json
 rollup-cli/src/resources/
 rollup-cli/nonceJson.json
+rollup-cli/tools/gunners/config/
 
 cli-pos/wallet-test.json
 cli-pos/config.json

@@ -8,10 +8,11 @@ const { getGasPrice } = require('./utils');
  * @param addressSC rollup address
  * @param loadAmount initial balance on balance tree
  * @param tokenId token type identifier
- * @param walletJson from this one can obtain the ethAddress and babyPubKey
- * @param passphrase for decrypt the Wallet
+ * @param walletRollup ethAddress and babyPubKey together
  * @param ethAddress allowed address to control new balance tree leaf
  * @param abi abi of rollup contract
+ * @param gasLimit transaction gas limit
+ * @param gasMultiplier multiply gas price
 */
 async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletRollup,
     ethAddress, abi, gasLimit = 5000000, gasMultiplier = 1) {
