@@ -35,6 +35,7 @@ class MenuBack extends Component {
   }
 
   toggleModalHelp = () => { this.setState((prev) => ({ modalHelp: !prev.modalHelp })); }
+
   toggleChangeNode = () => { this.setState((prev) => ({ viewChangeNode: !prev.viewChangeNode })); }
 
   handleClickChangeNode = () => {
@@ -56,7 +57,7 @@ class MenuBack extends Component {
               position="bottom left"
               flowing
               on="click"
-              trigger={<Button content="Change Node" icon="ethereum" basic />} >
+              trigger={<Button content="Change Node" icon="ethereum" basic />}>
               <Form>
                 <label htmlFor="nodeEth">
                   <b>Url Node Ethereum: </b>
@@ -68,7 +69,7 @@ class MenuBack extends Component {
             </Popup>
             <Button content="Help" icon="help" basic onClick={this.toggleModalHelp} />
           </Menu.Item>
-         </Menu.Menu>
+        </Menu.Menu>
         <Menu.Menu position="right">
           <Link to="/">
             <Menu.Item name="initView">
@@ -86,26 +87,35 @@ class MenuBack extends Component {
             <p>Transactions:</p>
             <p>
               <dd>
-                <b> Ethereum</b>
-                : we need ether to be able to do them
+                <b>Onchain</b>
+                : we need ether to be able to perform them
               </dd>
             </p>
-            <p><dd>  - Deposit: put tokens within the rollup network</dd></p>
-            <p><dd>  - Exit: take tokens from the rollup network, but you must make a withdraw before</dd></p>
+            <p><dd> - Deposit: insert tokens within the rollup network</dd></p>
             <p>
               <dd>
-                <b> Rollup</b>
-                : we need to have made a deposit and have tokens in the rollup network
+                    - Withdraw: take back tokens from the rollup contract
+              (you must send an “Off-chain Exit” before or “On-chain force exit”)
               </dd>
             </p>
-            <p><dd>  - Send: send tokens from one id to another</dd></p>
-            <p><dd>  - Withdraw: prepare the tokens to be able to make an exit transaction</dd></p>
+            <p><dd> - Force Exit: exit tokens from rollup network</dd></p>
+            <p>
+              <dd>
+                <b>Offchain</b>
+                : we previously need to make a deposit and have tokens in the rollup network
+              </dd>
+            </p>
+            <p><dd> - Send: send tokens from one rollup ID to another rollup ID</dd></p>
+            <p><dd> - Exit: exit tokens from rollup network</dd></p>
             <p>Tokens:</p>
             <p>
               <dd>- What are tokens for?</dd>
             </p>
             <p>
-              <dd>They are the "coins" that you can use to interact with the rollup.</dd>
+              <dd>
+                They are the “coins” that you can use to interact with the rollup.
+                Currently supports ERC20 standard tokens.
+              </dd>
             </p>
             <p>
               <dd>
@@ -114,8 +124,8 @@ class MenuBack extends Component {
             </p>
             <p>
               <dd>
-                Sending a transaction with the "GET TOKENS" button.
-                To send it, you need to have ETHER.
+                Sending an on-chain transaction with the “GET TOKENS” button.
+                You need to have ETHER in order to send above transaction.
               </dd>
             </p>
             <p>
@@ -125,7 +135,7 @@ class MenuBack extends Component {
             </p>
             <p>
               <dd>
-                By clicking the "GET ETHER" button and putting its ethereum address in the faucet.
+              By clicking the “GET ETHER” button and putting your ethereum address in the faucet.
               </dd>
             </p>
             <p>Approve:</p>
@@ -136,8 +146,8 @@ class MenuBack extends Component {
             </p>
             <p>
               <dd>
-                When you approve the tokens, you are giving permission to the ROLLUP contract
-                to take the tokens indicated in the transaction when making a DEPOSIT.
+              When you approve the tokens, you are giving permission to the ROLLUP contract to transfer your tokens
+              indicated in the transaction when making a DEPOSIT.
               </dd>
             </p>
             <p>
@@ -147,8 +157,8 @@ class MenuBack extends Component {
             </p>
             <p>
               <dd>
-                Indicating the number of tokens you want to approve and clicking the "APPROVE"
-                button. You will need ether, since you are sending a transaction.
+              Indicating the number of tokens you want to approve and clicking the “APPROVE” button.
+              You will need ether since you are sending an on-chain transaction.
               </dd>
             </p>
             <p>ID's:</p>
@@ -159,8 +169,8 @@ class MenuBack extends Component {
             </p>
             <p>
               <dd>
-                It is the identifier of each leaf in the rollup.
-                Each time you make a deposit, a new ID will appear.
+                It is the identifier of your account inside the rollup network.
+                A new rollup ID will be created each time you perform a deposit.
               </dd>
             </p>
             <p>
@@ -170,9 +180,9 @@ class MenuBack extends Component {
             </p>
             <p>
               <dd>
-                When you want to make a transfer
-                you must choose the ID of the leaf from which you want to make the transfer.
-                You must also indicate the ID of the receiving leaf.
+              When you want to make a transfer you must choose the rollup ID
+              of the account from which you want to make the transfer.
+              You must also indicate the rollup ID of the recipient rollup account.
               </dd>
             </p>
           </Modal.Content>

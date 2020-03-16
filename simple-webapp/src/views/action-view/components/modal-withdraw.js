@@ -5,8 +5,9 @@ import {
   Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
 import ModalError from './modal-error';
+import ButtonGM from './gm-buttons';
 import { handleSendWithdraw } from '../../../state/tx/actions';
-import { handleInfoOperator } from '../../../state/general/actions';
+import { handleStateWithdraw } from '../../../state/tx-state/actions';
 
 class ModalWithdraw extends Component {
   static propTypes = {
@@ -15,7 +16,7 @@ class ModalWithdraw extends Component {
     modalWithdraw: PropTypes.bool.isRequired,
     toggleModalWithdraw: PropTypes.func.isRequired,
     handleSendWithdraw: PropTypes.func.isRequired,
-    handleInfoOperator: PropTypes.func.isRequired,
+    handleStateWithdraw: PropTypes.func.isRequired,
     gasMultiplier: PropTypes.number.isRequired,
     desWallet: PropTypes.object.isRequired,
     txsExits: PropTypes.array,
@@ -29,6 +30,7 @@ class ModalWithdraw extends Component {
       idFrom: -1,
       initModal: true,
       modalError: false,
+      nextDisabled: true,
       error: '',
     };
     this.idFromRef = React.createRef();
@@ -38,7 +40,7 @@ class ModalWithdraw extends Component {
 
   handleClick = async () => {
     const {
-      config, abiRollup, desWallet,
+      config, abiRollup, desWallet, gasMultiplier,
     } = this.props;
 
     const idFrom = Number(this.state.idFrom);
@@ -49,8 +51,7 @@ class ModalWithdraw extends Component {
     this.toggleModalChange();
     this.props.toggleModalWithdraw();
     const res = await this.props.handleSendWithdraw(nodeEth, addressSC, desWallet,
-      abiRollup, operator, idFrom, numExitRoot, this.props.gasMultiplier);
-    this.props.handleInfoOperator(config.operator);
+      abiRollup, operator, idFrom, numExitRoot, gasMultiplier);
     if (res !== undefined) {
       if (res.message !== undefined) {
         if (res.message.includes('insufficient funds')) {
@@ -58,12 +59,14 @@ class ModalWithdraw extends Component {
           this.toggleModalError();
         }
       }
+      if (res.res) {
+        this.props.handleStateWithdraw(res, idFrom);
+      }
     }
   }
 
   getExitRoot = async () => {
     const { txsExits } = this.props;
-    // const exitRoots = await this.props.handleGetExitRoot(this.props.config.operator, this.state.idFrom);
     const txsExitsById = txsExits.filter((tx) => tx.idx === this.state.idFrom);
     const exitRoots = [];
     txsExitsById.map(async (key, index) => {
@@ -88,7 +91,7 @@ class ModalWithdraw extends Component {
       }
     }
     let dropdown;
-    if (infoTxsExits === []) {
+    if (infoTxsExits.length === 0) {
       dropdown = (<Dropdown placeholder="ID" />);
     } else {
       dropdown = (
@@ -102,17 +105,17 @@ class ModalWithdraw extends Component {
     return dropdown;
   }
 
-  handleChangeIdFrom = (e, { value }) => this.setState({ idFrom: value });
+  handleChangeIdFrom = (e, { value }) => this.setState({ idFrom: value, nextDisabled: false });
 
   exitRoot = () => {
     let dropdown;
-    if (this.state.exitRoots === []) {
-      dropdown = (<Dropdown placeholder="Num Exit Root" />);
+    if (this.state.exitRoots.length === 0) {
+      dropdown = (<Dropdown placeholder="Batch and Amount" />);
     } else {
       dropdown = (
         <Dropdown
           scrolling
-          placeholder="Num Exit Root"
+          placeholder="Batch and Amount"
           options={this.state.exitRoots}
           onChange={this.handleChange} />
       );
@@ -136,7 +139,7 @@ class ModalWithdraw extends Component {
             </Form>
           </Modal.Content>
           <Modal.Actions>
-            <Button color="blue" onClick={this.getExitRoot}>
+            <Button color="blue" onClick={this.getExitRoot} disabled={this.state.nextDisabled}>
               <Icon name="arrow right" />
                 Next
             </Button>
@@ -152,10 +155,19 @@ class ModalWithdraw extends Component {
       <Modal open={this.props.modalWithdraw}>
         <Modal.Header>Withdraw</Modal.Header>
         <Modal.Content>
-          <p><b>ID From</b></p>
-          <p>{this.state.idFrom}</p>
-          <p><b>Num Exit Root</b></p>
-          {this.exitRoot()}
+          <Form>
+            <Form.Field>
+              <p><b>ID From</b></p>
+              <p>{this.state.idFrom}</p>
+            </Form.Field>
+            <Form.Field>
+              <p><b>Batch and Amount</b></p>
+              {this.exitRoot()}
+            </Form.Field>
+            <Form.Field>
+              <ButtonGM />
+            </Form.Field>
+          </Form>
         </Modal.Content>
         <Modal.Actions>
           <Button color="blue" onClick={this.toggleModalChange}>
@@ -197,6 +209,7 @@ const mapStateToProps = (state) => ({
   abiRollup: state.general.abiRollup,
   desWallet: state.general.desWallet,
   txsExits: state.general.txsExits,
+  gasMultiplier: state.general.gasMultiplier,
 });
 
-export default connect(mapStateToProps, { handleSendWithdraw, handleInfoOperator })(ModalWithdraw);
+export default connect(mapStateToProps, { handleSendWithdraw, handleStateWithdraw })(ModalWithdraw);

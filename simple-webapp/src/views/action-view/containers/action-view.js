@@ -5,17 +5,20 @@ import { Header, Container, Divider } from 'semantic-ui-react';
 import { Redirect } from 'react-router-dom';
 
 import { handleGetTokens, handleApprove, handleInitStateTx } from '../../../state/tx/actions';
-import { handleInfoAccount, handleInfoOperator, handleLoadFiles } from '../../../state/general/actions';
+import { handleInfoAccount, handleLoadFiles, getCurrentBatch } from '../../../state/general/actions';
 import { pointToCompress } from '../../../utils/utils';
 import MenuBack from '../components/menu';
 import MenuActions from '../components/menu-actions';
 import InfoWallet from '../components/info-wallet';
+import InfoTx from '../components/info-tx';
 import ModalDeposit from '../components/modal-deposit';
 import ModalWithdraw from '../components/modal-withdraw';
 import ModalSend from '../components/modal-send';
 import MessageTx from '../components/message-tx';
 import ModalError from '../components/modal-error';
-import InfoOp from '../components/info-operator';
+import ModalApprove from '../components/modal-approve';
+import ModalGetTokens from '../components/modal-get-tokens';
+import ModalForceExit from '../components/modal-force-exit';
 
 class ActionView extends Component {
   static propTypes = {
@@ -26,6 +29,7 @@ class ActionView extends Component {
     tokensR: PropTypes.string,
     tokensA: PropTypes.string,
     tokensE: PropTypes.string,
+    tokensTotal: PropTypes.string,
     balance: PropTypes.string,
     txs: PropTypes.array,
     txsExits: PropTypes.array,
@@ -33,12 +37,10 @@ class ActionView extends Component {
     handleInitStateTx: PropTypes.func.isRequired,
     isLoadingInfoAccount: PropTypes.bool.isRequired,
     handleInfoAccount: PropTypes.func.isRequired,
-    handleInfoOperator: PropTypes.func.isRequired,
     handleLoadFiles: PropTypes.func.isRequired,
-    handleGetTokens: PropTypes.func.isRequired,
-    handleApprove: PropTypes.func.isRequired,
-    gasMultiplier: PropTypes.number.isRequired,
+    getCurrentBatch: PropTypes.func.isRequired,
     errorFiles: PropTypes.string.isRequired,
+    txTotal: PropTypes.array.isRequired,
   }
 
   static defaultProps = {
@@ -55,12 +57,16 @@ class ActionView extends Component {
     this.state = {
       modalDeposit: false,
       modalWithdraw: false,
+      modalForceExit: false,
       modalSend: false,
+      modalApprove: false,
+      modalGetTokens: false,
       modalError: false,
       error: '',
       activeItem: '',
       noImported: false,
       babyjub: '0x0000000000000000000000000000000000000000',
+      lengthTx: 0,
     };
   }
 
@@ -72,7 +78,15 @@ class ActionView extends Component {
     } else {
       this.setState({
         babyjub: pointToCompress(this.props.desWallet.babyjubWallet.publicKey),
+        lengthTx: this.props.txTotal.length,
       });
+    }
+  }
+
+  componentDidUpdate = () => {
+    if (this.props.txTotal.length > this.state.lengthTx) {
+      this.setState({ lengthTx: this.props.txTotal.length });
+      this.getInfoAccount();
     }
   }
 
@@ -93,7 +107,7 @@ class ActionView extends Component {
   }
 
   infoOperator = () => {
-    this.props.handleInfoOperator(this.props.config.operator);
+    this.props.getCurrentBatch(this.props.config.operator);
     setTimeout(this.infoOperator, 30000);
   }
 
@@ -102,7 +116,6 @@ class ActionView extends Component {
       await this.props.handleInfoAccount(this.props.config.nodeEth, this.props.config.tokensAddress,
         this.props.abiTokens, this.props.desWallet, this.props.config.operator, this.props.config.address,
         this.props.config.abiRollup);
-      await this.props.handleInfoOperator(this.props.config.operator);
     }
   }
 
@@ -115,6 +128,12 @@ class ActionView extends Component {
       this.setState({ modalWithdraw: true });
     } else if (name === 'send' || name === 'send0') {
       this.setState({ modalSend: true });
+    } else if (name === 'approve') {
+      this.setState({ modalApprove: true });
+    } else if (name === 'getTokens') {
+      this.setState({ modalGetTokens: true });
+    } else if (name === 'forcexit') {
+      this.setState({ modalForceExit: true });
     }
   }
 
@@ -122,36 +141,19 @@ class ActionView extends Component {
 
   toggleModalWithdraw = () => { this.setState((prev) => ({ modalWithdraw: !prev.modalWithdraw })); }
 
+  toggleModalForceExit = () => { this.setState((prev) => ({ modalForceExit: !prev.modalForceExit })); }
+
   toggleModalSend = () => { this.setState((prev) => ({ modalSend: !prev.modalSend })); }
+
+  toggleModalApprove = () => { this.setState((prev) => ({ modalApprove: !prev.modalApprove })); }
+
+  toggleModalGetTokens = () => { this.setState((prev) => ({ modalGetTokens: !prev.modalGetTokens })); }
 
   toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
   redirectInitView = () => {
     if (Object.keys(this.props.desWallet).length === 0) {
       return <Redirect to="/" />;
-    }
-  }
-
-  handleClickGetTokens = async () => {
-    const res = await this.props.handleGetTokens(this.props.config.nodeEth, this.props.config.tokensAddress,
-      this.props.desWallet);
-    if (res.message !== undefined) {
-      if (res.message.includes('insufficient funds')) {
-        this.setState({ error: '1' });
-        this.toggleModalError();
-      }
-    }
-    this.getInfoAccount();
-  }
-
-  handleClickApprove = async (addressTokens, amountToken) => {
-    const res = await this.props.handleApprove(addressTokens, this.props.abiTokens, this.props.desWallet,
-      amountToken, this.props.config.address, this.props.config.nodeEth, this.props.gasMultiplier);
-    if (res.message !== undefined) {
-      if (res.message.includes('insufficient funds')) {
-        this.setState({ error: '1' });
-        this.toggleModalError();
-      }
     }
   }
 
@@ -179,40 +181,48 @@ class ActionView extends Component {
         <MessageTx />
         <InfoWallet
           desWallet={this.props.desWallet}
-          handleClickApprove={this.handleClickApprove}
-          addressTokensRef={this.addressTokensRef}
-          amountTokensRef={this.amountTokensRef}
-          handleClickGetTokens={this.handleClickGetTokens}
           balance={this.props.balance}
           tokens={this.props.tokens}
           tokensR={this.props.tokensR}
           tokensE={this.props.tokensE}
           tokensA={this.props.tokensA}
+          tokensTotal={this.props.tokensTotal}
           isLoadingInfoAccount={this.props.isLoadingInfoAccount}
           getInfoAccount={this.getInfoAccount}
           txs={this.props.txs}
           txsExits={this.props.txsExits}
-          tokensAddress={this.props.config.tokensAddress}
           noImported={this.state.noImported} />
-        <Divider horizontal>ROLLUP INFORMATION</Divider>
-        <InfoOp />
+        <br />
+        <InfoTx />
         <ModalDeposit
           balance={this.props.balance}
           tokensA={this.props.tokensA}
           modalDeposit={this.state.modalDeposit}
-          toggleModalDeposit={this.toggleModalDeposit}
-          gasMultiplier={this.props.gasMultiplier} />
+          toggleModalDeposit={this.toggleModalDeposit} />
         <ModalWithdraw
           desWallet={this.props.desWallet}
           modalWithdraw={this.state.modalWithdraw}
-          toggleModalWithdraw={this.toggleModalWithdraw}
-          gasMultiplier={this.props.gasMultiplier} />
+          toggleModalWithdraw={this.toggleModalWithdraw} />
+        <ModalForceExit
+          desWallet={this.props.desWallet}
+          babyjub={this.state.babyjub}
+          modalForceExit={this.state.modalForceExit}
+          toggleModalForceExit={this.toggleModalForceExit} />
         <ModalSend
           babyjub={this.state.babyjub}
           apiOperator={this.props.apiOperator}
           modalSend={this.state.modalSend}
           toggleModalSend={this.toggleModalSend}
           activeItem={this.state.activeItem} />
+        <ModalApprove
+          balance={this.props.balance}
+          modalApprove={this.state.modalApprove}
+          toggleModalApprove={this.toggleModalApprove}
+          tokensA={this.props.tokensA} />
+        <ModalGetTokens
+          balance={this.props.balance}
+          modalGetTokens={this.state.modalGetTokens}
+          toggleModalGetTokens={this.toggleModalGetTokens} />
         <ModalError
           error={this.state.error}
           modalError={this.state.modalError}
@@ -236,18 +246,19 @@ const mapStateToProps = (state) => ({
   tokensR: state.general.tokensR,
   tokensA: state.general.tokensA,
   tokensE: state.general.tokensE,
+  tokensTotal: state.general.tokensTotal,
   txs: state.general.txs,
   txsExits: state.general.txsExits,
   isLoadingInfoAccount: state.general.isLoadingInfoAccount,
   errorFiles: state.general.errorFiles,
-  gasMultiplier: state.general.gasMultiplier,
+  txTotal: state.txState.txTotal,
 });
 
 export default connect(mapStateToProps, {
   handleGetTokens,
   handleApprove,
   handleInfoAccount,
-  handleInfoOperator,
   handleLoadFiles,
   handleInitStateTx,
+  getCurrentBatch,
 })(ActionView);

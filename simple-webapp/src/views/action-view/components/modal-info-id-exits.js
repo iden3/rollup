@@ -39,7 +39,7 @@ class ModalInfoIdExits extends Component {
 
   render() {
     return (
-      <Modal trigger={<Button icon="info" circular size="mini" disabled={this.props.noImported} />} closeIcon>
+      <Modal trigger={<Button icon="info" content="More Information..." disabled={this.props.noImported} />} closeIcon>
         <Modal.Header><Icon name="info" /></Modal.Header>
         <Modal.Content>
           <Table>

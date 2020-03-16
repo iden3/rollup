@@ -13,6 +13,7 @@ import {
   handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleCreateWallet,
 } from '../../../state/general/actions';
 import { handleInitStateTx } from '../../../state/tx/actions';
+import { handleResetTxs } from '../../../state/tx-state/actions';
 
 const config = require('../../../utils/config.json');
 
@@ -30,6 +31,7 @@ class InitView extends Component {
     handleLoadOperator: PropTypes.func.isRequired,
     handleCreateWallet: PropTypes.func.isRequired,
     resetWallet: PropTypes.func.isRequired,
+    handleResetTxs: PropTypes.func.isRequired,
   }
 
   constructor(props) {
@@ -79,6 +81,7 @@ class InitView extends Component {
           throw new Error('Incorrect wallet or password');
         } else {
           await this.props.handleInitStateTx();
+          this.props.handleResetTxs();
           await this.props.handleLoadFiles(config);
           this.setState({ step: 1, desc: '1/3 Loading Operator' });
           await this.props.handleLoadOperator(config);
@@ -205,5 +208,11 @@ const mapStateToProps = (state) => ({
 
 
 export default connect(mapStateToProps, {
-  handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleInitStateTx, handleCreateWallet,
+  handleLoadWallet,
+  handleLoadFiles,
+  handleLoadOperator,
+  resetWallet,
+  handleInitStateTx,
+  handleCreateWallet,
+  handleResetTxs,
 })(InitView);

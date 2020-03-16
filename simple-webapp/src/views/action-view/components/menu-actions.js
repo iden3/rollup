@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import {
-  Table, Button, Icon, Container,
+  Icon, Container, Menu, Dropdown, Segment,
 } from 'semantic-ui-react';
 
 class MenuActions extends Component {
@@ -13,51 +13,88 @@ class MenuActions extends Component {
   render() {
     return (
       <Container>
-        <Table textAlign="center" celled attached fixed color="violet" inverted>
-          <Table.Header>
-            <Table.Row>
-              <Table.HeaderCell>
-                <p>
-                  ETHEREUM
-                  <Icon name="ethereum" />
-                </p>
-              </Table.HeaderCell>
-              <Table.HeaderCell>
-                ROLLUP
-              </Table.HeaderCell>
-            </Table.Row>
-          </Table.Header>
-        </Table>
-        <Table attached fixed>
-          <Table.Body>
-            <Table.Row>
-              <Table.Cell>
-                <Button.Group widths="2">
-                  <Button name="deposit" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
-                    <Icon name="sign-in" />
-                          Deposit
-                  </Button>
-                  <Button name="withdraw" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
-                    <Icon name="sign-out" />
-                          Exit
-                  </Button>
-                </Button.Group>
-              </Table.Cell>
-              <Table.Cell>
-                <Button.Group widths="2">
-                  <Button name="send" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
-                    <Icon name="share" />
-                          Send
-                  </Button>
-                  <Button name="send0" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
-                    <Icon name="reply" />
-                          Withdraw
-                  </Button>
-                </Button.Group>
-              </Table.Cell>
-            </Table.Row>
-          </Table.Body>
-        </Table>
+        <Segment color="blue" inverted secondary>
+          <b>ACTIONS</b>
+        </Segment>
+        <Menu widths="3">
+          <Dropdown
+            trigger={(
+              <span>
+                <Icon name="ethereum" />
+                ON-CHAIN
+              </span>
+            )}
+            pointing
+            className="icon item">
+            <Dropdown.Menu>
+              <Dropdown.Item name="deposit" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="sign-in" />
+                  DEPOSIT
+                </Segment>
+              </Dropdown.Item>
+              <Dropdown.Item name="withdraw" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="sign-out" />
+                  WITHDRAW
+                </Segment>
+              </Dropdown.Item>
+              <Dropdown.Item name="forcexit" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="reply" />
+                  FORCE EXIT
+                </Segment>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+          <Dropdown text="OFF-CHAIN" pointing className="link item">
+            <Dropdown.Menu>
+              <Dropdown.Item name="send" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="exchange" />
+                  SEND
+                </Segment>
+              </Dropdown.Item>
+              <Dropdown.Item name="send0" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="reply" />
+                  EXIT
+                </Segment>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+          <Dropdown
+            trigger={(
+              <span>
+                GET RESOURCES
+              </span>
+            )}
+            pointing
+            className="link item">
+            <Dropdown.Menu>
+              <Dropdown.Item>
+                <a href="https://goerli-faucet.slock.it/" target="_blank" rel="noopener noreferrer">
+                  <Segment textAlign="center">
+                    <Icon name="arrow circle right" color="blue" />
+                    GET ETHER
+                  </Segment>
+                </a>
+              </Dropdown.Item>
+              <Dropdown.Item name="getTokens" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="cart arrow down" />
+                  GET TOKENS
+                </Segment>
+              </Dropdown.Item>
+              <Dropdown.Item name="approve" onClick={this.props.handleItemClick} disabled={this.props.noImported}>
+                <Segment textAlign="center">
+                  <Icon name="checkmark" />
+                  APPROVE TOKENS
+                </Segment>
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        </Menu>
       </Container>
     );
   }

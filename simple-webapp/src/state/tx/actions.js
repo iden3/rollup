@@ -33,9 +33,9 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
     dispatch(sendDeposit());
     return new Promise(async (resolve) => {
       try {
-        if(amount === "0") {
-          dispatch(sendDepositError(`Deposit Error: 'The amount must be greater than 0'`));
-          resolve("Deposit Error");
+        if (amount === '0') {
+          dispatch(sendDepositError('Deposit Error: \'The amount must be greater than 0\''));
+          resolve('Deposit Error');
         } else {
           const apiOperator = new operator.cliExternalOperator(operatorUrl);
           const resOperator = await apiOperator.getState();
@@ -43,7 +43,7 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
           const res = await rollup.onchain.deposit.deposit(nodeEth, addressSC, amount, tokenId, wallet,
             ethAddress, abiRollup, gasLimit, gasMultiplier);
           dispatch(sendDepositSuccess(res, currentBatch));
-          resolve(res);
+          resolve({ res, currentBatch });
         }
       } catch (error) {
         dispatch(sendDepositError(`Deposit Error: ${error.message}`));
@@ -90,10 +90,68 @@ export function handleSendWithdraw(nodeEth, addressSC, wallet, abiRollup, op,
           const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, wallet, abiRollup,
             op, idFrom, numExitRoot, gasLimit, gasMultiplier);
           dispatch(sendWithdrawSuccess(res, currentBatch));
-          resolve(res);
+          resolve({ res, currentBatch });
         }
       } catch (error) {
         dispatch(sendWithdrawError(`Withdraw Error: ${error.message}`));
+        resolve(error);
+      }
+    });
+  };
+}
+
+function sendForceExit() {
+  return {
+    type: CONSTANTS.SEND_FORCE_EXIT,
+  };
+}
+
+function sendForceExitSuccess(res, currentBatch) {
+  return {
+    type: CONSTANTS.SEND_FORCE_EXIT_SUCCESS,
+    payload: { res, currentBatch },
+    error: '',
+  };
+}
+
+function sendForceExitError(error) {
+  return {
+    type: CONSTANTS.SEND_FORCE_EXIT_ERROR,
+    error,
+  };
+}
+
+export function handleSendForceExit(nodeEth, addressSC, amount, wallet, abiRollup, urlOperator,
+  idFrom, gasMultiplier) {
+  return function (dispatch) {
+    dispatch(sendForceExit());
+    return new Promise(async (resolve) => {
+      try {
+        // eslint-disable-next-line no-restricted-globals
+        if (isNaN(idFrom)) {
+          dispatch(sendForceExitError('An existing ID for the sender must be entered'));
+          resolve('An existing ID for the sender must be entered');
+        } else {
+          const apiOperator = new operator.cliExternalOperator(urlOperator);
+          const resId = await apiOperator.getAccountByIdx(idFrom);
+          let { address } = wallet.ethWallet;
+          if (!wallet.ethWallet.address.startsWith('0x')) {
+            address = `0x${wallet.ethWallet.address}`;
+          }
+          if (resId && resId.data.ethAddress.toUpperCase() === address.toUpperCase()) {
+            const resOperator = await apiOperator.getState();
+            const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
+            const res = await rollup.onchain.forceWithdraw.forceWithdraw(nodeEth, addressSC,
+              amount, wallet, abiRollup, idFrom, gasLimit, gasMultiplier);
+            dispatch(sendForceExitSuccess(res, currentBatch));
+            resolve({ res, currentBatch });
+          } else {
+            dispatch(sendForceExitError('This is not your ID'));
+            resolve('This is not your ID');
+          }
+        }
+      } catch (error) {
+        dispatch(sendSendError(`Send Error: ${error.message}`));
         resolve(error);
       }
     });
@@ -150,10 +208,10 @@ function sendSend() {
   };
 }
 
-function sendSendSuccess(currentBatch) {
+function sendSendSuccess(nonce, currentBatch) {
   return {
     type: CONSTANTS.SEND_SEND_SUCCESS,
-    payload: currentBatch,
+    payload: { nonce, currentBatch },
     error: '',
   };
 }
@@ -165,19 +223,23 @@ function sendSendError(error) {
   };
 }
 
-export function handleSendSend(op, idTo, amount, wallet, tokenId, fee, idFrom, urlOperator) {
+export function handleSendSend(urlOperator, idTo, amount, wallet, tokenId, fee, idFrom) {
   return function (dispatch) {
     dispatch(sendSend());
     return new Promise(async (resolve) => {
       try {
-        if(isNaN(idFrom)) {
+        // eslint-disable-next-line no-restricted-globals
+        if (isNaN(idFrom)) {
           dispatch(sendSendError('An existing ID for the sender must be entered'));
           resolve('An existing ID for the sender must be entered');
-        } else if(isNaN(idTo)) {
+        // eslint-disable-next-line no-restricted-globals
+        } else if (isNaN(idTo)) {
           dispatch(sendSendError('An existing ID for the receiver must be entered'));
           resolve('An existing ID for the receiver must be entered');
-        } else if(fee === "0") {
-          dispatch(sendSendError('If a fee greater than 1 token is not entered, the operator will not forge the transaction'));
+        } else if (fee === '0') {
+          dispatch(sendSendError(
+            'If a fee greater than 1 token is not entered,the operator will not forge the transaction',
+          ));
           resolve('If a fee greater than 1 token is not entered, the operator will not forge the transaction');
         } else {
           const item = localStorage.getItem('nonceObject');
@@ -196,10 +258,10 @@ export function handleSendSend(op, idTo, amount, wallet, tokenId, fee, idFrom, u
           if (resId && resId.data.ethAddress.toUpperCase() === address.toUpperCase()) {
             const resOperator = await apiOperator.getState();
             const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-            const res = await rollup.offchain.send.send(op, idTo, amount, wallet, tokenId,
+            const res = await rollup.offchain.send.send(urlOperator, idTo, amount, wallet, tokenId,
               fee, idFrom, undefined, nonceObject);
             localStorage.setItem('nonceObject', JSON.stringify(res.nonceObject));
-            dispatch(sendSendSuccess(currentBatch));
+            dispatch(sendSendSuccess(res.nonce, currentBatch));
             resolve(res);
           } else {
             dispatch(sendSendError('This is not your ID'));
@@ -241,9 +303,9 @@ export function handleApprove(addressTokens, abiTokens, wallet, amountToken, add
     dispatch(approve());
     return new Promise(async (resolve) => {
       try {
-        if(amountToken === "0") {
-          dispatch(approveError(`The amount of tokens must be greater than 0`));
-          resolve("Approve Error");
+        if (amountToken === '0') {
+          dispatch(approveError('The amount of tokens must be greater than 0'));
+          resolve('Approve Error');
         } else {
           const provider = new ethers.providers.JsonRpcProvider(node);
           let walletEth = new ethers.Wallet(wallet.ethWallet.privateKey);
@@ -305,7 +367,7 @@ export function handleGetTokens(node, addressTokens, wallet) {
         resolve(res);
       } catch (error) {
         dispatch(getTokensError(`Get Tokens Error: ${error.message}`));
-        resolve(error.message);
+        resolve(error);
       }
     });
   };

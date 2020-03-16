@@ -21,18 +21,15 @@ const initialState = {
   balance: '0.0',
   tokens: '0',
   tokensR: '0',
+  tokensE: '0',
   tokensA: '0',
+  tokensTotal: '0',
   txs: [],
   txsExits: [],
   chainId: -1,
   errorInfoAccount: '',
   gasMultiplier: 2,
-  isLoadingInfoOperator: false,
-  currentBlock: 0,
-  currentEra: 0,
-  currentSlot: 0,
   currentBatch: 0,
-  errorInfoOperator: '',
 };
 
 function general(state = initialState, action) {
@@ -139,6 +136,7 @@ function general(state = initialState, action) {
         tokensR: action.payload.tokensR,
         tokensE: action.payload.tokensE,
         tokensA: action.payload.tokensA,
+        tokensTotal: action.payload.tokensTotal,
         txs: action.payload.txs,
         txsExits: action.payload.txsExits,
         errorInfoAccount: '',
@@ -152,6 +150,7 @@ function general(state = initialState, action) {
         tokensR: '0',
         tokensE: '0',
         tokensA: '0',
+        tokensTotal: '0',
       };
     case CONSTANTS.CHECK_APPROVED_TOKENS_ERROR:
       return {
@@ -178,30 +177,14 @@ function general(state = initialState, action) {
         ...state,
         gasMultiplier: action.payload,
       };
-    case CONSTANTS.INFO_OPERATOR:
+    case CONSTANTS.GET_CURRENT_BATCH:
       return {
         ...state,
-        isLoadingInfoOperator: true,
-        errorInfoOperator: '',
+        currentBatch: action.payload,
       };
-    case CONSTANTS.INFO_OPERATOR_SUCCESS:
+    case CONSTANTS.GET_CURRENT_BATCH_ERROR:
       return {
         ...state,
-        isLoadingInfoOperator: false,
-        currentBlock: action.payload.currentBlock,
-        currentEra: action.payload.currentEra,
-        currentSlot: action.payload.currentSlot,
-        currentBatch: action.payload.currentBatch,
-        errorInfoOperator: '',
-      };
-    case CONSTANTS.INFO_OPERATOR_ERROR:
-      return {
-        ...state,
-        isLoadingInfoOperator: false,
-        errorInfoOperator: action.error,
-        currentBlock: state.currentBlock,
-        currentEra: state.currentEra,
-        currentSlot: state.currentSlot,
         currentBatch: state.currentBatch,
       };
     default:

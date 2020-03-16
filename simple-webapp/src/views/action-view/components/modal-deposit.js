@@ -6,8 +6,9 @@ import {
 } from 'semantic-ui-react';
 
 import ModalError from './modal-error';
+import ButtonGM from './gm-buttons';
 import { handleSendDeposit } from '../../../state/tx/actions';
-import { handleInfoOperator } from '../../../state/general/actions';
+import { handleStateDeposit } from '../../../state/tx-state/actions';
 
 const web3 = require('web3');
 
@@ -18,7 +19,7 @@ class ModalDeposit extends Component {
       modalDeposit: PropTypes.bool.isRequired,
       toggleModalDeposit: PropTypes.func.isRequired,
       handleSendDeposit: PropTypes.func.isRequired,
-      handleInfoOperator: PropTypes.func.isRequired,
+      handleStateDeposit: PropTypes.func.isRequired,
       tokensA: PropTypes.string.isRequired,
       gasMultiplier: PropTypes.number.isRequired,
       desWallet: PropTypes.object.isRequired,
@@ -36,32 +37,37 @@ class ModalDeposit extends Component {
 
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
-    handeClick = async () => {
+    handleClick = async () => {
       const {
-        config, abiRollup, desWallet,
+        config, abiRollup, desWallet, tokensA, gasMultiplier,
       } = this.props;
       let amount;
       try {
         amount = web3.utils.toWei(this.amountRef.current.value, 'ether');
       } catch (err) {
-        amount = "0";
+        amount = '0';
       }
       const tokenId = Number(this.tokenIdRef.current.value);
       const { nodeEth, operator } = config;
       const addressSC = config.address;
-      if (parseInt(amount, 10) > parseInt(this.props.tokensA, 10)) {
+      if (parseInt(amount, 10) > parseInt(tokensA, 10)) {
         this.setState({ error: '0' });
         this.toggleModalError();
       } else {
         this.props.toggleModalDeposit();
         const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, tokenId, desWallet,
-          undefined, abiRollup, this.props.gasMultiplier, operator);
-        this.props.handleInfoOperator(operator);
+          undefined, abiRollup, gasMultiplier, operator);
+        const walletEthAddress = desWallet.ethWallet.address;
+        const filters = {};
+        if (walletEthAddress.startsWith('0x')) filters.ethAddr = walletEthAddress;
         if (res.message !== undefined) {
           if (res.message.includes('insufficient funds')) {
             this.setState({ error: '1' });
             this.toggleModalError();
           }
+        }
+        if (res.res) {
+          this.props.handleStateDeposit(res, operator, filters, amount);
         }
       }
     }
@@ -89,10 +95,13 @@ class ModalDeposit extends Component {
                     <input type="text" disabled ref={this.tokenIdRef} id="token-id" defaultValue="0" />
                   </label>
                 </Form.Field>
+                <Form.Field>
+                  <ButtonGM />
+                </Form.Field>
               </Form>
             </Modal.Content>
             <Modal.Actions>
-              <Button color="blue" onClick={this.handeClick}>
+              <Button color="blue" onClick={this.handleClick}>
                 <Icon name="sign-in" />
                 Deposit
               </Button>
@@ -111,6 +120,7 @@ const mapStateToProps = (state) => ({
   config: state.general.config,
   abiRollup: state.general.abiRollup,
   desWallet: state.general.desWallet,
+  gasMultiplier: state.general.gasMultiplier,
 });
 
-export default connect(mapStateToProps, { handleSendDeposit, handleInfoOperator })(ModalDeposit);
+export default connect(mapStateToProps, { handleSendDeposit, handleStateDeposit })(ModalDeposit);

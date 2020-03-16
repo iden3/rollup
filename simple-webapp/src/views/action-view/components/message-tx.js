@@ -8,6 +8,7 @@ class MessageTx extends Component {
   static propTypes = {
     isLoadingDeposit: PropTypes.bool.isRequired,
     isLoadingWithdraw: PropTypes.bool.isRequired,
+    isLoadingForceExit: PropTypes.bool.isRequired,
     isLoadingSend: PropTypes.bool.isRequired,
     isLoadingApprove: PropTypes.bool.isRequired,
     isLoadingGetTokens: PropTypes.bool.isRequired,
@@ -63,7 +64,7 @@ class MessageTx extends Component {
     }
     if (this.props.isLoadingDeposit === true || this.props.isLoadingWithdraw === true
       || this.props.isLoadingSend === true || this.props.isLoadingApprove === true
-      || this.props.isLoadingGetTokens === true) {
+      || this.props.isLoadingGetTokens === true || this.props.isLoadingForceExit === true) {
       return (
         <Message icon color="orange">
           <Icon name="circle notched" loading />
@@ -141,6 +142,7 @@ class MessageTx extends Component {
 const mapStateToProps = (state) => ({
   isLoadingDeposit: state.transactions.isLoadingDeposit,
   isLoadingWithdraw: state.transactions.isLoadingWithdraw,
+  isLoadingForceExit: state.transactions.isLoadingForceExit,
   isLoadingSend: state.transactions.isLoadingSend,
   isLoadingApprove: state.transactions.isLoadingApprove,
   isLoadingGetTokens: state.transactions.isLoadingGetTokens,

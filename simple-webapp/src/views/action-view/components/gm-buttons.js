@@ -3,7 +3,12 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { Button } from 'semantic-ui-react';
 import { selectGasMultiplier } from '../../../state/general/actions';
-import { GAS_MULTIPLIER } from './constants';
+
+const GAS_MULTIPLIER = {
+  SLOW: 1,
+  AVG: 2,
+  FAST: 3,
+};
 
 class ButtonGM extends Component {
   static propTypes = {

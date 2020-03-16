@@ -199,11 +199,11 @@ function infoAccount() {
   };
 }
 
-function infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, txs, txsExits) {
+function infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits) {
   return {
     type: CONSTANTS.INFO_ACCOUNT_SUCCESS,
     payload: {
-      balance, tokens, tokensR, tokensA, tokensE, txs, txsExits,
+      balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits,
     },
     error: '',
   };
@@ -249,10 +249,12 @@ export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operat
       const tokensRNum = getTokensRollup(allTxs, txs);
       const tokensENum = await getTokensExit(txsExits, apiOperator, wallet, allTxs, contractRollup);
       tokens = tokensHex.toString();
+      const tokensTotalNum = BigInt(tokensHex) + tokensENum + tokensRNum;
+      const tokensTotal = tokensTotalNum.toString();
       tokensA = tokensAHex.toString();
       tokensE = tokensENum.toString();
       tokensR = tokensRNum.toString();
-      dispatch(infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, txs, txsExits));
+      dispatch(infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits));
     } catch (error) {
       dispatch(infoAccountError(error));
     }
@@ -373,44 +375,29 @@ export function selectGasMultiplier(num) {
   };
 }
 
-function getInfoOperator() {
+function getInfoCurrentBatch(currentBatch) {
   return {
-    type: CONSTANTS.INFO_OPERATOR,
+    type: CONSTANTS.GET_CURRENT_BATCH,
+    payload: currentBatch,
   };
 }
 
-function getInfoOperatorSuccess(currentBlock, currentEra, currentSlot, currentBatch) {
+function getInfoCurrentBatchError() {
   return {
-    type: CONSTANTS.INFO_OPERATOR_SUCCESS,
-    payload: {
-      currentBlock, currentEra, currentSlot, currentBatch,
-    },
-    error: '',
+    type: CONSTANTS.GET_CURRENT_BATCH_ERROR,
   };
 }
 
-function getInfoOperatorError(error) {
-  return {
-    type: CONSTANTS.INFO_OPERATOR_ERROR,
-    error,
-  };
-}
-
-
-export function handleInfoOperator(operatorUrl) {
+export function getCurrentBatch(urlOperator) {
   return async function (dispatch) {
-    dispatch(getInfoOperator());
+    let currentBatch;
     try {
-      const apiOperator = new operator.cliExternalOperator(operatorUrl);
-      const res = await apiOperator.getState();
-      const generalInfo = res.data;
-      const { currentBlock } = generalInfo;
-      const { currentEra } = generalInfo.posSynch;
-      const { currentSlot } = generalInfo.posSynch;
-      const currentBatch = generalInfo.rollupSynch.lastBatchSynched;
-      dispatch(getInfoOperatorSuccess(currentBlock, currentEra, currentSlot, currentBatch));
-    } catch (error) {
-      dispatch(getInfoOperatorError(error));
+      const apiOperator = new operator.cliExternalOperator(urlOperator);
+      const resOperator = await apiOperator.getState();
+      currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
+      dispatch(getInfoCurrentBatch(currentBatch));
+    } catch (err) {
+      dispatch(getInfoCurrentBatchError());
     }
   };
 }

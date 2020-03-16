@@ -6,7 +6,7 @@ import {
   Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
 import { handleSendSend, handleGetIds } from '../../../state/tx/actions';
-import { handleInfoOperator } from '../../../state/general/actions';
+import { handleStateSend } from '../../../state/tx-state/actions';
 import { hexToPoint } from '../../../utils/utils';
 
 const web3 = require('web3');
@@ -17,11 +17,12 @@ class ModalSend extends Component {
       config: PropTypes.object.isRequired,
       modalSend: PropTypes.bool.isRequired,
       toggleModalSend: PropTypes.func.isRequired,
-      handleInfoOperator: PropTypes.func.isRequired,
       handleSendSend: PropTypes.func.isRequired,
+      handleStateSend: PropTypes.func.isRequired,
       desWallet: PropTypes.object.isRequired,
       babyjub: PropTypes.string.isRequired,
       activeItem: PropTypes.string.isRequired,
+      pendingOffchain: PropTypes.array.isRequired,
     }
 
     constructor(props) {
@@ -38,6 +39,8 @@ class ModalSend extends Component {
         idsReceiver: [],
         idTo: NaN,
         idFrom: NaN,
+        babyJubReceiver: '',
+        idsSend: true,
       };
     }
 
@@ -54,22 +57,25 @@ class ModalSend extends Component {
         idTo = Number(this.state.idTo);
       }
       const idFrom = Number(this.state.idFrom);
-      const { operator } = config;
       this.toggleCloseModal();
-      await this.props.handleSendSend(operator, idTo, this.state.amount, desWallet,
-        this.state.tokenId, this.state.fee, idFrom, config.operator);
-      this.props.handleInfoOperator(operator);
+      const res = await this.props.handleSendSend(config.operator, idTo, this.state.amount, desWallet,
+        this.state.tokenId, this.state.fee, idFrom);
+      if (res.nonce || res.nonce === 0) {
+        this.props.handleStateSend(res, idFrom, config.operator, this.state.amount,
+          this.state.babyJubReceiver, this.props.pendingOffchain, idTo);
+      }
     }
 
     getIDs = async () => {
       const { operator } = this.props.config;
-      this.setState({ idTo: NaN, idFrom: NaN});
+      this.setState({ idTo: NaN, idFrom: NaN, idsSend: true });
       const senderBabyjubPoint = hexToPoint(this.props.babyjub);
       const sender = { ax: senderBabyjubPoint[0], ay: senderBabyjubPoint[1] };
       const idsSender = await this.props.handleGetIds(operator, sender, this.props.babyjub);
       let idsReceiver = [];
       if (this.props.activeItem !== 'send0') {
         try {
+          this.setState({ babyJubReceiver: this.babyjubRef.current.value });
           const receiverBabyjubPoint = hexToPoint(this.babyjubRef.current.value);
           const receiver = { ax: receiverBabyjubPoint[0], ay: receiverBabyjubPoint[1] };
           idsReceiver = await this.props.handleGetIds(operator, receiver, this.babyjubRef.current.value);
@@ -79,30 +85,53 @@ class ModalSend extends Component {
       }
       let amount;
       let fee;
+      let tokenId;
       try {
         amount = web3.utils.toWei(this.amountRef.current.value, 'ether');
-      } catch(err){
-        amount = "0";
+      } catch (err) {
+        amount = '0';
       }
       try {
         fee = web3.utils.toWei(this.feeRef.current.value, 'ether');
-      } catch(err){
-        fee = "0";
+      } catch (err) {
+        fee = '0';
       }
-      const tokenId = Number(this.tokenIdRef.current.value);
+      try {
+        tokenId = Number(this.tokenIdRef.current.value);
+      } catch (err) {
+        tokenId = '0';
+      }
       this.setState({
         amount, fee, tokenId, idsSender, idsReceiver,
       });
       this.toggleModalChange();
     }
 
-    handleChangeFrom = (e, { value }) => this.setState({ idFrom: value });
+    handleChangeFrom = (e, { value }) => {
+      this.setState(
+        { idFrom: value },
+        () => {
+          if ((this.state.idFrom && this.state.idTo) || this.props.activeItem === 'send0') {
+            this.setState({ idsSend: false });
+          }
+        },
+      );
+    }
 
-    handleChangeTo = (e, { value }) => this.setState({ idTo: value });
+    handleChangeTo = (e, { value }) => {
+      this.setState(
+        { idTo: value },
+        () => {
+          if (this.state.idFrom && this.state.idTo) {
+            this.setState({ idsSend: false });
+          }
+        },
+      );
+    }
 
     idsFrom = () => {
       let dropdown;
-      if (this.state.idsSender === []) {
+      if (this.state.idsSender.length === 0) {
         dropdown = (<Dropdown placeholder="idFrom" />);
       } else {
         const ids = this.state.idsSender.filter(
@@ -133,7 +162,7 @@ class ModalSend extends Component {
             </label>
           </Form.Field>
         );
-      } else if (this.state.idsReceiver === []) {
+      } else if (this.state.idsReceiver.length === 0) {
         dropdown = (<Dropdown placeholder="idTo" />);
       } else {
         dropdown = (
@@ -228,7 +257,7 @@ class ModalSend extends Component {
               <Icon name="arrow left" />
               Previous
             </Button>
-            <Button color="blue" onClick={this.handleClick}>
+            <Button color="blue" onClick={this.handleClick} disabled={this.state.idsSend}>
               <Icon name="share" />
               Send
             </Button>
@@ -253,6 +282,9 @@ class ModalSend extends Component {
 const mapStateToProps = (state) => ({
   config: state.general.config,
   desWallet: state.general.desWallet,
+  pendingOffchain: state.txState.pendingOffchain,
 });
 
-export default connect(mapStateToProps, { handleSendSend, handleInfoOperator, handleGetIds })(ModalSend);
+export default connect(mapStateToProps, {
+  handleSendSend, handleGetIds, handleStateSend,
+})(ModalSend);

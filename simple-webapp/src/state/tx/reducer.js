@@ -4,6 +4,7 @@ const initialState = {
   tx: {},
   isLoadingDeposit: false,
   isLoadingWithdraw: false,
+  isLoadingForceExit: false,
   isLoadingSend: false,
   isLoadingApprove: false,
   isLoadingGetTokens: false,
@@ -74,6 +75,31 @@ function transactions(state = initialState, action) {
         messageOpen: true,
         error: action.error,
       };
+    case CONSTANTS.SEND_FORCE_EXIT:
+      return {
+        ...state,
+        isLoadingForceExit: true,
+        successTx: false,
+        error: '',
+      };
+    case CONSTANTS.SEND_FORCE_EXIT_SUCCESS:
+      return {
+        ...state,
+        isLoadingForceExit: false,
+        tx: action.payload.res,
+        batch: action.payload.currentBatch,
+        successTx: true,
+        messageOpen: true,
+        error: '',
+      };
+    case CONSTANTS.SEND_FORCE_EXIT_ERROR:
+      return {
+        ...state,
+        isLoadingForceExit: false,
+        successTx: false,
+        messageOpen: true,
+        error: action.error,
+      };
     case CONSTANTS.SEND_SEND:
       return {
         ...state,
@@ -89,7 +115,8 @@ function transactions(state = initialState, action) {
         successTx: false,
         successDeposit: false,
         messageOpen: true,
-        batch: action.payload,
+        batch: action.payload.currentBatch,
+        nonce: action.payload.nonce,
         error: '',
       };
     case CONSTANTS.SEND_SEND_ERROR:
@@ -180,6 +207,7 @@ function transactions(state = initialState, action) {
         ...state,
         isLoadingDeposit: false,
         isLoadingWithdraw: false,
+        isLoadingForceExit: false,
         isLoadingSend: false,
         successSend: false,
         isLoadingApprove: false,
