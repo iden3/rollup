@@ -1,8 +1,9 @@
 const fs = require('fs');
 const process = require('child_process');
+const { spawn } = require('child_process');
 const chai = require('chai');
 const path = require('path');
-const { error } = require('../src/list-errors');
+const { error } = require('../helpers/list-errors');
 const { deleteResources } = require('./config/build-resources');
 
 const walletPathDefault = path.join(__dirname, '../wallet.json');
@@ -12,7 +13,6 @@ const walletImport = path.join(__dirname, './resources/wallet-import.json');
 
 const configTest = './test/resources/config-test.json';
 const pass = 'foo';
-const { spawn } = require('child_process');
 
 const { expect } = chai;
 

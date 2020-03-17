@@ -4,19 +4,22 @@ const { fix2float } = require('../../../../js/utils');
 const { getGasPrice } = require('./utils');
 
 /**
- * @dev deposit on an existing loadAmount tree leaf
+ * @dev add new leaf to balance tree and initializes it with a load amount then transfer
+ * some amount to an account already defined in the balance tree
  * @param nodeEth URL of the ethereum node
  * @param addressSC rollup address
  * @param loadAmount initial Amount on balance tree
+ * @param amount amount to transfer
  * @param tokenId token type identifier
- * @param walletJson from this one can obtain the ethAddress and babyPubKey
- * @param passphrase for decrypt the Wallet
+ * @param walletRollup ethAddress and babyPubKey together
  * @param ethAddress allowed address to control new balance tree leaf
  * @param abi abi of rollup contract
- * @param UrlOperator URl from operator
+ * @param idTo receiver
+ * @param gasLimit transaction gas limit
+ * @param gasMultiplier multiply gas price
 */
 async function depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenId, walletRollup,
-    ethAddress, abi, toId, gasLimit = 5000000, gasMultiplier = 1) {
+    ethAddress, abi, idTo, gasLimit = 5000000, gasMultiplier = 1) {
     let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);
@@ -34,7 +37,7 @@ async function depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenI
     const amountF = fix2float(amount);
     try {
         return await contractWithSigner.depositAndTransfer(loadAmount, tokenId,
-            address, pubKeyBabyjub, toId, amountF, overrides);
+            address, pubKeyBabyjub, idTo, amountF, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

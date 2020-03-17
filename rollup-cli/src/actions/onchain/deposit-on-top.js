@@ -8,13 +8,14 @@ const { getGasPrice } = require('./utils');
  * @param addressSC rollup address
  * @param loadAmount initial balance on balance tree
  * @param tokenId token type identifier
- * @param walletJson from this one can obtain the ethAddress and babyPubKey
- * @param passphrase for decrypt the Wallet
+ * @param walletRollup ethAddress and babyPubKey together
  * @param abi abi of rollup contract
- * @param UrlOperator URl from operator
+ * @param idTo leaf identifier to deposit into
+ * @param gasLimit transaction gas limit
+ * @param gasMultiplier multiply gas price
 */
 async function depositOnTop(nodeEth, addressSC, loadAmount, tokenId, walletRollup,
-    abi, IdTo, gasLimit = 5000000, gasMultiplier = 1) {
+    abi, idTo, gasLimit = 5000000, gasMultiplier = 1) {
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);
@@ -27,7 +28,7 @@ async function depositOnTop(nodeEth, addressSC, loadAmount, tokenId, walletRollu
     };
 
     try {
-        return await contractWithSigner.depositOnTop(IdTo, loadAmount, tokenId, overrides);
+        return await contractWithSigner.depositOnTop(idTo, loadAmount, tokenId, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

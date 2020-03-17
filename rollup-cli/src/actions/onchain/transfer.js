@@ -4,18 +4,20 @@ const { fix2float } = require('../../../../js/utils');
 const { getGasPrice } = require('./utils');
 
 /**
- * @dev deposit on an existing balance tree leaf
+ * @dev transfer between two accounts already defined in tree leaf
  * @param nodeEth URL of the ethereum node
  * @param addressSC rollup address
  * @param amount initial balance on balance tree
  * @param tokenId token type identifier
- * @param walletJson from this one can obtain the ethAddress and babyPubKey
- * @param passphrase for decrypt the Wallet
+ * @param walletRollup ethAddress and babyPubKey together
  * @param abi abi of rollup contract
- * @param UrlOperator URl from operator
+ * @param idFrom sender
+ * @param idTo receiver
+ * @param gasLimit transaction gas limit
+ * @param gasMultiplier multiply gas price
 */
 async function transfer(nodeEth, addressSC, amount, tokenId, walletRollup,
-    abi, fromId, toId, gasLimit = 5000000, gasMultiplier = 1) {
+    abi, idFrom, idTo, gasLimit = 5000000, gasMultiplier = 1) {
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);
@@ -29,7 +31,7 @@ async function transfer(nodeEth, addressSC, amount, tokenId, walletRollup,
 
     const amountF = fix2float(amount);
     try {
-        return contractWithSigner.transfer(fromId, toId, amountF, tokenId, overrides);
+        return contractWithSigner.transfer(idFrom, idTo, amountF, tokenId, overrides);
     } catch (error) {
         throw new Error(`Message error: ${error.message}`);
     }

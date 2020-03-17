@@ -8,10 +8,11 @@ const { getGasPrice } = require('./utils');
  * @param nodeEth URL of the ethereum node
  * @param addressSC rollup address
  * @param amount amount to transfer to the leaf of exit tree
- * @param walletJson from this one can obtain the ethAddress and babyPubKey
- * @param passphrase for decrypt the Wallet
+ * @param walletRollup ethAddress and babyPubKey together
  * @param abi abi of rollup contract
- * @param UrlOperator URl from operator
+ * @param idFrom transfer funds from this id to exit tree
+ * @param gasLimit transaction gas limit
+ * @param gasMultiplier multiply gas price
  */
 async function forceWithdraw(nodeEth, addressSC, amount, walletRollup, abi, idFrom, gasLimit = 5000000, gasMultiplier = 1) {
     let walletEth = walletRollup.ethWallet.wallet;
