@@ -7,6 +7,7 @@ const { timeout, buildPublicInputsSm, generateCall } = require("../src/utils");
 const { stringifyBigInts } = require("snarkjs");
 const { loadHashChain } = require("../../rollup-utils/rollup-utils");
 
+// Logging state information
 const strState = [
     "Synchronizing",
     "Updating operators",
@@ -17,6 +18,7 @@ const strState = [
     "Mining transaction"
 ];
 
+// server-proof states
 const stateServer = {
     IDLE: 0,
     ERROR: 1,
@@ -24,6 +26,7 @@ const stateServer = {
     FINISHED: 3,
 };
 
+// Enum states for loop manager
 const state = {
     SYNCHRONIZING: 0,
     UPDATE_OPERATORS: 1,
@@ -34,7 +37,27 @@ const state = {
     MINING: 6,
 };
 
+/**
+ * Manage operator actions
+ * - checks when the operator has to forge a batch
+ * - prepare batch to be commited and forged
+ * - sends zkSnark inputs to server-proof
+ * - get proof from server-proof
+ * - send ethereum transaction to Rollup PoS
+ */
 class LoopManager{
+    /**
+     * Initialize loop manager
+     * @param {Object} rollupSynch - Rollup core synchronizer 
+     * @param {Object} posSynch - Rollup PoS synchronizer
+     * @param {Object} poolTx - Transaction pool
+     * @param {Object} opManager - Client to interact with Rollup PoS
+     * @param {Object} cliServerProof - Client to interact woth server-proof
+     * @param {String} logLevel - logger level
+     * @param {String} nodeUrl - ethereum node url
+     * @param {Object} timeouts - Configure timeouts
+     * @param {Number} pollingTimeout - Time to wait to consider a transaction failed
+     */
     constructor(
         rollupSynch, 
         posSynch,
@@ -66,6 +89,10 @@ class LoopManager{
         this._initLogger(logLevel);
     }
 
+    /**
+     * Initilaize all timeouts
+     * @param {Object} timeouts 
+     */
     _initTimeouts(timeouts){
         const errorDefault = 5000;
         const nextStateInit = 5000;
@@ -80,6 +107,10 @@ class LoopManager{
         };
     }
 
+    /**
+     * Initilaize logger
+     * @param {String} logLevel 
+     */
     _initLogger(logLevel) {
         // config winston
         var options = {
@@ -99,10 +130,18 @@ class LoopManager{
         });
     }
 
+    /**
+     * Get public contract variables
+     */
     async _init(){
         this.slotDeadline = await this.posSynch.getSlotDeadline();
     }
 
+    /**
+     * Main loop
+     * Detect in which state is the manager
+     * Each state has its own action to be triggered
+     */
     async startLoop(){
         await this._init();
 
@@ -209,17 +248,29 @@ class LoopManager{
             }}
     }
 
-    // seed encoded as an string
+    /**
+     * Load hash chain
+     * @param {String} seed - seed encoded as an string
+     */
     async loadSeedHashChain(seed){
         this.hashChain = loadHashChain(seed);
     }
-    
+
+    /**
+     * Gets current index for hash chain
+     * @param {Number} opId - operator identifier
+     * @returns {Number} - hash chain index
+     */
     async _getIndexHashChain(opId){
         const lastHash = await this.posSynch.getLastCommitedHash(opId);
         const index = this.hashChain.findIndex(hash => hash === lastHash);
         return index;
     }
 
+    /**
+     * Checks if synchronizers, either rollup core and rollup PoS,
+     * are fully synchronized
+     */
     async _fullySynch() {
         this.timeouts.NEXT_STATE = 5000;
         // check rollup is fully synched
@@ -233,6 +284,9 @@ class LoopManager{
         }
     }
 
+    /**
+     * Checks if operator loaded is registered on Rollup PoS
+     */
     async _checkRegister() {
         const listOpRegistered = await this.posSynch.getOperators();
         await this._purgeRegisterOperators(listOpRegistered);
@@ -256,6 +310,10 @@ class LoopManager{
         }
     }
 
+    /**
+     * Update list of operators
+     * @param {Object} listOpRegistered 
+     */
     async _purgeRegisterOperators(listOpRegistered) {
         // Delete active operators that are no longer registered
         for (const index in this.registerId) {
@@ -265,6 +323,9 @@ class LoopManager{
         }
     }
 
+    /**
+     * Check if operator registered has won a slot to forge
+     */
     async _checkWinner() {
         const winners = await this.posSynch.getRaffleWinners();
         const slots = await this.posSynch.getSlotWinners();
@@ -294,6 +355,10 @@ class LoopManager{
         }
     }
 
+    /**
+     * Wait for winner slot
+     * @param {Number} currentBlock 
+     */
     async _checkWaitForge(currentBlock) {
         this.timeouts.NEXT_STATE = 5000;
         if (currentBlock >= this.infoCurrentBatch.fromBlock) {
@@ -303,6 +368,11 @@ class LoopManager{
         } 
     }
 
+    /**
+     * Gets batch builder
+     * Checks server-proof availability
+     * Send zkSnark input to sever-proof
+     */
     async _buildBatch() {
         // Check if batch has been built
         if (this.infoCurrentBatch.waiting) this.infoCurrentBatch.waiting = false;
@@ -333,6 +403,11 @@ class LoopManager{
         }
     }
 
+    /**
+     * Checks state of server-proof
+     * If server-proof finishes correctly:
+     * - sends proof to Rollup PoS using `commitAndForge` batch
+     */
     async _stateProof() {
         const res = await this.cliServerProof.getStatus();
         const statusServer = res.data.state;
@@ -439,6 +514,9 @@ class LoopManager{
         }
     }
 
+    /**
+     * Monitors `commitAnsForge` transaction
+     */
     async _monitorTx(){
 
         if (!this.overwriteTx)
@@ -517,6 +595,11 @@ class LoopManager{
             });
     }
 
+    /**
+     * Checks and log if slot deadline has been reached
+     * @param {Number} currentBlock
+     * @returns {Bool} - true iif slot deadline has been reached, false otherwise  
+     */
     async _blockDeadline(currentBlock){
         if (currentBlock >= this.infoCurrentBatch.toBlock){
             let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
@@ -528,6 +611,12 @@ class LoopManager{
         return false;
     }
 
+    /**
+     * Initialize batch information
+     * @param {Number} fromBlock - Ethereum block when the operator is able to forge  
+     * @param {Number} toBlock - Ethereum block until the operatir is able to forge
+     * @param {Number} opId - operator identifier
+     */
     _setInfoBatch(fromBlock, toBlock, opId){
         this.infoCurrentBatch.fromBlock = fromBlock;
         this.infoCurrentBatch.toBlock = toBlock;
@@ -540,14 +629,19 @@ class LoopManager{
         else this.infoCurrentBatch.retryTimes = 0;
     }
 
+    /**
+     * Reset batch information
+     */
     _resetInfoBatch(){
         this.infoCurrentBatch = {};
     }
 
-    _resetInfoTx(){
-        this.currentTx = {};
-    }
-
+    /**
+     * Initialize transaction information 
+     * @param {Object} tx - ethereum transaction
+     * @param {String} transactionHash - transaction hash
+     * @param {Number} indexHash - hashchain index
+     */
     _setInfoTx(tx, transactionHash, indexHash){
         this.currentTx.startTx = performance.now();
         this.currentTx.txHash = transactionHash;
@@ -556,6 +650,17 @@ class LoopManager{
         this.currentTx.indexHash = indexHash;
     }
 
+    /**
+     * Reset transaction information
+     */
+    _resetInfoTx(){
+        this.currentTx = {};
+    }
+
+    /**
+     * Update ethereum transaction
+     * @param {String} transactionHash - new transaction hash
+     */
     _updateTx(transactionHash){
         // set double gas price 
         this.currentTx.tx.gasPrice = (BigInt(this.currentTx.tx.gasPrice) * BigInt(2)).toString(); 
@@ -564,6 +669,11 @@ class LoopManager{
         this.currentTx.txHash = transactionHash;
     }
 
+    /**
+     * Checks rollup core contract parameters:
+     * - state root
+     * - mining on-chain hash
+     */
     async _checkStateRollup(){
         const currentStateRoot = await this.rollupSynch.getCurrentStateRoot();
         const currentOnchainHash = await this.rollupSynch.getMiningOnchainHash();
@@ -580,6 +690,13 @@ class LoopManager{
         }
     }
 
+    /**
+     * Actions due to error:
+     * - log error message
+     * - reset transaction and batch
+     * - go to SYNCH state
+     * @param {String} reason - Error message 
+     */
     _errorTx(reason) { 
         this._logTxKO(reason); 
         this._resetInfoTx();
@@ -588,6 +705,9 @@ class LoopManager{
         this.state = state.SYNCHRONIZING;
     }
 
+    /**
+     * Send directly to logger information regarding an overwrite transaction action
+     */
     _logTxOverwrite(){
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
         info += " | info ==> ";
@@ -595,6 +715,9 @@ class LoopManager{
         this.logger.info(info);
     }
 
+    /**
+     * Sends directly to logger information regarding successful mined transaction
+     */
     _logTxOK(){
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
         info += " | info ==> ";
@@ -602,6 +725,10 @@ class LoopManager{
         this.logger.info(info);
     }
 
+    /**
+     * Sends directly to logger information regarding error mined transaction
+     * @param {String} reason 
+     */
     _logTxKO(reason){
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
         info += `${chalk.bgRed.black("transaction info")}`;
@@ -612,6 +739,9 @@ class LoopManager{
         this.logger.info(info);
     }
 
+    /**
+     * Sends directly to logger information regarding resend ethereum transaction
+     */
     _logResendTx(){
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
         info += " | info ==> ";

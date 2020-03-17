@@ -27,6 +27,7 @@ const logger = winston.createLogger({
 // global vars
 const port = 10001;
 
+// Enum proof states
 const state = {
     IDLE: 0,
     ERROR: 1,
@@ -36,6 +37,8 @@ const state = {
 let currentState = state.IDLE;
 let isCancel = false;
 
+// Default time for proog genration is set to 5 seconds
+// Proof generation time could be changed by passing in into the first parameter
 let timeoutProof;
 if( process.argv[2] == undefined) timeoutProof = 5000;
 else timeoutProof = Number(process.argv[2]);
@@ -47,6 +50,7 @@ const testProof = {
     publicInputs: undefined,
 };
 
+// Simulate proof generation
 async function genProof() {
     const numLoops = timeoutProof / 1000;
     const loopTimeout = timeoutProof / numLoops;
@@ -67,6 +71,10 @@ app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors());
 app.use(morgan("dev"));
 
+/**
+ * POST
+ * Receives zkSnark inputs and generates proof
+ */
 app.post("/input", async (req, res) => {
     logger.info("input received");
     currentState = state.PENDING;
@@ -74,6 +82,11 @@ app.post("/input", async (req, res) => {
     res.sendStatus(200);
 });
 
+/**
+ * GET
+ * Checks server status
+ * If proof has been done, proof result is attached
+ */
 app.get("/status", async (req, res) => {
     const ret = {};
     ret.state = currentState;
@@ -83,6 +96,10 @@ app.get("/status", async (req, res) => {
     res.json(ret);
 });
 
+/**
+ * POST
+ * Cancels proof computation
+ */
 app.post("/cancel", async (req, res) => {
     if (currentState == state.PENDING) isCancel = true;
     currentState = state.IDLE;
@@ -90,12 +107,14 @@ app.post("/cancel", async (req, res) => {
     res.sendStatus(200);
 });
 
-///// Run server
+
+///// Run server locally
 const server = app.listen(port, "127.0.0.1", () => {
     const address = server.address().address;
     logger.info(`Server proof running on http://${address}:${port}`);
 });
 
+///// Run server LAN
 const serverLAN = app.listen(port, ip.address(), () => {
     const address = serverLAN.address().address;
     logger.info(`Server proof running on http://${address}:${port}`);

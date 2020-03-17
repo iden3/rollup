@@ -6,7 +6,7 @@ const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
 const { float2fix } = require("../../js/utils");
-const { timeout } = require("../src/utils");
+const { timeout, purgeArray } = require("../src/utils");
 const Constants = require("./constants");
 
 // offChainTx --> From | To | Amount |
@@ -31,7 +31,25 @@ const lastPurgedEventKey = "last-purged-event";
 // cache keys
 const lastPurgedKey = "last-purged";
 
+/**
+* Synchronize Rollup core smart contract 
+*/
 class Synchronizer {
+    /**
+     * Initialize Synchronizer parameters
+     * @param {Object} db - Synchronizer database
+     * @param {Object} treeDb - Rollup database
+     * @param {String} nodeUrl - Ethereum node url
+     * @param {String} rollupAddress - Rollup core address
+     * @param {Object} rollupABI - Rollup core ABI interface
+     * @param {String} rollupPoSAddress - Rollup PoS address
+     * @param {Object} rollupPoSABI - Rollup PoS ABI interface
+     * @param {String} rollupCreationHash - Rollup core creation hash 
+     * @param {String} ethAddress - Address to make pure/view calls
+     * @param {String} logLevel - Logger level
+     * @param {Number} mode - Synchronize performance mode
+     * @param {Object} timeouts - Configure timeouts
+     */
     constructor(
         db,
         treeDb,
@@ -40,7 +58,7 @@ class Synchronizer {
         rollupABI,
         rollupPoSAddress,
         rollupPoSABI,
-        creationHash,
+        rollupCreationHash,
         ethAddress,
         logLevel,
         mode,
@@ -51,7 +69,7 @@ class Synchronizer {
         this.nodeUrl = nodeUrl;
         this.rollupAddress = rollupAddress;
         this.rollupPoSAddress = rollupPoSAddress;
-        this.creationHash = creationHash;
+        this.creationHash = rollupCreationHash;
         this.treeDb = treeDb;
         this.ethAddress = ethAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
@@ -66,6 +84,10 @@ class Synchronizer {
         this._initLogger(logLevel);
     }
 
+    /**
+     * Initilaize all timeouts
+     * @param {Object} timeouts 
+     */
     _initTimeouts(timeouts){
         const errorDefault = 5000;
         const nextLoopDefault = 5000;
@@ -88,6 +110,10 @@ class Synchronizer {
         };
     }
 
+    /**
+     * Initilaize logger
+     * @param {String} logLevel 
+     */
     _initLogger(logLevel) {
         // config winston
         var options = {
@@ -107,14 +133,30 @@ class Synchronizer {
         });
     }
 
+    /**
+     * Convert to string
+     * normally used in order to add it to database
+     * @param {Any} - any input parameter
+     * @returns {String}
+     */
     _toString(val) {
         return JSON.stringify(stringifyBigInts(val));
     }
 
+    /**
+     * Get from string
+     * normally used ti get from database
+     * @param {String} - string to parse
+     * @returns {Any} 
+     */
     _fromString(val) {
         return unstringifyBigInts(JSON.parse(val));
     }
 
+    /**
+     * Get public contract variables
+     * Start logger
+     */
     async _init(){
         // Initialize class variables
         this.creationBlock = 0;
@@ -138,6 +180,11 @@ class Synchronizer {
         }, this.timeouts.LOGGER );
     }
 
+    /**
+     * Main loop
+     * Synchronize Rollup core contract
+     * Maintain Rollup database
+     */
     async synchLoop() {
         await this._init();
 
@@ -226,6 +273,12 @@ class Synchronizer {
         }
     }
 
+    /**
+     * Sends message directly to logger
+     * specifically for rollback functionality
+     * @param {Number} numBatch 
+     * @param {String} message 
+     */
     _infoRollback(numBatch, message){
         let info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
         info += `${chalk.bgYellow.black("rollback info")}`;
@@ -234,6 +287,14 @@ class Synchronizer {
         this.logger.info(info);
     }
 
+    /**
+     * Update general synchronizer information
+     * logger prints this information on logger main loop
+     * @param {Number} currentBlock - current etehreum block 
+     * @param {Number} lastSynchBlock - last etehreum block synchronized
+     * @param {Number} currentBatchDepth - current rollup batch
+     * @param {Number} lastBatchSaved - last rollup batch synchronized
+     */
     _fillInfo(currentBlock, lastSynchBlock, currentBatchDepth, lastBatchSaved){
         this.info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
         this.info += `current block number: ${currentBlock} | `;
@@ -243,6 +304,11 @@ class Synchronizer {
         this.info += `Synched: ${chalk.white.bold(`${this.totalSynch} %`)}`;
     }
 
+    /**
+     * Sends message directly to logger
+     * specifically for error messages
+     * @param {String} message - message to print 
+     */
     _logError(message){
         let info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
         info += `${chalk.bgRed.black("error info")}`;
@@ -250,6 +316,12 @@ class Synchronizer {
         this.logger.info(info);
     }
 
+    /**
+     * Retrieve the ethereum block when a rollup batch has been forged
+     * @param {Number} batchToSynch - rollup batch
+     * @param {Number} lastSynchBlock - last ethereum block synched
+     * @returns {Number} targetBlockNumber - ethereum block
+     */
     async _getTargetBlock(batchToSynch, lastSynchBlock){
         let targetBlockNumber = undefined;
         const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
@@ -267,6 +339,10 @@ class Synchronizer {
         return targetBlockNumber;
     }
 
+    /**
+     * Clears all necessary data when a rollback has been triggered
+     * @param {Number} batchNumber - rollup batch 
+     */
     async _clearRollback(batchNumber) {
         // clear last batch saved
         await this.db.delete(`${batchStateKey}${separator}${batchNumber}`);
@@ -278,33 +354,27 @@ class Synchronizer {
         await this._clearExits(batchNumber - 1);
     }
 
+    /**
+     * Clear all exit entries databse from a given batch
+     * @param {Number} batchNumber - rollup batch
+     */
     async _clearExits(batchNumber){
         const keysExits = await this.db.listKeys(`${exitInfoKey}${separator}`);
         for (const exitIdKey of keysExits) {
             const arrayExits = this._fromString(await this.db.get(exitIdKey));
-            this._purgeArray(arrayExits, batchNumber);
+            purgeArray(arrayExits, batchNumber);
             await this.db.insert(exitIdKey, this._toString(arrayExits));
         }
     }
 
-    _purgeArray(array, numBatch){
-        if (array.length === 0) return;
-        if (array.slice(-1)[0] <= numBatch) return;
-        if (array[0] > numBatch) {
-            array.splice(0, array.length);
-            return;
-        }
-        let indexFound = null;
-        for (let i = array.length - 1; i >= 0; i--){
-            if (array[i] <= numBatch){
-                indexFound = i+1;
-                break;
-            }
-        }
-        if (indexFound !== null)
-            array.splice(indexFound);
-    }
-
+    /**
+     * Rollback functionality
+     * It rollbacks one batch
+     * Gets state to batch which is wanted to rollback
+     * Reset synchronizer state to new batch
+     * Reset rollup Db state to new batch
+     * @param {Number} batchNumber - rollup batch 
+     */
     async _rollback(batchNumber) {
         const rollbackBatch = batchNumber - 1;
         const state = await this.getStateFromBatch(rollbackBatch);
@@ -315,19 +385,39 @@ class Synchronizer {
             throw new Error("can not rollback to a non-existent state");
     }
 
+    /**
+     * Get state from rollup batch number
+     * @param {Number} numBatch - rollup batch number
+     * @returns {Object} state of rollup batch number 
+     */
     async getStateFromBatch(numBatch) {
         const key = `${batchStateKey}${separator}${numBatch}`;
         return this._fromString(await this.db.getOrDefault(key, this._toString({root: false, blockNumber: this.creationBlock, miningOnChainHash: false})));
     }
 
+    /**
+     * Gets last synchronized ethereum block from database
+     * @returns {Number} - last synchronized ethereum block
+     */
     async getLastSynchBlock() {
         return this._fromString(await this.db.getOrDefault(lastBlockKey, this.creationBlock.toString()));
     }
 
+    /**
+     * Gets last synchronized rollup batch from database
+     * @returns {Number} - last synchronized rollup batch
+     */
     async getLastBatch(){
         return Number(this._fromString(await this.db.getOrDefault(lastBatchKey, "0")));
     }
 
+    /**
+     * Update rollup database
+     * @param {Array} logs - array of ethereum events
+     * @param {Number} nextBatchSynched - rollup batch number to be synched
+     * @param {Number} blockNumber - ethereum block number to be synched
+     * @returns {Bool} - true if updated was successful, false otherwise
+     */
     async _updateEvents(logs, nextBatchSynched, blockNumber){
         try {
             // save events on database
@@ -365,6 +455,11 @@ class Synchronizer {
         }
     }
 
+    /**
+     * Purge unnecessary events
+     * Remove events that have been alrteady synched
+     * @param {Number} batchKey 
+     */
     async _purgeEvents(batchKey){
         // purge all events which are already used to update account balance tree
         const lastEventPurged = Number(await this.db.getOrDefault(lastPurgedEventKey, "0"));
@@ -380,6 +475,11 @@ class Synchronizer {
         await this.db.insert(lastPurgedEventKey, this._toString(batchKey));
     }
 
+    /**
+     * Save events to database
+     * @param {Array} logs - ethereum events
+     * @param {Number} nextBatchSynched - rollup batch to synchronize 
+     */
     async _saveEvents(logs, nextBatchSynched) {
         let batchesForged = [];
         const eventsOnChain = {};
@@ -419,6 +519,11 @@ class Synchronizer {
         return batchesForged;
     }
 
+    /**
+     * Get miningOnChainHash
+     * from current rollup database state plus onChain events that must be added
+     * @param {Number} batchNumber - rollup batch number 
+     */
     async _getMiningOnChainHash(batchNumber){
         const tmpOnChainArray = await this.db.getOrDefault(`${eventOnChainKey}${separator}${batchNumber-1}`);
         let eventsOnChain = [];
@@ -433,6 +538,11 @@ class Synchronizer {
         return `0x${bb.getOnChainHash().toString(16)}`;
     }
 
+    /**
+     * Get necessary information from on-chain event
+     * @param {Object} onChainData - on-chain event parameters
+     * @returns {Object} - useful on-chain data 
+     */
     _getOnChainEventData(onChainData) {
         return {
             batchNumber: onChainData.batchNumber,
@@ -444,25 +554,12 @@ class Synchronizer {
         };
     }
 
-    async _deleteRedundantEvents(event) {
-        const keys = Object.keys(event.returnValues);
-        for (const keyCheck of keys) {
-            if (Number.isInteger(Number(keyCheck))) {
-                let redundant = false;
-                const valueCheck = event.returnValues[keyCheck];
-                for (const key of keys) {
-                    if (key !== keyCheck) {
-                        if (valueCheck === event.returnValues[key]){
-                            redundant = true;
-                            break;
-                        }
-                    }
-                }
-                if (redundant) delete event.returnValues[keyCheck];
-            }
-        }
-    }
 
+    /**
+     * Add on-chain and off-chain events to rollup database
+     * @param {Array} offChain - Off-chain events 
+     * @param {Array} onChain - on-chain events 
+     */
     async _updateTree(offChain, onChain) {
         const batch = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
         for (const event of offChain) {
@@ -492,6 +589,11 @@ class Synchronizer {
         return true;
     }
 
+    /**
+     * Add exit batch numnber for a rollup identifier
+     * @param {Object} tx - rollup transaction to get the rollup identifier
+     * @param {Number} batchNumber - rollup batch number to add 
+     */
     async _addExitEntry(tx, batchNumber){
         const key = `${exitInfoKey}${separator}${tx.fromIdx}`;
         const oldExitIdArray = await this.db.getOrDefault(key, "");
@@ -505,6 +607,11 @@ class Synchronizer {
         await this.db.insert(key, this._toString(newExitIdArray));
     }
 
+    /**
+     * Reconstruct transaction from on-chain event
+     * @param {Object} event - on-chain event data
+     * @returns {Object} rollup transaction  
+     */
     async _getTxOnChain(event) {
         const txData = rollupUtils.decodeTxData(event.txData);
         return {
@@ -521,6 +628,11 @@ class Synchronizer {
         };
     }
 
+    /**
+     * Reconstruct transactions from off-chain event
+     * @param {Object} event - off-chain event data
+     * @returns {Object} rollup transaction and fee plan data  
+     */
     async _getTxOffChain(event) {
         const txForge = await this.web3.eth.getTransaction(event);
         const decodedData = abiDecoder.decodeMethod(txForge.input);
@@ -574,6 +686,12 @@ class Synchronizer {
         return {txs, inputFeePlanCoin, inputFeePlanFee};
     }
 
+    /**
+     * Add fee plan to batch builder
+     * @param {Object} bb - batch builder
+     * @param {String} feePlanCoins - fee plan coin encoded as hex string
+     * @param {String} feePlanFee - fee plan fee encoded as hex string  
+     */
     async _addFeePlan(bb, feePlanCoins, feePlanFee) {
         const tmpCoins = bigInt(feePlanCoins);
         const tmpFeeF = bigInt(feePlanFee);
@@ -584,6 +702,10 @@ class Synchronizer {
         }
     }
 
+    /**
+     * Add coin to transactions from rollup database
+     * @param {Array} txs - list of rollup transactions  
+     */
     async _setUserFee(txs){
         for (const tx of txs) {
             const stateId = await this.getStateById(tx.fromIdx);
@@ -591,27 +713,57 @@ class Synchronizer {
         }
     }
 
+    /**
+     * Get rollup state
+     * @param {Number} id - rollup identifier
+     * @returns {Object} - rollup state  
+     */
     async getStateById(id) {
         return await this.treeDb.getStateByIdx(id);
     }
 
-    // ax, ay encoded as hexadecimal string (whitout '0x')
+    /**
+     * Get all rollup states that matches with AxAy
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @returns {Array} - rollup states  
+     */
     async getStateByAxAy(ax, ay) {
         return await this.treeDb.getStateByAxAy(ax, ay);
     }
 
+    /**
+     * Get all rollup states that matches with ethAddress
+     * @param {String} ethAddress - ethereum address encoded as hexadecimal string
+     * @returns {Array} - rollup states  
+     */
     async getStateByEthAddr(ethAddress) {
         return await this.treeDb.getStateByEthAddr(ethAddress);
     }
 
+    /**
+     * Get necessary data to perform a withdraw
+     * @param {Number} numBatch - rollup batch number
+     * @param {Number} id - rollup identifier
+     * @returns {Object} - exit data  
+     */
     async getExitTreeInfo(numBatch, id) {
         return await this.treeDb.getExitTreeInfo(numBatch, id);
     }
 
+    /**
+     * Get percentatge of synchronization
+     * @returns {String} - 0.00% format
+     */
     getSynchPercentage() {
         return this.totalSynch;
     }
 
+    /**
+     * Builds batch builder depending on current rollup database state
+     * batch builder is ready to be computed and forged
+     * @returns {Object} - batch builder
+     */
     async getBatchBuilder() {
         const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
         const currentBlock = await this.web3.eth.getBlockNumber();
@@ -628,6 +780,11 @@ class Synchronizer {
         return bb;
     }
 
+    /**
+     * Get all off-chain transactions performed in a batch
+     * @param {Number} numBatch - rollup batch number 
+     * @returns {Array} - list of transactions
+     */
     async getOffChainTxByBatch(numBatch) {
         const res = [];
         // add off-chain tx
@@ -648,6 +805,11 @@ class Synchronizer {
         return res;
     }
 
+    /**
+     * Get all avsilable exits batches fora rollup identifier
+     * @param {Number} idx - rollup batch number 
+     * @returns {Array} - list of batches where the rollup identifier has withdraws
+     */
     async getExitsBatchById(idx){
         let exitsBatches = [];
         if (this.mode !== Constants.mode.light) {
@@ -659,6 +821,10 @@ class Synchronizer {
         return exitsBatches;
     }
 
+    /**
+     * Get all available exits batches for rollup identifier
+     * @returns {Bool} - true if fully synchronized, false otherwise
+     */
     async isSynched() {
         if (this.totalSynch != Number(100).toFixed(2)) return false;
         const currentBlock = await this.web3.eth.getBlockNumber();
@@ -668,6 +834,10 @@ class Synchronizer {
         return true;
     }
 
+    /**
+     * Get rollup core contract state root
+     * @returns {String} - BigInt number encoded as string
+     */
     async getCurrentStateRoot() {
         const lastBatch = await this.rollupContract.methods.getStateDepth()
             .call({from: this.ethAddress});
@@ -675,6 +845,10 @@ class Synchronizer {
             .call({from: this.ethAddress});
     }
 
+    /**
+     * Get rollup core contract mining on-chain hash
+     * @returns {String} - BigInt number encoded as string
+     */
     async getMiningOnchainHash() {
         return await this.rollupContract.methods.miningOnChainTxsHash()
             .call({from: this.ethAddress});
