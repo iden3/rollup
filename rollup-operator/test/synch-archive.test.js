@@ -5,9 +5,8 @@
 
 const chai = require("chai");
 const { expect } = chai;
-const lodash = require("lodash");
-const { stringifyBigInts } = require("snarkjs");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
+const utilsTest = require("./helpers/utils-test");
 
 const TokenRollup = artifacts.require("../contracts/test/TokenTest");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
@@ -25,21 +24,6 @@ const Constants = require("../src/constants");
 const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
 const proofC = ["0", "0"];
-
-async function checkSynch(synch, opRollupDb){
-    // Check fully synchronized
-    const totalSynched = await synch.getSynchPercentage();
-    expect(totalSynched).to.be.equal(Number(100).toFixed(2));
-    const isSynched = await synch.isSynched();
-    expect(isSynched).to.be.equal(true);
-    // Check database-synch matches database-op
-    const keys = Object.keys(opRollupDb.db.nodes);
-    for (const key of keys) {
-        const valueOp = JSON.stringify(stringifyBigInts(await opRollupDb.db.get(key)));
-        const valueSynch = JSON.stringify(stringifyBigInts(await synch.treeDb.db.get(key)));
-        expect(lodash.isEqual(valueOp, valueSynch)).to.be.equal(true);
-    }
-}
 
 function to18(e) {
     return BigInt(e) * (BigInt(10) ** BigInt(18));
@@ -247,11 +231,11 @@ contract("Synchronizer - archive mode", (accounts) => {
         await timeout(timeoutAddBlocks);
         await forgeBlock(); // genesis
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
 
         await forgeBlock(eventsInitial); // add initial onchain event deposit
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should add two deposits and synch", async () => {
@@ -266,7 +250,7 @@ contract("Synchronizer - archive mode", (accounts) => {
         await forgeBlock();
         await forgeBlock(events);
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should retrieve balance tree information", async () => {
@@ -324,7 +308,7 @@ contract("Synchronizer - archive mode", (accounts) => {
         events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events, params);
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should add off-chain tx and synch", async () => {
@@ -337,7 +321,7 @@ contract("Synchronizer - archive mode", (accounts) => {
         events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events);
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should add on-chain and off-chain tx and synch", async () => {
@@ -363,7 +347,7 @@ contract("Synchronizer - archive mode", (accounts) => {
         await forgeBlock();
         await forgeBlock(events);
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should get off-chain tx by batch", async () => {
@@ -403,7 +387,7 @@ contract("Synchronizer - archive mode", (accounts) => {
             await forgeBlock(events);
         }
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should add withdraw off-chain tx", async () => {
@@ -419,7 +403,7 @@ contract("Synchronizer - archive mode", (accounts) => {
         
         await forgeBlock(events);
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should check exit tree", async () => {
@@ -448,7 +432,7 @@ contract("Synchronizer - archive mode", (accounts) => {
             await forgeBlock(events);
         }
         await timeout(timeoutSynch);
-        await checkSynch(synch, opRollupDb);
+        await utilsTest.checkSynch(synch, opRollupDb);
     });
 
     it("Should check exit batches by id", async () => {

@@ -328,6 +328,10 @@ let pool;
     }
 })();
 
+/**
+ * Get general indormation regarding operator state
+ * @returns {Object} - operator general information
+ */
 async function getGeneralInfo() {
     const generalInfo = {};
     generalInfo["posSynch"] = {};
@@ -350,38 +354,44 @@ async function getGeneralInfo() {
     return generalInfo;
 }
 
+// start synchronizer PoS loop
 function startRollupPoS(){
-    // start synchronizer PoS loop
     let info = infoInit;
     info += "Start Rollup PoS synchronizer";
     logger.info(info);
     posSynch.synchLoop();
 }
 
+// start synchronizer Rollup loop
 function startRollup(){
-    // start synchronizer Rollup loop
     let info = infoInit;
     info += "Start Rollup state synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
 }
 
+// start synchronizer Manager loop
 function startLoopManager(){
-    // start synchronizer Manager loop
     let info = infoInit;
     info += "Start Rollup PoS manager";
     logger.info(info);
     loopManager.startLoop();
 }
 
+// start synchronizer Pool loop
 function startPool(){
-    // start synchronizer Pool loop
     let info = infoInit;
     info += "Start Pool synchronizer";
     logger.info(info);
     poolSynch.synchLoop();
 }
 
+/**
+ * Load operator API http server
+ * @param {Bool} flagForge - flag if the operator is forging. Activates POST method to get transactions 
+ * @param {Bool} expose - flag to expose public API
+ * @param {Bool} flagLAN - flag to expose operator on LAN. Localhost is always exposed 
+ */
 function loadServer(flagForge, expose, flagLAN){
     // Get server environment variables
     const portExternal = process.env.OPERATOR_PORT_EXTERNAL;

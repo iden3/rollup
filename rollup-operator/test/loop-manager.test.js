@@ -11,6 +11,7 @@ const chai = require("chai");
 const ethers = require("ethers");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
+const testUtils = require("./helpers/utils-test");
 
 const { expect } = chai;
 const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
@@ -27,7 +28,7 @@ const Rollup = artifacts.require("../contracts/Rollup");
 const RollupSynch = require("../src/synch");
 const PoSSynch = require("../src/synch-pos");
 const OperatorManager = require("../src/operator-manager");
-const Pool = require("../src/pool-tx");
+const Pool = require("../../js/txpool");
 const CliServerProof = require("../src/cli-proof-server");
 const LoopManager = require("../src/loop-manager");
 
@@ -46,9 +47,11 @@ contract("Loop Manager", async (accounts) => {
         5: feeTokenAddress,
     } = accounts;
 
-    const slotPerEra = 20;
-    const blocksPerSlot = 100;
-    const blockPerEra = slotPerEra * blocksPerSlot;
+    let publicData;
+    let slotPerEra;
+    let blocksPerSlot;
+    let blockPerEra;
+    let genesisBlock;
 
     const tokenInitialAmount = 50;
     const maxTx = 10;
@@ -110,6 +113,13 @@ contract("Loop Manager", async (accounts) => {
         const initBalance = 5;
         await web3.eth.sendTransaction({to: wallet.address, from: owner,
             value: web3.utils.toWei(initBalance.toString(), "ether")});
+
+        // get PoS public data
+        publicData = await testUtils.publicDataPoS(insRollupPoS);
+        genesisBlock = publicData.genesisBlock;
+        slotPerEra = publicData.slotsPerEra;
+        blocksPerSlot = publicData.blocksPerSlot;
+        blockPerEra = slotPerEra * blocksPerSlot;
     });
 
     it("Should initialize loop manager", async () => {
@@ -180,7 +190,7 @@ contract("Loop Manager", async (accounts) => {
             gasLimit);
         
         // Init Pool
-        poolTx = new Pool(maxTx);
+        poolTx = await Pool(synchRollupDb, {});
 
         // Init client to interact with server proof
         const port = 10001;
@@ -223,7 +233,6 @@ contract("Loop Manager", async (accounts) => {
         expect(resRegister.status).to.be.equal(true);
 
         const currentBlock = await web3.eth.getBlockNumber();
-        const genesisBlock = posSynch.genesisBlock;
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
         await timeout(timeoutSynch);
         const listOperators = await posSynch.getOperators();

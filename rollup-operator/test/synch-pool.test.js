@@ -66,7 +66,7 @@ describe("Synchronizer test", function () {
 
     it("Should load table conversion into the pool", async () => {
         timeoutUpdate = synchPool.timeouts.NEXT_LOOP + timeoutDelay;
-        // timeto synchronize '.json' file
+        // time to synchronize '.json' file
         await timeout(timeoutUpdate);
 
         // Check pool conversion table and conversion table on file
