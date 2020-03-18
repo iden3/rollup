@@ -3,12 +3,11 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require("chai");
-const rollupUtils = require("../../rollup-utils/rollup-utils.js");
 const timeTravel = require("./helpers/timeTravel.js");
-
+const { decodeMethod, getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
+const { buildPublicInputsSm, manageEvent } = require("../../rollup-operator/src/utils");
 const { expect } = chai;
 const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
@@ -20,46 +19,7 @@ const Rollup = artifacts.require("../contracts/Rollup");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 
-const abiDecoder = require("abi-decoder");
-abiDecoder.addABI(RollupPoS.abi);
-abiDecoder.addABI(Rollup.abi);
 
-async function getEtherBalance(address) {
-    let balance = await web3.eth.getBalance(address);
-    balance = web3.utils.fromWei(balance, "ether");
-    return Number(balance);
-}
-
-function buildPublicInputsSm(bb) {
-    const feePlan = rollupUtils.buildFeeInputSm(bb.feePlan);
-    return [
-        bb.getNewStateRoot().toString(),
-        bb.getNewExitRoot().toString(),
-        bb.getOnChainHash().toString(),
-        bb.getOffChainHash().toString(),
-        bb.getCountersOut().toString(),
-        bb.getInput().oldStRoot.toString(),
-        feePlan[0],
-        feePlan[1],
-    ];
-}
-
-function manageEvent(event) {
-    if (event.event == "OnChainTx") {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
-        return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
-            amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.tokenId,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true
-        };
-    }
-}
 
 contract("Rollup - RollupPoS", (accounts) => {
     
@@ -78,10 +38,9 @@ contract("Rollup - RollupPoS", (accounts) => {
     const tokenId = 0;
 
     const hashChain = [];
-    const slotPerEra = 20;
-    const blocksPerSlot = 100;
-    const blockPerEra = slotPerEra * blocksPerSlot;
-    const amountToStake = 2;
+    let blockPerEra;
+    let amountToStake;
+    let genesisBlock;
 
     const maxTx = 10;
     const maxOnChainTx = 3;
@@ -134,6 +93,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
         nLevels = await insRollup.NLevels();
+        [ , , blockPerEra, amountToStake, genesisBlock] = await getPublicPoSVariables(insRollupPoS);
     });
 
     it("Initialization", async () => {
@@ -144,8 +104,8 @@ contract("Rollup - RollupPoS", (accounts) => {
             { from: tokenList, value: web3.utils.toWei("1", "ether") });
 
         // Add operator to PoS
-        await insRollupPoS.addOperator(hashChain[4], url,
-            { from: operator1, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+        await insRollupPoS.addOperator(hashChain.pop(), url,
+            { from: operator1, value: amountToStake });
     });
 
     it("Deposit", async () => {
@@ -164,10 +124,9 @@ contract("Rollup - RollupPoS", (accounts) => {
         const proofC = ["0", "0"];
         // move forward block number to allow the operator to forge a batch
         let currentBlock = await web3.eth.getBlockNumber();
-        const genesisBlock = await insRollupPoS.genesisBlock();
         await timeTravel.addBlocks(genesisBlock - currentBlock);
         currentBlock = await web3.eth.getBlockNumber();
-        await timeTravel.addBlocks(blockPerEra);
+        await timeTravel.addBlocks(blockPerEra*2);
         currentBlock = await web3.eth.getBlockNumber();
         await timeTravel.addBlocks(blockPerEra);
         currentBlock = await web3.eth.getBlockNumber();
@@ -180,7 +139,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         // Check balances
         const balOpBeforeForge = await getEtherBalance(operator1);
         // Forge genesis batch by operator 1
-        await insRollupPoS.commitBatch(hashChain[3], `0x${block.getDataAvailable().toString("hex")}`, {from: operator1});
+        await insRollupPoS.commitBatch(hashChain.pop(), `0x${block.getDataAvailable().toString("hex")}`, {from: operator1});
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, {from: operator1});
         // Build inputs
         const block1 = await rollupDB.buildBatch(maxTx, nLevels);
@@ -190,7 +149,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         const inputs1 = buildPublicInputsSm(block1);
 
         // Forge batch by operator 1
-        await insRollupPoS.commitBatch(hashChain[2], `0x${block1.getDataAvailable().toString("hex")}`, {from: operator1});
+        await insRollupPoS.commitBatch(hashChain.pop(), `0x${block1.getDataAvailable().toString("hex")}`, {from: operator1});
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, {from: operator1});
         // Check balances
         const balOpAfterForge = await getEtherBalance(operator1);
@@ -206,7 +165,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         // Step2: Get transaction, which was called by the RollupPoS
         const transaction = await web3.eth.getTransactionFromBlock(blockNumber, 0);
         // Step3: Get off-chain hash commited by the user
-        const decodedData = abiDecoder.decodeMethod(transaction.input);
+        const decodedData = decodeMethod(transaction.input);
         let inputRetrieved;
         decodedData.params.forEach(elem => {
             if (elem.name == "input") {
@@ -227,7 +186,7 @@ contract("Rollup - RollupPoS", (accounts) => {
             }
         });
         const resTx = await web3.eth.getTransaction(txHash);
-        const decodedData2 = abiDecoder.decodeMethod(resTx.input);
+        const decodedData2 = decodeMethod(resTx.input);
         expect(decodedData2.params[1].value).to.be.
             equal(`0x${block1.getDataAvailable().toString("hex")}`);
     });

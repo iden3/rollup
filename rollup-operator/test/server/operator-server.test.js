@@ -18,7 +18,7 @@ const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rol
 
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
-const cliPoS = require("../../../cli-pos/utils");
+const cliPoS = require("../../../cli-pos/src/utils");
 const { depositTx, sendTx } = require("../../../rollup-cli/src/cli-utils");
 
 // test timeouts

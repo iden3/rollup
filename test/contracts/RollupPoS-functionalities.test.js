@@ -10,15 +10,10 @@ const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const { getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
 
 const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupPoS.abi);
-
-async function getEtherBalance(address) {
-    let balance = await web3.eth.getBalance(address);
-    balance = web3.utils.fromWei(balance, "ether");
-    return Number(balance);
-}
 
 // async function getTxGasSpent(resTx) {
 //   const infoTx = await web3.eth.getTransaction(resTx.tx);
@@ -47,9 +42,11 @@ contract("RollupPoS", (accounts) => {
     let slotPerEra;
     let blocksPerSlot;
     let deadlineBlocks;
-    let amountToStake = 2;
     let db;
     let rollupDB;
+    let genesisBlock;
+    let amountToStake;
+    let amountToStakeNumber;
 
     const initialMsg = "rollup";
     hashChain.push(web3.utils.keccak256(initialMsg));
@@ -73,14 +70,10 @@ contract("RollupPoS", (accounts) => {
         insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
         // Initialization
         // fill with first block of each era
-        const genesisBlockNum = await insRollupPoS.genesisBlock();
-        blocksPerSlot = Number(await insRollupPoS.BLOCKS_PER_SLOT());
-        slotPerEra = Number(await insRollupPoS.SLOTS_PER_ERA());
-        deadlineBlocks = Number(await insRollupPoS.SLOT_DEADLINE());
-        blockPerEra = blocksPerSlot*slotPerEra;
-
+        [slotPerEra, blocksPerSlot, blockPerEra, amountToStake, genesisBlock, deadlineBlocks] = await getPublicPoSVariables(insRollupPoS);
+        amountToStakeNumber= Number(web3.utils.fromWei(amountToStake, "ether"));
         for (let i = 0; i < 20; i++) {
-            eraBlock.push(i * blockPerEra + Number(genesisBlockNum) + 1);
+            eraBlock.push(i * blockPerEra + Number(genesisBlock) + 1);
             eraSlot.push(i * slotPerEra);
         }
         // fill 5 addresses for operators
@@ -127,9 +120,9 @@ contract("RollupPoS", (accounts) => {
             let initBalOp = await getEtherBalance(operators[0].address);
             // add operator 0 with eStake = 4
             await insRollupPoS.addOperator(hashChain[9], url,
-                { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: operators[0].address, value: amountToStake});
             const balOpAdd = await getEtherBalance(operators[0].address);
-            expect(Math.ceil(balOpAdd)).to.be.equal(Math.ceil(initBalOp) - 2);
+            expect(Math.ceil(balOpAdd)).to.be.equal(Math.ceil(initBalOp) - amountToStakeNumber);
             // get back stake
             await insRollupPoS.setBlockNumber(eraBlock[3]);
             // try to get back stake from different operator
@@ -153,7 +146,7 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.withdraw(0);
 
             const balOpWithdraw = await getEtherBalance(operators[0].address);
-            expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOpWithdraw) - 2);
+            expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOpWithdraw) - amountToStakeNumber);
         });
 
         it("add operator with different beneficiary address", async () => {
@@ -161,14 +154,14 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.setBlockNumber(eraBlock[5]);
             // add operator 1 with eStake = 4
             await insRollupPoS.addOperatorWithDifferentBeneficiary(beneficiaryAddress, hashChain[9], url,
-                { from: operators[1].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: operators[1].address, value: amountToStake});
             await insRollupPoS.setBlockNumber(eraBlock[6]);
             await insRollupPoS.removeOperator(1, { from: operators[1].address });
             await insRollupPoS.setBlockNumber(eraBlock[8]);
             await insRollupPoS.withdraw(1);
             // Check balance beneficiary Address
             const balance = await getEtherBalance(beneficiaryAddress);
-            expect(initBalance + 2).to.be.equal(balance);
+            expect(initBalance + amountToStakeNumber).to.be.equal(balance);
         });
 
         it("add operator with different beneficiary address and relay staker", async () => {
@@ -178,13 +171,13 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.setBlockNumber(eraBlock[8]);
             // add operator 2 with stakerAddress commiting 2 ether
             await insRollupPoS.addOperatorRelay(operators[2].address, beneficiaryAddress, hashChain[9], url,
-                { from: relayStaker, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: relayStaker, value: amountToStake});
 
             const balanceRelay0 = await getEtherBalance(relayStaker);
             const balOp0 = await getEtherBalance(operators[2].address);
             const balBeneficiary0 = await getEtherBalance(beneficiaryAddress);
             // check balances of all addresses
-            expect(Math.ceil(initBalanceRelay) - 2).to.be.equal(Math.ceil(balanceRelay0));
+            expect(Math.ceil(initBalanceRelay) - amountToStakeNumber).to.be.equal(Math.ceil(balanceRelay0));
             expect(initBalOp).to.be.equal(balOp0);
             expect(initBalBeneficiary).to.be.equal(balBeneficiary0);
             // sign ethereum message and build signature
@@ -204,18 +197,18 @@ contract("RollupPoS", (accounts) => {
             const balBeneficiary1 = await getEtherBalance(beneficiaryAddress);
             expect(balanceRelay0).to.be.equal(balanceRelay1);
             expect(balOp1).to.be.equal(balOp1);
-            expect(balBeneficiary0 + 2).to.be.equal(balBeneficiary1);
+            expect(balBeneficiary0 + amountToStakeNumber).to.be.equal(balBeneficiary1);
         });
 
         it("slash operator", async () => {
-            amountToStake = 20;
+            const amountToStakeSlash = 20;
             const initBalOp = await getEtherBalance(operators[0].address);
             const initBalanceSlash = await getEtherBalance(slashAddress);
             // reset rollup PoS
             insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
             await insRollupPoS.addOperator(hashChain[9], url,
-                { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: operators[0].address, value: web3.utils.toWei(amountToStakeSlash.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             try {
                 await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
@@ -232,7 +225,7 @@ contract("RollupPoS", (accounts) => {
             let balOp = await getEtherBalance(operators[0].address);
             let balSlash = await getEtherBalance(slashAddress);
 
-            expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStake);
+            expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStakeSlash);
             expect(Math.ceil(initBalanceSlash)).to.be.equal(Math.ceil(balSlash));
 
             await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
@@ -240,13 +233,13 @@ contract("RollupPoS", (accounts) => {
             balOp = await getEtherBalance(operators[0].address);
             balSlash = await getEtherBalance(slashAddress);
             // operator 1 lose its amount staked
-            expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStake);
+            expect(Math.ceil(initBalOp)).to.be.equal(Math.ceil(balOp) + amountToStakeSlash);
             // slash account to receive 10% of amount staked
-            expect(Math.ceil(initBalanceSlash) + 0.1 * amountToStake).to.be.equal(Math.ceil(balSlash));
+            expect(Math.ceil(initBalanceSlash) + 0.1 * amountToStakeSlash).to.be.equal(Math.ceil(balSlash));
 
             // Add operator again
             await insRollupPoS.addOperator(hashChain[9], url,
-                { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: operators[0].address, value: web3.utils.toWei(amountToStakeSlash.toString(), "ether") });
             await insRollupPoS.setBlockNumber(eraBlock[6]);
             // simulate operator has forge a batch
             await insRollupPoS.setBlockForged(eraSlot[5]);
@@ -282,7 +275,7 @@ contract("RollupPoS", (accounts) => {
             insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
             await insRollupPoS.addOperator(hashChain[9], url,
-                { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: operators[0].address, value: amountToStake});
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             await insRollupPoS.setBlockNumber(eraBlock[3]); // set era to 3
 
@@ -431,7 +424,7 @@ contract("RollupPoS", (accounts) => {
             insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
             await insRollupPoS.addOperator(hashChain[9], url,
-                { from: operators[0].address, value: web3.utils.toWei(amountToStake.toString(), "ether") });
+                { from: operators[0].address, value: amountToStake});
             await insRollupPoS.setBlockNumber(eraBlock[1]);
             await insRollupPoS.setBlockNumber(eraBlock[3]);
             // Balance before slashing
@@ -440,7 +433,7 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.slash(eraSlot[2], { from: slashAddress });
             // balance after slash operator
             const balSlash = await getEtherBalance(slashAddress);
-            expect((0.1 * amountToStake).toFixed(1)).to.be.equal((balSlash - initBalSlash).toFixed(1));
+            expect((0.1 * amountToStakeNumber).toFixed(1)).to.be.equal((balSlash - initBalSlash).toFixed(1));
             // Assure no operators after slashing
             await insRollupPoS.setBlockNumber(eraBlock[5]);
             try {

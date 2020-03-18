@@ -32,16 +32,17 @@ function _addNonce(nonceObject, currentBatch, nonce, idFrom) {
 }
 
 /**
- * @dev send off-chain transaction
- * @param urlOperator url from operator
- * @param idTo receiver
- * @param amount amount to transfer
- * @param walletRollup ethAddress and babyPubKey together
- * @param tokenId token type identifier, the sender and the reciever must use the same token
- * @param userFee amount of fee that the user is willing to pay
- * @param idFrom self balance tree identifier
- * @param nonce hardcoded from user
- * @param nonceObejct stored object wich keep tracking of the last transaction nonce sent by the client
+ * send off-chain transaction
+ * @param {String} urlOperator - url from operator
+ * @param {Number} idTo - receiver
+ * @param {String} amount - amount to transfer
+ * @param {Object} walletRollup - ethAddress and babyPubKey together
+ * @param {Number} tokenId - token type identifier, the sender and the reciever must use the same token
+ * @param {String} userFee - amount of fee that the user is willing to pay
+ * @param {Number} idFrom - self balance tree identifier
+ * @param {String} nonce - hardcoded from user
+ * @param {Object} nonceObject - stored object wich keep tracking of the last transaction nonce sent by the client
+ * @returns {Object} - return a object with the response status, current batch, current nonce, and nonceObject
 */
 async function send(urlOperator, idTo, amount, walletRollup, tokenId, userFee, idFrom, nonce, nonceObject) {
     const apiOperator = new CliExternalOperator(urlOperator);

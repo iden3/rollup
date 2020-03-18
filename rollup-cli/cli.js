@@ -143,13 +143,13 @@ const type = (argv.type) ? argv.type : 'notype';
 const recipient = (argv.recipient || argv.recipient === 0) ? argv.recipient : 'norecipient';
 const sender = (argv.sender || argv.sender === 0) ? argv.sender : 'nosender';
 const id = (argv.id || argv.id === 0) ? argv.id : 'noid';
-const amount = (argv.amount) ? argv.amount : -1;
-const loadamount = (argv.loadamount) ? argv.loadamount : -1;
+const amount = (argv.amount) ? argv.amount.toString() : -1;
+const loadamount = (argv.loadamount) ? argv.loadamount.toString() : -1;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
-const userFee = argv.fee ? argv.fee : 'nouserfee';
-const numExitBatch = argv.numexitbatch ? argv.numexitbatch : 'nonumexitbatch';
+const userFee = argv.fee ? argv.fee.toString() : 'nouserfee';
+const numExitBatch = argv.numexitbatch ? argv.numexitbatch.toString() : 'nonumexitbatch';
 const filter = argv.filter ? argv.filter : 'nofilter';
-const nonce = (argv.nonce || argv.nonce === 0) ? argv.nonce : undefined;
+const nonce = (argv.nonce || argv.nonce === 0) ? argv.nonce.toString() : undefined;
 const gasLimit = (argv.gaslimit) ? argv.gaslimit : 5000000;
 const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
 
