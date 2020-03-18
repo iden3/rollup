@@ -1,0 +1,16 @@
+{
+  "name": "cli-pos",
+  "version": "0.0.1",
+  "description": "light client to interact with RollupPoS contract",
+  "main": "index.js",
+  "bin": {
+    "rollup-cli-pos": "cli-pos.js"
+  },
+  "keywords": [
+    "client",
+    "rollup",
+    "rollupPoS",
+    "proof-of-stake"
+  ],
+  "license": "AGPL-3.0"
+}
