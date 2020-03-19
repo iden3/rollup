@@ -1,13 +1,7 @@
-# Debug files
-test/circuits/circuit.json
-test.txt
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# compiled output
+/dist
+/tmp
+/out-tsc
 
 # Runtime data
 pids
@@ -20,7 +14,6 @@ lib-cov
 
 # Coverage directory used by tools like istanbul
 coverage
-coverage.json
 
 # nyc test coverage
 .nyc_output
@@ -34,15 +27,38 @@ bower_components
 # node-waf configuration
 .lock-wscript
 
-# Compiled binary addons (https://nodejs.org/api/addons.html)
-build/Release
+# IDEs and editors
+.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+.sass-cache
+connect.lock
+typings
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 
 # Dependency directories
 node_modules/
 jspm_packages/
-
-# Typescript v1 declaration files
-typings/
 
 # Optional npm cache directory
 .npm
@@ -60,25 +76,20 @@ typings/
 .yarn-integrity
 
 # dotenv environment variables file
-*.env
+.env
 
 # next.js build output
 .next
 
-tmp
+# Lerna
+lerna-debug.log
 
-# truffle
-build
-rollup-cli/src/wallet-rollup-cli.json
+# System Files
+.DS_Store
+Thumbs.db
 
-# vscode configuration
-.vscode
-rollup-cli/tools/resourcesBot/
-rollup-cli/tools/walletSlash.json
-rollup-cli/src/resources/
-rollup-cli/nonceJson.json
-rollup-cli/tools/gunners/config/
+# Config files
+config.json
 
-synch-config.json
-pool-config.json
-wallet.json
+# Test files
+wallet-test.json
