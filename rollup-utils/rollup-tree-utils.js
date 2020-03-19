@@ -2,6 +2,16 @@ const {
     hash, padZeroes, arrayHexToBigInt, buildElement,
 } = require("./utils");
 
+/**
+ * hash balance tree leaf. *Deprecated.
+ * @param {BigInt} balance - account balance 
+ * @param {BigInt} tokenId - tokend identifier
+ * @param {BigInt} Ax - X point babyjubjub
+ * @param {BigInt} Ay - Y point babyjubjub
+ * @param {BigInt} withdrawAddress - ethereum address
+ * @param {BigInt} nonce - nonce
+ * @returns {Object} - Contains hash tree value and raw leaf object
+ */
 function hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     // Build Entry
     // element 0
@@ -29,6 +39,16 @@ function hashLeafValue(balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     return { leafObj, hash: hash(entryBigInt) };
 }
 
+/**
+ * Hash tree state
+ * @param {BigInt} balance - account balance 
+ * @param {BigInt} tokenId - tokend identifier
+ * @param {BigInt} Ax - X point babyjubjub
+ * @param {BigInt} Ay - Y point babyjubjub
+ * @param {BigInt} ethAddress - ethereum address
+ * @param {BigInt} nonce - nonce
+ * @returns {Object} - Contains hash state value, entry elements and leaf raw object 
+ */
 function hashStateTree(balance, tokenId, Ax, Ay, ethAddress, nonce) {
     // Build Entry
     // element 0
@@ -58,6 +78,13 @@ function hashStateTree(balance, tokenId, Ax, Ay, ethAddress, nonce) {
     return { leafObj, elements: {e0, e1, e2, e3, e4}, hash: hash(entryBigInt) };
 }
 
+/**
+ * Hash exit tree state. *Deprecated.
+ * @param {BigInt} id - tree account identifier
+ * @param {BigInt} amount - amount leaf
+ * @param {BigInt} tokenId - token identifier
+ * @param {BigInt} withdrawAddress - ethereum address
+ */
 function hashExitLeafValue(id, amount, tokenId, withdrawAddress) {
     // Build Entry
     // element 0
@@ -78,7 +105,6 @@ function hashExitLeafValue(id, amount, tokenId, withdrawAddress) {
     // Hash entry and object
     return { leafObj, hash: hash(entryBigInt) };
 }
-
 
 module.exports = {
     buildElement,

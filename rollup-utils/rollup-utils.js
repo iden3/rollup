@@ -7,6 +7,11 @@ const eddsa = require("circomlib").eddsa;
 const crypto = require("crypto");
 const web3 = require("web3");
 
+/**
+ * Simulate off-chain transaction hash
+ * @param {Number} numTx - number of off-chain transaction to add
+ * @returns {Object} - Contains raw bytes of off-chain transaction and it hash 
+ */
 function createOffChainTx(numTx) {
     // create bunch of tx
     let buffTotalTx = Buffer.alloc(0);
@@ -33,6 +38,11 @@ function createOffChainTx(numTx) {
     return { bytesTx, hashOffChain: hashTotal };
 }
 
+/**
+ * Calculate hash of off-chain transactions data
+ * @param {String} hexOffChainTx - Raw data containing all off-chain transactions
+ * @returns {BigInt} - Hash of off-chain transactions
+ */
 function hashOffChainTx(hexOffChainTx) {
     // remove '0x'
     const hexOffChain = hexOffChainTx.substring(2);
@@ -48,6 +58,13 @@ function hashOffChainTx(hexOffChainTx) {
     return hashTotal;
 }
 
+/**
+ * Get raw off-chain transaction in hex string
+ * @param {Number} from - sender identifier
+ * @param {Number} to - recipient identifier
+ * @param {Number} amount - amount sent
+ * @returns {Buffer} - Raw off-chain transaction data
+ */
 function buildOffChainTx(from, to, amount) {
     return Buffer.concat([
         num2Buff(from, 3), 
@@ -56,6 +73,17 @@ function buildOffChainTx(from, to, amount) {
     ]);
 }
 
+/**
+ * Hash deposit leaf
+ * @param {BigInt} id - account identifier
+ * @param {BigInt} balance - account balance
+ * @param {BigInt} tokenId - token identifier
+ * @param {BigInt} Ax - X point babyjubjub
+ * @param {BigInt} Ay - Y point babyjubjub
+ * @param {BigInt} withdrawAddress - ethereum address 
+ * @param {BigInt} nonce - nonce
+ * @returns {BigInt} - hash of the state
+ */
 function hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     // Build Entry
     // element 0
@@ -78,6 +106,19 @@ function hashDeposit(id, balance, tokenId, Ax, Ay, withdrawAddress, nonce) {
     return hash(entryBigInt);
 }
 
+/**
+ * Encode rollup transaction
+ * @param {Number} fromId - sender
+ * @param {Number} toId - recipient 
+ * @param {Number} amount - amount sent
+ * @param {Number} token - token identifier
+ * @param {Number} nonce - nonce
+ * @param {Number} maxFee - max fee
+ * @param {Number} rqOffset - request offset (atomic transactions)
+ * @param {Bool} onChain - if the transaction has been created on-chain
+ * @param {Bool} newAccount - if the transaction represents a new account
+ * @returns {String} - transaction encoded as hexadecimal string 
+ */
 function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onChain, newAccount) {
     // Build Elemnt Tx Data
     // element 0
@@ -95,6 +136,11 @@ function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onCha
     return element;
 }
 
+/**
+ * Decode rollup transactions
+ * @param {String} txDataEncodedHex - rollup transaction encoded as an hex string
+ * @returns {Object} - Raw rollup transaction
+ */
 function decodeTxData(txDataEncodedHex) {
     const txDataBi = BigInt(txDataEncodedHex);
     let txData = {};
@@ -112,6 +158,16 @@ function decodeTxData(txDataEncodedHex) {
     return txData;
 }
 
+/**
+ * Simulates on-chain hash for on-chain transactions
+ * @param {BigInt} oldOnChainHash - previous on.chain hash
+ * @param {BigInt} txData - transaction data encoded
+ * @param {BigInt} loadAmount - amount loaded
+ * @param {BigInt} ethAddress - athereum address
+ * @param {BigInt} Ax - X point babyjubjub
+ * @param {BigInt} Ay - Y point babyjubjub
+ * @returns {Object} - Contains Entry elememnts and its hash value
+ */
 function hashOnChain(oldOnChainHash, txData, loadAmount, ethAddress, Ax, Ay) {
     // Build Entry
     // element 0
@@ -133,6 +189,11 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, ethAddress, Ax, Ay) {
     return { elements: {e0, e1, e2, e3, e4, e5}, hash: hash(entryBigInt)};
 }
 
+/**
+ * Sign rollup transaction and add signature to transaction
+ * @param {Object} walletBabyJub - Rerpresents a babyjubjub wallet which will sign the rollup transaction 
+ * @param {Object} tx - Rollup transaction 
+ */
 function signRollupTx(walletBabyJub, tx) {
     const IDEN3_ROLLUP_TX = BigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
     const data = buildTxData(tx.fromIdx, tx.toIdx, tx.amount, tx.coin, tx.nonce,
@@ -151,6 +212,11 @@ function signRollupTx(walletBabyJub, tx) {
     tx.ay = walletBabyJub.publicKey[1].toString(16);
 }
 
+/**
+ * Build feePlanCoins and feePlanFees from feePlan array
+ * @param {Array} feePlan - fee plan
+ * @returns {Array} - feePlanCoin at index 0 and feePlanFees at index 1 
+ */
 function buildFeeInputSm(feePlan) {
     if (feePlan == undefined) return ["0", "0"];
     if (feePlan.length > 16){
@@ -165,6 +231,11 @@ function buildFeeInputSm(feePlan) {
     return [feePlanCoins.toString(), feePlanFees.toString()];
 }
 
+/**
+ * Gets seed from private key
+ * @param {String} pvk - private Key
+ * @returns {String} - seed 
+ */
 function getSeedFromPrivKey(pvk){
     const IDEN3_ROLLUP_SEED = "IDEN3_ROLLUP_SEED";
     const seed = `${pvk}${IDEN3_ROLLUP_SEED}`;
@@ -173,6 +244,11 @@ function getSeedFromPrivKey(pvk){
     return hash.digest("hex");
 }
 
+/**
+ * Compute hashchain from seed
+ * @param {String} seed - seed
+ * @returns {Array} - Hash chain array 
+ */
 function loadHashChain(seed){
     const hashChain = [];
     const hashChainLength = Math.pow(2, 16);
