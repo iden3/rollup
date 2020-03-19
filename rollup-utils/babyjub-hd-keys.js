@@ -9,7 +9,6 @@ const eddsaBabyJub = require("./eddsa-babyjub");
  * Ethereum common path --> "m/44'/60'/0'/0/0"
  * BabyJubJub derived key --> "m/44'/60'/0'/0/0/{BabyJubJub path}"
  */
-
 class BabyJubJubHdKeys {
     /**
      * Create a babyjubjub hdwallet from a given mnemonic

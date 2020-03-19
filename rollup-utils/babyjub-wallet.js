@@ -4,7 +4,16 @@ const babyJubKeys = require("./babyjub-hd-keys");
 const utils = require("./utils");
 const walletUtils = require("./babyjub-wallet-utils");
 
+/**
+ * Manage Babyjubjub keys
+ * Perform standard wallet actions
+ */
 class BabyJubWallet {
+    /**
+     * Initialize Babyjubjub wallet from private key
+     * @param {Buffer} privateKey - 32 bytes buffer
+     * @param {String} mnemonic - 12 words mnemonic 
+     */
     constructor(privateKey, mnemonic = null) {
         this.mnemonic = mnemonic;
 
@@ -16,16 +25,32 @@ class BabyJubWallet {
         this.publicKeyCompressed = pub.compress();
     }
 
+    /**
+     * Initialize Babyjubjub wallet from 12 word mnemonic
+     * @param {String} mnemonic - 12 word mnemonic
+     * @param {Number} index - key derivation babyjubjub path
+     * @returns {BabyJubWallet} - Babyjubjub wallet class
+     */
     static fromMnemonic(mnemonic, index = 0) {
         const root = babyJubKeys.fromMnemonic(mnemonic);
         return new BabyJubWallet(root.getPrivate(index), mnemonic);
     }
 
+    /**
+     * Initilize Babyjubjub wallet from random mnemonic
+     * @returns {BabyJubWallet} - Babyjubjub wallet class
+     */
     static createRandom() {
         const root = babyJubKeys.fromRandom();
         return new BabyJubWallet(root.getPrivate(0));
     }
 
+    /**
+     * Initilize Babyjubjub wallet from json wallet
+     * @param {Object} json - json babyjubjub wallet 
+     * @param {String} pass - passphrase to encryot private key
+     * @returns {BabyJubWallet} - Babyjubjub wallet class 
+     */
     static fromEncryptedJson(json, pass) {
         const jsonObject = JSON.parse(json);
         const { crypto } = jsonObject;
@@ -42,6 +67,11 @@ class BabyJubWallet {
         return new BabyJubWallet(Buffer.from(privKeyStr, "base64"));
     }
 
+    /**
+     * Signs message with private key
+     * @param {String} messageStr - message to sign
+     * @returns {String} - Babyjubjub signature packed and encoded as an hex string 
+     */
     signMessage(messageStr) {
         const messBuff = Buffer.from(messageStr);
         const messHash = utils.hashBuffer(messBuff);
@@ -50,7 +80,17 @@ class BabyJubWallet {
         return sig.toString("hex");
     }
 
-
+    /**
+     * Json bayjubjub wallet
+     * @param {String} pass - Password to encrypt private key 
+     * @param {Number} dklen - key length
+     * @param {String} digest - hash to use 
+     * @param {Number} iterations - number of iterations
+     * @param {String} salt - 16 bytes encoded as base64 string
+     * @param {String} algo - algorithm used
+     * @param {String} iv - initilaization vector
+     * @returns {Object} - json object wallet babyjubjub
+     */
     toEncryptedJson(pass, dklen = 24, digest = "sha256",
         iterations = 256, salt = null, algo = "aes-192-cbc", iv = null) {
         if (salt === null) {
@@ -94,6 +134,13 @@ class BabyJubWallet {
     }
 }
 
+/**
+ * Verifies signature for a given message using babyjubjub
+ * @param {String} publicKeyHex - Babyjubjub public key encoded as hex string
+ * @param {String} messStr - clear message data
+ * @param {String} signatureHex - Ecdsa signature compresed and encoded as hex string 
+ * @returns {boolean} True if validation is succesfull; otherwise false
+ */
 function verifyBabyJub(publicKeyHex, messStr, signatureHex) {
     const pkBuff = Buffer.from(publicKeyHex, "hex");
     const pk = eddsaBabyJub.PublicKey.newFromCompressed(pkBuff);
