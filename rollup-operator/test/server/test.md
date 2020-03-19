@@ -24,6 +24,8 @@ Open new terminal and run `synch-pool-service` server
 Open new terminal and run operator service
   - `cd ./rollup-operator`
   - `npm run test:operator`
+    - password could be typed on console or by adding an environment variable:
+      - `PASSWORD=passTest`
     - operator needs configuration file `config.env` in its path
     - example can be found in `rollup/rollup-operator/test/config/config-example.env`
     - *It should be noted that this file should be where the `operator.js` is invoked and its name should be `config.env` 

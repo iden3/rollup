@@ -21,6 +21,7 @@ abiDecoder.addABI(Rollup.abi);
 const OperatorManager = require("../src/operator-manager");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { buildPublicInputsSm } = require("../src/utils");
+const testUtils = require("./helpers/utils-test");
 
 contract("Operator Manager", async (accounts) => { 
 
@@ -37,6 +38,7 @@ contract("Operator Manager", async (accounts) => {
 
     let db;
     let rollupDB;
+    let publicData;
     const amountToStake = 2;
     const maxTx = 10;
     const maxOnChainTx = 5;
@@ -53,9 +55,9 @@ contract("Operator Manager", async (accounts) => {
     let genesisBlock;
     const eraBlock = [];
     const eraSlot = [];
-    const slotPerEra = 20;
-    const blocksPerSlot = 100;
-    const blockPerEra = slotPerEra * blocksPerSlot;
+    let slotPerEra;
+    let blocksPerSlot;
+    let blockPerEra;
     const initBalance = 5;
     const gasLimit = "default";
     const gasMultiplier = 1;
@@ -94,8 +96,14 @@ contract("Operator Manager", async (accounts) => {
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoS.address, { from: owner });
         
-        // get genesis block
-        genesisBlock = Number(await insRollupPoS.genesisBlock());
+        // get PoS public data
+        publicData = await testUtils.publicDataPoS(insRollupPoS);
+        genesisBlock = publicData.genesisBlock;
+        slotPerEra = publicData.slotsPerEra;
+        blocksPerSlot = publicData.blocksPerSlot;
+        blockPerEra = slotPerEra * blocksPerSlot;
+
+
         // load config synch PoS
         configSynchPoS.contractAddress = insRollupPoS.address;
         // load wallet

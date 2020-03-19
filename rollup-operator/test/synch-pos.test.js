@@ -10,6 +10,7 @@ const MemDb = require("../../rollup-utils/mem-db");
 const SynchPoS = require("../src/synch-pos");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
+const testUtils = require("./helpers/utils-test");
 
 // timeouts test
 const timeoutDelay = 10000;
@@ -37,9 +38,12 @@ contract("Synchronizer PoS", async (accounts) => {
     } = accounts;
 
     const maxTx = 10;
-    const slotPerEra = 20;
-    const blocksPerSlot = 100;
-    const blockPerEra = slotPerEra * blocksPerSlot;
+    let publicData;
+    let genesisBlock;
+    let slotPerEra;
+    let blocksPerSlot;
+    let blockPerEra;
+
     const rndHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
     const operators = [];
     const addressRollupTest = "0x0000000000000000000000000000000000000001";
@@ -47,7 +51,6 @@ contract("Synchronizer PoS", async (accounts) => {
     let insRollupPoS;
     let synchDb;
     let synchPoS;
-    let genesisBlock;
 
     let configSynchPoS = {
         synchDb: undefined,
@@ -63,7 +66,7 @@ contract("Synchronizer PoS", async (accounts) => {
     before(async () => {
         // Deploy token test
         insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
-        genesisBlock = Number(await insRollupPoS.genesisBlock());
+        
         // Init synch db
         synchDb = new MemDb();
 
@@ -77,6 +80,14 @@ contract("Synchronizer PoS", async (accounts) => {
         for (let i = 0; i < numOp; i++) {
             operators.push({address: accounts[i+1], idOp: i, url: `localhost:900${i}`});
         }
+
+        // get PoS public data
+        publicData = await testUtils.publicDataPoS(insRollupPoS);
+        genesisBlock = publicData.genesisBlock;
+        slotPerEra = publicData.slotsPerEra;
+        blocksPerSlot = publicData.blocksPerSlot;
+        blockPerEra = slotPerEra * blocksPerSlot;
+
     });
 
     it("Should initialize synchronizer PoS", async () => {
@@ -98,7 +109,7 @@ contract("Synchronizer PoS", async (accounts) => {
     it("Should Add operator and synch", async () => {
         // Add operator
         await insRollupPoS.addOperator(rndHash, operators[0].url,
-            { from: operators[0].address, value: web3.utils.toWei("2", "ether") });
+            { from: operators[0].address, value: publicData.minStake.toString() });
         // move forward block number to allow the operator to forge a batch
         let currentBlock = await web3.eth.getBlockNumber();
         await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0

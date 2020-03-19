@@ -13,4 +13,4 @@ RUN mv synch-config.json ./rollup-operator/src/server/
 RUN mv wallet.json ./rollup-operator/src/server/
 RUN mv config.env ./rollup-operator/src/server/
 
-CMD ["sh","-c","node rollup-operator/src/server/operator.js --passphrase $PASSWORD --clear true"]
+CMD ["sh","-c","node rollup-operator/src/server/operator.js --clear true"]

@@ -10,13 +10,27 @@ const opCreateKey = "operator-create";
 const opRemoveKey = "operator-remove";
 const separator = "--";
 
+/**
+* Synchronize Rollup proof-of-stake (PoS) smart contract 
+*/
 class SynchPoS {
+    /**
+     * Initialize Synchronizer parameters
+     * @param {Object} db - Synchronizer PoS database
+     * @param {String} nodeUrl - Ethereum node url
+     * @param {String} rollupPoSAddress - Rollup PoS address
+     * @param {Object} rollupPoSABI - Rollup PoS ABI interface
+     * @param {String} rollupPoSCreationHash - Rollup PoS creation hash 
+     * @param {String} ethAddress - Address to make pure/view calls
+     * @param {String} logLevel - Logger level
+     * @param {Object} timeouts - Configure timeouts
+     */
     constructor(
         db,
         nodeUrl,
         rollupPoSAddress,
         rollupPoSABI,
-        creationHash,
+        rollupPoSCreationHash,
         ethAddress,
         logLevel,
         timeouts
@@ -25,7 +39,7 @@ class SynchPoS {
         this.db = db;
         this.nodeUrl = nodeUrl;
         this.rollupPoSAddress = rollupPoSAddress;
-        this.creationHash = creationHash;
+        this.creationHash = rollupPoSCreationHash;
         this.ethAddress = ethAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.contractPoS = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress, {handleRevert: true});
@@ -37,6 +51,10 @@ class SynchPoS {
         this._initLogger(logLevel);
     }
 
+    /**
+     * Initilaize all timeouts
+     * @param {Object} timeouts 
+     */
     _initTimeouts(timeouts){
         const errorDefault = 5000;
         const nextLoopDefault = 5000;
@@ -59,6 +77,10 @@ class SynchPoS {
         };
     }
 
+    /**
+     * Initilaize logger
+     * @param {String} logLevel 
+     */
     _initLogger(logLevel) {
         // config winston
         var options = {
@@ -78,14 +100,31 @@ class SynchPoS {
         });
     }
 
+    /**
+     * Convert to string
+     * normally used in order to add it to database
+     * @param {Any} - any input parameter
+     * @returns {String}
+     */
     _toString(val) {
         return JSON.stringify(stringifyBigInts(val));
     }
 
+    /**
+     * Get from string
+     * normally used ti get from database
+     * @param {String} - string to parse
+     * @returns {Any} 
+     */
     _fromString(val) {
         return unstringifyBigInts(JSON.parse(val));
     }
 
+    /**
+     * Get public contract variables
+     * Initialize array winners/slots
+     * Start logger
+     */
     async _init(){
         // Initialize class variables
         this.genesisBlock = 0;
@@ -130,6 +169,11 @@ class SynchPoS {
         }, this.timeouts.LOGGER );
     }
 
+    /**
+     * Main loop
+     * Synchronize Rollup PoS contract
+     * Maintain Rollup PoS database
+     */
     async synchLoop() {
         await this._init();
 
@@ -186,6 +230,14 @@ class SynchPoS {
         }
     }
 
+    /**
+     * Update general synchronizer information
+     * logger prints this information on logger main loop
+     * @param {Number} currentBlock - current etehreum block 
+     * @param {Number} blockNextUpdate - next ethereum block to do an update
+     * @param {Number} currentEra - current rollup PoS era
+     * @param {Number} lastSynchEra - last rollup PoS era synched
+     */
     _fillInfo(currentBlock, blockNextUpdate, currentEra, lastSynchEra){
         this.info = `${chalk.magenta("POS SYNCH".padEnd(12))} | `;
         this.info += `current block number: ${currentBlock} | `;
@@ -195,6 +247,11 @@ class SynchPoS {
         this.info += `Synched: ${chalk.white.bold(`${this.totalSynch} %`)}`;
     }
 
+    /**
+     * Maintain operators list
+     * @param {Array} logs - ethereum events
+     * @param {Number} era - era updated 
+     */
     async _updateOperators(logs, era) {
         // save operators on database
         let index = 0;
@@ -206,6 +263,12 @@ class SynchPoS {
         await this._updateListOperators(era);
     }
 
+    /**
+     * Save/Remove events on database
+     * @param {Object} event - ethereum event 
+     * @param {Number} index - index to store on database
+     * @param {Number} era - era on which the events has been triggered 
+     */
     async _saveOperators(event, index, era) {
         if (event.event == "createOperatorLog") {
             const operatorData = this._getRegOperatorsData(event.returnValues);
@@ -218,6 +281,11 @@ class SynchPoS {
         }
     }
 
+    /**
+     * Retrieve useful register operator data from event data
+     * @param {Object} operatorData - ethereum event data  
+     * @returns {Object} - useful register operator data 
+     */
     _getRegOperatorsData(operatorData){
         return {
             controllerAddress: operatorData.controllerAddress,
@@ -226,6 +294,11 @@ class SynchPoS {
         };
     }
 
+    /**
+     * Retrieve useful unregister operator data from event data
+     * @param {Object} operatorData - ethereum event data  
+     * @returns {Object} - useful unregister operator data 
+     */
     _getUnregOperatorsData(operatorData){
         return {
             controllerAddress: operatorData.controllerAddress,
@@ -233,6 +306,10 @@ class SynchPoS {
         };
     }
 
+    /**
+     * Update active operators list
+     * @param {Number} era - era to update 
+     */
     async _updateListOperators(era) {
         // Add operators
         const keysAddOp = await this.db.listKeys(`${opCreateKey}${separator}${era}`);
@@ -248,6 +325,11 @@ class SynchPoS {
         }
     }
 
+    /**
+     * Update array of winners
+     * Retrieve data from contract regarding winners
+     * @param {Number} eraUpdate - era to update 
+     */
     async _updateWinners(eraUpdate) {
         // update next era winners
         for (let i = 0; i < 2*this.slotsPerEra; i++){
@@ -270,46 +352,87 @@ class SynchPoS {
         }
     }
 
+    /**
+     * Get last era synchronized from database
+     * @returns {Number} last era synchronized
+     */
     async getLastSynchEra() {
         return this._fromString(await this.db.getOrDefault(lastEraKey, "0"));
     }
 
+    /**
+     * Get current slot from rollup PoS contract
+     * @returns {Number} current slot
+     */
     async getCurrentSlot(){
         const currentSlot = await this.contractPoS.methods.currentSlot()
             .call({from: this.ethAddress});
         return Number(currentSlot);
     }
 
+    /**
+     * Get current era from rollup PoS contract
+     * @returns {Number} current era
+     */
     async getCurrentEra(){
         const currentEra = await this.contractPoS.methods.currentEra()
             .call({from: this.ethAddress});
         return Number(currentEra);
     }
 
+    /**
+     * Get operators list
+     * @returns {Object} List of operators
+     */
     async getOperators(){
         return this.operators;
     }
 
+    /**
+     * Get single operators by its identifier
+     * @returns {Object} operator data
+     */
     async getOperatorById(opId){
         return this.operators[(bigInt(opId).toString())];
     }
 
+    /**
+     * Get array with all raffle winners
+     * @returns {Array} - raffle winners
+     */
     async getRaffleWinners(){
         return this.winners;
     }
 
+    /**
+     * Get array with all slot numbers
+     * @returns {Array} - slot numbers
+     */
     async getSlotWinners(){
         return this.slots;
     }
 
+    /**
+     * Get ethereum block from slot number
+     * @param {Number} numSlot - slot number
+     * @returns {Number} - ethereum block 
+     */
     async getBlockBySlot(numSlot){
         return (this.genesisBlock + numSlot*this.blocksPerSlot);
     }
 
+    /**
+     * Get current ethereum block
+     * @returns {Number} - current block
+     */
     async getCurrentBlock() {
         return await this.web3.eth.getBlockNumber();
     }
 
+    /**
+     * Get if synchronizer is fully synched
+     * @returns {Bool} - true id PoS is fully synchronized, otherwise false
+     */
     async isSynched() {
         if (this.totalSynch != Number(100).toFixed(2)) return false;
         const currentEra = await this.getCurrentEra();
@@ -318,16 +441,28 @@ class SynchPoS {
         return true;
     }
 
+    /**
+     * Get percentatge of synchronization
+     * @returns {String} - 0.00% format
+     */
     async getSynchPercentage() {
         return this.totalSynch;
     }
 
+    /**
+     * Get last commited hash by an operator
+     * @param {String} opId - operator identifier
+     */
     async getLastCommitedHash(opId) {
         const opInfo = await this.contractPoS.methods.operators(opId)
             .call({from: this.ethAddress});
         return opInfo.rndHash;
     }
 
+    /**
+     * Get slot deadline parameter
+     * @returns {Number} - slot deadline measured in ethereum blocks
+     */
     async getSlotDeadline(){
         if (this.slotDeadline) return this.slotDeadline;
         else {

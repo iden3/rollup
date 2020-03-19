@@ -14,7 +14,27 @@ const tokenKey = "all-tokens-";
 // Symbol not found 
 const symbolNotFound = "NOT_FOUND";
 
+/**
+ * Synchronize tokens prices
+ * - detect when a token is added to Rollup core contract
+ * - gets automatically its value in Dollars if possible
+ * - update token conversion table ( external file )- Logger level
+ * - if token is not found, its value is look on custom tokens file
+ * - if any of the above trading pairs is not found, vlaue is set to 0
+ */
 class SynchPool {
+    /**
+     * Initialize synchronizer
+     * @param {Object} db - synchronizer database 
+     * @param {String} nodeUrl - Ethereum node url
+     * @param {String} ethAddress - Address to make pure/view calls
+     * @param {String} rollupAddress - Rollup core address
+     * @param {Object} rollupABI - Rollup core ABI interface
+     * @param {String} logLevel - Logger level
+     * @param {String} pathConversionTable - Path to conversion table
+     * @param {String} pathCustomTokens - Path to custom tokens trading values
+     * @param {Object} timeouts - Configure timeouts
+     */
     constructor(
         db,
         nodeUrl,
@@ -42,6 +62,10 @@ class SynchPool {
         this._initTimeouts(timeouts);
     }
 
+    /**
+     * Initilaize all timeouts
+     * @param {Object} timeouts 
+     */
     _initTimeouts(timeouts){
         const errorDefault = 5000;
         const nextLoopDefault = 60000;
@@ -60,6 +84,10 @@ class SynchPool {
         };
     }
 
+    /**
+     * Initilaize logger
+     * @param {String} logLevel 
+     */
     _initLogger(logLevel) {
         // config winston
         var options = {
@@ -79,14 +107,32 @@ class SynchPool {
         });
     }
 
+    /**
+     * Convert to string
+     * normally used in order to add it to database
+     * @param {Any} - any input parameter
+     * @returns {String}
+     */
     _toString(val) {
         return JSON.stringify(stringifyBigInts(val));
     }
 
+    /**
+     * Get from string
+     * normally used ti get from database
+     * @param {String} - string to parse
+     * @returns {Any} 
+     */
     _fromString(val) {
         return unstringifyBigInts(JSON.parse(val));
     }
 
+    /**
+     * Main looop
+     * - synchronize new tokens
+     * - gets its price
+     * - update table conversion
+     */
     async synchLoop() {
         // eslint-disable-next-line no-constant-condition
         while(true) {
@@ -142,6 +188,13 @@ class SynchPool {
         }
     }
 
+    /**
+     * Update general synchronizer information
+     * logger prints this information on logger main loop
+     * @param {Number} lastSynchBlock - last synchronized ethereum block 
+     * @param {Number} currentBlock - current ethereum block
+     * @param {String} addedTokens - message with all tokens that has been added 
+     */
     _fillInfo(lastSynchBlock, currentBlock, addedTokens){
         this.info = `${chalk.cyan("POOL SYNCH")} | `;
         this.info += `current block number: ${currentBlock} | `;
@@ -151,6 +204,11 @@ class SynchPool {
         this.logger.info(this.info);
     }
 
+    /**
+     * Sends message directly to logger
+     * specifically for error messages
+     * @param {String} message - message to print 
+     */
     _logError(message){
         let info = `${chalk.cyan("POOL SYNCH")} | `;
         info += "info ==>  ";
@@ -158,6 +216,12 @@ class SynchPool {
         this.logger.info(info); 
     }
 
+    /**
+     * Update price for all tokens
+     * - try to get price from public Api
+     * - otherwise get price from custom tokens file
+     * - otherwise sets the price to 0
+     */
     async _updateTokensPrice() {
         let listMarkets;
         try {
@@ -190,8 +254,13 @@ class SynchPool {
         }
     }
 
+    /**
+     * Get token price from Bitfinex public API
+     * @param {String} tokenSymbol - token symbol 
+     * @param {Array} listMarkets - list of tradding pairs
+     * @param {Number | undefined} - returns price if found, undefined otherwise
+     */
     async _getInfoToken(tokenSymbol, listMarkets){
-        // return 'undefined' if client Api is not working
         try {
             let price = undefined;
             let marketFound = undefined;
@@ -218,6 +287,11 @@ class SynchPool {
         }
     }
 
+    /**
+     * Add basic ERC20 token information to database
+     * @param {Object} eventValues - ethereum events
+     * @returns {Object} - token basuc information 
+     */
     async _addToken(eventValues) {
         const tokenId = eventValues.tokenId;
         const tokenAddress = eventValues.tokenAddress;
@@ -243,10 +317,17 @@ class SynchPool {
         return { tokenSymbol, tokenId, tokenAddress };
     }
 
+    /**
+     * Retrieve last block synched from database
+     * @return {Number} - last block
+     */
     async getLastSynchBlock() {
         return this._fromString(await this.db.getOrDefault(lastBlockKey, "0"));
     }
 
+    /**
+     * Update token list with database tokens
+     */
     async getAllTokens() {
         const tokensDbKeys =  await this.db.listKeys(`${tokenKey}`);
         const lengthDb = tokensDbKeys.length;
@@ -261,6 +342,10 @@ class SynchPool {
         }
     }
 
+    /**
+     * Writes conversion file with conversion table
+     * @param {Object} table - conversion table 
+     */
     _setConversionTable(table) {
         fs.writeFileSync(this.pathConversionTable, JSON.stringify(table));
     }

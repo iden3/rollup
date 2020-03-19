@@ -3,7 +3,19 @@ const fs = require("fs");
 const { timeout } = require("./utils");
 const chalk = require("chalk");
 
+/**
+ * Synchronize pool file
+ * Pool file has all conversions for tokens
+ * Conversion meaning of its value in $
+ */
 class SynchPool {
+    /**
+     * Initilize pool synchronizer
+     * @param {Object} pool - Represents the transaction pool 
+     * @param {String} pathConversionTable - Path to conversion table 
+     * @param {String} logLevel - Logger level 
+     * @param {Object} timeouts - Configure timeouts
+     */
     constructor(
         pool,
         pathConversionTable,
@@ -17,6 +29,10 @@ class SynchPool {
         this._initLogger(logLevel);
     }
 
+    /**
+     * Initilaize all timeouts
+     * @param {Object} timeouts 
+     */
     _initTimeouts(timeouts){
         const errorDefault = 5000;
         const nextLoopDefault = 10000;
@@ -35,6 +51,10 @@ class SynchPool {
         };
     }
 
+    /**
+     * Initilaize logger
+     * @param {String} logLevel 
+     */
     _initLogger(logLevel) {
         // config winston
         var options = {
@@ -54,6 +74,11 @@ class SynchPool {
         });
     }
 
+    /**
+     * Get tokens conversion table
+     * Update new tokens - Dollar price
+     * Update pool conversion rate
+     */
     async synchLoop() {
         // eslint-disable-next-line no-constant-condition
         while(true) {
@@ -84,6 +109,10 @@ class SynchPool {
         }
     }
 
+    /**
+     * Send general information to logger
+     * @param {Bool} flagRead - true if file was loaded successfully, false otherwise
+     */
     _fillInfo(flagRead){
         this.info = `${chalk.cyan("POOL SYNCH".padEnd(12))} | `;
         this.info += flagRead ? "Success" : "Fail";
@@ -92,6 +121,10 @@ class SynchPool {
         this.logger.info(this.info);        
     }
 
+    /**
+     * Sets conversion rate to pool
+     * @param {Object} conversion - tokens conversion rate
+     */
     _setConversion(conversion) {
         this.pool.setConversion(conversion);
     }

@@ -57,7 +57,7 @@ async function send(urlOperator, idTo, amount, walletRollup, tokenId, userFee, i
         } else nonceToSend = responseLeaf.data.nonce;
     }
     const tx = {
-        idFromx: idFrom,
+        fromIdx: idFrom,
         toIdx: idTo,
         coin: tokenId,
         amount,

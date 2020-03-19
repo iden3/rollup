@@ -6,7 +6,7 @@
   "scripts": {
     "test": "mocha",
     "lint": "eslint ./src",
-    "test:operator": "node ./src/server/operator.js -p passTest",
+    "test:operator": "node ./src/server/operator.js",
     "server-proof": "node ./src/server-proof.js",
     "service-synch-pool": "node ./src/synch-pool-service/run-synch-pool.js"
   },

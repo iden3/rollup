@@ -25,7 +25,7 @@ const CliServerProof = require("../cli-proof-server");
 const LoopManager = require("../loop-manager");
 const Constants = require("../constants");
 const utils = require("../../../rollup-utils/rollup-utils");
-const { checkEnvVariables } = require("./utils");
+const { checkEnvVariables, checkPassEnv, getPassword } = require("./utils");
 
 const { argv } = require("yargs")
     .usage(`
@@ -35,9 +35,6 @@ options
 =======
     operator <options>
         start operator with passphrase
-
-    --passphrase or -p <passphrase string>
-        Passphrase to decrypt the wallet
     
     --clear or -c [true | false]
         Erase persistent databases
@@ -51,7 +48,6 @@ options
         Start operator in synch mode
         Default: false
     `)
-    .alias("p", "passphrase")
     .alias("pc", "pathconfig")
     .alias("c", "clear")
     .epilogue("Rollup operator");
@@ -74,7 +70,7 @@ let pool;
     let info;
 
     // Parse client command arguments
-    const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
+    // const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
     const pathEnvFile = (argv.pathconfig) ? argv.pathconfig : pathEnvFileDefault;
     const clearFlag = (argv.clear) ? argv.clear : false;
     const onlySynch = (argv.onlysynch) ? argv.onlysynch : false;
@@ -94,6 +90,15 @@ let pool;
     if (checkEnvVariables()){
         console.error("Missing environment variables");
         process.exit(0);
+    }
+
+    // Check if password is on environment variables
+    let passString;
+    if (checkPassEnv()){
+        // ask password by console
+        passString = await getPassword();
+    } else {
+        passString = process.env.PASSWORD;
     }
 
     // Set default environment data if it is not specified
@@ -328,6 +333,10 @@ let pool;
     }
 })();
 
+/**
+ * Get general indormation regarding operator state
+ * @returns {Object} - operator general information
+ */
 async function getGeneralInfo() {
     const generalInfo = {};
     generalInfo["posSynch"] = {};
@@ -350,38 +359,44 @@ async function getGeneralInfo() {
     return generalInfo;
 }
 
+// start synchronizer PoS loop
 function startRollupPoS(){
-    // start synchronizer PoS loop
     let info = infoInit;
     info += "Start Rollup PoS synchronizer";
     logger.info(info);
     posSynch.synchLoop();
 }
 
+// start synchronizer Rollup loop
 function startRollup(){
-    // start synchronizer Rollup loop
     let info = infoInit;
     info += "Start Rollup state synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
 }
 
+// start synchronizer Manager loop
 function startLoopManager(){
-    // start synchronizer Manager loop
     let info = infoInit;
     info += "Start Rollup PoS manager";
     logger.info(info);
     loopManager.startLoop();
 }
 
+// start synchronizer Pool loop
 function startPool(){
-    // start synchronizer Pool loop
     let info = infoInit;
     info += "Start Pool synchronizer";
     logger.info(info);
     poolSynch.synchLoop();
 }
 
+/**
+ * Load operator API http server
+ * @param {Bool} flagForge - flag if the operator is forging. Activates POST method to get transactions 
+ * @param {Bool} expose - flag to expose public API
+ * @param {Bool} flagLAN - flag to expose operator on LAN. Localhost is always exposed 
+ */
 function loadServer(flagForge, expose, flagLAN){
     // Get server environment variables
     const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
