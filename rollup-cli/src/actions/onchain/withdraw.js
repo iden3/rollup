@@ -4,18 +4,19 @@ const CliExternalOperator = require('../../../../rollup-operator/src/cli-externa
 const { getGasPrice } = require('./utils');
 
 /**
- * @dev withdraw on-chain transaction to get retrieve the users balance from exit tree
+ * withdraw on-chain transaction to get retrieve the users balance from exit tree
  * before this call an off-chain transaction must be done to Id 0 or an onchain forceWithdraw
  * that transactions will build a leaf on exit tree
- * @param nodeEth URL of the ethereum node
- * @param addressSC rollup address
- * @param walletRollup ethAddress and babyPubKey together
- * @param abi abi of rollup contract'
- * @param urlOperator URl from operator
- * @param idFrom balance tree identifier from wich funds will be withdrawed
- * @param numExitRoot exit tree root depth to look for exit tree account
- * @param gasLimit transaction gas limit
- * @param gasMultiplier multiply gas price
+ * @param {String} nodeEth - URL of the ethereum node
+ * @param {String} addressSC - rollup address
+ * @param {Object} walletRollup - ethAddress and babyPubKey together
+ * @param {String} abi - abi of rollup contract'
+ * @param {String} urlOperator - URl from operator
+ * @param {Number} idFrom - balance tree identifier from wich funds will be withdrawed
+ * @param {String} numExitRoot - exit tree root depth to look for exit tree account
+ * @param {Number} gasLimit - transaction gas limit
+ * @param {Number} gasMultiplier - multiply gas price
+ * @returns {Promise} - promise will resolve when the Tx is sent, and return the Tx itself with the Tx Hash.
  */
 async function withdraw(nodeEth, addressSC, walletRollup, abi, urlOperator,
     idFrom, numExitRoot, gasLimit = 5000000, gasMultiplier = 1) {

@@ -14,6 +14,7 @@ const poseidonJs = require("circomlib/src/poseidon");
 const utils = require("../../rollup-utils/rollup-utils");
 const treeUtils = require("../../rollup-utils/rollup-tree-utils");
 const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTest");
+const { padZeroes} = require("./helpers/helpers");
 
 const MAX_LEVELS = 24;
 
@@ -38,14 +39,6 @@ async function fillSmtTree() {
     await tree.insert(key2, value2);
     await tree.insert(key3, value3);
 }
-
-function padZeroes(str, length) {
-    while (str.length < length) {
-        str = `0${str}`;
-    }
-    return str;
-}
-
 contract("RollupHelpers functions", (accounts) => {
     const {
         0: owner,

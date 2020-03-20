@@ -2,16 +2,17 @@ const ethers = require('ethers');
 const { getGasPrice } = require('./utils');
 
 /**
- * @dev approve tokens to be spent by rollup smart contract, also
+ * approve tokens to be spent by rollup smart contract, also
  * if the tokens address match the goerli faucet WEENUS, get tokens from it.
- * @param nodeEth URL of the ethereum node
- * @param addressTokens ERC20 Smart contract
- * @param amount amount to approve
- * @param spender rollup address
- * @param walletRollup ethAddress and babyPubKey together
- * @param abi abi of ERC20 contract
- * @param gasLimit transaction gas limit
- * @param gasMultiplier multiply gas price
+ * @param {String} nodeEth - URL of the ethereum node
+ * @param {String} addressTokens - ERC20 Smart contract
+ * @param {String} amount - amount to approve
+ * @param {Number} spender - rollup address
+ * @param {Object} walletRollup - ethAddress and babyPubKey together
+ * @param {String} abi - abi of ERC20 contract
+ * @param {Number} gasLimit - transaction gas limit
+ * @param {Number} gasMultiplier - multiply gas price
+ * @returns {Promise} - promise will resolve when the Tx is sent, and return the Tx itself with the Tx Hash.
 */
 async function approve(nodeEth, addressTokens, amount, spender, walletRollup,
     abi, gasLimit = 5000000, gasMultiplier = 1) {

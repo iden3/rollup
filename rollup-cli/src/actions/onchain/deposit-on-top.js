@@ -3,16 +3,17 @@ const ethers = require('ethers');
 const { getGasPrice } = require('./utils');
 
 /**
- * @dev deposit on an existing balance tree leaf
- * @param nodeEth URL of the ethereum node
- * @param addressSC rollup address
- * @param loadAmount initial balance on balance tree
- * @param tokenId token type identifier
- * @param walletRollup ethAddress and babyPubKey together
- * @param abi abi of rollup contract
- * @param idTo leaf identifier to deposit into
- * @param gasLimit transaction gas limit
- * @param gasMultiplier multiply gas price
+ * deposit on an existing balance tree leaf
+ * @param {String} nodeEth - URL of the ethereum node
+ * @param {String} addressSC - rollup address
+ * @param {String} loadAmount - initial balance on balance tree
+ * @param {Number} tokenId - token type identifier
+ * @param {Object} walletRollup - ethAddress and babyPubKey together
+ * @param {String} abi - abi of rollup contract
+ * @param {Number} idTo - leaf identifier to deposit into
+ * @param {Number} gasLimit - transaction gas limit
+ * @param {Number} gasMultiplier - multiply gas price
+* @returns {Promise} - promise will resolve when the Tx is sent, and return the Tx itself with the Tx Hash.
 */
 async function depositOnTop(nodeEth, addressSC, loadAmount, tokenId, walletRollup,
     abi, idTo, gasLimit = 5000000, gasMultiplier = 1) {

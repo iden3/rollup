@@ -6,10 +6,10 @@
 
 const chai = require("chai");
 const utils = require("../../rollup-utils/utils");
-const { buildPublicInputsSm } = require("../../rollup-operator/src/utils");
+const { buildFullInputSm, ForgerTest, decodeMethod} = require("./helpers/helpers");
+
 const rollupUtils = require("../../rollup-utils/rollup-utils.js");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
-
 const { expect } = chai;
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 
@@ -18,66 +18,10 @@ const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const StakerManager = artifacts.require("../contracts/RollupPoS");
 const RollupTest = artifacts.require("../contracts/test/RollupTest");
 
-const abiDecoder = require("abi-decoder");
-abiDecoder.addABI(RollupTest.abi);
-
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 
-const proofA = ["0", "0"];
-const proofB = [["0", "0"], ["0", "0"]];
-const proofC = ["0", "0"];
-
-function buildFullInputSm(bb, beneficiary) {
-    const input = buildPublicInputsSm(bb);
-    return {
-        beneficiary: beneficiary,
-        proofA,
-        proofB,
-        proofC,
-        input,
-    };
-}
-
-function manageEvent(event) {
-    if (event.event == "OnChainTx") {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
-        return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
-            amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.tokenId,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true
-        };
-    }
-}
-
 contract("Rollup", (accounts) => { 
-
-    async function forgeBatch(events = undefined) {
-        const batch = await rollupDB.buildBatch(maxTx, nLevels);
-        if (events) {
-            events.forEach(elem => {
-                batch.addTx(manageEvent(elem));
-            });
-        }
-        await batch.build();
-        const inputSm = buildFullInputSm(batch, beneficiary);
-        await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
-            inputSm.proofB, inputSm.proofC, inputSm.input);
-        await rollupDB.consolidate(batch);
-    }
-
-    function checkBatchNumber(events) {
-        events.forEach(elem => {
-            const eventBatch = BigInt(elem.args.batchNumber);
-            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(rollupDB.lastBatch).toString());
-        });
-    }
 
     const offChainHashInput = 3;
     const maxTx = 10;
@@ -85,6 +29,7 @@ contract("Rollup", (accounts) => {
     let nLevels;
     let db;
     let rollupDB;
+    let forgerTest;
 
     let insPoseidonUnit;
     let insTokenRollup;
@@ -134,6 +79,7 @@ contract("Rollup", (accounts) => {
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
         nLevels = await insRollupTest.NLevels();
+        forgerTest = new ForgerTest(rollupDB, maxTx, nLevels, beneficiary, insRollupTest);
     });
 
     it("Check ganache provider", async () => {
@@ -215,17 +161,17 @@ contract("Rollup", (accounts) => {
 
         let balanceBeneficiary = await web3.eth.getBalance(beneficiary);
         // forge genesis batch
-        await forgeBatch();
+        await forgerTest.forgeBatch();
 
         // Forge batch with deposit transaction
-        await forgeBatch([resDeposit.logs[0]]);
+        await forgerTest.forgeBatch([resDeposit.logs[0]]);
 
         let balanceBeneficiary2 = await web3.eth.getBalance(beneficiary);
          
         expect(BigInt(balanceBeneficiary2) - BigInt(balanceBeneficiary)).to.be.equal(
             BigInt(feeOnChain) - BigInt(feeOnChain) / BigInt(maxOnChainTx * 3));
 
-        checkBatchNumber([resDeposit.logs[0]]);
+        forgerTest.checkBatchNumber([resDeposit.logs[0]]);
     });
 
     it("Should add two deposits", async () =>{
@@ -251,12 +197,12 @@ contract("Rollup", (accounts) => {
         expect(resId3.toString()).to.be.equal("20");
 
         // forge batch with no transactions
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         
         // forge batch two deposits
-        await forgeBatch([resDepositId2.logs[0], resDepositId3.logs[0]]);
+        await forgerTest.forgeBatch([resDepositId2.logs[0], resDepositId3.logs[0]]);
 
-        checkBatchNumber([resDepositId2.logs[0], resDepositId3.logs[0]]);
+        forgerTest.checkBatchNumber([resDepositId2.logs[0], resDepositId3.logs[0]]);
     });
 
     it("Should add force withdraw", async () => {
@@ -282,11 +228,11 @@ contract("Rollup", (accounts) => {
             { from: id1, value: web3.utils.toWei("1", "ether") });
 
         // forge batch with no transactions
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         // forge batch force withdraw
-        await forgeBatch([resForceWithdraw.logs[0]]);
+        await forgerTest.forgeBatch([resForceWithdraw.logs[0]]);
 
-        checkBatchNumber([resForceWithdraw.logs[0]]);
+        forgerTest.checkBatchNumber([resForceWithdraw.logs[0]]);
     });
 
     it("Should withdraw tokens", async () => {
@@ -354,11 +300,11 @@ contract("Rollup", (accounts) => {
         expect(resId1.toString()).to.be.equal("45");
 
         // forge empty batch
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         // forge batch with deposit on top transaction
-        await forgeBatch([resDepositOnTop.logs[0]]);
+        await forgerTest.forgeBatch([resDepositOnTop.logs[0]]);
 
-        checkBatchNumber([resDepositOnTop.logs[0]]);
+        forgerTest.checkBatchNumber([resDepositOnTop.logs[0]]);
 
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);//new leaf
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())+onTopAmount).toString());
@@ -388,11 +334,11 @@ contract("Rollup", (accounts) => {
             { from: id2, value: web3.utils.toWei("1", "ether") });
 
         // forge empty batch
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         // forge batch with deposit on top transaction
-        await forgeBatch([resTransfer.logs[0]]);
+        await forgerTest.forgeBatch([resTransfer.logs[0]]);
 
-        checkBatchNumber([resTransfer.logs[0]]);
+        forgerTest.checkBatchNumber([resTransfer.logs[0]]);
 
         let finalBalanceId2 = await rollupDB.getStateByIdx(2);
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
@@ -427,11 +373,11 @@ contract("Rollup", (accounts) => {
         expect(resId1.toString()).to.be.equal("33");
 
         // forge genesis batch
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         // Forge batch with deposit transaction
-        await forgeBatch([resDepositAndTransfer.logs[0]]);
+        await forgerTest.forgeBatch([resDepositAndTransfer.logs[0]]);
         
-        checkBatchNumber([resDepositAndTransfer.logs[0]]);
+        forgerTest.checkBatchNumber([resDepositAndTransfer.logs[0]]);
 
         let finalBalanceId2 = await rollupDB.getStateByIdx(2);
         let finalBalanceId4 = await rollupDB.getStateByIdx(4);//new leaf
@@ -456,11 +402,11 @@ contract("Rollup", (accounts) => {
             { from: id2, value: web3.utils.toWei("1", "ether") });
     
         // forge batch with no transactions
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         // forge batch force withdraw
-        await forgeBatch([resForceWithdraw.logs[0]]);
+        await forgerTest.forgeBatch([resForceWithdraw.logs[0]]);
     
-        checkBatchNumber([resForceWithdraw.logs[0]]);
+        forgerTest.checkBatchNumber([resForceWithdraw.logs[0]]);
     });
     
     it("Should withdraw tokens id2", async () => {
@@ -544,7 +490,7 @@ contract("Rollup", (accounts) => {
         // note: data compressedTx will be available on forge Batch Mechanism
         const blockNumber = resForge.logs[0].args.blockNumber.toString();
         const transaction = await web3.eth.getTransactionFromBlock(blockNumber, 0);
-        const decodedData = abiDecoder.decodeMethod(transaction.input);
+        const decodedData = decodeMethod(transaction.input);
         let inputRetrieved;
         decodedData.params.forEach(elem => {
             if (elem.name == "input") {
@@ -608,11 +554,11 @@ contract("Rollup", (accounts) => {
         expect(resId3.toString()).to.be.equal("14");
 
         // forge genesis batch
-        await forgeBatch();
+        await forgerTest.forgeBatch();
         // Forge batch with deposit transaction
-        await forgeBatch([resDepositAndTransfer.logs[0]]);
+        await forgerTest.forgeBatch([resDepositAndTransfer.logs[0]]);
         
-        checkBatchNumber([resDepositAndTransfer.logs[0]]);
+        forgerTest.checkBatchNumber([resDepositAndTransfer.logs[0]]);
 
         let finalBalanceId5 = await rollupDB.getStateByIdx(5);
         expect(finalBalanceId5.amount.toString()).to.be.equal("3");
@@ -689,7 +635,7 @@ contract("Rollup", (accounts) => {
         // note: data compressedTx will be available on forge Batch Mechanism
         const blockNumber = resForge.logs[0].args.blockNumber.toString();
         const transaction = await web3.eth.getTransactionFromBlock(blockNumber, 0);
-        const decodedData = abiDecoder.decodeMethod(transaction.input);
+        const decodedData = decodeMethod(transaction.input);
         let inputRetrieved;
         decodedData.params.forEach(elem => {
             if (elem.name == "input") {

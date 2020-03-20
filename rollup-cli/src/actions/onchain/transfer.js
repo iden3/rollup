@@ -4,17 +4,18 @@ const { fix2float } = require('../../../../js/utils');
 const { getGasPrice } = require('./utils');
 
 /**
- * @dev transfer between two accounts already defined in tree leaf
- * @param nodeEth URL of the ethereum node
- * @param addressSC rollup address
- * @param amount initial balance on balance tree
- * @param tokenId token type identifier
- * @param walletRollup ethAddress and babyPubKey together
- * @param abi abi of rollup contract
- * @param idFrom sender
- * @param idTo receiver
- * @param gasLimit transaction gas limit
- * @param gasMultiplier multiply gas price
+ * transfer between two accounts already defined in tree leaf
+ * @param {String} nodeEth - URL of the ethereum node
+ * @param {String} addressSC - rollup address
+ * @param {String} amount - initial balance on balance tree
+ * @param {Number} tokenId - token type identifier
+ * @param {Object} walletRollup - ethAddress and babyPubKey together
+ * @param {String} abi - abi of rollup contract
+ * @param {Number} idFrom - sender
+ * @param {Number} idTo - receiver
+ * @param {Number} gasLimit - transaction gas limit
+ * @param {Number} gasMultiplier - multiply gas price
+ * @returns {Promise} - promise will resolve when the Tx is sent, and return the Tx itself with the Tx Hash.
 */
 async function transfer(nodeEth, addressSC, amount, tokenId, walletRollup,
     abi, idFrom, idTo, gasLimit = 5000000, gasMultiplier = 1) {

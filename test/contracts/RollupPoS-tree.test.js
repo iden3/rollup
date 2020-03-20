@@ -9,6 +9,7 @@ const chai = require("chai");
 
 const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
+const { getEtherBalance} = require("./helpers/helpers");
 
 contract("RollupPoS", (accounts) => {
     const {
@@ -38,8 +39,7 @@ contract("RollupPoS", (accounts) => {
     // Deploy token test
         insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
         // Check ganache provider
-        let balance = await web3.eth.getBalance(owner);
-        balance = web3.utils.fromWei(balance.toString(), "ether");
+        let balance = await getEtherBalance(owner);
         if ((accounts.length < 100) || (balance < 1000)) {
             throw new Error("launch ganache with more than 100 accounts and enough ether on each account:\n\n`ganache-cli -a 100 --defaultBalanceEther 1000000`");
         }
