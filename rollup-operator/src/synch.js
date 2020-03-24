@@ -30,6 +30,7 @@ const lastPurgedEventKey = "last-purged-event";
 
 // cache keys
 const lastPurgedKey = "last-purged";
+const confirmationBlocks = 24;
 
 /**
 * Synchronize Rollup core smart contract 
@@ -174,6 +175,10 @@ class Synchronizer {
             this.creationBlock = creationTx.blockNumber;
         }
 
+        // Init info message
+        this.info = `${chalk.blue("STATE SYNCH".padEnd(12))} | `;
+        this.info += "Initializing data";
+
         // Start logger
         this.logInterval = setInterval(() => {
             this.logger.info(this.info);
@@ -241,7 +246,7 @@ class Synchronizer {
                 }
 
                 if (currentBatchDepth > lastBatchSaved) {
-                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber);
+                    const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber, currentBlock);
                     // If no event is found, tree is not updated
                     if (!targetBlockNumber) continue;
                     // get all logs from last batch
@@ -320,23 +325,30 @@ class Synchronizer {
      * Retrieve the ethereum block when a rollup batch has been forged
      * @param {Number} batchToSynch - rollup batch
      * @param {Number} lastSynchBlock - last ethereum block synched
+     * @param {Number} currentBlock - current ethereum block
      * @returns {Number} targetBlockNumber - ethereum block
      */
-    async _getTargetBlock(batchToSynch, lastSynchBlock){
-        let targetBlockNumber = undefined;
-        const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
-            fromBlock: lastSynchBlock + 1,
-            toBlock: "latest",
-        });
+    async _getTargetBlock(batchToSynch, lastSynchBlock, currentBlock){
+        // beyond "confirmationBlocks" blockchain is considered secure and immutable
+        if (lastSynchBlock >= currentBlock - confirmationBlocks)
+            this.forgeEventsCache.clear();
 
-        for (const log of logsForge){
-            const batchNumber = Number(log.returnValues.batchNumber);
-            if (batchNumber === batchToSynch){
-                targetBlockNumber = Number(log.returnValues.blockNumber);
-                break;
+        let targetBlockNumber = this.forgeEventsCache.get(batchToSynch);
+        if (!targetBlockNumber){
+            const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
+                fromBlock: lastSynchBlock + 1,
+                toBlock: "latest",
+            });
+
+            for (const log of logsForge) {
+                const key = Number(log.returnValues.batchNumber);
+                const value = Number(log.returnValues.blockNumber);
+                this.forgeEventsCache.set(key, value);
             }
         }
-        return targetBlockNumber;
+
+        // return block number according batch forged
+        return this.forgeEventsCache.get(batchToSynch);
     }
 
     /**
