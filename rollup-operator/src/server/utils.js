@@ -53,8 +53,35 @@ function getPassword() {
     });
 }
 
+/**
+ * Get general information regarding operator state
+ * @returns {Object} - operator general information
+ */
+async function getGeneralInfo(rollupSynch, posSynch) {
+    const generalInfo = {};
+    generalInfo["posSynch"] = {};
+    generalInfo["rollupSynch"] = {};
+
+    generalInfo.currentBlock = await posSynch.getCurrentBlock();
+
+    generalInfo["posSynch"].isSynched = await posSynch.isSynched();
+    generalInfo["posSynch"].synch = await posSynch.getSynchPercentage();
+    generalInfo["posSynch"].genesisBlock = await posSynch.genesisBlock;
+    generalInfo["posSynch"].lastEraSynch = await posSynch.getLastSynchEra();
+    generalInfo["posSynch"].currentEra = await posSynch.getCurrentEra();
+    generalInfo["posSynch"].currentSlot = await posSynch.getCurrentSlot();
+
+    generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
+    generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
+    generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
+    generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+
+    return generalInfo;
+}
+
 module.exports = {
     checkEnvVariables,
     checkPassEnv,
     getPassword,
+    getGeneralInfo,
 };

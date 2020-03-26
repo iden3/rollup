@@ -99,6 +99,10 @@ contract("Operator", (accounts) => {
     let insRollup;
     let insRollupPoS;
 
+    // Off-chain tx
+    let tx1;
+    let tx2;
+
     before(async () => {
         // Load test configuration
         const configTest = JSON.parse(fs.readFileSync(configTestPath));
@@ -237,16 +241,17 @@ contract("Operator", (accounts) => {
         const listOperators = res.data;
         const urlOp = listOperators[0].url;
         // config transaction
-        const configTx = {
+        tx1 = {
             from: 1,
             to: 2,
             token: 0,
             amount: 3,
             userFee: 2, 
         };
+
         // send transaction with client
-        await sendTx(urlOp, configTx.to, configTx.amount, rollupEncWallets[0],
-            pass, configTx.token, configTx.userFee, configTx.from);
+        await sendTx(urlOp, tx1.to, tx1.amount, rollupEncWallets[0],
+            pass, tx1.token, tx1.userFee, tx1.from);
     });
 
     it("Should forge off-chain transaction", async () => {
@@ -271,7 +276,7 @@ contract("Operator", (accounts) => {
         const listOperators = res.data;
         const urlOp = listOperators[0].url;
         // config transaction
-        const configTx = {
+        tx2 = {
             from: 2,
             to: 0,
             token: 0,
@@ -280,8 +285,8 @@ contract("Operator", (accounts) => {
             userFee: 1, 
         };
         // send transaction with client
-        await sendTx(urlOp, configTx.to, configTx.amount, rollupEncWallets[1],
-            pass, configTx.token, configTx.userFee, configTx.from);
+        await sendTx(urlOp, tx2.to, tx2.amount, rollupEncWallets[1],
+            pass, tx2.token, tx2.userFee, tx2.from);
     });
     
     it("Should forge withdraw off-chain transaction", async () => {
@@ -486,6 +491,48 @@ contract("Operator", (accounts) => {
             expect(error.response.status).to.be.equal(404);
             expect(error.response.data).to.be.equal("Accounts not found");
         }
+    });
+
+    it("Should check fee and tokens added", async () => {
+        const tokenId = 0;
+        const resTokensList = await cliExternalOp.getTokensList();
+        const resFeeTokens = await cliExternalOp.getFeeTokens();
+        const smFeeTokens = await insRollup.feeAddToken(); 
+
+        expect(insTokenRollup.address).to.be.equal(resTokensList.data[tokenId]);
+        expect(smFeeTokens.toString()).to.be.equal(resFeeTokens.data);
+    });
+
+    it("Should check batch transactions", async () => {
+        // find transactions on batches
+        const res = await cliExternalOp.getState();
+        const currentNumBatch = res.data.rollupSynch.lastBatchSynched;
+
+        let foundTx = [];
+        for (let i = 0; i < currentNumBatch; i++){
+            try {
+                const res = await cliExternalOp.getBatchTx(i);
+                const txData = res.data[0];
+                foundTx.push(txData);
+            } catch (error){
+                expect(error.response.status).to.be.equal(404);
+                expect(error.response.data).to.be.equal("Batch not found");
+            }
+        }
+
+        // Check tx1 and tx2 have been found
+        const resTx1 = foundTx[0];
+        const resTx2 = foundTx[1];
+        
+        expect(resTx1.fromIdx).to.be.equal(tx1.from);
+        expect(resTx1.toIdx).to.be.equal(tx1.to);
+        expect(resTx1.amount).to.be.equal(tx1.amount.toString());
+        expect(resTx1.coin).to.be.equal(tx1.token);
+
+        expect(resTx2.fromIdx).to.be.equal(tx2.from);
+        expect(resTx2.toIdx).to.be.equal(tx2.to);
+        expect(resTx2.amount).to.be.equal(tx2.amount.toString());
+        expect(resTx2.coin).to.be.equal(tx2.token);
     });
 
     after(async () => {

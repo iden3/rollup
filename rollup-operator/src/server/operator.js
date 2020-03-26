@@ -12,13 +12,15 @@ const ip = require("ip");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
 const RollupDB = require("../../../js/rollupdb");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
+const { unstringifyBigInts } = require("snarkjs");
 const MemDb = require("../../../rollup-utils/mem-db");
 const LevelDb = require("../../../rollup-utils/level-db");
+const { HttpMethods } = require("./http-methods");
 
 const Synchronizer = require("../synch");
 const SynchPoS = require("../synch-pos");
 const SynchPool = require("../synch-pool");
+const SynchTokens = require("../synch-tokens");
 const Pool = require("../../../js/txpool");
 const OperatorManager = require("../operator-manager");
 const CliServerProof = require("../cli-proof-server");
@@ -60,6 +62,7 @@ const pathEnvFileDefault = `${__dirname}/config.env`;
 
 let posSynch;
 let rollupSynch;
+let tokenSynch;
 let poolSynch;
 let loopManager;
 let opManager;
@@ -209,6 +212,20 @@ let pool;
         synchConfig.rollup.timeouts,
     );
 
+    ///////////////////
+    ///// TOKENS SYNCH
+    ///////////////////
+    if ( operatorMode === Constants.mode.archive ){
+        tokenSynch = new SynchTokens(
+            rollupSynchDb,
+            synchConfig.ethNodeUrl,
+            synchConfig.ethAddress,
+            synchConfig.rollup.address,
+            synchConfig.rollup.abi,
+            loggerLevel,
+            synchConfig.rollup.timeouts);
+    }
+
     ////////////////
     ///// POS SYNCH
     ///////////////
@@ -326,41 +343,15 @@ let pool;
         await loopManager.loadSeedHashChain(seed);
     }
 
-    startRollup();
+    startRollup(operatorMode);
     startRollupPoS();
-    loadServer(flagForge, envExpose, flagLAN);
+    loadServer(flagForge, envExpose, flagLAN, operatorMode);
 
     if (flagForge) {
         startLoopManager();
         startPool();
     }
 })();
-
-/**
- * Get general indormation regarding operator state
- * @returns {Object} - operator general information
- */
-async function getGeneralInfo() {
-    const generalInfo = {};
-    generalInfo["posSynch"] = {};
-    generalInfo["rollupSynch"] = {};
-
-    generalInfo.currentBlock = await posSynch.getCurrentBlock();
-
-    generalInfo["posSynch"].isSynched = await posSynch.isSynched();
-    generalInfo["posSynch"].synch = await posSynch.getSynchPercentage();
-    generalInfo["posSynch"].genesisBlock = await posSynch.genesisBlock;
-    generalInfo["posSynch"].lastEraSynch = await posSynch.getLastSynchEra();
-    generalInfo["posSynch"].currentEra = await posSynch.getCurrentEra();
-    generalInfo["posSynch"].currentSlot = await posSynch.getCurrentSlot();
-
-    generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
-    generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
-    generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
-    generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
-
-    return generalInfo;
-}
 
 // start synchronizer PoS loop
 function startRollupPoS(){
@@ -371,11 +362,13 @@ function startRollupPoS(){
 }
 
 // start synchronizer Rollup loop
-function startRollup(){
+function startRollup(operatorMode){
     let info = infoInit;
     info += "Start Rollup state synchronizer";
     logger.info(info);
     rollupSynch.synchLoop();
+    if (operatorMode === Constants.mode.archive)
+        tokenSynch.synchLoop();
 }
 
 // start synchronizer Manager loop
@@ -400,7 +393,7 @@ function startPool(){
  * @param {Bool} expose - flag to expose public API
  * @param {Bool} flagLAN - flag to expose operator on LAN. Localhost is always exposed 
  */
-function loadServer(flagForge, expose, flagLAN){
+function loadServer(flagForge, expose, flagLAN, operatorMode){
     // Get server environment variables
     const portExternal = process.env.OPERATOR_PORT_EXTERNAL;
 
@@ -413,122 +406,28 @@ function loadServer(flagForge, expose, flagLAN){
         appExternal.use(cors());
         appExternal.use(morgan("dev"));
 
+        const apiMethods = new HttpMethods(
+            appExternal,
+            rollupSynch,
+            posSynch,
+            tokenSynch,
+            logger
+        );
+
         if (expose){
             let infoHttpPost = infoInit;
             infoHttpPost += "Load external http GET methods";
             logger.http(infoHttpPost);
 
-            appExternal.get("/accounts/:id", async (req, res) => {
-                const id = req.params.id;
-                try {
-                    const info = await rollupSynch.getStateById(id);
-                    if (info === null)
-                        res.status(404).send("Account not found");
-                    else   
-                        res.status(200).json(stringifyBigInts(info));
-                } catch (error){
-                    logger.error(`Message error: ${error.message}`);
-                    logger.debug(`Message error: ${error.stack}`);
-                    res.status(400).send("Error getting accounts information");
-                }
-            });
-     
-            appExternal.get("/accounts", async (req, res) => {
-                const ax = req.query.ax;
-                const ay = req.query.ay;
-                const ethAddr = req.query.ethAddr; 
-    
-                let accounts;
-    
-                if (ax === undefined && ay === undefined && ethAddr === undefined ){
-                    res.status(400).send("No filters has been submitted");
-                    return;
-                }
-                    
-    
-                // Filter first by AxAy or/and ethAddress
-                if ((ax !== undefined && ay === undefined) || (ax === undefined && ay !== undefined)){
-                    res.status(400).send("Babyjub key is not completed. Please provide both Ax and Ay");
-                } else {
-                    try {
-                        if (ax !== undefined && ay !== undefined) {
-                            accounts = await rollupSynch.getStateByAxAy(ax, ay);
-                            if (ethAddr !== undefined && accounts !== null){
-                                accounts = accounts.filter(account => {
-                                    if (account.ethAddress.toLowerCase() == ethAddr.toLowerCase())
-                                        return account;
-                                });
-                            }
-                        } else 
-                            accounts = await rollupSynch.getStateByEthAddr(ethAddr);
-                
-                        if (accounts === null || accounts.length === 0)
-                            res.status(404).send("Accounts not found");    
-                        else
-                            res.status(200).json(stringifyBigInts(accounts));
-                            
-    
-                    } catch (error) {
-                        logger.error(`Message error: ${error.message}`);
-                        logger.debug(`Message error: ${error.stack}`);
-                        res.status(400).send("Error getting accounts information");
-                    }
-                }
-            });
-    
-            appExternal.get("/state", async (req, res) => {
-                try {
-                    const generalInfo = await getGeneralInfo(); 
-                    res.status(200).json(generalInfo);
-                } catch (error){
-                    logger.error(`Message error: ${error.message}`);
-                    logger.debug(`Message error: ${error.stack}`);
-                    res.status(400).send("Error getting general information");
-                }
-            });
-    
-            appExternal.get("/operators", async (req, res) => {
-                try {
-                    const operatorList = await posSynch.getOperators();
-                    res.status(200).json(stringifyBigInts(operatorList));
-                } catch (error) {
-                    logger.error(`Message error: ${error.message}`);
-                    logger.debug(`Message error: ${error.stack}`);
-                    res.status(400).send("Error getting operators list");
-                }
-            });
-    
-            appExternal.get("/exits/:id/:numbatch", async (req, res) => {
-                const numBatch = req.params.numbatch;
-                const id = req.params.id;
-                try {
-                    const resFind = await rollupSynch.getExitTreeInfo(numBatch, id);
-                    if (resFind === null)
-                        res.status(404).send("No information was found");    
-                    else 
-                        res.status(200).json(stringifyBigInts(resFind));
-                        
-                } catch (error) {
-                    logger.error(`Message error: ${error.message}`);
-                    logger.debug(`Message error: ${error.stack}`);
-                    res.status(400).send("Error getting exit tree information");
-                }
-            });
-    
-            appExternal.get("/exits/:id", async (req, res) => {
-                const id = req.params.id;
-                try {
-                    const resFind = await rollupSynch.getExitsBatchById(id);
-                    if (resFind.length > 0)
-                        res.status(200).json(stringifyBigInts(resFind));
-                    else
-                        res.status(404).send("No exits batch found");
-                } catch (error) {
-                    logger.error(`Message error: ${error.message}`);
-                    logger.debug(`Message error: ${error.stack}`);
-                    res.status(400).send("Error getting exit batches");
-                }
-            });
+            apiMethods.initStateApi();
+            apiMethods.initOperarorsApi();
+            apiMethods.initExitsApi();
+            apiMethods.initAccountsApi();
+
+            if (operatorMode === Constants.mode.archive){
+                apiMethods.initTokensApi();
+                apiMethods.initBatchApi();
+            }
         }
 
         if (flagForge){

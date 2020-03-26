@@ -77,6 +77,31 @@ class CliExternalOperator {
     }
 
     /**
+     * Get all tokens listed on Rollup
+     * @returns {Object} - http response
+     */
+    getTokensList() {
+        return axios.get(`${this.url}/tokens`);
+    }
+
+    /**
+     * Get current fee to add a token into rollup
+     * @returns {Object} - http response
+     */
+    getFeeTokens() {
+        return axios.get(`${this.url}/feetokens`);
+    }
+
+    /**
+     * Get off-chain transaction in an specific batch
+     * @param {Number} - batch depth
+     * @returns {Object} - http response
+     */
+    getBatchTx(batchId) {
+        return axios.get(`${this.url}/batch/${batchId}`);
+    }
+
+    /**
      * Send off-chain transaction to the operator
      * @param {Object} tx - rollup transaction
      * @returns {Object} - http response 

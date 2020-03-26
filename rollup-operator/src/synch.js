@@ -210,7 +210,7 @@ class Synchronizer {
                 const stateDepth = parseInt(await this.rollupContract.methods.getStateDepth()
                     .call({from: this.ethAddress}, stateSaved.blockNumber));
 
-                if (stateSaved.root && stateDepth !== lastBatchSaved){
+                if (lastBatchSaved > 0 && stateDepth !== lastBatchSaved){
                     // clear database
                     await this._clearRollback(lastBatchSaved);
                     this._infoRollback(lastBatchSaved - 1, "Contract State depth does not match last state depth saved");
@@ -224,7 +224,7 @@ class Synchronizer {
                     
                 const stateRootHex = `0x${bigInt(stateRoot).toString(16)}`;
 
-                if (stateSaved.root && (stateRootHex !== stateSaved.root)) {
+                if (lastBatchSaved > 0 && (stateRootHex !== stateSaved.root)) {
                     // clear database
                     await this._clearRollback(lastBatchSaved);
                     this._infoRollback(lastBatchSaved - 1, "Contract root does not match last root saved");
@@ -237,7 +237,7 @@ class Synchronizer {
                     .call({ from: this.ethAddress }, stateSaved.blockNumber));
 
                 const stateMiningOnChainHashHex = `0x${bigInt(stateMiningOnChainHash).toString(16)}`;
-                if (stateSaved.root && (stateMiningOnChainHashHex !== stateSaved.miningOnChainHash)) {
+                if (lastBatchSaved > 0 && (stateMiningOnChainHashHex !== stateSaved.miningOnChainHash)) {
                     // clear database
                     await this._clearRollback(lastBatchSaved);
                     this._infoRollback(lastBatchSaved - 1, "Contract miningOnChainHash does not match with the saved one");
