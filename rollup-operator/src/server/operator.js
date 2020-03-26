@@ -93,12 +93,15 @@ let pool;
     }
 
     // Check if password is on environment variables
+    // skip it if synch mode is ON
     let passString;
-    if (checkPassEnv()){
-        // ask password by console
-        passString = await getPassword();
-    } else {
-        passString = process.env.PASSWORD;
+    if (!onlySynch){
+        if (checkPassEnv()){
+            // ask password by console
+            passString = await getPassword();
+        } else {
+            passString = process.env.PASSWORD;
+        }
     }
 
     // Set default environment data if it is not specified
