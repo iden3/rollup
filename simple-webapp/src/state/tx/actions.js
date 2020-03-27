@@ -3,6 +3,8 @@ import * as CONSTANTS from './constants';
 const ethers = require('ethers');
 const rollup = require('bundle-cli');
 const operator = require('bundle-op');
+const abiDecoder = require('abi-decoder');
+const Web3 = require('web3');
 
 const gasLimit = 5000000;
 
@@ -89,8 +91,13 @@ export function handleSendWithdraw(nodeEth, addressSC, wallet, abiRollup, op,
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
           const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, wallet, abiRollup,
             op, idFrom, numExitRoot, gasLimit, gasMultiplier);
+          abiDecoder.addABI(abiRollup);
+          const web3 = new Web3(nodeEth);
+          const txData = await web3.eth.getTransaction(res.hash);
+          const decodedData = abiDecoder.decodeMethod(txData.input);
+          const amount = decodedData.params[1].value;
           dispatch(sendWithdrawSuccess(res, currentBatch));
-          resolve({ res, currentBatch });
+          resolve({ res, currentBatch, amount });
         }
       } catch (error) {
         dispatch(sendWithdrawError(`Withdraw Error: ${error.message}`));
@@ -127,28 +134,22 @@ export function handleSendForceExit(nodeEth, addressSC, amount, wallet, abiRollu
     dispatch(sendForceExit());
     return new Promise(async (resolve) => {
       try {
-        // eslint-disable-next-line no-restricted-globals
-        if (isNaN(idFrom)) {
-          dispatch(sendForceExitError('An existing ID for the sender must be entered'));
-          resolve('An existing ID for the sender must be entered');
+        const apiOperator = new operator.cliExternalOperator(urlOperator);
+        const resId = await apiOperator.getAccountByIdx(idFrom);
+        let { address } = wallet.ethWallet;
+        if (!wallet.ethWallet.address.startsWith('0x')) {
+          address = `0x${wallet.ethWallet.address}`;
+        }
+        if (resId && resId.data.ethAddress.toUpperCase() === address.toUpperCase()) {
+          const resOperator = await apiOperator.getState();
+          const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
+          const res = await rollup.onchain.forceWithdraw.forceWithdraw(nodeEth, addressSC,
+            amount, wallet, abiRollup, idFrom, gasLimit, gasMultiplier);
+          dispatch(sendForceExitSuccess(res, currentBatch));
+          resolve({ res, currentBatch });
         } else {
-          const apiOperator = new operator.cliExternalOperator(urlOperator);
-          const resId = await apiOperator.getAccountByIdx(idFrom);
-          let { address } = wallet.ethWallet;
-          if (!wallet.ethWallet.address.startsWith('0x')) {
-            address = `0x${wallet.ethWallet.address}`;
-          }
-          if (resId && resId.data.ethAddress.toUpperCase() === address.toUpperCase()) {
-            const resOperator = await apiOperator.getState();
-            const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-            const res = await rollup.onchain.forceWithdraw.forceWithdraw(nodeEth, addressSC,
-              amount, wallet, abiRollup, idFrom, gasLimit, gasMultiplier);
-            dispatch(sendForceExitSuccess(res, currentBatch));
-            resolve({ res, currentBatch });
-          } else {
-            dispatch(sendForceExitError('This is not your ID'));
-            resolve('This is not your ID');
-          }
+          dispatch(sendForceExitError('This is not your ID'));
+          resolve('This is not your ID');
         }
       } catch (error) {
         dispatch(sendSendError(`Send Error: ${error.message}`));
@@ -228,15 +229,7 @@ export function handleSendSend(urlOperator, idTo, amount, wallet, tokenId, fee, 
     dispatch(sendSend());
     return new Promise(async (resolve) => {
       try {
-        // eslint-disable-next-line no-restricted-globals
-        if (isNaN(idFrom)) {
-          dispatch(sendSendError('An existing ID for the sender must be entered'));
-          resolve('An existing ID for the sender must be entered');
-        // eslint-disable-next-line no-restricted-globals
-        } else if (isNaN(idTo)) {
-          dispatch(sendSendError('An existing ID for the receiver must be entered'));
-          resolve('An existing ID for the receiver must be entered');
-        } else if (fee === '0') {
+        if (fee === '0') {
           dispatch(sendSendError(
             'If a fee greater than 1 token is not entered,the operator will not forge the transaction',
           ));

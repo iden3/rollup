@@ -5,9 +5,11 @@ import {
 
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import ModalInfoOffchain from './modal-info-offchain';
-import ModalInfoOnchain from './modal-info-onchain';
-import ModalInfoTx from './modal-info-txs';
+import ModalInfoOffchain from '../modals-info/modal-info-offchain';
+import ModalInfoOnchain from '../modals-info/modal-info-onchain';
+import ModalInfoTx from '../modals-info/modal-info-txs';
+
+import { pointToCompress } from '../../../../utils/utils';
 
 class InfoOp extends Component {
   static propTypes = {
@@ -15,6 +17,7 @@ class InfoOp extends Component {
     pendingOnchain: PropTypes.array.isRequired,
     txTotal: PropTypes.array.isRequired,
     currentBatch: PropTypes.number.isRequired,
+    desWallet: PropTypes.object.isRequired,
   }
 
   constructor(props) {
@@ -86,18 +89,6 @@ class InfoOp extends Component {
   getPendingOnchain = () => {
     const { pendingOnchain } = this.props;
     return pendingOnchain.map((key, index) => {
-      if (key.type === 'Withdraw') {
-        return (
-          <Card color="violet" key={index} onClick={(event) => this.getInfoModalOnchain(event, key)}>
-            <Card.Content>
-              <Card.Header>
-                {key.type}
-              </Card.Header>
-              <Card.Meta>On-chain</Card.Meta>
-            </Card.Content>
-          </Card>
-        );
-      }
       return (
         <Card color="violet" key={index} onClick={(event) => this.getInfoModalOnchain(event, key)}>
           <Card.Content>
@@ -117,6 +108,18 @@ class InfoOp extends Component {
   }
 
   render() {
+    const txTotalByAddress = this.props.txTotal.filter(
+      (tx) => tx.from === this.props.desWallet.ethWallet.address
+      || tx.from === pointToCompress(this.props.desWallet.babyjubWallet.publicKey),
+    );
+    txTotalByAddress.sort((o1, o2) => {
+      if (o1.timestamp > o2.timestamp) {
+        return 1;
+      } if (o1.timestamp < o2.timestamp) {
+        return -1;
+      }
+      return 0;
+    });
     return (
       <Container>
         <Container textAlign="left">
@@ -129,15 +132,15 @@ class InfoOp extends Component {
         <Container textAlign="right">
           <Menu compact>
             <Menu.Item as="a" onClick={(event) => this.getInfoModalTx(event)}>
-              <Label color="blue" floating>{this.props.txTotal.length}</Label>
+              <Label color="blue" floating>{txTotalByAddress.length}</Label>
               <Icon name="time" color="blue" />
-              Historic
+              History
             </Menu.Item>
           </Menu>
         </Container>
         <ModalInfoTx
           modalInfoTx={this.state.modalInfoTx}
-          txTotal={this.props.txTotal}
+          txTotal={txTotalByAddress}
           toggleModalInfoTx={this.toggleModalInfoTx}
           getInfoModalOnchain={this.getInfoModalOnchain}
           getInfoModalOffchain={this.getInfoModalOffchain} />

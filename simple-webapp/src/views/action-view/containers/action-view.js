@@ -7,18 +7,18 @@ import { Redirect } from 'react-router-dom';
 import { handleGetTokens, handleApprove, handleInitStateTx } from '../../../state/tx/actions';
 import { handleInfoAccount, handleLoadFiles, getCurrentBatch } from '../../../state/general/actions';
 import { pointToCompress } from '../../../utils/utils';
-import MenuBack from '../components/menu';
-import MenuActions from '../components/menu-actions';
-import InfoWallet from '../components/info-wallet';
-import InfoTx from '../components/info-tx';
-import ModalDeposit from '../components/modal-deposit';
-import ModalWithdraw from '../components/modal-withdraw';
-import ModalSend from '../components/modal-send';
-import MessageTx from '../components/message-tx';
-import ModalError from '../components/modal-error';
-import ModalApprove from '../components/modal-approve';
-import ModalGetTokens from '../components/modal-get-tokens';
-import ModalForceExit from '../components/modal-force-exit';
+import MenuActions from '../components/actions/menu-actions';
+import MenuBack from '../components/information/menu';
+import InfoWallet from '../components/information/info-wallet';
+import InfoTx from '../components/information/info-tx';
+import MessageTx from '../components/information/message-tx';
+import ModalError from '../components/modals-info/modal-error';
+import ModalDeposit from '../components/modals-actions/modal-deposit';
+import ModalWithdraw from '../components/modals-actions/modal-withdraw';
+import ModalSend from '../components/modals-actions/modal-send';
+import ModalApprove from '../components/modals-actions/modal-approve';
+import ModalGetTokens from '../components/modals-actions/modal-get-tokens';
+import ModalForceExit from '../components/modals-actions/modal-force-exit';
 
 class ActionView extends Component {
   static propTypes = {
@@ -193,7 +193,8 @@ class ActionView extends Component {
           txsExits={this.props.txsExits}
           noImported={this.state.noImported} />
         <br />
-        <InfoTx />
+        <InfoTx
+          desWallet={this.props.desWallet} />
         <ModalDeposit
           balance={this.props.balance}
           tokensA={this.props.tokensA}

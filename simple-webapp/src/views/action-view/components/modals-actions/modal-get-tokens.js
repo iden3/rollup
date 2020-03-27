@@ -5,9 +5,9 @@ import {
   Button, Modal, Form, Icon,
 } from 'semantic-ui-react';
 
-import ModalError from './modal-error';
+import ModalError from '../modals-info/modal-error';
 import ButtonGM from './gm-buttons';
-import { handleGetTokens } from '../../../state/tx/actions';
+import { handleGetTokens } from '../../../../state/tx/actions';
 
 class ModalGetTokens extends Component {
     static propTypes = {
@@ -76,8 +76,8 @@ class ModalGetTokens extends Component {
             </Modal.Content>
             <Modal.Actions>
               <Button onClick={this.handleClickGetTokens} color="blue">
-                  GET TOKENS
                 <Icon name="ethereum" />
+                  GET TOKENS
               </Button>
               <Button color="grey" basic onClick={this.props.toggleModalGetTokens}>
                 <Icon name="close" />

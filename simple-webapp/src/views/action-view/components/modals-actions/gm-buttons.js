@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { Button } from 'semantic-ui-react';
-import { selectGasMultiplier } from '../../../state/general/actions';
+import { selectGasMultiplier } from '../../../../state/general/actions';
 
 const GAS_MULTIPLIER = {
   SLOW: 1,

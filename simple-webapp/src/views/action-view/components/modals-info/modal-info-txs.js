@@ -22,7 +22,7 @@ class ModalInfoTx extends Component {
         const { txTotal } = this.props;
         return txTotal.map((key, index) => {
           let state;
-          if (key.state === 'Success') {
+          if (key.state && key.state.includes('Success')) {
             state = <Table.Cell positive>{key.state}</Table.Cell>;
           } else if (key.state === 'Error') {
             state = <Table.Cell negative>{key.state}</Table.Cell>;

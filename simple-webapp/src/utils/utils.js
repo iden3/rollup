@@ -2,6 +2,8 @@
 
 const { babyJub, poseidon } = require('circomlib');
 
+const web3 = require('web3');
+
 export const readFile = (file) => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -74,4 +76,14 @@ export const getNullifier = async (wallet, info, contractRollup, batch) => {
   const hashNullifier = hashState(nullifier);
   const boolNullifier = await contractRollup.exitNullifier(hashNullifier.toString());
   return boolNullifier;
+};
+
+export const getWei = (ether) => {
+  let wei;
+  try {
+    wei = web3.utils.toWei(ether, 'ether');
+  } catch (err) {
+    wei = '0';
+  }
+  return wei;
 };

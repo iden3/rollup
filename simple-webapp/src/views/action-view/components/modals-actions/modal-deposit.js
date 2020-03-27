@@ -5,12 +5,11 @@ import {
   Button, Modal, Form, Icon,
 } from 'semantic-ui-react';
 
-import ModalError from './modal-error';
+import ModalError from '../modals-info/modal-error';
 import ButtonGM from './gm-buttons';
-import { handleSendDeposit } from '../../../state/tx/actions';
-import { handleStateDeposit } from '../../../state/tx-state/actions';
-
-const web3 = require('web3');
+import { handleSendDeposit } from '../../../../state/tx/actions';
+import { handleStateDeposit } from '../../../../state/tx-state/actions';
+import { getWei } from '../../../../utils/utils';
 
 class ModalDeposit extends Component {
     static propTypes = {
@@ -32,21 +31,28 @@ class ModalDeposit extends Component {
       this.state = {
         modalError: false,
         error: '',
+        disableButton: true,
       };
     }
 
+    checkAmount = (e) => {
+      e.preventDefault();
+      if (parseInt(e.target.value, 10)) {
+        this.setState({ disableButton: false });
+      } else {
+        this.setState({ disableButton: true });
+      }
+    }
+
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
+
+    toggleModalClose = () => { this.props.toggleModalDeposit(); this.setState({ disableButton: true }); }
 
     handleClick = async () => {
       const {
         config, abiRollup, desWallet, tokensA, gasMultiplier,
       } = this.props;
-      let amount;
-      try {
-        amount = web3.utils.toWei(this.amountRef.current.value, 'ether');
-      } catch (err) {
-        amount = '0';
-      }
+      const amount = getWei(this.amountRef.current.value);
       const tokenId = Number(this.tokenIdRef.current.value);
       const { nodeEth, operator } = config;
       const addressSC = config.address;
@@ -55,6 +61,7 @@ class ModalDeposit extends Component {
         this.toggleModalError();
       } else {
         this.props.toggleModalDeposit();
+        this.setState({ disableButton: true });
         const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, tokenId, desWallet,
           undefined, abiRollup, gasMultiplier, operator);
         const walletEthAddress = desWallet.ethWallet.address;
@@ -67,7 +74,7 @@ class ModalDeposit extends Component {
           }
         }
         if (res.res) {
-          this.props.handleStateDeposit(res, operator, filters, amount);
+          this.props.handleStateDeposit(res, operator, amount);
         }
       }
     }
@@ -86,7 +93,7 @@ class ModalDeposit extends Component {
                 <Form.Field>
                   <label htmlFor="amount">
                     Amount
-                    <input type="text" ref={this.amountRef} id="amount" />
+                    <input type="text" ref={this.amountRef} id="amount" onChange={this.checkAmount} />
                   </label>
                 </Form.Field>
                 <Form.Field>
@@ -101,11 +108,11 @@ class ModalDeposit extends Component {
               </Form>
             </Modal.Content>
             <Modal.Actions>
-              <Button color="blue" onClick={this.handleClick}>
+              <Button color="blue" onClick={this.handleClick} disabled={this.state.disableButton}>
                 <Icon name="sign-in" />
                 Deposit
               </Button>
-              <Button color="grey" basic onClick={this.props.toggleModalDeposit}>
+              <Button color="grey" basic onClick={this.toggleModalClose}>
                 <Icon name="close" />
                 Close
               </Button>
@@ -121,6 +128,7 @@ const mapStateToProps = (state) => ({
   abiRollup: state.general.abiRollup,
   desWallet: state.general.desWallet,
   gasMultiplier: state.general.gasMultiplier,
+  pendingOnchain: state.txState.pendingOnchain,
 });
 
 export default connect(mapStateToProps, { handleSendDeposit, handleStateDeposit })(ModalDeposit);

@@ -5,13 +5,11 @@ import { connect } from 'react-redux';
 import {
   Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
-import ModalError from './modal-error';
+import ModalError from '../modals-info/modal-error';
 import ButtonGM from './gm-buttons';
-import { handleSendForceExit, handleGetIds } from '../../../state/tx/actions';
-import { handleStateForceExit } from '../../../state/tx-state/actions';
-import { hexToPoint } from '../../../utils/utils';
-
-const web3 = require('web3');
+import { handleSendForceExit, handleGetIds } from '../../../../state/tx/actions';
+import { handleStateForceExit } from '../../../../state/tx-state/actions';
+import { hexToPoint, getWei } from '../../../../utils/utils';
 
 class ModalForceExit extends Component {
     static propTypes = {
@@ -33,24 +31,61 @@ class ModalForceExit extends Component {
       this.state = {
         initModal: true,
         idsSender: [],
-        idFrom: NaN,
+        idFrom: 0,
+        amount: '',
         modalError: false,
-        idForceExit: true,
+        sendDisabled: true,
+        nextDisabled: true,
         error: '',
       };
     }
 
-    toggleModalChange = () => { this.setState((prev) => ({ initModal: !prev.initModal })); }
+    getInitState = () => {
+      this.setState({
+        initModal: true,
+        idsSender: [],
+        idFrom: 0,
+        amount: '',
+        sendDisabled: true,
+        nextDisabled: true,
+      });
+    }
 
-    toggleCloseModal = () => { this.toggleModalChange(); this.props.toggleModalForceExit(); }
+    toggleModalChange = () => this.setState((prev) => ({ initModal: !prev.initModal }));
+
+    closeInitModal = () => {
+      this.props.toggleModalForceExit();
+      this.getInitState();
+    }
+
+    previousModal = () => {
+      this.setState({ sendDisabled: true });
+      this.toggleModalChange();
+    }
+
+    closeModal = () => {
+      this.props.toggleModalForceExit();
+      this.toggleModalChange();
+      this.getInitState();
+    }
 
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
+
+    checkAmount = (e) => {
+      e.preventDefault();
+      if (parseInt(e.target.value, 10)) {
+        this.setState({ nextDisabled: false, amount: e.target.value });
+      } else {
+        this.setState({ nextDisabled: true });
+      }
+    }
 
     handleClick = async () => {
       const { config, desWallet, gasMultiplier } = this.props;
       const idFrom = Number(this.state.idFrom);
-      this.toggleCloseModal();
-      const res = await this.props.handleSendForceExit(config.nodeEth, config.address, this.state.amount, desWallet,
+      const amountWei = getWei(this.state.amount);
+      this.closeModal();
+      const res = await this.props.handleSendForceExit(config.nodeEth, config.address, amountWei, desWallet,
         config.abiRollup, config.operator, idFrom, gasMultiplier);
       if (res.message !== undefined) {
         if (res.message.includes('insufficient funds')) {
@@ -59,39 +94,31 @@ class ModalForceExit extends Component {
         }
       }
       if (res.res) {
-        this.props.handleStateForceExit(res, config.operator, idFrom, this.state.amount);
+        this.props.handleStateForceExit(res, config.operator, idFrom, amountWei);
       }
     }
 
     getIDs = async () => {
       const { operator } = this.props.config;
-      this.setState({ idFrom: NaN });
       const senderBabyjubPoint = hexToPoint(this.props.babyjub);
       const sender = { ax: senderBabyjubPoint[0], ay: senderBabyjubPoint[1] };
       const idsSender = await this.props.handleGetIds(operator, sender, this.props.babyjub);
-      let amount;
-      try {
-        amount = web3.utils.toWei(this.amountRef.current.value, 'ether');
-      } catch (err) {
-        amount = '0';
-      }
-      this.setState({
-        amount, idsSender,
-      });
+      this.setState({ idsSender });
       this.toggleModalChange();
     }
 
     handleChangeFrom = (e, { value }) => {
-      this.setState({ idFrom: value, idForceExit: false });
+      this.setState({ idFrom: value, sendDisabled: false });
     }
 
     idsFrom = () => {
+      const amountWei = getWei(this.state.amount);
       let dropdown;
       if (this.state.idsSender.length === 0) {
         dropdown = (<Dropdown placeholder="idFrom" />);
       } else {
         const ids = this.state.idsSender.filter(
-          (id) => BigInt(id.amount) >= BigInt(this.state.amount),
+          (id) => BigInt(id.amount) >= BigInt(amountWei),
         );
         dropdown = (
           <Dropdown
@@ -124,7 +151,12 @@ class ModalForceExit extends Component {
                 <Form.Field>
                   <label htmlFor="amount">
                     Amount
-                    <input type="text" ref={this.amountRef} id="amount" />
+                    <input
+                      type="text"
+                      ref={this.amountRef}
+                      id="amount"
+                      onChange={this.checkAmount}
+                      value={this.state.amount} />
                   </label>
                 </Form.Field>
                 <Form.Field>
@@ -133,11 +165,11 @@ class ModalForceExit extends Component {
               </Form>
             </Modal.Content>
             <Modal.Actions>
-              <Button color="blue" onClick={this.getIDs}>
+              <Button color="blue" onClick={this.getIDs} disabled={this.state.nextDisabled}>
                 <Icon name="share" />
                 Next
               </Button>
-              <Button color="grey" basic onClick={this.props.toggleModalForceExit}>
+              <Button color="grey" basic onClick={this.closeInitModal}>
                 <Icon name="close" />
                 Close
               </Button>
@@ -165,15 +197,15 @@ class ModalForceExit extends Component {
             </Form>
           </Modal.Content>
           <Modal.Actions>
-            <Button color="blue" onClick={this.toggleModalChange}>
+            <Button color="blue" onClick={this.previousModal}>
               <Icon name="arrow left" />
               Previous
             </Button>
-            <Button color="blue" onClick={this.handleClick} disabled={this.state.idForceExit}>
+            <Button color="blue" onClick={this.handleClick} disabled={this.state.sendDisabled}>
               <Icon name="share" />
               Force Exit
             </Button>
-            <Button color="grey" basic onClick={this.toggleCloseModal}>
+            <Button color="grey" basic onClick={this.closeModal}>
               <Icon name="close" />
               Close
             </Button>

@@ -17,12 +17,11 @@ function transactions(state = initialState, action) {
         pendingOffchain: [...state.pendingOffchain, action.payload],
       };
     case CONSTANTS.STATE_SEND_SUCCESS:
-      action.payload.state = 'Success';
       return {
         ...state,
-        txOffchain: [...state.txOffchain, action.payload],
+        txOffchain: [...state.txOffchain.filter((tx) => tx.id !== action.payload.id), action.payload],
         pendingOffchain: state.pendingOffchain.filter((tx) => tx.id !== action.payload.id),
-        txTotal: [...state.txTotal, action.payload],
+        txTotal: [...state.txTotal.filter((tx) => tx.id !== action.payload.id), action.payload],
       };
     case CONSTANTS.STATE_SEND_ERROR:
       action.payload.state = 'Error';
@@ -37,18 +36,17 @@ function transactions(state = initialState, action) {
         pendingOnchain: [...state.pendingOnchain.filter((tx) => tx.id !== action.payload.id), action.payload],
       };
     case CONSTANTS.STATE_DEPOSIT_SUCCESS:
-      action.payload.state = 'Success';
       return {
         ...state,
-        txOnchain: [...state.txOnchain, action.payload],
+        txOnchain: [...state.txOnchain.filter((tx) => tx.id !== action.payload.id), action.payload],
         pendingOnchain: state.pendingOnchain.filter((tx) => tx.id !== action.payload.id),
-        txTotal: [...state.txTotal, action.payload],
+        txTotal: [...state.txTotal.filter((tx) => tx.id !== action.payload.id), action.payload],
       };
     case CONSTANTS.STATE_DEPOSIT_ERROR:
       action.payload.state = 'Error';
       return {
         ...state,
-        txTotal: [...state.txTotal, action.payload],
+        txTotal: [...state.txTotal.filter((tx) => tx.id !== action.payload.id), action.payload],
         pendingOnchain: state.pendingOnchain.filter((tx) => tx.id !== action.payload.id),
       };
     case CONSTANTS.STATE_WITHDRAW:
@@ -78,12 +76,11 @@ function transactions(state = initialState, action) {
         pendingOnchain: [...state.pendingOnchain.filter((tx) => tx.id !== action.payload.id), action.payload],
       };
     case CONSTANTS.STATE_FORCE_EXIT_SUCCESS:
-      action.payload.state = 'Success';
       return {
         ...state,
-        txOnchain: [...state.txOnchain, action.payload],
+        txOnchain: [...state.txOnchain.filter((tx) => tx.id !== action.payload.id), action.payload],
         pendingOnchain: state.pendingOnchain.filter((tx) => tx.id !== action.payload.id),
-        txTotal: [...state.txTotal, action.payload],
+        txTotal: [...state.txTotal.filter((tx) => tx.id !== action.payload.id), action.payload],
       };
     case CONSTANTS.STATE_FORCE_EXIT_ERROR:
       action.payload.state = 'Error';

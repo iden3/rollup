@@ -19,6 +19,14 @@ class ModalCreate extends Component {
     step: PropTypes.number.isRequired,
   }
 
+  constructor(props) {
+    super(props);
+    this.state = {
+      password: '',
+      match: '',
+    };
+  }
+
   isLoading = () => {
     if (this.props.isCreatingWallet === true || this.props.isLoadingWallet === true) {
       return (
@@ -41,6 +49,42 @@ class ModalCreate extends Component {
     }
   }
 
+  setPassword = (e) => {
+    e.preventDefault();
+    this.setState({ password: e.target.value });
+  }
+
+  checkPassword = (e) => {
+    e.preventDefault();
+    if (this.state.password === e.target.value) {
+      this.setState({ match: true });
+    } else {
+      this.setState({ match: false });
+    }
+  }
+
+  checkPasswordMessage = () => {
+    const { match } = this.state;
+    if (this.props.isCreatingWallet === false && this.props.isLoadingWallet === false) {
+      if (match === true) {
+        return (
+          <Message positive>
+            <Icon name="check" />
+          Passwords match
+          </Message>
+        );
+      }
+      if (match === false) {
+        return (
+          <Message error>
+            <Icon name="exclamation" />
+          Passwords do not match
+          </Message>
+        );
+      }
+    }
+  }
+
   render() {
     return (
       <Modal open={this.props.modalCreate}>
@@ -56,10 +100,17 @@ class ModalCreate extends Component {
             <Form.Field>
               <label htmlFor="password">
                 Password
-                <input type="password" ref={this.props.passwordRef} id="password" />
+                <input type="password" ref={this.props.passwordRef} id="password" onChange={this.setPassword} />
+              </label>
+            </Form.Field>
+            <Form.Field>
+              <label htmlFor="password2">
+                Repeat password
+                <input type="password" id="password2" onChange={this.checkPassword} />
               </label>
             </Form.Field>
           </Form>
+          {this.checkPasswordMessage()}
           {this.isLoading()}
         </Modal.Content>
         <Modal.Actions>

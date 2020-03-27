@@ -15,6 +15,7 @@ const initialState = {
   ids: [],
   successGetIds: false,
   successTx: false,
+  successForceExit: false,
   successDeposit: false,
   successSend: false,
   messageOpen: false,
@@ -39,6 +40,7 @@ function transactions(state = initialState, action) {
         batch: action.payload.currentBatch,
         successDeposit: true,
         successTx: false,
+        successForceExit: false,
         messageOpen: true,
         error: '',
       };
@@ -79,7 +81,7 @@ function transactions(state = initialState, action) {
       return {
         ...state,
         isLoadingForceExit: true,
-        successTx: false,
+        successForceExit: false,
         error: '',
       };
     case CONSTANTS.SEND_FORCE_EXIT_SUCCESS:
@@ -88,7 +90,7 @@ function transactions(state = initialState, action) {
         isLoadingForceExit: false,
         tx: action.payload.res,
         batch: action.payload.currentBatch,
-        successTx: true,
+        successForceExit: true,
         messageOpen: true,
         error: '',
       };
@@ -96,7 +98,7 @@ function transactions(state = initialState, action) {
       return {
         ...state,
         isLoadingForceExit: false,
-        successTx: false,
+        successForceExit: false,
         messageOpen: true,
         error: action.error,
       };
@@ -115,6 +117,7 @@ function transactions(state = initialState, action) {
         successTx: false,
         successDeposit: false,
         messageOpen: true,
+        successForceExit: false,
         batch: action.payload.currentBatch,
         nonce: action.payload.nonce,
         error: '',
@@ -214,6 +217,7 @@ function transactions(state = initialState, action) {
         isLoadingGetTokens: false,
         successTx: false,
         successDeposit: false,
+        successForceExit: false,
         messageOpen: false,
         exitRoots: [],
         isLoadingGetExitRoot: false,

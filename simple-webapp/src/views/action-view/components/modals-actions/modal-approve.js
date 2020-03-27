@@ -5,9 +5,10 @@ import {
   Button, Modal, Form, Icon,
 } from 'semantic-ui-react';
 
-import ModalError from './modal-error';
+import ModalError from '../modals-info/modal-error';
 import ButtonGM from './gm-buttons';
-import { handleApprove } from '../../../state/tx/actions';
+import { handleApprove } from '../../../../state/tx/actions';
+import { getWei } from '../../../../utils/utils';
 
 const web3 = require('web3');
 
@@ -30,22 +31,29 @@ class ModalApprove extends Component {
       this.state = {
         modalError: false,
         error: '',
+        disableButton: true,
       };
     }
 
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
+    toggleModalClose = () => { this.props.toggleModalApprove(); this.setState({ disableButton: true }); }
+
+    isLoadingTokensA = () => {
+      try {
+        return <p>{web3.utils.fromWei(this.props.tokensA, 'ether')}</p>;
+      } catch (err) {
+        return <p>0</p>;
+      }
+    }
+
     handleClickApprove = async () => {
       const {
         config, desWallet, gasMultiplier, abiTokens,
       } = this.props;
-      let amountTokens;
-      try {
-        amountTokens = web3.utils.toWei(this.amountTokensRef.current.value, 'ether');
-      } catch (err) {
-        amountTokens = '0';
-      }
+      const amountTokens = getWei(this.amountTokensRef.current.value);
       this.props.toggleModalApprove();
+      this.setState({ disableButton: true });
       const res = await this.props.handleApprove(this.addressTokensRef.current.value, abiTokens, desWallet,
         amountTokens, config.address, config.nodeEth, gasMultiplier);
       if (res.message !== undefined) {
@@ -56,11 +64,12 @@ class ModalApprove extends Component {
       }
     }
 
-    isLoadingTokensA = () => {
-      try {
-        return <p>{web3.utils.fromWei(this.props.tokensA, 'ether')}</p>;
-      } catch (err) {
-        return <p>0</p>;
+    checkAmount = (e) => {
+      e.preventDefault();
+      if (parseInt(e.target.value, 10)) {
+        this.setState({ disableButton: false });
+      } else {
+        this.setState({ disableButton: true });
       }
     }
 
@@ -84,7 +93,7 @@ class ModalApprove extends Component {
                 <Form.Field>
                   <label htmlFor="amountToken">
                     Amount Tokens:
-                    <input type="text" ref={this.amountTokensRef} id="amountToken" />
+                    <input type="text" ref={this.amountTokensRef} onChange={this.checkAmount} id="amountToken" />
                   </label>
                 </Form.Field>
                 <Form.Field>
@@ -105,11 +114,11 @@ class ModalApprove extends Component {
               </Form>
             </Modal.Content>
             <Modal.Actions>
-              <Button onClick={this.handleClickApprove} color="blue">
-                  APPROVE
+              <Button onClick={this.handleClickApprove} color="blue" disabled={this.state.disableButton}>
                 <Icon name="ethereum" />
+                  APPROVE
               </Button>
-              <Button color="grey" basic onClick={this.props.toggleModalApprove}>
+              <Button color="grey" basic onClick={this.toggleModalClose}>
                 <Icon name="close" />
                 Close
               </Button>

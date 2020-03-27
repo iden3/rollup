@@ -32,51 +32,88 @@ class ModalInfoOnchain extends Component {
       }
     }
 
-    getAmount = () => {
-      const { keyItem } = this.props;
-      if (keyItem.type === 'ForceExit' || keyItem.type === 'Deposit') {
-        return (
-          <Table.Row>
-            <Table.Cell>
-              Amount:
-            </Table.Cell>
-            <Table.Cell>
-              {keyItem.amount}
-            </Table.Cell>
-          </Table.Row>
-        );
-      }
-    }
-
     getCurrentBatch = () => {
       const { keyItem } = this.props;
       if (keyItem.type === 'ForceExit' || keyItem.type === 'Deposit') {
-        return (
-          <Table.Row>
-            <Table.Cell>
-              Current Batch:
-            </Table.Cell>
-            <Table.Cell>
-              {this.props.currentBatch}
-            </Table.Cell>
-          </Table.Row>
-        );
+        if (keyItem.state.includes('Pending')) {
+          const currentBatch = Math.max(this.props.currentBatch, keyItem.currentBatch);
+          return (
+            <Table.Row>
+              <Table.Cell>
+                Current Batch:
+              </Table.Cell>
+              <Table.Cell>
+                {currentBatch}
+              </Table.Cell>
+            </Table.Row>
+          );
+        }
+      }
+    }
+
+    getConfirmationBatch = () => {
+      const { keyItem } = this.props;
+      if (keyItem.type === 'ForceExit' || keyItem.type === 'Deposit') {
+        if (keyItem.state.includes('Success') && keyItem.state.includes('pending')) {
+          const currentBatch = Math.max(this.props.currentBatch, keyItem.currentBatch);
+          return (
+            <Table.Row>
+              <Table.Cell>
+                Confirmation Batches:
+              </Table.Cell>
+              <Table.Cell>
+                {currentBatch - keyItem.finalBatch}
+              </Table.Cell>
+            </Table.Row>
+          );
+        } if (keyItem.state.includes('Success') && !keyItem.state.includes('pending')) {
+          return (
+            <Table.Row>
+              <Table.Cell>
+                Confirmation Batches:
+              </Table.Cell>
+              <Table.Cell>
+                5+
+              </Table.Cell>
+            </Table.Row>
+          );
+        }
       }
     }
 
     getMaxBatch = () => {
       const { keyItem } = this.props;
       if (keyItem.type === 'ForceExit' || keyItem.type === 'Deposit') {
-        return (
-          <Table.Row>
-            <Table.Cell>
-              Maximum batch:
-            </Table.Cell>
-            <Table.Cell>
-              {keyItem.maxNumBatch}
-            </Table.Cell>
-          </Table.Row>
-        );
+        if (keyItem.state.includes('Pending')) {
+          return (
+            <Table.Row>
+              <Table.Cell>
+              Finality Batch:
+              </Table.Cell>
+              <Table.Cell>
+                {keyItem.maxNumBatch}
+              </Table.Cell>
+            </Table.Row>
+          );
+        }
+      }
+    }
+
+    getForgedBatch = () => {
+      const { keyItem } = this.props;
+      if (keyItem.type === 'ForceExit' || keyItem.type === 'Deposit') {
+        if (keyItem.state.includes('Success')) {
+          return (
+            <Table.Row>
+              <Table.Cell>
+                Forged at Batch:
+              </Table.Cell>
+              <Table.Cell>
+                {keyItem.finalBatch}
+              </Table.Cell>
+            </Table.Row>
+          );
+        }
       }
     }
 
@@ -84,7 +121,7 @@ class ModalInfoOnchain extends Component {
       const { keyItem } = this.props;
       if (keyItem) {
         let state;
-        if (keyItem.state === 'Success') {
+        if (keyItem.state && keyItem.state.includes('Success')) {
           state = <Table.Cell positive>{keyItem.state}</Table.Cell>;
         } else if (keyItem.state === 'Error') {
           state = <Table.Cell negative>{keyItem.state}</Table.Cell>;
@@ -104,7 +141,14 @@ class ModalInfoOnchain extends Component {
                   {keyItem.type}
                 </Table.Cell>
               </Table.Row>
-              {this.getAmount()}
+              <Table.Row>
+                <Table.Cell>
+                  Amount:
+                </Table.Cell>
+                <Table.Cell>
+                  {keyItem.amount}
+                </Table.Cell>
+              </Table.Row>
               <Table.Row>
                 <Table.Cell>
                   State:
@@ -119,9 +163,11 @@ class ModalInfoOnchain extends Component {
                   {keyItem.id}
                 </Table.Cell>
               </Table.Row>
+              {this.getFromId()}
+              {this.getForgedBatch()}
               {this.getCurrentBatch()}
               {this.getMaxBatch()}
-              {this.getFromId()}
+              {this.getConfirmationBatch()}
             </Table.Body>
           </Table>
         );

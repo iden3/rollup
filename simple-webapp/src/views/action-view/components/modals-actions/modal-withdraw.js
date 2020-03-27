@@ -4,10 +4,10 @@ import { connect } from 'react-redux';
 import {
   Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
-import ModalError from './modal-error';
+import ModalError from '../modals-info/modal-error';
 import ButtonGM from './gm-buttons';
-import { handleSendWithdraw } from '../../../state/tx/actions';
-import { handleStateWithdraw } from '../../../state/tx-state/actions';
+import { handleSendWithdraw } from '../../../../state/tx/actions';
+import { handleStateWithdraw } from '../../../../state/tx-state/actions';
 
 class ModalWithdraw extends Component {
   static propTypes = {
@@ -31,12 +31,23 @@ class ModalWithdraw extends Component {
       initModal: true,
       modalError: false,
       nextDisabled: true,
+      sendDisabled: true,
       error: '',
     };
     this.idFromRef = React.createRef();
   }
 
   toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
+
+  toggleModalChange = () => {
+    if (this.state.initModal === true) {
+      this.setState({ initModal: false });
+    } else {
+      this.setState({ initModal: true, nextDisabled: true, sendDisabled: true });
+    }
+  }
+
+  toogleCloseModal = () => { this.toggleModalChange(); this.props.toggleModalWithdraw(); }
 
   handleClick = async () => {
     const {
@@ -123,7 +134,7 @@ class ModalWithdraw extends Component {
     return dropdown;
   }
 
-  handleChange = (e, { value }) => this.setState({ numExitRoot: value })
+  handleChange = (e, { value }) => this.setState({ numExitRoot: value, sendDisabled: false })
 
   modal = () => {
     if (this.state.initModal === true) {
@@ -174,7 +185,7 @@ class ModalWithdraw extends Component {
             <Icon name="arrow left" />
               Previous
           </Button>
-          <Button color="blue" onClick={this.handleClick}>
+          <Button color="blue" onClick={this.handleClick} disabled={this.state.sendDisabled}>
             <Icon name="sign-out" />
               Withdraw
           </Button>
@@ -186,10 +197,6 @@ class ModalWithdraw extends Component {
       </Modal>
     );
   }
-
-  toggleModalChange = () => { this.setState((prev) => ({ initModal: !prev.initModal })); }
-
-  toogleCloseModal = () => { this.toggleModalChange(); this.props.toggleModalWithdraw(); }
 
   render() {
     return (
