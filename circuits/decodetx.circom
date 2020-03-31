@@ -12,21 +12,25 @@ include "./decodefloat.circom";
 */
 
 template DecodeTx(nLevels) {
+    // tx off-chain
     signal input previousOnChain;
     signal input oldOnChainHash;
     signal input txData;
     signal input rqTxData;
     signal input loadAmount;
-    signal input fromIdx; // TODO: Added as input since it was on txData
-    signal input toIdx;
-    signal input fromAx;
-    signal input fromAy;
-    signal input fromEthAddr;
     signal input toAx; // TODO: Added toAx, toAy, toEthAddr
     signal input toAy;
     signal input toEthAddr;
 
-    // signal output iden3RollupTx; // 64      0..63 // TODO: needed as an output ?
+    // tx on-chain
+    signal input fromAx;
+    signal input fromAy;
+    signal input fromEthAddr;
+
+    // increment idx
+    signal input fromIdx; // TODO: Added as input since it was on txData
+    signal input toIdx;
+
     signal output amount;        // 16      64..79
     signal output coin;          // 32      80..111
     signal output nonce;         // 48      112..159

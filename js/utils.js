@@ -97,7 +97,6 @@ function txRoundValues(tx) {
     tx.userFee = float2fix(tx.userFeeF);
 }
 
-
 function state2array(st) {
     const data = bigInt(st.coin).add( bigInt(st.nonce).shl(32) );
     return [

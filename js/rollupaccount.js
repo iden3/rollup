@@ -71,4 +71,10 @@ module.exports = class RollupAccount {
         tx.ax = this.ax;
         tx.ay = this.ay;
     }
+
+    signClassTx(tx) {
+        const h = tx.getHashSignature();
+        const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
+        tx.addSignature(signature, this.ax, this.ay);
+    }
 };
