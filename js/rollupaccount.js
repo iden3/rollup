@@ -2,7 +2,6 @@ const EC = require("elliptic").ec;
 const ec = new EC("secp256k1");
 const keccak256 = require("js-sha3").keccak256;
 const crypto = require("crypto");
-const babyJub = require("circomlib").babyJub;
 const eddsa = require("circomlib").eddsa;
 const bigInt = require("snarkjs").bigInt;
 const utils = require("./utils");
@@ -55,14 +54,15 @@ module.exports = class RollupAccount {
     }
 
     signTx(tx) {
-        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
-        const data = utils.buildTxData(tx);
-        const hash = poseidon.createHash(6, 8, 57);
+        const txData = utils.buildTxData(tx);
+        const hash = poseidon.createHash(5, 8, 57);
 
         const h = hash([
-            IDEN3_ROLLUP_TX,
-            data,
-            tx.rqTxData || 0
+            txData,
+            tx.rqTxData || 0,
+            tx.toAx,
+            tx.toAy,
+            tx.toEthAddr,
         ]);
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
         tx.r8x = signature.R8[0];

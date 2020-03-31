@@ -75,16 +75,17 @@ function fix2float(_f) {
 }
 
 function buildTxData(tx) {
+    const IDEN3_ROLLUP_TX = bigInt("4839017969649077913");
     let res = bigInt(0);
-    res = res.add( bigInt(tx.fromIdx || 0));
-    res = res.add( bigInt(tx.toIdx || 0).shl(64));
-    res = res.add( bigInt(fix2float(tx.amount || 0)).shl(128));
-    res = res.add( bigInt(tx.coin || 0).shl(144));
-    res = res.add( bigInt(tx.nonce || 0).shl(176));
-    res = res.add( bigInt(fix2float(tx.userFee || 0)).shl(224));
-    res = res.add( bigInt(tx.rqOffset || 0).shl(240));
-    res = res.add( bigInt(tx.onChain ? 1 : 0).shl(243));
-    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(244));
+
+    res = res.add( bigInt(IDEN3_ROLLUP_TX || 0));
+    res = res.add( bigInt(fix2float(tx.amount || 0)).shl(64));
+    res = res.add( bigInt(tx.coin || 0).shl(80));
+    res = res.add( bigInt(tx.nonce || 0).shl(112));
+    res = res.add( bigInt(fix2float(tx.userFee || 0)).shl(160));
+    res = res.add( bigInt(tx.rqOffset || 0).shl(176));
+    res = res.add( bigInt(tx.onChain ? 1 : 0).shl(179));
+    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(180));
 
     return res;
 }
@@ -110,8 +111,6 @@ function state2array(st) {
 
 function array2state(a) {
     return {
-        // coin: bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
-        // nonce: bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
         coin: parseInt(bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toString(), 10),
         nonce: parseInt(bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toString() , 10),
         amount: bigInt(a[1]),
@@ -129,14 +128,15 @@ function hashState(st) {
 
 function verifyTxSig(tx) {
     try {
-        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
         const data = buildTxData(tx);
-        const hash = poseidon.createHash(6, 8, 57);
+        const hash = poseidon.createHash(5, 8, 57);
 
         const h = hash([
-            IDEN3_ROLLUP_TX,
             data,
-            tx.rqTxData || 0
+            tx.rqTxData || 0,
+            tx.toAx,
+            tx.toAy,
+            tx.toEthAddr,
         ]);
         const signature = {
             R8: [bigInt(tx.r8x), bigInt(tx.r8y)],

@@ -39,7 +39,7 @@ template RollupTx(nLevels) {
     signal input r8x;
     signal input r8y;
 
-    // For InChain TX
+    // For on-chain TX
     signal input loadAmount;
     signal input ethAddr;
     signal input ax;
