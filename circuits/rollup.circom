@@ -7,6 +7,10 @@ include "feeplandecoder.circom";
 
 template Rollup(nTx, nLevels) {
 
+    // Incremental idx
+    signal input initialIdx;
+    signal output finalIdx;
+
     // Roots
     signal input oldStRoot;
     signal input feePlanCoins;
@@ -17,7 +21,7 @@ template Rollup(nTx, nLevels) {
     signal output offChainHash;
     signal output countersOut;
 
-    // Intermediary States to parallelize the witnes computation
+    // Intermediary States to parallelize the witness computation
     signal private input imStateRoot[nTx-1];
     signal private input imExitRoot[nTx-1];
     signal private input imCounters[nTx-1];
@@ -25,15 +29,22 @@ template Rollup(nTx, nLevels) {
     signal private input imOnChain[nTx-1];
 
     signal private input txData[nTx];
+    signal private input fromIdx[nTx];
+    signal private input toIdx[nTx];
+    signal private input toAx[nTx];
+    signal private input toAy[nTx];
+    signal private input toEthAddr[nTx];
     signal private input rqTxData[nTx];
+    signal private input step[nTx];
     signal private input s[nTx];
     signal private input r8x[nTx];
     signal private input r8y[nTx];
+    
+    // on-chain tx 
     signal private input loadAmount[nTx];
-    signal private input ethAddr[nTx];
-    signal private input ax[nTx];
-    signal private input ay[nTx];
-    signal private input step[nTx];
+    signal private input fromEthAddr[nTx];
+    signal private input fromAx[nTx];
+    signal private input fromAy[nTx];
 
     // State 1
     signal private input ax1[nTx];
@@ -99,17 +110,24 @@ template Rollup(nTx, nLevels) {
         decodeTx[i] = DecodeTx(nLevels);
         if (i==0) {
             decodeTx[i].oldOnChainHash <== 0;
-            decodeTx[i].previousOnChain <== 0;
+            decodeTx[i].previousOnChain <== 1;
+            decodeTx[i].inIdx <== initialIdx;
         } else {
             decodeTx[i].oldOnChainHash <== imOnChainHash[i-1];
             decodeTx[i].previousOnChain <== imOnChain[i-1];
+            decodeTx[i].inIdx <== decodeTx[i-1].outIdx;
         }
         decodeTx[i].txData <== txData[i];
+        decodeTx[i].fromIdx <== fromIdx[i];
+        decodeTx[i].toIdx <== toIdx[i];
+        decodeTx[i].toAx <== toAx[i];
+        decodeTx[i].toAy <== toAy[i];
+        decodeTx[i].toEthAddr <== toEthAddr[i];
         decodeTx[i].rqTxData <== rqTxData[i];
         decodeTx[i].loadAmount <== loadAmount[i];
-        decodeTx[i].ethAddr <== ethAddr[i];
-        decodeTx[i].ax <== ax[i];
-        decodeTx[i].ay <== ay[i];
+        decodeTx[i].fromEthAddr <== fromEthAddr[i];
+        decodeTx[i].fromAx <== fromAx[i];
+        decodeTx[i].fromAy <== fromAy[i];
         for (j=0; j<nLevels*2+16; j++) {
             offChainHasher.in[nPad + i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
         }
@@ -135,6 +153,9 @@ template Rollup(nTx, nLevels) {
 
         Tx[i].fromIdx <== decodeTx[i].fromIdx;
         Tx[i].toIdx <== decodeTx[i].toIdx;
+        Tx[i].toAx <== decodeTx[i].toAx;
+        Tx[i].toAy <== decodeTx[i].toAy;
+        Tx[i].toEthAddr <== decodeTx[i].toEthAddr;
         Tx[i].amount <== decodeTx[i].amount;
         Tx[i].coin <== decodeTx[i].coin;
         Tx[i].nonce <== decodeTx[i].nonce;
@@ -143,16 +164,16 @@ template Rollup(nTx, nLevels) {
         Tx[i].onChain <== decodeTx[i].onChain;
         Tx[i].newAccount <== decodeTx[i].newAccount;
 
-        Tx[i].offChainHash <== decodeTx[i].offChainHash;
+        Tx[i].sigOffChainHash <== decodeTx[i].sigOffChainHash;
 
         Tx[i].rqTxData <== rqTxData[i];
         Tx[i].s <== s[i];
         Tx[i].r8x <== r8x[i];
         Tx[i].r8y <== r8y[i];
         Tx[i].loadAmount <== loadAmount[i];
-        Tx[i].ethAddr <== ethAddr[i];
-        Tx[i].ax <== ax[i];
-        Tx[i].ay <== ay[i];
+        Tx[i].fromEthAddr <== fromEthAddr[i];
+        Tx[i].fromAx <== fromAx[i];
+        Tx[i].fromAy <== fromAy[i];
 
         Tx[i].step <== step[i];
 
@@ -233,5 +254,6 @@ template Rollup(nTx, nLevels) {
     newExitRoot <== Tx[nTx-1].newExitRoot;
     offChainHash <== n2bOffChainHash.out;
     onChainHash <== decodeTx[nTx-1].newOnChainHash;
+    finalIdx <== decodeTx[nTx-1].outIdx;
     countersOut <== Tx[nTx-1].countersOut;
 }

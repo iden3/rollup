@@ -9,14 +9,15 @@ const poseidonHash = poseidon.createHash(6, 8, 57);
 
 class RollupDB {
 
-    constructor(db, lastBatch, stateRoot) {
+    constructor(db, lastBatch, stateRoot, initialIdx) {
         this.db = db;
         this.lastBatch = lastBatch;
         this.stateRoot = stateRoot;
+        this.initialIdx = initialIdx;
     }
 
     async buildBatch(maxNTx, nLevels) {
-        return new BatchBuilder(this, this.lastBatch+1, this.stateRoot, maxNTx, nLevels);
+        return new BatchBuilder(this, this.lastBatch+1, this.stateRoot, this.initialIdx, maxNTx, nLevels);
     }
 
     async consolidate(bb) {
@@ -36,10 +37,12 @@ class RollupDB {
             ...insertsState,
             ...insertsExit,
             [ Constants.DB_Batch.add(bigInt(bb.batchNumber)), [bb.stateTree.root, bb.exitTree.root]],
+            [ Constants.DB_InitialIdx.add(bigInt(bb.batchNumber)), bb.finalIdx],
             [ Constants.DB_Master, bb.batchNumber]
         ]);
         this.lastBatch = bb.batchNumber;
         this.stateRoot = bb.stateTree.root;
+        this.initialIdx = bb.finalIdx;
     }
 
     async rollbackToBatch(numBatch){
@@ -63,6 +66,20 @@ class RollupDB {
             this.stateRoot = bigInt(0);
         else 
             this.stateRoot = roots[0];
+    }
+
+    async getIdx(coin, ax, ay) {
+        if (ax == 0 && ay == 0) return 0;
+        const hashIdx = utils.hashIdx(coin, ax, ay);
+        const idx = await this.db.get(hashIdx);
+        if (!idx) return null;
+        return idx;
+    }
+
+    async getStateByAccount(coin, ax, ay) {
+        const idx = await this.getIdx(coin, ax, ay);
+        if (!idx) return null;
+        return this.getStateByIdx(idx);
     }
 
     async getStateByIdx(idx) {
@@ -274,11 +291,12 @@ class RollupDB {
 module.exports = async function(db) {
     const master = await db.get(Constants.DB_Master);
     if (!master) {
-        return new RollupDB(db, 0, bigInt(0));
+        return new RollupDB(db, 0, bigInt(0), 0);
     }
     const roots = await db.get(Constants.DB_Batch.add(bigInt(master)));
+    const initialIdx = await db.get(Constants.DB_InitialIdx.add(bigInt(master)));
     if (!roots) {
         throw new Error("Database corrupted");
     }
-    return new RollupDB(db, master, roots[0]);
+    return new RollupDB(db, master, roots[0], initialIdx);
 };
