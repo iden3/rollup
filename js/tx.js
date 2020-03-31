@@ -6,6 +6,9 @@ class RollupTx {
 
     constructor(tx){
         this.loadAmount = bigInt(tx.loadAmount || 0);
+        this.fromIdx = bigInt(tx.fromIdx || 0);
+        this.toIdx = bigInt(tx.toIdx || 0);
+        this.loadAmount = bigInt(tx.loadAmount || 0);
         this.amount = bigInt(tx.amount || 0);
         this.coin = bigInt(tx.coin || 0);
         this.nonce = bigInt(tx.nonce || 0);

@@ -7,6 +7,10 @@ include "feeplandecoder.circom";
 
 template Rollup(nTx, nLevels) {
 
+    // Incremental idx
+    signal input initialIdx;
+    signal output finalIdx;
+
     // Roots
     signal input oldStRoot;
     signal input feePlanCoins;
@@ -17,7 +21,7 @@ template Rollup(nTx, nLevels) {
     signal output offChainHash;
     signal output countersOut;
 
-    // Intermediary States to parallelize the witnes computation
+    // Intermediary States to parallelize the witness computation
     signal private input imStateRoot[nTx-1];
     signal private input imExitRoot[nTx-1];
     signal private input imCounters[nTx-1];
@@ -25,6 +29,8 @@ template Rollup(nTx, nLevels) {
     signal private input imOnChain[nTx-1];
 
     signal private input txData[nTx];
+    signal private input fromIdx[nTx];
+    signal private input toIdx[nTx];
     signal private input rqTxData[nTx];
     signal private input s[nTx];
     signal private input r8x[nTx];
@@ -99,10 +105,12 @@ template Rollup(nTx, nLevels) {
         decodeTx[i] = DecodeTx(nLevels);
         if (i==0) {
             decodeTx[i].oldOnChainHash <== 0;
-            decodeTx[i].previousOnChain <== 0;
+            decodeTx[i].previousOnChain <== 1;
+            decodeTx[i].inIdx <== initialIdx;
         } else {
             decodeTx[i].oldOnChainHash <== imOnChainHash[i-1];
             decodeTx[i].previousOnChain <== imOnChain[i-1];
+            decodeTx[i].inIdx <== decodeTx[i-1].outIdx;
         }
         decodeTx[i].txData <== txData[i];
         decodeTx[i].rqTxData <== rqTxData[i];
@@ -233,5 +241,6 @@ template Rollup(nTx, nLevels) {
     newExitRoot <== Tx[nTx-1].newExitRoot;
     offChainHash <== n2bOffChainHash.out;
     onChainHash <== decodeTx[nTx-1].newOnChainHash;
+    finalIdx <== decodeTx[nTx-1].outIdx;
     countersOut <== Tx[nTx-1].countersOut;
 }

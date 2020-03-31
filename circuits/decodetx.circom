@@ -31,6 +31,10 @@ template DecodeTx(nLevels) {
     signal input fromIdx; // TODO: Added as input since it was on txData
     signal input toIdx;
 
+    signal input inIdx;
+    signal output outIdx;
+
+    // decode tx data
     signal output amount;        // 16      64..79
     signal output coin;          // 32      80..111
     signal output nonce;         // 48      112..159
@@ -167,6 +171,21 @@ template DecodeTx(nLevels) {
     s6.c[1] <== onChainHasher.out;
     s6.s <== onChain;
     s6.out ==> newOnChainHash;
+
+// increment Idx if it is an on-chain tx and new account
+/////////////////
+    component incIdx = Mux1();
+    incIdx.c[0] <== inIdx;
+    incIdx.c[1] <== inIdx + 1;
+    incIdx.s <== onChain*newAccount;
+    incIdx.out ==> outIdx;
+
+// check Idx if it is an on-chain tx and new account
+/////////////////
+    component idxChecker = ForceEqualIfEnabled();
+    idxChecker.in[0] <== fromIdx;
+    idxChecker.in[1] <== outIdx;
+    idxChecker.enabled <== onChain*newAccount;
 
 // Check that onChain are before offChain
     (1 - previousOnChain) * onChain === 0;
