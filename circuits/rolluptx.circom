@@ -20,7 +20,7 @@ template RollupTx(nLevels) {
     signal input pastTxData[4];
     signal input futureTxData[3];
 
-    //TX
+    // Tx
 
     signal input fromIdx;
     signal input toIdx;
@@ -32,7 +32,7 @@ template RollupTx(nLevels) {
     signal input onChain;
     signal input newAccount;
 
-    signal input offChainHash;
+    signal input sigOffChainHash;
 
     signal input rqTxData;
     signal input s;
@@ -243,7 +243,7 @@ template RollupTx(nLevels) {
     sigVerifier.R8x <== r8x;
     sigVerifier.R8y <== r8y;
 
-    sigVerifier.M <== offChainHash;
+    sigVerifier.M <== sigOffChainHash;
 
 
 // balancesUpdater
@@ -335,8 +335,4 @@ template RollupTx(nLevels) {
     s5.c[1] <== processor2.newRoot;
     s5.s <== states.isExit;
     s5.out ==> newExitRoot;
-
-
-
-
 }

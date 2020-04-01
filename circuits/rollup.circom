@@ -113,6 +113,8 @@ template Rollup(nTx, nLevels) {
             decodeTx[i].inIdx <== decodeTx[i-1].outIdx;
         }
         decodeTx[i].txData <== txData[i];
+        decodeTx[i].fromIdx <== fromIdx[i];
+        decodeTx[i].toIdx <== toIdx[i];
         decodeTx[i].rqTxData <== rqTxData[i];
         decodeTx[i].loadAmount <== loadAmount[i];
         decodeTx[i].ethAddr <== ethAddr[i];
@@ -151,7 +153,7 @@ template Rollup(nTx, nLevels) {
         Tx[i].onChain <== decodeTx[i].onChain;
         Tx[i].newAccount <== decodeTx[i].newAccount;
 
-        Tx[i].offChainHash <== decodeTx[i].offChainHash;
+        Tx[i].sigOffChainHash <== decodeTx[i].sigOffChainHash;
 
         Tx[i].rqTxData <== rqTxData[i];
         Tx[i].s <== s[i];
