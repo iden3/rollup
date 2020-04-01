@@ -4,7 +4,7 @@ const SMTTmpDb = require("./smttmpdb");
 const utils = require("./utils");
 const assert = require("assert");
 const crypto = require("crypto");
-const bigInt = require("snarkjs").bigInt;
+const { bigInt } = require("snarkjs");
 const poseidon = require("circomlib").poseidon;
 const Constants = require("./constants");
 
@@ -672,15 +672,22 @@ module.exports = class BatchBuilder {
         };
 
         if (this.builded) throw new Error("Batch already builded");
-        for (let i=0; i<this.offChainTxs.length; i++) {
-            await this._addTx(this.offChainTxs[i]);
-        }
-        for (let i=0; i<this.maxNTx - this.offChainTxs.length - this.onChainTxs.length; i++) {
-            this._addNopTx();
-        }
+
+        // Add Nop Tx
         for (let i=0; i<this.onChainTxs.length; i++) {
             await this._addTx(this.onChainTxs[i]);
         }
+
+        // Add on-chain Tx
+        for (let i=0; i<this.maxNTx - this.offChainTxs.length - this.onChainTxs.length; i++) {
+            this._addNopTx();
+        }
+
+        // Add off-chain Tx
+        for (let i=0; i<this.offChainTxs.length; i++) {
+            await this._addTx(this.offChainTxs[i]);
+        }
+
         this.builded=true;
     }
 
@@ -714,27 +721,6 @@ module.exports = class BatchBuilder {
         return this.exitTree.root;
     }
 
-    getDataAvailable() {
-        if (!this.builded) throw new Error("Batch must first be builded");
-
-        // Fill with initial steps padded to the byte with zeros
-        const bytes = Array( Math.ceil(this.maxNTx/8) ).fill(0);
-        for (let i=0; i<this.offChainTxs.length; i++) {
-            const tx = this.offChainTxs[i];
-            if (tx.step) bytes[ Math.floor(i/8)] |= (0x80 >> (i%8));
-            pushInt(tx.fromIdx, this.nLevels/8);
-            pushInt(tx.toIdx, this.nLevels/8);
-            pushInt(utils.fix2float(tx.amount), 2);
-        }
-        return Buffer.from(bytes);
-
-        function pushInt(n, size) {
-            for (let i=0; i<size; i++) {
-                bytes.push((n >> ((size-1-i)*8))&0xFF);
-            }
-        }
-    }
-
     getOnChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
         const lastHash = this.input.imOnChainHash[this.maxNTx-2];
@@ -756,13 +742,40 @@ module.exports = class BatchBuilder {
         return res;
     }
 
+    getDataAvailable() {
+        // if (!this.builded) throw new Error("Batch must first be builded");
+
+        // Fill with initial steps padded to the byte with zeros
+        const bytes = Array( Math.ceil(this.maxNTx/8) ).fill(0);
+        const initIndex = this.maxNTx - this.offChainTxs.length;
+
+        for (let i=0; i<this.offChainTxs.length; i++) {
+            const tx = this.offChainTxs[i];
+            if (tx.step) bytes[ Math.floor((i+initIndex)/8)] |= (0x80 >> ((i+initIndex)%8));
+            pushInt(tx.fromIdx, this.nLevels/8);
+            pushInt(tx.toIdx, this.nLevels/8);
+            pushInt(utils.fix2float(tx.amount), 2);
+        }
+        return Buffer.from(bytes);
+
+        function pushInt(n, size) {
+            for (let i=0; i<size; i++) {
+                bytes.push((n >> ((size-1-i)*8))&0xFF);
+            }
+        }
+    }
+
     getOffChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
+        
+        const headerSize = Math.ceil(this.maxNTx/8);
         const txSize = (this.nLevels/8)*2+2;
         const data = this.getDataAvailable();
-        const post = Buffer.alloc((this.maxNTx - (this.offChainTxs.length))*txSize);
+        const dataHeader = data.slice(0, headerSize);
+        const dataOffChainTx = data.slice(headerSize, data.length);
 
-        const b  = Buffer.concat([data, post]);
+        const post = Buffer.alloc((this.maxNTx - (this.offChainTxs.length))*txSize);
+        const b  = Buffer.concat([dataHeader, post, dataOffChainTx]);
 
         const r = bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
         const hash = crypto.createHash("sha256")
@@ -771,7 +784,6 @@ module.exports = class BatchBuilder {
         const h = bigInt("0x" + hash).mod(r);
         return h;
     }
-
 
     _getCounters() {
         let res = bigInt(0);

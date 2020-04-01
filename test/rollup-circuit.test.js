@@ -32,20 +32,20 @@ describe("Rollup Basic circuit TXs", function () {
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
 
-    // it("Should create empty TXs", async () => {
-    //     // Start a new state
-    //     const db = new SMTMemDB();
-    //     const rollupDB = await RollupDB(db);
-    //     const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+    it("Should create empty TXs", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
-    //     bb.setInitialIdx(0);
-    //     await bb.build();
-    //     const input = bb.getInput();
+        bb.setInitialIdx(0);
+        await bb.build();
+        const input = bb.getInput();
 
-    //     const w = circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+        const w = circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
 
-    //     checkBatch(circuit, w, bb);
-    // });
+        checkBatch(circuit, w, bb);
+    });
 
     it("Should create 1 deposit onchain TXs", async () => {
 
@@ -66,7 +66,6 @@ describe("Rollup Basic circuit TXs", function () {
             onChain: true
         });
 
-        bb.setInitialIdx(0);
         await bb.build();
         const input = bb.getInput();
 
