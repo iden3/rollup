@@ -12,55 +12,77 @@ contract RollupTest is Rollup {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external override {
-        // Verify old state roots
-        require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
-            'old state root does not match current state root');
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
+    ) external payable override {
 
-        // Verify on-chain hash
-        require(input[onChainHashInput] == miningOnChainTxsHash,
-            'on-chain hash does not match current filling on-chain hash');
+      // Verify old state roots
+      require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
+        'old state root does not match current state root');
 
-        // Verify zk-snark circuit
-        require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
-            'zk-snark proof is not valid');
+      // Initial index must be the final idex of the last batch
+      require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdx], 'Initial index does not match');
 
-        // Calculate fees and pay them
-        bytes32[2] memory feePlan = [bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])];
-        bytes32 nTxPerToken = bytes32(input[nTxperTokenInput]);
+      // deposits off-chain that will be added in this batch
+      uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
 
-        for (uint i = 0; i < 16; i++) {
-            (uint tokenId, uint totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
-            bytes32(nTxPerToken), i);
+      // deposits on-chain that will be added in this batch
+      uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
-            if(totalTokenFee != 0) {
-                require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee),
-                    'Fail ERC20 withdraw');
-            }
-        }
+      // operator must pay for every offChain deposit
+      require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
 
-        // Pay onChain transactions fees
-        uint payOnChainFees = totalMinningOnChainFee;
-        beneficiaryAddress.transfer(payOnChainFees);
+      // add deposits off-chain
+      for (uint32 i = 0; i < depositOffChainLength; i++) {  
+          uint32 initialByte = DEPOSIT_BYTES*i;
+          uint256 Ax = abi.decode(compressedOnChainTx[initialByte:initialByte+32], (uint256));
+          uint256 Ay = abi.decode(compressedOnChainTx[initialByte+32:initialByte+64], (uint256));
+          address ethAddress = address(abi.decode(compressedOnChainTx[initialByte+52:initialByte+84], (uint256)));
+          uint32 token = uint32(abi.decode(compressedOnChainTx[initialByte+56:initialByte+88], (uint256)));
+          depositCount++;
+          depositOffChain(token, ethAddress, [Ax, Ay], depositCount);
+      }
 
-        // Update state roots
-        stateRoots.push(bytes32(input[newStateRootInput]));
+      // depositCount = depositsOnchain + depositsOffchain
+      // last leaf index + depositsOnchain + depositsOffchain = new index
+      batchToInfo[getStateDepth()+1].lastLeafIndex = batchToInfo[getStateDepth()].lastLeafIndex + depositCount;
+      require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdx], 'Final index does not match');
 
-        // Update exit roots
-        exitRoots.push(bytes32(input[newExitRootInput]));
+      // Verify on-chain hash
+      require(input[onChainHashInput] == miningOnChainTxsHash,
+       'on-chain hash does not match current mining on-chain hash');
 
-        // Clean fillingOnChainTxsHash an its fees
-        miningOnChainTxsHash = fillingOnChainTxsHash;
-        fillingOnChainTxsHash = 0;
-        totalMinningOnChainFee = totalFillingOnChainFee;
-        totalFillingOnChainFee = 0;
+      // Verify zk-snark circuit
+      require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
+        'zk-snark proof is not valid');
 
-        // Update number of on-chain transactions
-        currentOnChainTx = 0;
+      // Update state roots
+      stateRoots.push(bytes32(input[newStateRootInput]));
 
-        // event with all compressed transactions given its batch number
-        emit ForgeBatch(getStateDepth(), block.number);
+      // Update exit roots
+      exitRoots.push(bytes32(input[newExitRootInput]));
+
+      // Clean fillingOnChainTxsHash an its fees
+      uint payOnChainFees = totalMinningOnChainFee;
+
+      miningOnChainTxsHash = fillingOnChainTxsHash;
+      fillingOnChainTxsHash = 0;
+      totalMinningOnChainFee = totalFillingOnChainFee;
+      totalFillingOnChainFee = 0;
+
+      // Update number of on-chain transactions
+      currentOnChainTx = 0;
+
+      // Calculate fees and pay them
+      withdrawTokens([bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])],
+      bytes32(input[nTxperTokenInput]), beneficiaryAddress);
+
+
+      // Pay onChain transactions fees
+      beneficiaryAddress.transfer(payOnChainFees);
+
+      // event with all compressed transactions given its batch number
+      emit ForgeBatch(getStateDepth(), block.number);
     }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
