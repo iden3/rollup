@@ -31,15 +31,20 @@ template Rollup(nTx, nLevels) {
     signal private input txData[nTx];
     signal private input fromIdx[nTx];
     signal private input toIdx[nTx];
+    signal private input toAx[nTx];
+    signal private input toAy[nTx];
+    signal private input toEthAddr[nTx];
     signal private input rqTxData[nTx];
+    signal private input step[nTx];
     signal private input s[nTx];
     signal private input r8x[nTx];
     signal private input r8y[nTx];
+    
+    // on-chain tx 
     signal private input loadAmount[nTx];
-    signal private input ethAddr[nTx];
-    signal private input ax[nTx];
-    signal private input ay[nTx];
-    signal private input step[nTx];
+    signal private input fromEthAddr[nTx];
+    signal private input fromAx[nTx];
+    signal private input fromAy[nTx];
 
     // State 1
     signal private input ax1[nTx];
@@ -115,11 +120,14 @@ template Rollup(nTx, nLevels) {
         decodeTx[i].txData <== txData[i];
         decodeTx[i].fromIdx <== fromIdx[i];
         decodeTx[i].toIdx <== toIdx[i];
+        decodeTx[i].toAx <== toAx[i];
+        decodeTx[i].toAy <== toAy[i];
+        decodeTx[i].toEthAddr <== toEthAddr[i];
         decodeTx[i].rqTxData <== rqTxData[i];
         decodeTx[i].loadAmount <== loadAmount[i];
-        decodeTx[i].ethAddr <== ethAddr[i];
-        decodeTx[i].ax <== ax[i];
-        decodeTx[i].ay <== ay[i];
+        decodeTx[i].fromEthAddr <== fromEthAddr[i];
+        decodeTx[i].fromAx <== fromAx[i];
+        decodeTx[i].fromAy <== fromAy[i];
         for (j=0; j<nLevels*2+16; j++) {
             offChainHasher.in[nPad + i*nDataAvailabilityBitsPerTx+j] <== decodeTx[i].dataAvailabilityBits[j];
         }
@@ -160,9 +168,9 @@ template Rollup(nTx, nLevels) {
         Tx[i].r8x <== r8x[i];
         Tx[i].r8y <== r8y[i];
         Tx[i].loadAmount <== loadAmount[i];
-        Tx[i].ethAddr <== ethAddr[i];
-        Tx[i].ax <== ax[i];
-        Tx[i].ay <== ay[i];
+        Tx[i].fromEthAddr <== fromEthAddr[i];
+        Tx[i].fromAx <== fromAx[i];
+        Tx[i].fromAy <== fromAy[i];
 
         Tx[i].step <== step[i];
 

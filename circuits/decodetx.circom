@@ -17,18 +17,18 @@ template DecodeTx(nLevels) {
     signal input oldOnChainHash;
     signal input txData;
     signal input rqTxData;
-    signal input loadAmount;
-    signal input toAx; // TODO: Added toAx, toAy, toEthAddr
+    signal input toAx;
     signal input toAy;
     signal input toEthAddr;
 
     // tx on-chain
+    signal input loadAmount;
     signal input fromAx;
     signal input fromAy;
     signal input fromEthAddr;
 
     // increment idx
-    signal input fromIdx; // TODO: Added as input since it was on txData
+    signal input fromIdx;
     signal input toIdx;
 
     signal input inIdx;
@@ -44,8 +44,8 @@ template DecodeTx(nLevels) {
     signal output newAccount     // 1       180
 
     signal output dataAvailabilityBits[nLevels*2+16];
-    signal output sigOffChainHash;  // For the signature // TODO: changed the name
-    signal output newOnChainHash;   // For the chained onchain
+    signal output sigOffChainHash;  // For the signature
+    signal output newOnChainHash;   // For the chained on.chain
 
     var i;
 

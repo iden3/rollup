@@ -21,7 +21,6 @@ template RollupTx(nLevels) {
     signal input futureTxData[3];
 
     // Tx
-
     signal input fromIdx;
     signal input toIdx;
     signal input amount;
@@ -41,9 +40,9 @@ template RollupTx(nLevels) {
 
     // For on-chain TX
     signal input loadAmount;
-    signal input ethAddr;
-    signal input ax;
-    signal input ay;
+    signal input fromEthAddr;
+    signal input fromAx;
+    signal input fromAy;
 
     signal input step;
 
@@ -135,7 +134,7 @@ template RollupTx(nLevels) {
 //////////
 
     component ethAddrChecker = ForceEqualIfEnabled();
-    ethAddrChecker.in[0] <== ethAddr;
+    ethAddrChecker.in[0] <== fromEthAddr;
     ethAddrChecker.in[1] <== ethAddr1;
     ethAddrChecker.enabled <== onChain;
 
@@ -169,12 +168,12 @@ template RollupTx(nLevels) {
 
     component s1Ax = Mux1();
     s1Ax.c[0] <== ax1;
-    s1Ax.c[1] <== ax;
+    s1Ax.c[1] <== fromAx;
     s1Ax.s <== states.s1;
 
     component s1Ay = Mux1();
     s1Ay.c[0] <== ay1;
-    s1Ay.c[1] <== ay;
+    s1Ay.c[1] <== fromAy;
     s1Ay.s <== states.s1;
 
     component s1Nonce = Mux1();
@@ -184,7 +183,7 @@ template RollupTx(nLevels) {
 
     component s1EthAddr = Mux1();
     s1EthAddr.c[0] <== ethAddr1;
-    s1EthAddr.c[1] <== ethAddr;
+    s1EthAddr.c[1] <== fromEthAddr;
     s1EthAddr.s <== states.s1;
 
     component s1OldKey = Mux1();

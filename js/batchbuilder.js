@@ -32,8 +32,6 @@ module.exports = class BatchBuilder {
     _addNopTx() {
         const i = this.input.txData.length;
         this.input.txData[i] = utils.buildTxData({
-            fromIdx: 0,
-            toIdx: 0,
             amount: 0,
             coin: 0,
             nonce: 0,
@@ -42,43 +40,50 @@ module.exports = class BatchBuilder {
             onChain: 0,
             newAccount: 0
         });
-        this.input.rqTxData[i]= 0;
-        this.input.s[i]= 0;
-        this.input.r8x[i]= 0;
-        this.input.r8y[i]= 0;
-        this.input.loadAmount[i]= 0;
-        this.input.ethAddr[i]= 0;
-        this.input.ax[i]= 0;
-        this.input.ay[i]= 0;
+        this.input.fromIdx[i] = 0;
+        this.input.toIdx[i] = 0;
+        // to
+        this.input.toAx[i] = 0,
+        this.input.toAy[i] = 0,
+        this.input.toEthAddr[i] = 0,
+        this.input.rqTxData[i] = 0;
+        this.input.s[i] = 0;
+        this.input.r8x[i] = 0;
+        this.input.r8y[i] = 0;
         this.input.step[i] = 0;
+        // on-chain
+        this.input.fromEthAddr[i] = 0;
+        this.input.fromAx[i] = 0;
+        this.input.fromAy[i] = 0;
+        this.input.loadAmount[i] = 0;
 
         // State 1
-        this.input.ax1[i]= 0;
-        this.input.ay1[i]= 0;
-        this.input.amount1[i]= 0;
-        this.input.nonce1[i]= 0;
-        this.input.ethAddr1[i]= 0;
+        this.input.ax1[i] = 0;
+        this.input.ay1[i] = 0;
+        this.input.amount1[i] = 0;
+        this.input.nonce1[i] = 0;
+        this.input.ethAddr1[i] = 0;
         this.input.siblings1[i] = [];
         for (let j=0; j<this.nLevels+1; j++) {
-            this.input.siblings1[i][j]= 0;
+            this.input.siblings1[i][j] = 0;
         }
-        this.input.isOld0_1[i]= 0;
-        this.input.oldKey1[i]= 0;
-        this.input.oldValue1[i]= 0;
+        this.input.isOld0_1[i] = 0;
+        this.input.oldKey1[i] = 0;
+        this.input.oldValue1[i] = 0;
 
         // State 2
-        this.input.ax2[i]= 0;
-        this.input.ay2[i]= 0;
-        this.input.amount2[i]= 0;
-        this.input.nonce2[i]= 0;
-        this.input.ethAddr2[i]= 0;
+        this.input.ax2[i] = 0;
+        this.input.ay2[i] = 0;
+        this.input.amount2[i] = 0;
+        this.input.nonce2[i] = 0;
+        this.input.ethAddr2[i] = 0;
         this.input.siblings2[i] = [];
         for (let j=0; j<this.nLevels+1; j++) {
-            this.input.siblings2[i][j]= 0;
+            this.input.siblings2[i][j] = 0;
         }
-        this.input.isOld0_2[i]= 0;
-        this.input.oldKey2[i]= 0;
-        this.input.oldValue2[i]= 0;
+        this.input.isOld0_2[i] = 0;
+        this.input.oldKey2[i] = 0;
+        this.input.oldValue2[i] = 0;
         
         if (i<this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
@@ -218,6 +223,7 @@ module.exports = class BatchBuilder {
         newState2.amount = oldState2.amount.add(effectiveAmount);
         if (op1=="INSERT") {
 
+            this.input.finalIdx = this.input.initialIdx + 1;
             const newValue = utils.hashState(newState1);
 
             const res = await this.stateTree.insert(tx.fromIdx, newValue);
@@ -607,10 +613,15 @@ module.exports = class BatchBuilder {
     }
 
     async build() {
+        if (this.initialIdx === undefined){
+            throw new Error("Initial Idx must be set before 'build'");
+        }
 
         const {feePlanCoins, feePlanFees} = this._buildFeePlan();
 
         this.input = {
+            initialIdx: this.initialIdx,
+            finalIdx: 0,
             oldStRoot: this.stateTree.root,
             feePlanCoins: feePlanCoins,
             feePlanFees: feePlanFees,
@@ -622,15 +633,22 @@ module.exports = class BatchBuilder {
             imOnChain: [],
 
             txData: [],
+            fromIdx: [],
+            toIdx: [],
+            toAx: [],
+            toAy: [],
+            toEthAddr: [],
             rqTxData: [],
             s: [],
             r8x: [],
             r8y: [],
-            loadAmount: [],
-            ethAddr: [],
-            ax: [],
-            ay: [],
             step: [],
+
+            // on-chain
+            loadAmount: [],
+            fromEthAddr: [],
+            fromAx: [],
+            fromAy: [],
 
             ax1: [],
             ay1: [],
@@ -792,5 +810,9 @@ module.exports = class BatchBuilder {
         }
         this.feePlan[this.nCoins] = [coin, roundedFee];
         this.nCoins = this.nCoins + 1;
+    }
+
+    setInitialIdx(initialIdx){
+        this.initialIdx = initialIdx;
     }
 };

@@ -5,8 +5,7 @@ const poseidon = require("circomlib").poseidon;
 class RollupTx {
 
     constructor(tx){
-        this.loadAmount = bigInt(tx.loadAmount || 0);
-        this.fromIdx = bigInt(tx.fromIdx || 0);
+        this.loadAmount = bigInt(tx.loadAmount || 0);this.fromIdx = bigInt(tx.fromIdx || 0);
         this.toIdx = bigInt(tx.toIdx || 0);
         this.loadAmount = bigInt(tx.loadAmount || 0);
         this.amount = bigInt(tx.amount || 0);
@@ -16,7 +15,6 @@ class RollupTx {
         this.rqOffset = bigInt(tx.rqOffset || 0);
         this.onChain = bigInt(tx.onChain ? 1 : 0);
         this.newAccount = bigInt(tx.newAccount ? 1 : 0);
-
         this.rqTxData = bigInt(tx.rqTxData || 0);
 
         // parse toAccount
@@ -28,6 +26,8 @@ class RollupTx {
 
         this.toEthAddr = bigInt(tx.toEthAddr || 0);
 
+        // on-chain
+        this.loadAmount = bigInt(tx.loadAmount || 0);
         // parse fromAccount
         if (typeof tx.fromAx === "string") this.fromAx = bigInt("0x" + tx.fromAx);
         else this.fromAx = bigInt(tx.fromAx || 0);
