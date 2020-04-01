@@ -29,7 +29,7 @@ contract("RollupBurnAuction", (accounts) => {
         A: ["0", "0"],
         B: [["0", "0"], ["0", "0"]],
         C: ["0", "0"],
-        input: ["0", "0", "0", "0", "0", "0", "0", "0"]
+        input: ["0", "0", "0", "0", "0", "0", "0", "0", "0","0"]
     };
     
     // INITIAL SETUP
@@ -286,7 +286,7 @@ contract("RollupBurnAuction", (accounts) => {
 
     async function successForge(addr, proof) {
         // Forge
-        await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, {
+        await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, [], {
             from: addr,
             value: "0"
         });
@@ -295,7 +295,7 @@ contract("RollupBurnAuction", (accounts) => {
     async function failForge(addr, proof, failMessage, messageType) {
         try {
             // Forge
-            await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, {
+            await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, [], {
                 from: addr,
                 value: "0"
             });

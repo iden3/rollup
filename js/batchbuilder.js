@@ -272,7 +272,6 @@ module.exports = class BatchBuilder {
             await this.dbState.multiIns([
                 [keyIdx, tx.fromIdx],
             ]);
-
             // Database AxAy
             const keyAxAy = Scalar.add( Scalar.add(Constants.DB_AxAy, this.input.fromAx[i]), this.input.fromAy[i]);
             const lastAxAyStates = await this.dbState.get(keyAxAy);
@@ -809,7 +808,6 @@ module.exports = class BatchBuilder {
         }
         return res;
     }
-
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
