@@ -29,7 +29,8 @@ contract RollupHelpers {
 
   uint constant bytesOffChainTx = 3*2 + 2;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-
+  uint64 constant IDEN3_ROLLUP_TX = 4839017969649077913;
+  
   /**
    * @dev Load poseidon smart contract
    * @param _poseidonContractAddr poseidon contract address
@@ -112,12 +113,12 @@ contract RollupHelpers {
       // Check old key is final node
       uint exist = 0;
       uint levCounter = 0;
-      while((exist == 0) && (levCounter < maxLevels)) {
+      while ((exist == 0) && (levCounter < maxLevels)) {
         exist = (uint8(oldKey >> levCounter) & 0x01) ^ (uint8(key >> levCounter) & 0x01);
         levCounter += 1;
       }
 
-      if(exist == 0) {
+      if (exist == 0) {
         return false;
       }
       newHash = hashFinalNode(oldKey, oldValue);
@@ -201,10 +202,8 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev build entry for the exit tree leaf
-   * @param fromId sender
-   * @param toId reseiver
-   * @param amountF number of token to send
+   * @dev build transaction data
+   * @param amountF amount to send encoded as half precision float
    * @param token token identifier
    * @param nonce nonce parameter
    * @param maxFeeF maximum fee
@@ -214,8 +213,6 @@ contract RollupHelpers {
    * @return element
    */
   function buildTxData(
-    uint64 fromId,
-    uint64 toId,
     uint16 amountF,
     uint32 token,
     uint48 nonce,
@@ -225,37 +222,34 @@ contract RollupHelpers {
     bool newAccount
     ) internal pure returns (bytes32 element) {
     // build element
-    element = bytes32(bytes8(fromId)) >> (256 - 64);
-    element |= bytes32(bytes8(toId)) >> (256 - 64 - 64);
-    element |= bytes32(bytes2(amountF)) >> (256 - 16 - 64 - 64);
-    element |= bytes32(bytes4(token)) >> (256 - 32 - 16 - 64 - 64);
-    element |= bytes32(bytes6(nonce)) >> (256 - 48 - 32 - 16 - 64 - 64);
-    element |= bytes32(bytes2(maxFeeF)) >> (256 - 16 - 48 - 32 - 16 - 64 - 64);
+    element = bytes32(bytes8(IDEN3_ROLLUP_TX)) >> (256 - 64);
+    element |= bytes32(bytes2(amountF)) >> (256 - 16 - 64);
+    element |= bytes32(bytes4(token)) >> (256 - 32 - 16 - 64);
+    element |= bytes32(bytes6(nonce)) >> (256 - 48 - 32 - 16 - 64);
+    element |= bytes32(bytes2(maxFeeF)) >> (256 - 16 - 48 - 32 - 16 - 64);
 
     bytes1 last = bytes1(rqOffset) & 0x07;
     last = onChain ? (last | 0x08): last;
     last = newAccount ? (last | 0x10): last;
 
-    element |= bytes32(last) >> (256 - 8 - 16 - 48 - 32 - 16 - 64 - 64);
+    element |= bytes32(last) >> (256 - 8 - 16 - 48 - 32 - 16 - 64);
   }
 
   /**
-   * @dev build entry for the exit tree leaf
+   * @dev build on-chain Hash
    * @param oldOnChainHash previous on chain hash
    * @param txData transaction data coded into a bytes32
    * @param loadAmount input amount
-   * @param ethAddress address to withdraw
-   * @param Ax x coordinate public key BabyJubJub
-   * @param Ay y coordinate public key BabyJubJub
+   * @param dataOnChain poseidon hash of the onChain data
+   * @param fromEthAddr ethereum addres sender
    * @return entry structure
    */
-  function buildOnChainData(
+  function buildOnChainHash(
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
-    address ethAddress,
-    uint256 Ax,
-    uint256 Ay
+    uint256 dataOnChain,
+    address fromEthAddr
     ) internal pure returns (Entry memory entry) {
     // build element 1
     entry.e1 = bytes32(oldOnChainHash);
@@ -264,13 +258,38 @@ contract RollupHelpers {
     // build element 3
     entry.e3 = bytes32(bytes16(loadAmount)) >> (256 - 128);
     // build element 4
-    entry.e4 = bytes32(bytes20(ethAddress)) >> (256 - 160);
+    entry.e4 = bytes32(dataOnChain);
     // build element 5
-    entry.e5 = bytes32(Ax);
-    // build element 6
-    entry.e6 = bytes32(Ay);
+    entry.e5 = bytes32(bytes20(fromEthAddr)) >> (256 - 160);
   }
 
+  /**
+   * @dev build hash of the on-chain data
+   * @param fromAx x coordinate public key BabyJubJub sender
+   * @param fromAy y coordinate public key BabyJubJub sender
+   * @param toEthAddr ethereum addres receiver
+   * @param toAx x coordinate public key BabyJubJub receiver
+   * @param toAy y coordinate public key BabyJubJub receiver
+   * @return entry structure
+   */
+  function buildOnChainData(
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy
+    ) internal pure returns (Entry memory entry) {
+    // build element 1
+    entry.e1 = bytes32(fromAx);
+    // build element 2
+    entry.e2 = bytes32(fromAy);
+    // build element 3
+    entry.e3 = bytes32(bytes20(toEthAddr)) >> (256 - 160);
+    // build element 4
+    entry.e4 = bytes32(toAx);
+    // build element 5
+    entry.e5 = bytes32(toAy);
+  }
   /**
    * @dev Decode half floating precision
    * @param float Float half precision encode number

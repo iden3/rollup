@@ -11,10 +11,14 @@ const { smt } = require("circomlib");
 const { expect } = chai;
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const poseidonJs = require("circomlib/src/poseidon");
-const utils = require("../../rollup-utils/rollup-utils");
+const utils = require("../../js/utils");
 const treeUtils = require("../../rollup-utils/rollup-tree-utils");
 const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTest");
 const { padZeroes} = require("./helpers/helpers");
+const helpers= require("./helpers/helpers");
+const RollupDB = require("../../js/rollupdb");
+const SMTMemDB = require("circomlib/src/smt_memdb");
+
 
 const MAX_LEVELS = 24;
 
@@ -335,12 +339,12 @@ contract("RollupHelpers functions", (accounts) => {
         const nonce = 4;
         const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
         const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const ethAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+        const ethAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
 
         const res = await insHelpers.buildTreeStateTest(amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), ethAddress, nonce);
+            Ay.toString(), ethAddr, nonce);
         
-        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, BigInt(ethAddress), nonce);
+        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, BigInt(ethAddr), nonce);
 
         expect(res[0]).to.be.equal(infoLeaf.elements.e0);
         expect(res[1]).to.be.equal(infoLeaf.elements.e1);
@@ -349,7 +353,7 @@ contract("RollupHelpers functions", (accounts) => {
         expect(res[4]).to.be.equal(infoLeaf.elements.e4);
 
         const resHash = await insHelpers.hashTreeStateTest(amountDeposit, tokenId, Ax.toString(),
-            Ay.toString(), ethAddress, nonce);
+            Ay.toString(), ethAddr, nonce);
         expect(BigInt(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
     });
 
@@ -376,23 +380,29 @@ contract("RollupHelpers functions", (accounts) => {
 
 
     describe("Build and hash onChain", async () => {
-        const fromId = 1;
-        const toId = 2;
         const amount = 3;
-        const token = 4;
+        const coin = 4;
         const nonce = 5;
-        const maxFee = 6;
+        const userFee = 6;
         const rqOffset = 4;
         const onChain = true;
         const newAccount = true;
         const oldOnChainHash = 1;
         const loadAmount = 2;
-        const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-        const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const withdrawAddress = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+        const fromAx = BigInt(30890499764467592830739030727222305800976141688008169211302);
+        const fromAy = BigInt(19826930437678088398923647454327426275321075228766562806246);
+        const toAx = BigInt(0);
+        const toAy = BigInt(0);
+        const fromEthAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+        const toEthAddr = "0x0000000000000000000000000000000000000000";
+        const IDEN3_ROLLUP_TX = BigInt("4839017969649077913");
+        //ethAddr with 0x and axay no?
 
-        let element;
-        let onChainJs;
+
+
+        let txData;
+        let hashOnchainData;
+        let onChainHash;
 
         it("hash 6 elements", async () => {
             const hashJs = poseidonJs.createHash(6, 8, 57);
@@ -403,32 +413,123 @@ contract("RollupHelpers functions", (accounts) => {
         });
 
         it("Build tx data", async () => {            
-            element = utils.buildTxData(fromId, toId, amount, token,
-                nonce, maxFee, rqOffset, onChain, newAccount);
-            const res = await insHelpers.buildTxDataTest(fromId, toId, amount, token,
-                nonce, maxFee, rqOffset, onChain, newAccount);
-            expect(res).to.be.equal(element);
+            txData = utils.buildTxData({amount, coin,
+                nonce, userFee, rqOffset, onChain, newAccount});
+            const res = await insHelpers.buildTxDataTest(amount, coin,
+                nonce, userFee, rqOffset, onChain, newAccount);
+            expect(res).to.be.equal(`0x${padZeroes(txData.toString(16), 64)}`);
+
         });
 
         it("Build on chain data", async () => {            
-            const res = await insHelpers.buildOnChainDataTest(oldOnChainHash,
-                BigInt(element).toString(), loadAmount, withdrawAddress, Ax.toString(), Ay.toString());
+            const res = await insHelpers.buildOnChainDataTest(fromAx.toString(), fromAy.toString(), 
+                toEthAddr, toAx.toString(), toAy.toString());
 
-            onChainJs = utils.hashOnChain(oldOnChainHash,
-                BigInt(element), loadAmount, BigInt(withdrawAddress), Ax, Ay);
-
-            expect(res[0]).to.be.equal(onChainJs.elements.e0);
-            expect(res[1]).to.be.equal(onChainJs.elements.e1);
-            expect(res[2]).to.be.equal(onChainJs.elements.e2);
-            expect(res[3]).to.be.equal(onChainJs.elements.e3);
-            expect(res[4]).to.be.equal(onChainJs.elements.e4);
-            expect(res[5]).to.be.equal(onChainJs.elements.e5);
+            const onChainJs = helpers.buildOnChainData(fromAx, fromAy, BigInt(toEthAddr), toAx, toAy);
+                
+            expect(res[0]).to.be.equal(onChainJs.e0);
+            expect(res[1]).to.be.equal(onChainJs.e1);
+            expect(res[2]).to.be.equal(onChainJs.e2);
+            expect(res[3]).to.be.equal(onChainJs.e3);
+            expect(res[4]).to.be.equal(onChainJs.e4);
         });
 
         it("hash on chain data", async () => {            
-            const res = await insHelpers.hashOnChainTest(oldOnChainHash,
-                BigInt(element).toString(), loadAmount, withdrawAddress, Ax.toString(), Ay.toString());
-            expect(BigInt(res).toString()).to.be.equal(onChainJs.hash.toString());
+            const res = await insHelpers.hashOnChainDataTest(fromAx.toString(), fromAy.toString(), toEthAddr, toAx.toString(), toAy.toString());
+
+            hashOnchainData = helpers.hashOnChainData({fromAx: fromAx.toString(16), fromAy: fromAy.toString(16), 
+                toEthAddr: BigInt(toEthAddr), toAx: toAx.toString(16), toAy:toAy.toString(16)});
+                
+            expect(res.toString()).to.be.equal(hashOnchainData.toString());
         });
+        
+        it("Build on chain hash", async () => {            
+            const res = await insHelpers.buildOnChainHashTest(oldOnChainHash,
+                txData.toString(), loadAmount, hashOnchainData.toString(), fromEthAddr);
+
+            let onChainJs = helpers.buildhashOnChain(oldOnChainHash,
+                txData, loadAmount,  BigInt(hashOnchainData.toString()), BigInt(fromEthAddr));
+
+            expect(res[0]).to.be.equal(onChainJs.e0);
+            expect(res[1]).to.be.equal(onChainJs.e1);
+            expect(res[2]).to.be.equal(onChainJs.e2);
+            expect(res[3]).to.be.equal(onChainJs.e3);
+            expect(res[4]).to.be.equal(onChainJs.e4);
+
+        });
+
+        it("hash on chain hash", async () => {            
+            const res = await insHelpers.hashOnChainHashTest(oldOnChainHash,
+                txData.toString(), loadAmount, hashOnchainData.toString(), fromEthAddr);
+
+            onChainHash = helpers.hashOnChain(oldOnChainHash,
+                txData, loadAmount, hashOnchainData.toString(), fromEthAddr);
+                
+            expect(BigInt(res).toString()).to.be.equal(onChainHash.toString());
+        });
+
+        it("helpers and batchbuilder must have the same results", async () => { 
+
+            // necessary variables in order to be = to batchbuilder
+            let amount = 0; 
+            let oldOnChainHash = 0;
+            let nonce = 0;
+            let userFee = 0;
+            let rqOffset = 0;
+            const tx = {
+                fromIdx: 1, // it does not matter for the hash, but is needed a valid transactoin
+                toIdx: 0, //same
+                IDEN3_ROLLUP_TX,
+                amount,
+                loadAmount,
+                coin,
+                fromAx: fromAx.toString(16),
+                fromAy: fromAy.toString(16),
+                fromEthAddr,
+                toAx: toAx.toString(16),
+                toAy: toAy.toString(16),
+                toEthAddr,
+                onChain: true
+            };
+            let db = new SMTMemDB();
+            let rollupDB = await RollupDB(db);
+
+            const batch = await rollupDB.buildBatch(8, 8);
+            batch.addTx(tx);
+            await batch.build();
+            let hashBatchbuilder = batch.getOnChainHash();
+
+            const txData = await insHelpers.buildTxDataTest(amount, coin,
+                nonce, userFee, rqOffset, onChain, newAccount);
+                
+            const hashSC = await insHelpers.buildAndHashOnChain(fromEthAddr,
+                fromAx.toString(), fromAy.toString(), toEthAddr, toAx.toString(), toAy.toString(), 
+                oldOnChainHash, txData.toString(), loadAmount);
+    
+            expect(BigInt(hashSC).toString()).to.be.equal(hashBatchbuilder.toString());
+        });
+
+        it("encode and decode offchain deposit", async () => { 
+            const fromAx = BigInt(30890499764467592830739030727222305800976141688008169211302).toString(16);
+            const fromAy = BigInt(19826930437678088398923647454327426275321075228766562806246).toString(16);
+            const fromEthAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+            const coin = 3;
+
+            const depositOffchain ={
+                fromAx,
+                fromAy,
+                fromEthAddr,
+                coin
+            };
+
+            const encodedDeposits = utils.encodeDepositOffchain([depositOffchain]);
+            const decodedOffchainDeposit = await insHelpers.decodeOffchainDepositTest(encodedDeposits);
+
+            expect(decodedOffchainDeposit[0].toString(16)).to.be.equal(fromAx);
+            expect(decodedOffchainDeposit[1].toString(16)).to.be.equal(fromAy);
+            expect(BigInt(decodedOffchainDeposit[2])).to.be.equal(BigInt(fromEthAddr));
+            expect(decodedOffchainDeposit[3].toString()).to.be.equal(coin.toString());
+        });
+
     });
 });

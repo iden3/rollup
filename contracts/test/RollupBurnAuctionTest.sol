@@ -21,7 +21,8 @@ contract RollupBurnAuctionTest is RollupBurnAuction {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
      ) external override {
         require(auction[currentSlot()].initialized, "Auction has not been initialized");
         require(msg.sender == auction[currentSlot()].operator, "Sender is not current winner");

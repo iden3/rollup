@@ -10,6 +10,8 @@ const { expect } = chai;
 const HelpersPoSTest = artifacts.require("../contracts/test/RollupPoSHelpersTest");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
+
 
 async function checkHashOffChain(bb, insPoS, maxTx) {
     await bb.build();
@@ -20,12 +22,21 @@ async function checkHashOffChain(bb, insPoS, maxTx) {
 }
 
 
-contract("RollupPoSHelpers functions", () => {
+contract("RollupPoSHelpers functions", (accounts) => {
+
+    const {
+        1: id1
+    } = accounts;
 
     let insPoSHelpers;
     const nLevels = 24;
     let db;
     let rollupDB;
+
+    const wallets =[];
+    for (let i = 0; i<10; i++){
+        wallets.push(BabyJubWallet.createRandom());
+    }
 
     before(async () => {
         // Deploy rollup helpers test
@@ -39,22 +50,26 @@ contract("RollupPoSHelpers functions", () => {
         const maxTx = 10;
         const bb = await rollupDB.buildBatch(maxTx, nLevels);
         bb.addTx({
-            fromIdx: 1,
             loadAmount: 1000,
             coin: 0,
-            ax: 0,
-            ay: 0,
-            ethAddress: 0,
+            fromAx: wallets[1].publicKey[0].toString(16),
+            fromAy:  wallets[1].publicKey[1].toString(16),
+            fromEthAddr: id1,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
             onChain: true
         });
 
         bb.addTx({
-            fromIdx: 2,
             loadAmount: 2000,
             coin: 0,
-            ax: 0,
-            ay: 0,
-            ethAddress: 0,
+            fromAx: wallets[2].publicKey[0].toString(16),
+            fromAy:  wallets[2].publicKey[1].toString(16),
+            fromEthAddr: id1,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
             onChain: true
         });
         await bb.build();
@@ -65,24 +80,34 @@ contract("RollupPoSHelpers functions", () => {
         let maxTx = 10;
         // empty off-chain tx with 10 txMax
         const bb = await rollupDB.buildBatch(maxTx, nLevels);
-        checkHashOffChain(bb, insPoSHelpers, maxTx);
+        await checkHashOffChain(bb, insPoSHelpers, maxTx);
 
         // non-empty off-chain tx with 8 txMax
-        const tx = {
-            fromIdx: 1,
-            toIdx: 2,
+        const tx = { //coin is 0
+            fromAx: wallets[1].publicKey[0].toString(16),
+            fromAy:  wallets[1].publicKey[1].toString(16),
+            fromEthAddr: id1,
+            toAx: wallets[2].publicKey[0].toString(16),
+            toAy:  wallets[2].publicKey[1].toString(16),
+            toEthAddr: id1,
             amount: 50,
+            coin: 0,
         };
         maxTx = 8;
         const bb2 = await rollupDB.buildBatch(maxTx, nLevels);
         await bb2.addTx(tx);
-        checkHashOffChain(bb2, insPoSHelpers, maxTx);
+        await checkHashOffChain(bb2, insPoSHelpers, maxTx);
 
         // full off-chain data with 34 txMax
         const tx2 = {
-            fromIdx: 2,
-            toIdx: 1,
+            fromAx: wallets[2].publicKey[0].toString(16),
+            fromAy:  wallets[2].publicKey[1].toString(16),
+            fromEthAddr: id1,
+            toAx: wallets[1].publicKey[0].toString(16),
+            toAy:  wallets[1].publicKey[1].toString(16),
+            toEthAddr: id1,
             amount: 50,
+            coin: 0,
         };
         maxTx = 34;
         const bb3 = await rollupDB.buildBatch(maxTx, nLevels);
@@ -90,22 +115,22 @@ contract("RollupPoSHelpers functions", () => {
             const txToAdd = (i%2) ? tx : tx2;
             await bb3.addTx(txToAdd);
         }
-        checkHashOffChain(bb3, insPoSHelpers, maxTx);
+        await checkHashOffChain(bb3, insPoSHelpers, maxTx);
 
         // empty off-chain tx with 255 txMax
         maxTx = 255;
         const bb4 = await rollupDB.buildBatch(maxTx, nLevels);
-        checkHashOffChain(bb4, insPoSHelpers, maxTx);
+        await checkHashOffChain(bb4, insPoSHelpers, maxTx);
 
         // empty off-chain tx with 256 txMax
         maxTx = 256;
         const bb5 = await rollupDB.buildBatch(maxTx, nLevels);
-        checkHashOffChain(bb5, insPoSHelpers, maxTx);
+        await checkHashOffChain(bb5, insPoSHelpers, maxTx);
 
         // empty off-chain tx with 257 txMax
         maxTx = 257;
         const bb6 = await rollupDB.buildBatch(maxTx, nLevels);
-        checkHashOffChain(bb6, insPoSHelpers, maxTx);
+        await checkHashOffChain(bb6, insPoSHelpers, maxTx);
     });    
 
     it("Should calculate effective stake for amount < 1 finney", async () => {

@@ -1,5 +1,5 @@
 /* global BigInt */
-const rollupUtils = require("../../rollup-utils/rollup-utils");
+const utils = require("../../js/utils");
 
 /**
  * Promise to be resolved in a certain amount of time
@@ -37,6 +37,8 @@ function buildPublicInputsSm(bb) {
         padding256(bb.getOldStateRoot()),
         padding256(bb.getFeePlanCoins()),
         padding256(bb.getFeePlanFees()),
+        padding256(bb.getInitIdx()),
+        padding256(bb.getFinalIdx()),
     ];
 }
 
@@ -47,19 +49,21 @@ function buildPublicInputsSm(bb) {
  */
 function manageEvent(event) {
     if (event.event == "OnChainTx") {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
+        const txData = utils.decodeTxData(event.args.txData);
         return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
+            IDEN3_ROLLUP_TX: txData.IDEN3_ROLLUP_TX,
             amount: txData.amount,
             loadAmount: BigInt(event.args.loadAmount),
             coin: txData.tokenId,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true
+            fromAx: BigInt(event.args.fromAx).toString(16),
+            fromAy: BigInt(event.args.fromAy).toString(16),
+            fromEthAddr: BigInt(event.args.fromEthAddress).toString(),
+            toAx: BigInt(event.args.toAx).toString(16),
+            toAy: BigInt(event.args.toAy).toString(16),
+            toEthAddr: BigInt(event.args.toEthAddress).toString(),
+            onChain: txData.onChain
         };
-    } else if (event.event == "OffChainTx") {
+    } else if (event.event == "OffChainTx") { //does not exxist right know
         return event.tx;
     }
 }
