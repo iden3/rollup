@@ -62,8 +62,6 @@ contract RollupHelpersTest is RollupHelpers{
   }
 
   function buildTxDataTest(
-    uint24 fromId,
-    uint24 toId,
     uint16 amountF,
     uint16 token,
     uint32 nonce,
@@ -72,35 +70,29 @@ contract RollupHelpersTest is RollupHelpers{
     bool onChain,
     bool newAccount
   ) public pure returns (bytes32){
-    return buildTxData(fromId, toId, amountF, token, nonce, maxFee, rqOffset, onChain, newAccount);
+    return buildTxData(amountF, token, nonce, maxFee, rqOffset, onChain, newAccount);
   }
 
-  function buildOnChainDataTest(
+  function buildOnChainHashTest(
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
-    address withdrawAddress,
-    uint256 Ax,
-    uint256 Ay
-  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32, bytes32){
-    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    uint256 hashOnChainData
+  ) public pure returns (bytes32, bytes32, bytes32, bytes32){
+    Entry memory entry = buildOnChainHash(oldOnChainHash, txData, loadAmount, hashOnChainData);
     return (entry.e1,
             entry.e2,
             entry.e3,
-            entry.e4,
-            entry.e5,
-            entry.e6);
+            entry.e4);
   }
 
   function hashOnChainTest(
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
-    address withdrawAddress,
-    uint256 Ax,
-    uint256 Ay
+    uint256 hashOnChainData
   ) public view returns (uint256){
-    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    Entry memory entry = buildOnChainHash(oldOnChainHash, txData, loadAmount, hashOnChainData);
     return hashEntry(entry);
   }
 

@@ -323,7 +323,7 @@ contract("RollupPoS", (accounts) => {
             }
             
             // Forge batch
-            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
 
             // Check raffle random number has been updated
             currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
@@ -332,7 +332,7 @@ contract("RollupPoS", (accounts) => {
 
             // try to forge data when there is no data committed
             try {
-                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
                 // above function should trigger an error
                 // otherwise test should not pass
                 expect(true).to.be.equal(false);
@@ -345,7 +345,7 @@ contract("RollupPoS", (accounts) => {
                 index = await getIndexHash(opId);
                 await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot - deadlineBlocks - 2);
                 await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
-                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
 
                 // Check raffle random number has been updated
                 currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
@@ -379,7 +379,7 @@ contract("RollupPoS", (accounts) => {
                 // commit data before deadline, try to update it, not forge block and slash operator
                 // commit and forge
                 await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
-                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
                 // commit again but not forge
                 index = await getIndexHash(opId);
                 await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});

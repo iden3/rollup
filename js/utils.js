@@ -75,18 +75,41 @@ function fix2float(_f) {
 }
 
 function buildTxData(tx) {
+    const IDEN3_ROLLUP_TX = bigInt("4839017969649077913");
     let res = bigInt(0);
-    res = res.add( bigInt(tx.fromIdx || 0));
-    res = res.add( bigInt(tx.toIdx || 0).shl(64));
-    res = res.add( bigInt(fix2float(tx.amount || 0)).shl(128));
-    res = res.add( bigInt(tx.coin || 0).shl(144));
-    res = res.add( bigInt(tx.nonce || 0).shl(176));
-    res = res.add( bigInt(fix2float(tx.userFee || 0)).shl(224));
-    res = res.add( bigInt(tx.rqOffset || 0).shl(240));
-    res = res.add( bigInt(tx.onChain ? 1 : 0).shl(243));
-    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(244));
 
+    res = res.add( bigInt(IDEN3_ROLLUP_TX || 0));
+    res = res.add( bigInt(fix2float(tx.amount || 0)).shl(64));
+    res = res.add( bigInt(tx.coin || 0).shl(80));
+    res = res.add( bigInt(tx.nonce || 0).shl(112));
+    res = res.add( bigInt(fix2float(tx.userFee || 0)).shl(160));
+    res = res.add( bigInt(tx.rqOffset || 0).shl(176));
+    res = res.add( bigInt(tx.onChain ? 1 : 0).shl(179));
+    res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(180));
+
+    console.log("jstxData", res);
     return res;
+}
+
+/**
+ * Decode rollup transactions
+ * @param {String} txDataEncodedHex - rollup transaction encoded as an hex string
+ * @returns {Object} - Raw rollup transaction
+ */
+function decodeTxData(txDataEncodedHex) {
+    const txDataBi = bigInt(txDataEncodedHex);
+    let txData = {};
+
+    txData.IDEN3_ROLLUP_TX = txDataBi.and(bigInt(1).shl(64).sub(bigInt(1)));
+    txData.amount = float2fix(txDataBi.shr(64).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
+    txData.tokenId = txDataBi.shr(80).and(bigInt(1).shl(32).sub(bigInt(1)));
+    txData.nonce = txDataBi.shr(112).and(bigInt(1).shl(48).sub(bigInt(1)));
+    txData.maxFee = float2fix(txDataBi.shr(160).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
+    txData.rqOffset = txDataBi.shr(176).and(bigInt(1).shl(3).sub(bigInt(1)));
+    txData.onChain = txDataBi.shr(179).and(bigInt(1).shl(1).sub(bigInt(1))) ? true : false ;
+    txData.newAccount = txDataBi.shr(180).and(bigInt(1).shl(1).sub(bigInt(1))) ? true : false ;
+
+    return txData;
 }
 
 function txRoundValues(tx) {
@@ -127,16 +150,43 @@ function hashState(st) {
     return hash(state2array(st));
 }
 
+
+/**
+ * Sign rollup transaction and add signature to transaction
+ * @param {Object} walletBabyJub - Rerpresents a babyjubjub wallet which will sign the rollup transaction 
+ * @param {Object} tx - Rollup transaction 
+ */
+function signRollupTx(walletBabyJub, tx) {
+    const data = buildTxData(tx.amount, tx.coin, tx.nonce,
+        tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
+    const hash = poseidon.createHash(5, 8, 57);
+
+    const h = hash([
+        data,
+        tx.rqTxData || 0,
+        tx.toAx,
+        tx.toAy,
+        tx.toEthAddr,
+    ]);
+    const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
+    tx.r8x = signature.R8[0];
+    tx.r8y = signature.R8[1];
+    tx.s = signature.S;
+    tx.ax = walletBabyJub.publicKey[0].toString(16);
+    tx.ay = walletBabyJub.publicKey[1].toString(16);
+}
+
 function verifyTxSig(tx) {
     try {
-        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
         const data = buildTxData(tx);
-        const hash = poseidon.createHash(6, 8, 57);
+        const hash = poseidon.createHash(5, 8, 57);
 
         const h = hash([
-            IDEN3_ROLLUP_TX,
             data,
-            tx.rqTxData || 0
+            tx.rqTxData || 0,
+            tx.toAx,
+            tx.toAy,
+            tx.toEthAddr,
         ]);
         const signature = {
             R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
@@ -152,10 +202,12 @@ function verifyTxSig(tx) {
 
 module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
+module.exports.decodeTxData = decodeTxData;
 module.exports.fix2float = fix2float;
 module.exports.float2fix = float2fix;
 module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
+module.exports.signRollupTx = signRollupTx;
 module.exports.verifyTxSig = verifyTxSig;

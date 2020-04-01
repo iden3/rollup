@@ -74,11 +74,12 @@ contract RollupBurnAuction {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
+        uint[8] calldata input,
+        uint256[] calldata compressedOnChainTx
      ) external virtual {
         require(auction[currentSlot()].initialized, "Auction has not been initialized");
         require(msg.sender == auction[currentSlot()].operator, "Sender is not current winner");
-        rollupInterface.forgeBatch(beneficiaryAddress, proofA, proofB, proofC, input);
+        rollupInterface.forgeBatch(beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
     }
 
     /**

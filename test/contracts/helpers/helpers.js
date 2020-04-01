@@ -2,6 +2,7 @@
 /* global web3 */
 /* global BigInt */
 /* global artifacts */
+/* eslint-disable require-atomic-updates*/
 
 const { buildPublicInputsSm, manageEvent } = require("../../../rollup-operator/src/utils");
 const chai = require("chai");
@@ -42,19 +43,27 @@ class ForgerTest {
         this.nLevels = nLevels;
         this.beneficiary = beneficiary;
         this.insRollupTest= insRollupTest;
+        this.counter = 1;
     }
 
-    async forgeBatch(events = undefined) {
+    async forgeBatch(events = undefined, compressedOnChainTx = []) {
         const batch = await this.rollupDB.buildBatch(this.maxTx, this.nLevels);
+
         if (events) {
-            events.forEach(elem => {
-                batch.addTx(manageEvent(elem));
+            let addTxPromises = events.map(async elem => {
+                return new Promise(async (resolve) => {
+                    let batchTx = manageEvent(elem);
+                    await this.getIds(batchTx);
+                    batch.addTx(batchTx);
+                    resolve();
+                });
             });
+            await Promise.all(addTxPromises);
         }
         await batch.build();
         const inputSm = buildFullInputSm(batch, this.beneficiary);
         await this.insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
-            inputSm.proofB, inputSm.proofC, inputSm.input);
+            inputSm.proofB, inputSm.proofC, inputSm.input, compressedOnChainTx);
         await this.rollupDB.consolidate(batch);
     }    
 
@@ -64,6 +73,39 @@ class ForgerTest {
             expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(this.rollupDB.lastBatch).toString());
         });
     }    
+
+    async getIds(transaction){
+        let fromIdxArray = await this.rollupDB.getStateByAxAy(transaction.fromAx, transaction.fromAy);
+        let toIdxArray = await this.rollupDB.getStateByAxAy(transaction.toAx, transaction.toAy);
+        if (fromIdxArray){
+            let found = fromIdxArray.find(state => {
+                state.coin == transaction.coin;
+            });
+            if (found == undefined){
+                transaction.fromIdx = this.counter++;
+            }
+            else{
+                transaction.fromIdx = found.fromIdx;
+            }
+        }
+        else{
+            transaction.fromIdx = this.counter++;
+        }
+        if (toIdxArray){
+            let found = toIdxArray.find(state => {
+                state.coin == transaction.coin;
+            });
+            if (found == undefined){
+                transaction.toIdx = 0;
+            }
+            else{
+                transaction.toIdx = found.toIdx;
+            }
+        }
+        else{
+            transaction.toIdx = 0;
+        }
+    }
 }
 
 

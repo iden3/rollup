@@ -80,7 +80,7 @@ module.exports = class BatchBuilder {
         this.input.oldKey2[i]= 0;
         this.input.oldValue2[i]= 0;
         
-        if (i<this.maxNTx-1) {
+        if (i<=this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
             this.input.imExitRoot[i] = this.exitTree.root;
             this.input.imCounters[i] = this._getCounters();
@@ -105,6 +105,7 @@ module.exports = class BatchBuilder {
     }
 
     async _addTx(tx) {
+        console.log({tx});
         const i = this.input.txData.length;
 
         const amountF = utils.fix2float(tx.amount || 0);
@@ -132,9 +133,9 @@ module.exports = class BatchBuilder {
                 amount: bigInt(0),
                 coin: tx.coin,
                 nonce: 0,
-                ax: tx.ax,
-                ay: tx.ay,
-                ethAddress: tx.ethAddress
+                ax: tx.fromAx,
+                ay: tx.fromAy,
+                ethAddress: tx.fromEthAddress
             };
             op1 = "INSERT";
             newAccount = 1;
@@ -162,9 +163,9 @@ module.exports = class BatchBuilder {
                     amount: bigInt(0),
                     coin: tx.coin,
                     nonce: 0,
-                    ax: tx.ax||oldState1.ax,
-                    ay: tx.ay||oldState1.ay,
-                    ethAddress: tx.ethAddress||oldState1.ethAddress
+                    ax: tx.fromAx||oldState1.ax,
+                    ay: tx.fromAy||oldState1.ay,
+                    ethAddress: tx.fromEthAddress||oldState1.ethAddress
                 };
                 op2 = "INSERT";
             }
@@ -485,21 +486,26 @@ module.exports = class BatchBuilder {
             this.input.oldValue2[i]= 0;
         }
 
-        if (i<this.maxNTx-1) {
+        if (i<=this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
             this.input.imExitRoot[i] = this.exitTree.root;
             this.input.imCounters[i] = this._getCounters();
             const lastHash = i == 0 ? 0: this.input.imOnChainHash[i-1];
             if (tx.onChain) {
                 const hash = poseidon.createHash(6, 8, 57);
-
+                const dataOnChain = hash([
+                    tx.fromEthAddress,
+                    bigInt("0x" + tx.fromAx),
+                    bigInt("0x" + tx.fromAy),
+                    tx.toEthAddress,
+                    bigInt("0x" + tx.toAx),
+                    bigInt("0x" + tx.toAy),
+                ]);
                 this.input.imOnChainHash[i] = hash([
                     lastHash,
                     this.input.txData[i],
                     this.input.loadAmount[i],
-                    this.input.ethAddr[i],
-                    this.input.ax[i],
-                    this.input.ay[i],
+                    dataOnChain
                 ]);
                 this.input.imOnChain[i] = bigInt(1);
             } else {
@@ -719,23 +725,8 @@ module.exports = class BatchBuilder {
 
     getOnChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
-        const lastHash = this.input.imOnChainHash[this.maxNTx-2];
-        let res;
-        if (this.onChainTxs.length>0) {
-            const hash = poseidon.createHash(6, 8, 57);
-
-            res = hash([
-                lastHash,
-                this.input.txData[this.maxNTx-1],
-                this.input.loadAmount[this.maxNTx-1],
-                this.input.ethAddr[this.maxNTx-1],
-                this.input.ax[this.maxNTx-1],
-                this.input.ay[this.maxNTx-1],
-            ]);
-        } else {
-            res = bigInt(lastHash);
-        }
-        return res;
+        const lastHash = this.input.imOnChainHash[this.maxNTx-1];
+        return lastHash;
     }
 
     getOffChainHash() {

@@ -117,7 +117,8 @@ contract RollupPoSTest is RollupPoS {
         uint[2] memory proofA,
         uint[2][2] memory proofB,
         uint[2] memory proofC,
-        uint[8] memory input
+        uint[8] memory input,
+        uint256[] memory compressedOnChainTx
     ) public override {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);

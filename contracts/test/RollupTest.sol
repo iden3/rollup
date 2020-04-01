@@ -12,12 +12,27 @@ contract RollupTest is Rollup {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external override {
+        uint[8] calldata input,
+        uint256[] calldata compressedOnChainTx
+    ) external payable override {
+ 
         // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
             'old state root does not match current state root');
+        //add deposits off-chain
+        // verify all the fields of the off-chain deposit
+        uint64 depositLength = uint64(compressedOnChainTx.length/4);
 
+        //index+deposits offchain = lastLeafIndex + depositCount of the previous batch
+        uint64 currentlastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + batchToIndex[getStateDepth()-1].depositCount;
+        uint32 latBatchdepositCount = batchToIndex[getStateDepth()-1].depositCount - 1;
+        require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositLength, 'Amount deposited less than fee required');
+        for (uint256 i = 0; i < depositLength; i++) {
+           depositOffChain(uint32(compressedOnChainTx[i*4]), address(compressedOnChainTx[i*4+1]),
+           [compressedOnChainTx[i*4+2], compressedOnChainTx[i*4+3]], ++latBatchdepositCount);
+        }
+        //previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
+        batchToIndex[getStateDepth()].lastLeafIndex = currentlastLeafIndex + depositLength;
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
             'on-chain hash does not match current filling on-chain hash');
@@ -26,24 +41,6 @@ contract RollupTest is Rollup {
         require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
             'zk-snark proof is not valid');
 
-        // Calculate fees and pay them
-        bytes32[2] memory feePlan = [bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])];
-        bytes32 nTxPerToken = bytes32(input[nTxperTokenInput]);
-
-        for (uint i = 0; i < 16; i++) {
-            (uint tokenId, uint totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
-            bytes32(nTxPerToken), i);
-
-            if(totalTokenFee != 0) {
-                require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee),
-                    'Fail ERC20 withdraw');
-            }
-        }
-
-        // Pay onChain transactions fees
-        uint payOnChainFees = totalMinningOnChainFee;
-        beneficiaryAddress.transfer(payOnChainFees);
-
         // Update state roots
         stateRoots.push(bytes32(input[newStateRootInput]));
 
@@ -51,6 +48,8 @@ contract RollupTest is Rollup {
         exitRoots.push(bytes32(input[newExitRootInput]));
 
         // Clean fillingOnChainTxsHash an its fees
+        uint payOnChainFees = totalMinningOnChainFee;
+
         miningOnChainTxsHash = fillingOnChainTxsHash;
         fillingOnChainTxsHash = 0;
         totalMinningOnChainFee = totalFillingOnChainFee;
@@ -58,6 +57,14 @@ contract RollupTest is Rollup {
 
         // Update number of on-chain transactions
         currentOnChainTx = 0;
+
+        // Calculate fees and pay them
+        withdrawTokens([bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])],
+        bytes32(input[nTxperTokenInput]), beneficiaryAddress);
+
+
+        // Pay onChain transactions fees
+        beneficiaryAddress.transfer(payOnChainFees);
 
         // event with all compressed transactions given its batch number
         emit ForgeBatch(getStateDepth(), block.number);

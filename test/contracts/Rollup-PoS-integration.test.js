@@ -140,7 +140,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         const balOpBeforeForge = await getEtherBalance(operator1);
         // Forge genesis batch by operator 1
         await insRollupPoS.commitBatch(hashChain.pop(), `0x${block.getDataAvailable().toString("hex")}`, {from: operator1});
-        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, {from: operator1});
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, [], {from: operator1});
         // Build inputs
         const block1 = await rollupDB.buildBatch(maxTx, nLevels);
         const tx = manageEvent(eventTmp.logs[0]);
@@ -150,7 +150,7 @@ contract("Rollup - RollupPoS", (accounts) => {
 
         // Forge batch by operator 1
         await insRollupPoS.commitBatch(hashChain.pop(), `0x${block1.getDataAvailable().toString("hex")}`, {from: operator1});
-        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, {from: operator1});
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, [], {from: operator1});
         // Check balances
         const balOpAfterForge = await getEtherBalance(operator1);
         expect(Math.ceil(balOpBeforeForge) + 1).to.be.equal(Math.ceil(balOpAfterForge));

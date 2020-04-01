@@ -474,7 +474,7 @@ contract("Rollup", (accounts) => {
         const inputSm = buildFullInputSm(batch, beneficiary);
         const balanceBefore = await insTokenRollup.balanceOf(beneficiary);
         const resForge = await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
-            inputSm.proofB, inputSm.proofC, inputSm.input);
+            inputSm.proofB, inputSm.proofC, inputSm.input, []);
         await rollupDB.consolidate(batch);
 
         const balanceAfter = await insTokenRollup.balanceOf(beneficiary);
@@ -620,7 +620,7 @@ contract("Rollup", (accounts) => {
         const inputSm = buildFullInputSm(batch, beneficiary);
         const balanceBefore = await insTokenRollup.balanceOf(beneficiary);
         const resForge = await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
-            inputSm.proofB, inputSm.proofC, inputSm.input);
+            inputSm.proofB, inputSm.proofC, inputSm.input, []);
         await rollupDB.consolidate(batch);
     
         const balanceAfter = await insTokenRollup.balanceOf(beneficiary);
