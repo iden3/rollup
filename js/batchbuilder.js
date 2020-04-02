@@ -11,10 +11,11 @@ const Constants = require("./constants");
 const poseidonHash = poseidon.createHash(6, 8, 57);
 
 module.exports = class BatchBuilder {
-    constructor(rollupDB, batchNumber, root, maxNTx, nLevels) {
+    constructor(rollupDB, batchNumber, root, initialIdx, maxNTx, nLevels) {
         assert((nLevels % 8) == 0);
         this.rollupDB = rollupDB;
         this.batchNumber = batchNumber;
+        this.finalIdx = initialIdx;
         this.maxNTx = maxNTx || 4;
         this.nLevels = nLevels;
         this.offChainTxs = [];
@@ -112,6 +113,15 @@ module.exports = class BatchBuilder {
     async _addTx(tx) {
         const i = this.input.txData.length;
 
+        // Find and set Idx
+        const fromAcc = this._uniqueAccount(tx.coin, tx.fromAx, tx.fromAy);
+        const toAcc = this._uniqueAccount(tx.coin, tx.toAx || 0, tx.toAy || 0);
+
+        const fromIdx = await this.dbState.get(fromAcc);
+        const toIdx = await this.dbState.get(toAcc);
+
+        this._addIdx(tx, fromIdx, toIdx);
+
         const amountF = utils.fix2float(tx.amount || 0);
         const amount = utils.float2fix(amountF);
 
@@ -137,9 +147,9 @@ module.exports = class BatchBuilder {
                 amount: bigInt(0),
                 coin: tx.coin,
                 nonce: 0,
-                ax: tx.ax,
-                ay: tx.ay,
-                ethAddress: tx.ethAddress
+                ax: tx.fromAx,
+                ay: tx.fromAy,
+                ethAddress: tx.fromEthAddr
             };
             op1 = "INSERT";
             newAccount = 1;
@@ -167,9 +177,9 @@ module.exports = class BatchBuilder {
                     amount: bigInt(0),
                     coin: tx.coin,
                     nonce: 0,
-                    ax: tx.ax||oldState1.ax,
-                    ay: tx.ay||oldState1.ay,
-                    ethAddress: tx.ethAddress||oldState1.ethAddress
+                    ax: tx.fromAx || oldState1.ax,
+                    ay: tx.fromAy || oldState1.ay,
+                    ethAddress: tx.fromEthAddr || oldState1.ethAddress
                 };
                 op2 = "INSERT";
             }
@@ -197,15 +207,20 @@ module.exports = class BatchBuilder {
 
         if (effectiveAmount.equals(bigInt(0))) op2="NOP";
 
+        this.input.fromIdx[i] = tx.fromIdx;
+        this.input.toIdx[i] = tx.toIdx;
         this.input.txData[i] = utils.buildTxData(Object.assign({newAccount: newAccount}, tx));
+        this.input.toAx[i] = bigInt("0x" + (tx.toAx || 0)),
+        this.input.toAy[i] = bigInt("0x" + (tx.toAy || 0)),
+        this.input.toEthAddr[i] = bigInt(tx.toEthAddr || 0),
         this.input.rqTxData[i]= tx.rqTxData || 0;
         this.input.s[i]= tx.s || 0;
         this.input.r8x[i]= tx.r8x || 0;
         this.input.r8y[i]= tx.r8y || 0;
         this.input.loadAmount[i]= loadAmount;
-        this.input.ethAddr[i]= bigInt(oldState1.ethAddress);
-        this.input.ax[i]= bigInt("0x" +oldState1.ax);
-        this.input.ay[i]= bigInt("0x" +oldState1.ay);
+        this.input.fromEthAddr[i]= bigInt(oldState1.ethAddress);
+        this.input.fromAx[i]= bigInt("0x" + oldState1.ax);
+        this.input.fromAy[i]= bigInt("0x" + oldState1.ay);
 
         this.input.step[i] = ((!tx.onChain) && tx.step) ? 1 : 0;
 
@@ -223,7 +238,7 @@ module.exports = class BatchBuilder {
         newState2.amount = oldState2.amount.add(effectiveAmount);
         if (op1=="INSERT") {
 
-            this.input.finalIdx = this.input.initialIdx + 1;
+            this.finalIdx += 1;
             const newValue = utils.hashState(newState1);
 
             const res = await this.stateTree.insert(tx.fromIdx, newValue);
@@ -231,19 +246,25 @@ module.exports = class BatchBuilder {
             while (siblings.length<this.nLevels+1) siblings.push(bigInt(0));
 
             // State 1
-            //That first 4 parameters do not matter in the circuit, since it gets the information from the TxData
+            // That first 4 parameters do not matter in the circuit, since it gets the information from the TxData
             this.input.ax1[i]= 0x1234;      // It should not matter
             this.input.ay1[i]= 0x1234;      // It should not matter
             this.input.amount1[i]= 0x1234;  // It should not matter
             this.input.nonce1[i]= 0x1234;   // It should not matter
-            this.input.ethAddr1[i]= this.input.ethAddr[i]; // In the onChain TX this must match
+            this.input.ethAddr1[i]= this.input.fromEthAddr[i]; // In the onChain TX this must match
             this.input.siblings1[i] = siblings;
             this.input.isOld0_1[i]= res.isOld0 ? 1 : 0;
             this.input.oldKey1[i]= res.isOld0 ? 0 : res.oldKey;
             this.input.oldValue1[i]= res.isOld0 ? 0 : res.oldValue;
 
+            // Insert hashmap uniqueHash-idx
+            const keyIdx = this._uniqueAccount(tx.coin, tx.fromAx, tx.fromAy);
+            await this.dbState.multiIns([
+                [keyIdx, tx.fromIdx],
+            ]);
+
             // Database AxAy
-            const keyAxAy = Constants.DB_AxAy.add(this.input.ax[i]).add(this.input.ay[i]);
+            const keyAxAy = Constants.DB_AxAy.add(this.input.fromAx[i]).add(this.input.fromAy[i]);
             const lastAxAyStates = await this.dbState.get(keyAxAy);
                 
             // get last state and add last batch number
@@ -282,7 +303,7 @@ module.exports = class BatchBuilder {
             ]);
 
             // Database Ether address
-            const keyEth = Constants.DB_EthAddr.add(this.input.ethAddr[i]);
+            const keyEth = Constants.DB_EthAddr.add(this.input.fromEthAddr[i]);
             const lastEthStates = await this.dbState.get(keyEth);
 
             // get last state and add last batch number
@@ -399,7 +420,7 @@ module.exports = class BatchBuilder {
             this.input.ay2[i]= 0x1234;      // It should not matter
             this.input.amount2[i]= 0;  // Must be 0 to signal is an insert.
             this.input.nonce2[i]= 0x1234;   // It should not matter
-            this.input.ethAddr2[i]= this.input.ethAddr[i]; // In the onChain TX this must match
+            this.input.ethAddr2[i]= this.input.fromEthAddr[i]; // In the onChain TX this must match
             this.input.siblings2[i] = siblings;
             this.input.isOld0_2[i]= res.isOld0 ? 1 : 0;
             this.input.oldKey2[i]= res.isOld0 ? 0 : res.oldKey;
@@ -499,13 +520,20 @@ module.exports = class BatchBuilder {
             if (tx.onChain) {
                 const hash = poseidon.createHash(6, 8, 57);
 
+                const dataOnChain = hash([
+                    this.input.fromEthAddr[i],
+                    this.input.fromAx[i],
+                    this.input.fromAy[i],
+                    this.input.toEthAddr[i],
+                    this.input.toAx[i],
+                    this.input.toAy[i],
+                ]);
+
                 this.input.imOnChainHash[i] = hash([
                     lastHash,
                     this.input.txData[i],
                     this.input.loadAmount[i],
-                    this.input.ethAddr[i],
-                    this.input.ax[i],
-                    this.input.ay[i],
+                    dataOnChain,
                 ]);
                 this.input.imOnChain[i] = bigInt(1);
             } else {
@@ -537,7 +565,7 @@ module.exports = class BatchBuilder {
         // Database NumBatch
         if (op1 == "INSERT") {
             // AxAy
-            const encodeAxAy =  this.input.ay[i].add(this.input.ax[i].shl(256));
+            const encodeAxAy =  this.input.fromAy[i].add(this.input.fromAx[i].shl(256));
             const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(this.newBatchNumberDb);
             let oldStatesAxAy = await this.dbState.get(keyNumBatchAxAy);
             let newStatesAxAy;
@@ -550,7 +578,7 @@ module.exports = class BatchBuilder {
                 ]);
             }
             // EthAddress
-            const ethAddr =  this.input.ethAddr[i];
+            const ethAddr =  this.input.fromEthAddr[i];
             const keyNumBatchEthAddr = Constants.DB_NumBatch_EthAddr.add(this.newBatchNumberDb);
             let oldStatesEthAddr = await this.dbState.get(keyNumBatchEthAddr);
             let newStatesEthAddr;
@@ -563,6 +591,20 @@ module.exports = class BatchBuilder {
                 ]);
             }
         }  
+    }
+
+    _addIdx(tx, from, to){
+        
+        if (!from) tx.fromIdx = this.finalIdx + 1;
+        else tx.fromIdx = from;
+        
+        if (!to) tx.toIdx = 0;
+        else tx.toIdx = to;
+    }
+
+    _uniqueAccount(coin, ax, ay){
+        const h = poseidon.createHash(6, 8, 57);
+        return h([coin, `0x${ax}`, `0x${ay}`]);
     }
 
     _incCounter(coin, step) {
@@ -613,15 +655,10 @@ module.exports = class BatchBuilder {
     }
 
     async build() {
-        if (this.initialIdx === undefined){
-            throw new Error("Initial Idx must be set before 'build'");
-        }
-
         const {feePlanCoins, feePlanFees} = this._buildFeePlan();
 
         this.input = {
-            initialIdx: this.initialIdx,
-            finalIdx: 0,
+            initialIdx: this.finalIdx,
             oldStRoot: this.stateTree.root,
             feePlanCoins: feePlanCoins,
             feePlanFees: feePlanFees,
@@ -673,12 +710,12 @@ module.exports = class BatchBuilder {
 
         if (this.builded) throw new Error("Batch already builded");
 
-        // Add Nop Tx
+        // Add on-chain Tx
         for (let i=0; i<this.onChainTxs.length; i++) {
             await this._addTx(this.onChainTxs[i]);
         }
 
-        // Add on-chain Tx
+        // Add Nop Tx
         for (let i=0; i<this.maxNTx - this.offChainTxs.length - this.onChainTxs.length; i++) {
             this._addNopTx();
         }
@@ -694,6 +731,16 @@ module.exports = class BatchBuilder {
     getInput() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.input;
+    }
+
+    getInitIdx() {
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return this.input.initialIdx;
+    }
+
+    getFinalIdx() {
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return this.finalIdx;
     }
 
     getOldStateRoot() {
@@ -725,17 +772,29 @@ module.exports = class BatchBuilder {
         if (!this.builded) throw new Error("Batch must first be builded");
         const lastHash = this.input.imOnChainHash[this.maxNTx-2];
         let res;
-        if (this.onChainTxs.length>0) {
+
+        // check last transaction is on-chain
+        const { onChain } = utils.decodeTxData(this.input.txData[this.maxNTx-1]);
+
+        if (onChain) {
             const hash = poseidon.createHash(6, 8, 57);
+            
+            const dataOnChain = hash([
+                this.input.fromEthAddr[this.maxNTx-1],
+                this.input.fromAx[this.maxNTx-1],
+                this.input.fromAy[this.maxNTx-1],
+                this.input.toEthAddr[this.maxNTx-1],
+                this.input.toAx[this.maxNTx-1],
+                this.input.toAy[this.maxNTx-1],
+            ]);
 
             res = hash([
                 lastHash,
                 this.input.txData[this.maxNTx-1],
                 this.input.loadAmount[this.maxNTx-1],
-                this.input.ethAddr[this.maxNTx-1],
-                this.input.ax[this.maxNTx-1],
-                this.input.ay[this.maxNTx-1],
+                dataOnChain,
             ]);
+
         } else {
             res = bigInt(lastHash);
         }
@@ -743,7 +802,7 @@ module.exports = class BatchBuilder {
     }
 
     getDataAvailable() {
-        // if (!this.builded) throw new Error("Batch must first be builded");
+        if (!this.builded) throw new Error("Batch must first be builded");
 
         // Fill with initial steps padded to the byte with zeros
         const bytes = Array( Math.ceil(this.maxNTx/8) ).fill(0);
@@ -822,9 +881,5 @@ module.exports = class BatchBuilder {
         }
         this.feePlan[this.nCoins] = [coin, roundedFee];
         this.nCoins = this.nCoins + 1;
-    }
-
-    setInitialIdx(initialIdx){
-        this.initialIdx = initialIdx;
     }
 };

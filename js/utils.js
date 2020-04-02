@@ -90,6 +90,21 @@ function buildTxData(tx) {
     return res;
 }
 
+function decodeTxData(txDataEncoded) {
+    const txDataBi = bigInt(txDataEncoded);
+    let txData = {};
+
+    txData.amount = float2fix(txDataBi.shr(64).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
+    txData.tokenId = txDataBi.shr(80).and(bigInt(1).shl(32).sub(bigInt(1)));
+    txData.nonce = txDataBi.shr(112).and(bigInt(1).shl(48).sub(bigInt(1)));
+    txData.maxFee = float2fix(txDataBi.shr(160).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
+    txData.rqOffset = txDataBi.shr(176).and(bigInt(1).shl(3).sub(bigInt(1)));
+    txData.onChain = txDataBi.shr(179).and(bigInt(1).shl(1).sub(bigInt(1))) ? true : false ;
+    txData.newAccount = txDataBi.shr(180).and(bigInt(1).shl(1).sub(bigInt(1))) ? true : false ;
+
+    return txData;
+}
+
 function txRoundValues(tx) {
     tx.amountF = fix2float(tx.amount);
     tx.amount = float2fix(tx.amountF);
@@ -128,21 +143,21 @@ function hashState(st) {
 function verifyTxSig(tx) {
     try {
         const data = buildTxData(tx);
-        const hash = poseidon.createHash(5, 8, 57);
+        const hash = poseidon.createHash(6, 8, 57);
 
         const h = hash([
             data,
             tx.rqTxData || 0,
-            tx.toAx,
-            tx.toAy,
-            tx.toEthAddr,
+            bigInt("0x" + tx.toAx),
+            bigInt("0x" + tx.toAy),
+            bigInt(tx.toEthAddr),
         ]);
         const signature = {
             R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
             S: bigInt(tx.s)
         };
         
-        const pubKey = [ bigInt("0x" + tx.ax), bigInt("0x" + tx.ay)];
+        const pubKey = [ bigInt("0x" + tx.fromAx), bigInt("0x" + tx.fromAy)];
         return eddsa.verifyPoseidon(h, signature, pubKey);
     } catch(E) {
         return false;
@@ -151,10 +166,11 @@ function verifyTxSig(tx) {
 
 module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
+module.exports.decodeTxData = decodeTxData;
 module.exports.fix2float = fix2float;
 module.exports.float2fix = float2fix;
 module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
-module.exports.verifyTxSig = verifyTxSig;
+module.exports.verifyTxSig = verifyTxSig; 

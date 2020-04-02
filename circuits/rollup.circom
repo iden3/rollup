@@ -153,6 +153,9 @@ template Rollup(nTx, nLevels) {
 
         Tx[i].fromIdx <== decodeTx[i].fromIdx;
         Tx[i].toIdx <== decodeTx[i].toIdx;
+        Tx[i].toAx <== decodeTx[i].toAx;
+        Tx[i].toAy <== decodeTx[i].toAy;
+        Tx[i].toEthAddr <== decodeTx[i].toEthAddr;
         Tx[i].amount <== decodeTx[i].amount;
         Tx[i].coin <== decodeTx[i].coin;
         Tx[i].nonce <== decodeTx[i].nonce;

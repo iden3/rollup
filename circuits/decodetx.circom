@@ -45,7 +45,7 @@ template DecodeTx(nLevels) {
 
     signal output dataAvailabilityBits[nLevels*2+16];
     signal output sigOffChainHash;  // For the signature
-    signal output newOnChainHash;   // For the chained on.chain
+    signal output newOnChainHash;   // For the chained on-chain
 
     var i;
 

@@ -11,7 +11,6 @@ include "statepacker.circom";
 
 template RollupTx(nLevels) {
 
-
     // Fee Plan
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
@@ -23,6 +22,9 @@ template RollupTx(nLevels) {
     // Tx
     signal input fromIdx;
     signal input toIdx;
+    signal input toAx;
+    signal input toAy;
+    signal input toEthAddr;
     signal input amount;
     signal input coin;
     signal input nonce;
@@ -105,7 +107,6 @@ template RollupTx(nLevels) {
     states.loadAmount <== loadAmount;
     states.newAccount <== newAccount;
 
-
 // requiredTxVerifier
 //////////
     component requiredTxVerifier = RequiredTxVerifier();
@@ -123,20 +124,38 @@ template RollupTx(nLevels) {
 
 // nonceChecker
 //////////
-
     component nonceChecker = ForceEqualIfEnabled();
     nonceChecker.in[0] <== nonce;
     nonceChecker.in[1] <== nonce1;
     nonceChecker.enabled <== (1-onChain);
 
-
-// ethAddrChecker
+// toAxChecker
 //////////
+    component toAxChecker = ForceEqualIfEnabled();
+    toAxChecker.in[0] <== toAx;
+    toAxChecker.in[1] <== ax2;
+    toAxChecker.enabled <== (1 - onChain);
 
-    component ethAddrChecker = ForceEqualIfEnabled();
-    ethAddrChecker.in[0] <== fromEthAddr;
-    ethAddrChecker.in[1] <== ethAddr1;
-    ethAddrChecker.enabled <== onChain;
+// toAyChecker
+//////////
+    component toAyChecker = ForceEqualIfEnabled();
+    toAyChecker.in[0] <== toAy;
+    toAyChecker.in[1] <== ay2;
+    toAyChecker.enabled <== (1 - onChain);
+
+// toEthAddrChecker
+//////////
+    component toEthAddrChecker = ForceEqualIfEnabled();
+    toEthAddrChecker.in[0] <== toEthAddr;
+    toEthAddrChecker.in[1] <== ethAddr2;
+    toEthAddrChecker.enabled <== (1 - onChain);
+
+// fromEthAddrChecker
+//////////
+    component fromEthAddrChecker = ForceEqualIfEnabled();
+    fromEthAddrChecker.in[0] <== fromEthAddr;
+    fromEthAddrChecker.in[1] <== ethAddr1;
+    fromEthAddrChecker.enabled <== onChain;
 
 // oldState1 Packer
 /////////////////
@@ -243,7 +262,6 @@ template RollupTx(nLevels) {
     sigVerifier.R8y <== r8y;
 
     sigVerifier.M <== sigOffChainHash;
-
 
 // balancesUpdater
 ///////////////
