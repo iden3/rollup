@@ -11,6 +11,7 @@ const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const RollupDB = require("../../js/rollupdb");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
+const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 
 const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupPoS.abi);
@@ -24,6 +25,7 @@ abiDecoder.addABI(RollupPoS.abi);
 
 contract("RollupPoS", (accounts) => {
     const {
+        1: id1,
         6: relayStaker,
         7: beneficiaryAddress,
         9: slashAddress,
@@ -47,6 +49,11 @@ contract("RollupPoS", (accounts) => {
     let genesisBlock;
     let amountToStake;
     let amountToStakeNumber;
+
+    const wallets =[];
+    for (let i = 0; i<10; i++){
+        wallets.push(BabyJubWallet.createRandom());
+    }
 
     const initialMsg = "rollup";
     hashChain.push(web3.utils.keccak256(initialMsg));
@@ -94,22 +101,26 @@ contract("RollupPoS", (accounts) => {
             const nLevels = 24;
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             bb.addTx({
-                fromIdx: 1,
+                fromAx: wallets[1].publicKey[0].toString(16),
+                fromAy:  wallets[1].publicKey[1].toString(16),
+                fromEthAddr: id1,
+                toAx: 0,
+                toAy: 0,
+                toEthAddr: 0,
                 loadAmount: 1000,
                 coin: 0,
-                ax: 0,
-                ay: 0,
-                ethAddress: 0,
                 onChain: true
             });
     
             bb.addTx({
-                fromIdx: 2,
+                fromAx: wallets[2].publicKey[0].toString(16),
+                fromAy:  wallets[2].publicKey[1].toString(16),
+                fromEthAddr: id1,
+                toAx: 0,
+                toAy: 0,
+                toEthAddr: 0,
                 loadAmount: 2000,
                 coin: 0,
-                ax: 0,
-                ay: 0,
-                ethAddress: 0,
                 onChain: true
             });
             await bb.build();
@@ -257,9 +268,14 @@ contract("RollupPoS", (accounts) => {
             const maxTx = 10;
             // non-empty off-chain tx with 10 maxTx
             const tx = {
-                fromIdx: 1,
-                toIdx: 2,
+                fromAx: wallets[1].publicKey[0].toString(16),
+                fromAy:  wallets[1].publicKey[1].toString(16),
+                fromEthAddr: id1,
+                toAx: wallets[2].publicKey[0].toString(16),
+                toAy: wallets[2].publicKey[1].toString(16),
+                toEthAddr: id1,
                 amount: 50,
+                coin: 0
             };
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);

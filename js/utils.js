@@ -87,7 +87,6 @@ function buildTxData(tx) {
     res = res.add( bigInt(tx.onChain ? 1 : 0).shl(179));
     res = res.add( bigInt(tx.newAccount ? 1 : 0).shl(180));
 
-    console.log("jstxData", res);
     return res;
 }
 
@@ -119,7 +118,6 @@ function txRoundValues(tx) {
     tx.userFee = float2fix(tx.userFeeF);
 }
 
-
 function state2array(st) {
     const data = bigInt(st.coin).add( bigInt(st.nonce).shl(32) );
     return [
@@ -133,8 +131,6 @@ function state2array(st) {
 
 function array2state(a) {
     return {
-        // coin: bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
-        // nonce: bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toJSNumber(),
         coin: parseInt(bigInt(a[0]).and(bigInt(1).shl(32).sub(bigInt(1))).toString(), 10),
         nonce: parseInt(bigInt(a[0]).shr(32).and(bigInt(1).shl(32).sub(bigInt(1))).toString() , 10),
         amount: bigInt(a[1]),
@@ -164,36 +160,34 @@ function signRollupTx(walletBabyJub, tx) {
     const h = hash([
         data,
         tx.rqTxData || 0,
-        tx.toAx,
-        tx.toAy,
-        tx.toEthAddr,
+        bigInt("0x" + tx.toAx),
+        bigInt("0x" + tx.toAy),
+        bigInt(tx.toEthAddr),
     ]);
     const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
     tx.r8x = signature.R8[0];
     tx.r8y = signature.R8[1];
     tx.s = signature.S;
-    tx.ax = walletBabyJub.publicKey[0].toString(16);
-    tx.ay = walletBabyJub.publicKey[1].toString(16);
 }
 
 function verifyTxSig(tx) {
     try {
         const data = buildTxData(tx);
-        const hash = poseidon.createHash(5, 8, 57);
+        const hash = poseidon.createHash(6, 8, 57);
 
         const h = hash([
             data,
             tx.rqTxData || 0,
-            tx.toAx,
-            tx.toAy,
-            tx.toEthAddr,
+            bigInt("0x" + tx.toAx),
+            bigInt("0x" + tx.toAy),
+            bigInt(tx.toEthAddr),
         ]);
         const signature = {
             R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
             S: bigInt(tx.s)
         };
         
-        const pubKey = [ bigInt("0x" + tx.ax), bigInt("0x" + tx.ay)];
+        const pubKey = [ bigInt("0x" + tx.fromAx), bigInt("0x" + tx.fromAy)];
         return eddsa.verifyPoseidon(h, signature, pubKey);
     } catch(E) {
         return false;

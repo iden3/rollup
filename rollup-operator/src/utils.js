@@ -55,10 +55,10 @@ function manageEvent(event) {
             coin: txData.tokenId,
             fromAx: BigInt(event.args.fromAx).toString(16),
             fromAy: BigInt(event.args.fromAy).toString(16),
-            fromEthAddress: BigInt(event.args.fromEthAddress).toString(),
+            fromEthAddr: BigInt(event.args.fromEthAddress).toString(),
             toAx: BigInt(event.args.toAx).toString(16),
             toAy: BigInt(event.args.toAy).toString(16),
-            toEthAddress: BigInt(event.args.toEthAddress).toString(),
+            toEthAddr: BigInt(event.args.toEthAddress).toString(),
             onChain: txData.onChain
         };
     } else if (event.event == "OffChainTx") { //does not exxist right know

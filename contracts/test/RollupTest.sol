@@ -15,27 +15,30 @@ contract RollupTest is Rollup {
         uint[8] calldata input,
         uint256[] calldata compressedOnChainTx
     ) external payable override {
- 
+
         // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
             'old state root does not match current state root');
         //add deposits off-chain
         // verify all the fields of the off-chain deposit
-        uint64 depositLength = uint64(compressedOnChainTx.length/4);
+         uint64 depositLength = uint64(compressedOnChainTx.length/3);
 
         //index+deposits offchain = lastLeafIndex + depositCount of the previous batch
-        uint64 currentlastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + batchToIndex[getStateDepth()-1].depositCount;
-        uint32 latBatchdepositCount = batchToIndex[getStateDepth()-1].depositCount - 1;
+        uint64 currentlastLeafIndex;
+        uint32 latBatchdepositCount;
+        if (getStateDepth() != 0){
+            currentlastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + batchToIndex[getStateDepth()-1].depositCount;
+            latBatchdepositCount = batchToIndex[getStateDepth()-1].depositCount;
+        }
         require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositLength, 'Amount deposited less than fee required');
         for (uint256 i = 0; i < depositLength; i++) {
-           depositOffChain(uint32(compressedOnChainTx[i*4]), address(compressedOnChainTx[i*4+1]),
-           [compressedOnChainTx[i*4+2], compressedOnChainTx[i*4+3]], ++latBatchdepositCount);
+           depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], ++latBatchdepositCount);
         }
         //previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
         batchToIndex[getStateDepth()].lastLeafIndex = currentlastLeafIndex + depositLength;
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
-            'on-chain hash does not match current filling on-chain hash');
+            'on-chain hash does not match current mining on-chain hash');
 
         // Verify zk-snark circuit
         require(verifier.verifyProof(proofA, proofB, proofC, input) == true,

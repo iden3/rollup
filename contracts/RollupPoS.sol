@@ -611,7 +611,7 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2][2] memory proofB,
         uint[2] memory proofC,
         uint[8] memory input,
-        uint256[] memory compressedOnChainTx
+        uint256[] memory compressedOnChainTx  //deberian ser bytes
      ) public virtual {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);

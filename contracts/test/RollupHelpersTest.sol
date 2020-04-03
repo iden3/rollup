@@ -86,7 +86,7 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e4);
   }
 
-  function hashOnChainTest(
+  function hashOnChainHashTest(
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
@@ -96,6 +96,57 @@ contract RollupHelpersTest is RollupHelpers{
     return hashEntry(entry);
   }
 
+
+  function buildOnChainDataTest(
+    address fromEthAddr,
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy
+    ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32, bytes32) {
+     Entry memory entry = buildOnChainData(fromEthAddr, fromAx, fromAy, toEthAddr, toAx, toAy);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5,
+            entry.e6);
+  }
+
+  function hashOnChainDataTest(
+    address fromEthAddr,
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy
+    ) public view returns (uint256) {
+     Entry memory entry = buildOnChainData(fromEthAddr, fromAx, fromAy, toEthAddr, toAx, toAy);
+     return hashEntry(entry);
+  }
+
+  function buildAndHashOnChain(
+    address fromEthAddr,
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy,
+    uint256 oldOnChainHash,
+    uint256 txData,
+    uint128 loadAmount
+    ) public view returns (uint256) {
+     Entry memory onChainData = buildOnChainData(fromEthAddr, fromAx, fromAy, toEthAddr, toAx, toAy);
+     uint256 hashOnChainData = hashEntry(onChainData);
+     Entry memory onChainHash = buildOnChainHash(oldOnChainHash, txData, loadAmount, hashOnChainData);
+     return hashEntry(onChainHash);
+  }
+
+  function testUnZipAddressTokens(uint256 zip)
+    public pure returns (address, uint32) {
+   return unZipAddressTokens(zip);
+  }
   function float2FixTest(uint16 float) public pure returns (uint256){
     return float2Fix(float);
   }

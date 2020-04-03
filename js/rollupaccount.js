@@ -55,20 +55,20 @@ module.exports = class RollupAccount {
     }
 
     signTx(tx) {
-        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
-        const data = utils.buildTxData(tx);
+        const txData = utils.buildTxData(tx);
         const hash = poseidon.createHash(6, 8, 57);
 
         const h = hash([
-            IDEN3_ROLLUP_TX,
-            data,
-            tx.rqTxData || 0
+            txData,
+            tx.rqTxData || 0,
+            bigInt("0x" + tx.toAx),
+            bigInt("0x" + tx.toAy),
+            bigInt(tx.toEthAddr),
         ]);
+
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
         tx.r8x = signature.R8[0];
         tx.r8y = signature.R8[1];
         tx.s = signature.S;
-        tx.ax = this.ax;
-        tx.ay = this.ay;
     }
 };

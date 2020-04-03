@@ -222,6 +222,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(ethAddress != address(0), 'Must specify withdraw address');
         require(tokenList[tokenId] != address(0), 'token has not been registered');
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+
+        leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
+        require(leaf.ethAddress == address(0), 'leaf already exist');
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
         // build txData for deposit
@@ -230,28 +233,28 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Increment index leaf balance tree
         batchToIndex[getStateDepth()].depositCount++;
         // Insert tree informations
-        treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))] = leafInfo(uint64(getStateDepth()),
-           batchToIndex[getStateDepth()].depositCount, ethAddress);
-
+        leaf.batchNum = uint64(getStateDepth());
+        leaf.relativeIndex = batchToIndex[getStateDepth()].depositCount;
+        leaf.ethAddress = ethAddress;
     }
 
    /**
      * @dev Deposit on-chain transaction
      * add new leaf to balance tree and initializes it with a load amount
-     * @param tokenId token type identifier
-     * @param ethAddress allowed address to control new balance tree leaf
+     * @param zip token and Ethaddress
      * @param babyPubKey public key babyjubjub represented as point (Ax, Ay)
      * @param relativeIndex relative index of this deposit
     */
     function depositOffChain(
-        uint32 tokenId,
-        address ethAddress,
+        uint256 zip,
         uint256[2] memory babyPubKey,
         uint32 relativeIndex
     ) internal {
+        (address ethAddress, uint32 tokenId) = unZipAddressTokens(zip);
         require(ethAddress != address(0), 'Must specify withdraw address');
         require(tokenList[tokenId] != address(0), 'token has not been registered');
-        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
+        require(leaf.ethAddress == address(0), 'leaf already exist');
         // burn fee
         address(0).transfer(FEE_OFFCHAIN_DEPOSIT);
         // build txData for deposit
@@ -264,10 +267,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         miningOnChainTxsHash = hashEntry(onChainHash);
         // Insert tree information
         if (getStateDepth() == 0){
-          treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))] = leafInfo(0, relativeIndex, ethAddress);
+            leaf.batchNum = 0;
+            leaf.relativeIndex = relativeIndex;
+            leaf.ethAddress = ethAddress;
         }
         else{
-           treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))] = leafInfo(uint64(getStateDepth() - 1), relativeIndex, ethAddress);
+            leaf.batchNum = uint64(getStateDepth() - 1);
+            leaf.relativeIndex = relativeIndex;
+            leaf.ethAddress = ethAddress;
         }
     }
 
@@ -312,9 +319,12 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
 
         leafInfo memory fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
-        leafInfo memory toLeaf = treeInfo[uint256(keccak256(abi.encodePacked(toBabyPubKey,tokenId)))];
-        require(fromLeaf.ethAddress != msg.sender, 'Sender does not match identifier balance tree');
-        require(toLeaf.ethAddress != address(0), 'leaf does no exist');
+        leafInfo memory toLeaf;
+        if (!(toBabyPubKey[0] == 0 && toBabyPubKey[1] == 0)){
+            toLeaf = treeInfo[uint256(keccak256(abi.encodePacked(toBabyPubKey,tokenId)))];
+            require(toLeaf.ethAddress != address(0), 'leaf does not exist');
+        }
+        require(fromLeaf.ethAddress == msg.sender, 'Sender does not match identifier balance tree');
         // build txData for transfer
         bytes32 txDataTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataTransfer), 0, fromLeaf.ethAddress, fromBabyPubKey,
@@ -347,8 +357,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(fromEthAddress != address(0), 'Must specify withdraw address');
         require(tokenList[tokenId] != address(0), 'token has not been registered');
 
-        leafInfo memory toLeaf = treeInfo[uint256(keccak256(abi.encodePacked(toBabyPubKey,tokenId)))];
-        require(toLeaf.ethAddress != address(0), 'leaf does no exist');
+        leafInfo memory fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
+        leafInfo memory toLeaf;
+        if (!(toBabyPubKey[0] == 0 && toBabyPubKey[1] == 0)){
+            toLeaf = treeInfo[uint256(keccak256(abi.encodePacked(toBabyPubKey,tokenId)))];
+            require(toLeaf.ethAddress != address(0), 'leaf does not exist');
+        }
+        require(fromLeaf.ethAddress == address(0), 'leaf already exist');
 
 
         // Get token deposit on rollup smart contract
@@ -381,7 +396,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
 
         leafInfo memory fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
-        require(fromLeaf.ethAddress != msg.sender, 'Sender does not match identifier balance tree');
+        require(fromLeaf.ethAddress == msg.sender, 'Sender does not match identifier balance tree');
 
         // build txData for withdraw
         bytes32 txDataWithdraw = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
@@ -404,25 +419,23 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     function withdraw(
         uint64 idBalanceTree,
         uint256 amount,
-        uint numExitRoot,
+        uint256 numExitRoot,
         uint256[] memory siblings,
         uint256[2] memory fromBabyPubKey,
         uint32 tokenId
     ) public {
         // Build 'key' and 'value' for exit tree
         uint256 keyExitTree = idBalanceTree;
-        leafInfo memory fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
-        require(fromLeaf.ethAddress != msg.sender, 'Sender does not match identifier balance tree');
-
         Entry memory exitEntry = buildTreeState(amount, tokenId, fromBabyPubKey[0],
         fromBabyPubKey[1], msg.sender, 0);
         uint256 valueExitTree = hashEntry(exitEntry);
         // Get exit root given its index depth
         uint256 exitRoot = uint256(getExitRoot(numExitRoot));
         // Check exit tree nullifier
-        uint256[] memory inputs = new uint256[](2);
-        inputs[0] = exitRoot;
-        inputs[1] = valueExitTree;
+        uint256[] memory inputs = new uint256[](3);
+        inputs[0] = valueExitTree;
+        inputs[1] = numExitRoot;
+        inputs[1] = exitRoot;
         uint256 nullifier = hashGeneric(inputs);
         require(exitNullifier[nullifier] == false, 'withdraw has been already done');
         // Check sparse merkle tree proof
@@ -458,19 +471,18 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
             'old state root does not match current state root');
         //add deposits off-chain
         // verify all the fields of the off-chain deposit
-        uint64 depositLength = uint64(compressedOnChainTx.length/4);
+        uint64 depositLength = uint64(compressedOnChainTx.length/3);
 
         //index+deposits offchain = lastLeafIndex + depositCount of the previous batch
         uint64 currentlastLeafIndex;
         uint32 latBatchdepositCount;
         if (getStateDepth() != 0){
             currentlastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + batchToIndex[getStateDepth()-1].depositCount;
-            latBatchdepositCount = batchToIndex[getStateDepth()-1].depositCount - 1;
+            latBatchdepositCount = batchToIndex[getStateDepth()-1].depositCount;
         }
         require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositLength, 'Amount deposited less than fee required');
         for (uint256 i = 0; i < depositLength; i++) {
-           depositOffChain(uint32(compressedOnChainTx[i*4]), address(compressedOnChainTx[i*4+1]),
-           [compressedOnChainTx[i*4+2], compressedOnChainTx[i*4+3]], ++latBatchdepositCount);
+           depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], ++latBatchdepositCount);
         }
         //previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
         batchToIndex[getStateDepth()].lastLeafIndex = currentlastLeafIndex + depositLength;
@@ -596,5 +608,11 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      */
     function withdrawToken(uint32 tokenId, address receiver, uint256 amount) private returns(bool){
         return IERC20(tokenList[tokenId]).transfer(receiver, amount);
+    }
+
+    function getLeafInfo( uint256[2] memory fromBabyPubKey, uint32 tokenId)
+     public view returns( uint64 batchNum, uint32 relativeIndex,address ethAddress){
+          leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
+          return (leaf.batchNum, leaf.relativeIndex, leaf.ethAddress);
     }
 }

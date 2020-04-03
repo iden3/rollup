@@ -7,7 +7,9 @@
 const { buildPublicInputsSm, manageEvent } = require("../../../rollup-operator/src/utils");
 const chai = require("chai");
 const { expect } = chai;
-
+const {
+    buildElement, hash
+} = require("../../../rollup-utils/utils");
 
 const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
@@ -16,6 +18,7 @@ const proofC = ["0", "0"];
 const abiDecoder = require("abi-decoder");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const Rollup = artifacts.require("../contracts/Rollup");
+const bigInt = require("snarkjs").bigInt;
 
 abiDecoder.addABI(RollupPoS.abi);
 abiDecoder.addABI(Rollup.abi);
@@ -51,9 +54,8 @@ class ForgerTest {
 
         if (events) {
             let addTxPromises = events.map(async elem => {
-                return new Promise(async (resolve) => {
+                return new Promise((resolve) => {
                     let batchTx = manageEvent(elem);
-                    await this.getIds(batchTx);
                     batch.addTx(batchTx);
                     resolve();
                 });
@@ -73,39 +75,6 @@ class ForgerTest {
             expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(this.rollupDB.lastBatch).toString());
         });
     }    
-
-    async getIds(transaction){
-        let fromIdxArray = await this.rollupDB.getStateByAxAy(transaction.fromAx, transaction.fromAy);
-        let toIdxArray = await this.rollupDB.getStateByAxAy(transaction.toAx, transaction.toAy);
-        if (fromIdxArray){
-            let found = fromIdxArray.find(state => {
-                state.coin == transaction.coin;
-            });
-            if (found == undefined){
-                transaction.fromIdx = this.counter++;
-            }
-            else{
-                transaction.fromIdx = found.fromIdx;
-            }
-        }
-        else{
-            transaction.fromIdx = this.counter++;
-        }
-        if (toIdxArray){
-            let found = toIdxArray.find(state => {
-                state.coin == transaction.coin;
-            });
-            if (found == undefined){
-                transaction.toIdx = 0;
-            }
-            else{
-                transaction.toIdx = found.toIdx;
-            }
-        }
-        else{
-            transaction.toIdx = 0;
-        }
-    }
 }
 
 
@@ -136,11 +105,77 @@ function padZeroes(str, length) {
     return str;
 }
 
+function buildOnChainData(fromEthAddress, fromAx, fromAy, toEthAddress, Ax, Ay) {
+    // Build Entry
+    // element 0
+    const e0 = buildElement([fromEthAddress.toString(16)]);
+    // element 1
+    const e1 = buildElement([fromAx.toString(16)]);
+    // element 2
+    const e2 = buildElement([fromAy.toString(16)]);
+    // element 3
+    const e3 = buildElement([toEthAddress.toString(16)]); 
+    // element 4
+    const e4 = buildElement([Ax.toString(16)]);
+    // element 5
+    const e5 = buildElement([Ay.toString(16)]);
+    return {e0, e1, e2, e3, e4, e5};
+}
+
+function hashOnChainData(tx){
+    const dataOnChain = hash([
+        tx.fromEthAddr,
+        BigInt("0x" + tx.fromAx),
+        BigInt("0x" + tx.fromAy),
+        tx.toEthAddr,
+        BigInt("0x" + tx.toAx),
+        BigInt("0x" + tx.toAy),
+    ]);
+    return dataOnChain;
+}
+
+
+function buildhashOnChain(oldOnChainHash, txData, loadAmount, hashOnchainData) {
+    // Build Entry
+    // element 0
+    const e0 = buildElement([oldOnChainHash.toString(16)]);
+    // element 1
+    const e1 = buildElement([txData.toString(16)]);
+    // element 2
+    const e2 = buildElement([loadAmount.toString(16)]);
+    // element 3
+    const e3 = buildElement([hashOnchainData.toString(16)]); 
+
+    return {e0, e1, e2, e3};
+}
+
+function hashOnChain(oldOnChainHash, txData, loadAmount, hashOnchainData){
+    const dataOnChain = hash([
+        oldOnChainHash,
+        txData,
+        loadAmount,
+        hashOnchainData,
+    ]);
+    return dataOnChain;
+}
+
+function zipAddressToken(address, token) {
+    let res = BigInt(0);
+    res = res.add( bigInt(token));
+    res = res.add( bigInt(address).shl(32));
+    return res;
+}
+
 module.exports = {
     buildFullInputSm,
     ForgerTest,
     decodeMethod,
     getEtherBalance,
     getPublicPoSVariables,
-    padZeroes
+    padZeroes,
+    buildOnChainData,
+    hashOnChainData,
+    buildhashOnChain,
+    hashOnChain,
+    zipAddressToken
 };

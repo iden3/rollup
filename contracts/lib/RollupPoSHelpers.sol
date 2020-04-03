@@ -32,13 +32,22 @@ contract RollupPoSHelpers {
   function hashOffChainTx(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
     uint headerLength = (maxTx >> 3);
     if((maxTx % 8) != 0) headerLength = headerLength + 1;
-    bytes memory hashOffTx = new bytes(maxTx*bytesOffChainTx + headerLength);
+    uint totalLength = maxTx*bytesOffChainTx + headerLength;
+    bytes memory hashOffTx = new bytes(totalLength);
     Memory.Cursor memory c = Memory.read(offChainTx);
-    uint ptr = 0;
+    uint header = 0;
+    uint ptr = totalLength - offChainTx.length + headerLength;
     while(!c.eof()) {
-      bytes1 iTx = c.readBytes1();
-      hashOffTx[ptr] = iTx;
-      ptr++;
+      if (header < headerLength){
+         bytes1 iHeader = c.readBytes1();
+         hashOffTx[header] = iHeader;
+         header++;
+      }
+      else{
+        bytes1 iTx = c.readBytes1();
+        hashOffTx[ptr] = iTx;
+        ptr++;
+      }
     }
     return uint256(sha256(hashOffTx)) % rField;
   }
