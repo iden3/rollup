@@ -290,7 +290,7 @@ class SynchPool {
     /**
      * Add basic ERC20 token information to database
      * @param {Object} eventValues - ethereum events
-     * @returns {Object} - token basuc information 
+     * @returns {Object} - token basic information 
      */
     async _addToken(eventValues) {
         const tokenId = eventValues.tokenId;

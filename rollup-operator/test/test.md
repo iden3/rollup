@@ -8,6 +8,9 @@ Start local ethereum blockchain
 
 ## Unit test
 
+Test Token synchronizer:
+  - `truffle test ./rollup-operator/test/synch-tokens.test.js`
+
 Test PoS synchronizer:
   - `truffle test ./rollup-operator/test/synch-pos.test.js`
 
