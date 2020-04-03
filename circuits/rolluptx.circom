@@ -82,9 +82,7 @@ template RollupTx(nLevels) {
     signal input countersIn;
     signal output countersOut;
 
-
     var i;
-
 
 // feeSelector
 ///////////////
@@ -134,21 +132,21 @@ template RollupTx(nLevels) {
     component toAxChecker = ForceEqualIfEnabled();
     toAxChecker.in[0] <== toAx;
     toAxChecker.in[1] <== ax2;
-    toAxChecker.enabled <== (1 - onChain);
+    toAxChecker.enabled <== (1 - onChain)*(1 - states.isExit);
 
 // toAyChecker
 //////////
     component toAyChecker = ForceEqualIfEnabled();
     toAyChecker.in[0] <== toAy;
     toAyChecker.in[1] <== ay2;
-    toAyChecker.enabled <== (1 - onChain);
+    toAyChecker.enabled <== (1 - onChain)*(1 - states.isExit);
 
 // toEthAddrChecker
 //////////
     component toEthAddrChecker = ForceEqualIfEnabled();
     toEthAddrChecker.in[0] <== toEthAddr;
     toEthAddrChecker.in[1] <== ethAddr2;
-    toEthAddrChecker.enabled <== (1 - onChain);
+    toEthAddrChecker.enabled <== (1 - onChain)*(1 - states.isExit);
 
 // fromEthAddrChecker
 //////////

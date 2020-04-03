@@ -115,10 +115,20 @@ module.exports = class BatchBuilder {
 
         // Find and set Idx
         const fromAcc = this._uniqueAccount(tx.coin, tx.fromAx, tx.fromAy);
-        const toAcc = this._uniqueAccount(tx.coin, tx.toAx || 0, tx.toAy || 0);
-
         const fromIdx = await this.dbState.get(fromAcc);
-        const toIdx = await this.dbState.get(toAcc);
+
+        let toAcc;
+        let toIdx;
+
+        if (tx.toAx === 0 && tx.toAy === 0 && tx.toEthAddr === 0){
+            toIdx = 0;
+        } else {
+            toAcc = this._uniqueAccount(tx.coin, tx.toAx, tx.toAy);
+            toIdx = await this.dbState.get(toAcc);
+        }
+
+        if (toIdx === undefined)
+            throw new Error("trying to send to a wrong account");
 
         this._addIdx(tx, fromIdx, toIdx);
 
@@ -127,7 +137,7 @@ module.exports = class BatchBuilder {
 
         let loadAmount = bigInt(tx.loadAmount || 0);
         if ((!tx.onChain)&&(loadAmount.greater(bigInt(0)))) {
-            throw new Error("Load ammount must be 0 for offChainTxs");
+            throw new Error("Load amount must be 0 for offChainTxs");
         }
 
         let oldState1;
@@ -210,9 +220,9 @@ module.exports = class BatchBuilder {
         this.input.fromIdx[i] = tx.fromIdx;
         this.input.toIdx[i] = tx.toIdx;
         this.input.txData[i] = utils.buildTxData(Object.assign({newAccount: newAccount}, tx));
-        this.input.toAx[i] = bigInt("0x" + (tx.toAx || 0)),
-        this.input.toAy[i] = bigInt("0x" + (tx.toAy || 0)),
-        this.input.toEthAddr[i] = bigInt(tx.toEthAddr || 0),
+        this.input.toAx[i] = bigInt("0x" + tx.toAx),
+        this.input.toAy[i] = bigInt("0x" + tx.toAy),
+        this.input.toEthAddr[i] = bigInt(tx.toEthAddr),
         this.input.rqTxData[i]= tx.rqTxData || 0;
         this.input.s[i]= tx.s || 0;
         this.input.r8x[i]= tx.r8x || 0;
@@ -593,13 +603,13 @@ module.exports = class BatchBuilder {
         }  
     }
 
-    _addIdx(tx, from, to){
-        
+    _addIdx(tx, from, to){  
+        // From
         if (!from) tx.fromIdx = this.finalIdx + 1;
         else tx.fromIdx = from;
-        
-        if (!to) tx.toIdx = 0;
-        else tx.toIdx = to;
+
+        // To
+        tx.toIdx = to;
     }
 
     _uniqueAccount(coin, ax, ay){
