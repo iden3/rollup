@@ -164,6 +164,11 @@ function verifyTxSig(tx) {
     }
 }
 
+function hashIdx(coin, ax, ay){
+    const h = poseidon.createHash(6, 8, 57);
+    return h([coin, `0x${ax}`, `0x${ay}`]);
+}
+
 module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
 module.exports.decodeTxData = decodeTxData;
@@ -173,4 +178,5 @@ module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
-module.exports.verifyTxSig = verifyTxSig; 
+module.exports.verifyTxSig = verifyTxSig;
+module.exports.hashIdx = hashIdx; 

@@ -71,8 +71,8 @@ class TXPool {
             utils.buildTxData(tx),
             tx.rqTxData || 0,
             bigInt(tx.timestamp).shl(32).add(bigInt(tx.slot)),
-            bigInt("0x" + tx.ax),
-            bigInt("0x" + tx.ay),
+            bigInt("0x" + tx.fromAx),
+            bigInt("0x" + tx.fromAy),
         ];
     }
 
@@ -95,8 +95,8 @@ class TXPool {
         tx.slot = extract(d2, 0, 32);
         tx.timestamp = extract(d2, 32, 64);
 
-        tx.ax = bigInt(arr[3]).toString(16);
-        tx.ay = bigInt(arr[4]).toString(16);
+        tx.fromAx = bigInt(arr[3]).toString(16);
+        tx.fromAy = bigInt(arr[4]).toString(16);
 
         return tx;
 
@@ -107,8 +107,21 @@ class TXPool {
     }
 
     async addTx(_tx) {
-        const tx = Object.assign({}, _tx);
-        // Roun amounts
+        const fromIdx = await this.rollupDB.getIdx(_tx.coin, _tx.fromAx, _tx.fromAy);
+        if (!fromIdx) {
+            console.log("Invalid Account Sender");
+            return false;
+        }
+
+        const toIdx = await this.rollupDB.getIdx(_tx.coin, _tx.toAx, _tx.toAy);
+        if (toIdx === null) {
+            console.log("Invalid Account Receiver");
+            return false;
+        }
+
+        const tx = Object.assign({ fromIdx: fromIdx }, { toIdx: toIdx }, _tx);
+
+        // Round amounts
         utils.txRoundValues(tx);
         tx.amount = utils.float2fix(utils.fix2float(tx.amount));
         tx.userFee = utils.float2fix(utils.fix2float(tx.userFee));

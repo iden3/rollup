@@ -114,24 +114,21 @@ module.exports = class BatchBuilder {
         const i = this.input.txData.length;
 
         // Find and set Idx
-        const fromAcc = this._uniqueAccount(tx.coin, tx.fromAx, tx.fromAy);
-        const fromIdx = await this.dbState.get(fromAcc);
+        const hashFromIdx = utils.hashIdx(tx.coin, tx.fromAx, tx.fromAy);
+        const hashToIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy);
 
-        let toAcc;
+        let fromIdx = await this.dbState.get(hashFromIdx);
+
         let toIdx;
-
-        if (tx.toAx === 0 && tx.toAy === 0 && tx.toEthAddr === 0){
-            toIdx = 0;
-        } else {
-            toAcc = this._uniqueAccount(tx.coin, tx.toAx, tx.toAy);
-            toIdx = await this.dbState.get(toAcc);
-        }
+        if (tx.toAx == 0 && tx.toAy == 0) toIdx = 0;
+        else toIdx = await this.dbState.get(hashToIdx);
 
         if (toIdx === undefined)
-            throw new Error("trying to send to a wrong account");
+            throw new Error("trying to send to a non existing account");
 
         this._addIdx(tx, fromIdx, toIdx);
 
+        // Round values
         const amountF = utils.fix2float(tx.amount || 0);
         const amount = utils.float2fix(amountF);
 
@@ -607,7 +604,6 @@ module.exports = class BatchBuilder {
         // From
         if (!from) tx.fromIdx = this.finalIdx + 1;
         else tx.fromIdx = from;
-
         // To
         tx.toIdx = to;
     }

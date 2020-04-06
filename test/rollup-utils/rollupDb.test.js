@@ -328,7 +328,7 @@ describe("Rollup Db - batchbuilder", async function(){
             await bb2.build();
             assert(false);
         } catch (error) {
-            assert.include(error.message, "trying to send to a wrong account");
+            assert.include(error.message, "trying to send to a non existing account");
         }
     });
 

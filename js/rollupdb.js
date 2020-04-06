@@ -68,6 +68,20 @@ class RollupDB {
             this.stateRoot = roots[0];
     }
 
+    async getIdx(coin, ax, ay) {
+        if (ax == 0 && ay == 0) return 0;
+        const hashIdx = utils.hashIdx(coin, ax, ay);
+        const idx = await this.db.get(hashIdx);
+        if (!idx) return null;
+        return idx;
+    }
+
+    async getStateByAccount(coin, ax, ay) {
+        const idx = await this.getIdx(coin, ax, ay);
+        if (!idx) return null;
+        return this.getStateByIdx(idx);
+    }
+
     async getStateByIdx(idx) {
         const key = Constants.DB_Idx.add(bigInt(idx));
         const valStates = await this.db.get(key);

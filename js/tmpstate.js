@@ -1,6 +1,5 @@
 const utils = require("./utils");
 
-
 class TmpState {
 
     constructor(rollupDB) {
@@ -17,7 +16,7 @@ class TmpState {
 
     async canProcess(tx) {
         const stFrom = await this.getState(tx.fromIdx);
-        if (!stFrom || stFrom.ax != tx.ax || stFrom.ay != tx.ay) return "NO";
+        if (!stFrom || stFrom.ax != tx.fromAx || stFrom.ay != tx.fromAy) return "NO";
         let stTo;
         if (tx.toIdx) {
             stTo = await this.getState(tx.toIdx);
@@ -46,7 +45,7 @@ class TmpState {
 
     async process(tx) {
         const stFrom = await this.getState(tx.fromIdx);
-        if (!stFrom || stFrom.ax != tx.ax || stFrom.ay != tx.ay) return false;
+        if (!stFrom || stFrom.ax != tx.fromAx || stFrom.ay != tx.fromAy) return false;
 
         let stTo;
         if (tx.toIdx) {
