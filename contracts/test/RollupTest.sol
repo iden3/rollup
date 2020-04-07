@@ -21,21 +21,22 @@ contract RollupTest is Rollup {
             'old state root does not match current state root');
         //add deposits off-chain
         // verify all the fields of the off-chain deposit
-         uint64 depositLength = uint64(compressedOnChainTx.length/3);
+        uint64 depositOffChainLength = uint64(compressedOnChainTx.length/3);
 
-        //index+deposits offchain = lastLeafIndex + depositCount of the previous batch
-        uint64 currentlastLeafIndex;
-        uint32 latBatchdepositCount;
-        if (getStateDepth() != 0){
-            currentlastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + batchToIndex[getStateDepth()-1].depositCount;
-            latBatchdepositCount = batchToIndex[getStateDepth()-1].depositCount;
-        }
-        require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositLength, 'Amount deposited less than fee required');
-        for (uint256 i = 0; i < depositLength; i++) {
-           depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], ++latBatchdepositCount);
+        //index+deposits offchain = lastLeafIndex + depositOnChainCount of the previous batch
+        uint32 depositCount = batchToIndex[getStateDepth()].depositOnChainCount;
+      
+        require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
+        for (uint256 i = 0; i < depositOffChainLength; i++) {
+           depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], ++depositCount);
         }
         //previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
-        batchToIndex[getStateDepth()].lastLeafIndex = currentlastLeafIndex + depositLength;
+        if (getStateDepth() != 0){
+             batchToIndex[getStateDepth()].lastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + depositCount;
+        }
+        else{
+            batchToIndex[getStateDepth()].lastLeafIndex = depositCount;
+        }
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
             'on-chain hash does not match current mining on-chain hash');

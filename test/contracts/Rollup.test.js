@@ -174,9 +174,11 @@ contract("Rollup", (accounts) => {
         await forgerTest.forgeBatch([resDeposit.logs[0]]);
 
         let balanceBeneficiary2 = await web3.eth.getBalance(beneficiary);
-         
         expect(BigInt(balanceBeneficiary2) - BigInt(balanceBeneficiary)).to.be.equal(
             BigInt(feeOnChain) - BigInt(feeOnChain) / BigInt(maxOnChainTx * 3));
+
+        const leafId= await insRollupTest.getLeafId([wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], tokenId);
+        expect(leafId.toString()).to.be.equal("1");
 
         forgerTest.checkBatchNumber([resDeposit.logs[0]]);
     });
@@ -217,6 +219,12 @@ contract("Rollup", (accounts) => {
         
         // forge batch two deposits
         await forgerTest.forgeBatch([resDepositId2.logs[0], resDepositId3.logs[0]]);
+
+        const leafId2= await insRollupTest.getLeafId([wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()], tokenId);
+        const leafId3= await insRollupTest.getLeafId([wallets[3].publicKey[0].toString(), wallets[3].publicKey[1].toString()], tokenId);
+
+        expect(leafId2.toString()).to.be.equal("2");
+        expect(leafId3.toString()).to.be.equal("3");
 
         forgerTest.checkBatchNumber([resDepositId2.logs[0], resDepositId3.logs[0]]);
     });
@@ -268,19 +276,19 @@ contract("Rollup", (accounts) => {
 
         // Should trigger error since we are try get withdraw from different sender
         try {
-            await insRollupTest.withdraw(id, leafId.amount.toString(),
+            await insRollupTest.withdraw(leafId.amount.toString(),
                 BigInt(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
                 tokenId, { from: id2 });
         } catch (error) {
             expect((error.message).includes("invalid proof")).to.be.equal(true);
         }
         // send withdraw transaction
-        await insRollupTest.withdraw(id, leafId.amount.toString(),
+        await insRollupTest.withdraw(leafId.amount.toString(),
             BigInt(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
             tokenId, { from: id1 });
         // Should trigger error since we are repeating the withdraw transaction
         try {
-            await insRollupTest.withdraw(id, leafId.amount.toString(),
+            await insRollupTest.withdraw(leafId.amount.toString(),
                 BigInt(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
                 tokenId, { from: id1 });
         } catch (error) {
@@ -407,6 +415,9 @@ contract("Rollup", (accounts) => {
 
         expect(finalBalanceId2.amount.toString()).to.be.equal((parseInt(initialBalanceId2.amount.toString())+amount).toString());
         expect(finalBalanceId4.amount.toString()).to.be.equal((loadAmount-amount).toString());
+
+        const leafId4= await insRollupTest.getLeafId([wallets[4].publicKey[0].toString(), wallets[4].publicKey[1].toString()], tokenId);
+        expect(leafId4.toString()).to.be.equal("4");
     });
 
 
@@ -448,7 +459,7 @@ contract("Rollup", (accounts) => {
         const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
         const leafId = infoId.state;
 
-        await insRollupTest.withdraw(id, leafId.amount.toString(),
+        await insRollupTest.withdraw(leafId.amount.toString(),
             BigInt(lastBatch).toString(), siblingsId, [wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()], 
             tokenId, { from: id2 });
 
@@ -557,7 +568,7 @@ contract("Rollup", (accounts) => {
         const leafId = infoId.state;
 
 
-        await insRollupTest.withdraw(id, leafId.amount.toString(),
+        await insRollupTest.withdraw(leafId.amount.toString(),
             BigInt(lastBatch).toString(), siblingsId, [wallets[3].publicKey[0].toString(), wallets[3].publicKey[1].toString()], 
             tokenId, { from: id3 });
     
@@ -601,6 +612,9 @@ contract("Rollup", (accounts) => {
 
         let finalBalanceId5 = await rollupDB.getStateByIdx(5);
         expect(finalBalanceId5.amount.toString()).to.be.equal("3");
+
+        const leafId5= await insRollupTest.getLeafId([wallets[5].publicKey[0].toString(), wallets[5].publicKey[1].toString()], tokenId);
+        expect(leafId5.toString()).to.be.equal("5");
     });
 
     it("Should withdraw deposit and transfer", async () => {
@@ -620,7 +634,7 @@ contract("Rollup", (accounts) => {
         const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
         const leafId = infoId.state;
 
-        await insRollupTest.withdraw(id, leafId.amount.toString(),
+        await insRollupTest.withdraw(leafId.amount.toString(),
             BigInt(lastBatch).toString(), siblingsId, [wallets[5].publicKey[0].toString(), wallets[5].publicKey[1].toString()], 
             tokenId, { from: id3 });
     
@@ -755,5 +769,7 @@ contract("Rollup", (accounts) => {
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-3).toString()); //1 fees + 1 amountTransfer = 2
         expect(finalBalanceId6.amount.toString()).to.be.equal("2"); 
 
+        const leafId6= await insRollupTest.getLeafId([wallets[6].publicKey[0].toString(), wallets[6].publicKey[1].toString()], tokenId);
+        expect(leafId6.toString()).to.be.equal("6");
     });
 });

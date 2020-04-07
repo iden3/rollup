@@ -38,13 +38,13 @@ contract RollupPoSHelpers {
     uint header = 0;
     uint ptr = totalLength - offChainTx.length + headerLength;
     while(!c.eof()) {
-      if (header < headerLength){
+      if (header < headerLength){ // add header at the start
          bytes1 iHeader = c.readBytes1();
          hashOffTx[header] = iHeader;
          header++;
       }
       else{
-        bytes1 iTx = c.readBytes1();
+        bytes1 iTx = c.readBytes1(); // add offchainTx in the end
         hashOffTx[ptr] = iTx;
         ptr++;
       }

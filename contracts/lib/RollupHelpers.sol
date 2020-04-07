@@ -201,7 +201,7 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev build entry for the exit tree leaf
+   * @dev build transaction data
    * @param amountF number of token to send
    * @param token token identifier
    * @param nonce nonce parameter
@@ -235,7 +235,7 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev build entry for the exit tree leaf
+   * @dev build on-chain Hash
    * @param oldOnChainHash previous on chain hash
    * @param txData transaction data coded into a bytes32
    * @param loadAmount input amount
@@ -259,7 +259,7 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev build entry for the exit tree leaf
+   * @dev build hash of the on-chain data
    * @param fromEthAddr ethereum addres sender
    * @param fromAx x coordinate public key BabyJubJub sender
    * @param fromAy y coordinate public key BabyJubJub sender
@@ -307,7 +307,6 @@ contract RollupHelpers {
     }
     return fix;
   }
-
 
   /**
    * @dev unZip uint256 containing address and tokenID information
