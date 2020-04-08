@@ -281,7 +281,7 @@ contract("Loop Manager", async (accounts) => {
 
         it("Should forge at least one batch", async () => {
             const lastBatch = await rollupSynch.getLastBatch();
-            expect(lastBatch).to.be.above(-1);
+            expect(lastBatch).to.be.above(0);
         });
     });
 });

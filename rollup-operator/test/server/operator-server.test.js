@@ -193,7 +193,7 @@ contract("Operator", (accounts) => {
         const res = await cliExternalOp.getState();
         expect(res.data).to.not.be.equal(undefined);
 
-        const blockGenesis = res.data.posSynch.genesisBlock;
+        const blockGenesis = res.data.pos.genesisBlock;
         const currentBlock = res.data.currentBlock;
         await addBlocks(blockGenesis - currentBlock + 1); // move to era 0
         await timeout(timeoutSynch); // time to synch
@@ -225,7 +225,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getState();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 1) {
+            if (info.rollup.lastBatchSynched > 1) {
                 batchForged = true;
                 break;
             } 
@@ -260,7 +260,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getState();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 4) {
+            if (info.rollup.lastBatchSynched > 4) {
                 batchForged = true;
                 break;
             } 
@@ -295,7 +295,7 @@ contract("Operator", (accounts) => {
         while(!batchForged && counter < 10) {
             const res = await cliExternalOp.getState();
             const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 7) {
+            if (info.rollup.lastBatchSynched > 7) {
                 batchForged = true;
                 break;
             } 
@@ -506,33 +506,31 @@ contract("Operator", (accounts) => {
     it("Should check batch transactions", async () => {
         // find transactions on batches
         const res = await cliExternalOp.getState();
-        const currentNumBatch = res.data.rollupSynch.lastBatchSynched;
+        const currentNumBatch = res.data.rollup.lastBatchSynched;
 
-        let foundTx = [];
-        for (let i = 0; i < currentNumBatch; i++){
-            try {
-                const res = await cliExternalOp.getBatchTx(i);
-                const txData = res.data[0];
-                foundTx.push(txData);
-            } catch (error){
-                expect(error.response.status).to.be.equal(404);
-                expect(error.response.data).to.be.equal("Batch not found");
-            }
+        try {
+            await cliExternalOp.getBatchTx(0);
+            expect(true).to.be.equal(false);
+        } catch (error){
+            expect(error.response.status).to.be.equal(404);
+            expect(error.response.data).to.be.equal("Batch not found");
         }
 
-        // Check tx1 and tx2 have been found
-        const resTx1 = foundTx[0];
-        const resTx2 = foundTx[1];
-        
-        expect(resTx1.fromIdx).to.be.equal(tx1.from);
-        expect(resTx1.toIdx).to.be.equal(tx1.to);
-        expect(resTx1.amount).to.be.equal(tx1.amount.toString());
-        expect(resTx1.coin).to.be.equal(tx1.token);
+        for (let i = 1; i < currentNumBatch + 1; i++){
+            const res = await cliExternalOp.getBatchTx(i);
+            const batchData = res.data;
+            expect(batchData.offChainData).to.be.not.equal(undefined);
+            expect(batchData.onChainData).to.be.not.equal(undefined);
+            expect(batchData.timestamp).to.be.not.equal(undefined);
+        }
 
-        expect(resTx2.fromIdx).to.be.equal(tx2.from);
-        expect(resTx2.toIdx).to.be.equal(tx2.to);
-        expect(resTx2.amount).to.be.equal(tx2.amount.toString());
-        expect(resTx2.coin).to.be.equal(tx2.token);
+        try {
+            await cliExternalOp.getBatchTx(currentNumBatch + 2);
+            expect(true).to.be.equal(false);
+        } catch (error){
+            expect(error.response.status).to.be.equal(404);
+            expect(error.response.data).to.be.equal("Batch not found");
+        }
     });
 
     after(async () => {

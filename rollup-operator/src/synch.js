@@ -165,11 +165,15 @@ class Synchronizer {
         this.forgeEventsCache.set(lastPurgedKey, await this.getLastBatch());
         this.blocksPerSlot = Number(await this.rollupPoSContract.methods.BLOCKS_PER_SLOT()
             .call({from: this.ethAddress}));
-        this.maxTx = Number(await this.rollupPoSContract.methods.MAX_TX()
+        this.maxTx = Number(await this.rollupContract.methods.MAX_TX()
+            .call({from: this.ethAddress}));
+        this.maxOnChainTx = Number(await this.rollupContract.methods.MAX_ONCHAIN_TX()
             .call({from: this.ethAddress}));
         this.nLevels = Number(await this.rollupContract.methods.NLevels()
             .call({from: this.ethAddress}));
-
+        this.feeOnChainTx = bigInt(await this.rollupContract.methods.FEE_ONCHAIN_TX()
+            .call({from: this.ethAddress}));
+       
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -449,6 +453,7 @@ class Synchronizer {
                 // Add events to rollup-tree
                 if (eventForge.length > 0){
                     await this._updateTree(eventForge, eventOnChain);
+                    await this._saveBatchData(batchSynch, eventForge, eventOnChain);
                     const miningOnChainHash = await this._getMiningOnChainHash(batchSynch);
                     const root = `0x${this.treeDb.getRoot().toString(16)}`;
                     const batchToSave = this.treeDb.lastBatch;
@@ -529,6 +534,39 @@ class Synchronizer {
 
         // return forge events to save
         return batchesForged;
+    }
+
+    /**
+     * Save all batch information
+     * @param {Number} batchNum 
+     */
+    async _saveBatchData(batchNum, offChain, onChain){
+        const batchData = {};
+        
+        batchData.offChainData = [];
+        batchData.onChainData = [];
+        batchData.timestamp = Math.round((new Date()).getTime() / 1000);
+        
+        // Save off-chain events
+        for (const event of offChain) {
+            batchData.offChainData.push(event);
+        }
+
+        // Save on-chain events
+        for (const event of onChain) {
+            const onChainData = {
+                txData: event.txData,
+                loadAmount: event.loadAmount,
+                ax: event.Ax,
+                ay: event.Ay,
+                ethAddress: event.ethAddress,
+            };
+            batchData.onChainData.push(onChainData);
+        }
+
+        // save to Db
+        await this.db.insert(this._toString(Constants.db_synch_batch.add(bigInt(batchNum))),
+            this._toString(batchData));
     }
 
     /**
@@ -864,6 +902,33 @@ class Synchronizer {
     async getMiningOnchainHash() {
         return await this.rollupContract.methods.miningOnChainTxsHash()
             .call({from: this.ethAddress});
+    }
+
+    /**
+     * Get batch information
+     * @param {Number} numBatch - batch number 
+     * @returns {Object} - batch info  
+     */
+    async getBatchInfo(numBatch) {
+        const key = this._toString(Constants.db_synch_batch.add(bigInt(numBatch)));
+        const value = await this.db.getOrDefault(key, null);
+        if (value === null) return null;
+
+        return this._fromString(value);
+    }
+
+    /**
+     * Get static data 
+     * @returns {Object} - static data info  
+     */
+    async getStaticData() {
+        return {
+            contractAddress: this.rollupAddress,
+            maxTx: this.maxTx,
+            maxOnChainTx: this.maxOnChainTx,
+            feeOnChainTx: this.feeOnChainTx,
+            nLevels: this.nLevels,
+        };
     }
 }
 

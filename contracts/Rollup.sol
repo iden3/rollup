@@ -43,7 +43,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Set the leaf position for an account into the 'balance tree'
     // '0' is reserved for off-chain withdraws
-    uint64 lastBalanceTreeIndex = 1;
+    uint64 public lastBalanceTreeIndex = 1;
 
     // Hash of all on chain transactions ( will be forged in the next batch )
     // Forces 'operator' to add all on chain transactions

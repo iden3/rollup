@@ -47,7 +47,7 @@ function _addNonce(nonceObject, currentBatch, nonce, idFrom) {
 async function send(urlOperator, idTo, amount, walletRollup, tokenId, userFee, idFrom, nonce, nonceObject) {
     const apiOperator = new CliExternalOperator(urlOperator);
     const generalInfo = await apiOperator.getState();
-    const currentBatch = generalInfo.data.rollupSynch.lastBatchSynched;
+    const currentBatch = generalInfo.data.rollup.lastBatchSynched;
     let nonceToSend;
     if (nonce !== undefined) nonceToSend = nonce;
     else {

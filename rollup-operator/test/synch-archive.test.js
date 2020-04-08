@@ -371,6 +371,32 @@ contract("Synchronizer - archive mode", (accounts) => {
         expect(res1[1].amount.toString()).to.be.equal(to18(3).toString());
     });
 
+    it("Should get batch data", async () => {
+        // Batch 0 does not contain any data
+        const batchData0 = await synch.getBatchInfo(0);
+        expect(batchData0).to.be.equal(null);
+
+        // Batch 1 should not contain any deposit on-chain
+        // includes forge transaction hash 
+        const batchData1 = await synch.getBatchInfo(1);
+        expect(batchData1.offChainData.length).to.be.equal(1);
+        expect(batchData1.offChainData[0]).to.not.be.equal(null);
+        expect(batchData1.onChainData.length).to.be.equal(0);
+
+        // Batch 2 should contain one deposit on-chain
+        // includes forge transaction hash
+        const batchData2 = await synch.getBatchInfo(2);
+        expect(batchData2.offChainData.length).to.be.equal(1);
+        expect(batchData2.offChainData[0]).to.not.be.equal(null);
+        expect(batchData2.onChainData.length).to.be.equal(1);
+
+        // Batch 4 should contain two deposits on-chain
+        const batchData4 = await synch.getBatchInfo(4);
+        expect(batchData4.offChainData.length).to.be.equal(1);
+        expect(batchData4.offChainData[0]).to.not.be.equal(null);
+        expect(batchData4.onChainData.length).to.be.equal(2);
+    });
+
     it("Should add bunch off-chain tx and synch", async () => {
         let events = [];
         const numBatchForged = 10;
@@ -451,5 +477,17 @@ contract("Synchronizer - archive mode", (accounts) => {
             const res = await synch.getExitTreeInfo(numBatch, idx);
             expect(res.found).to.be.equal(true);
         }
+    });
+
+    it("Should get static data", async () => {
+        const staticData = await synch.getStaticData();
+
+        const feeOnChain = BigInt(await insRollupTest.FEE_ONCHAIN_TX());
+
+        expect(staticData.contractAddress).to.be.equal(insRollupTest.address);
+        expect(staticData.maxTx).to.be.equal(maxTx);
+        expect(staticData.maxOnChainTx).to.be.equal(maxOnChainTx);
+        expect(staticData.feeOnChainTx.toString()).to.be.equal(feeOnChain.toString());
+        expect(staticData.nLevels).to.be.equal(nLevels);
     });
 });

@@ -59,22 +59,37 @@ function getPassword() {
  */
 async function getGeneralInfo(rollupSynch, posSynch) {
     const generalInfo = {};
-    generalInfo["posSynch"] = {};
-    generalInfo["rollupSynch"] = {};
+    generalInfo["pos"] = {};
+    generalInfo["rollup"] = {};
+
+    const staticDataPoS = await posSynch.getStaticData();
+    const staticDataRollup = await rollupSynch.getStaticData();
 
     generalInfo.currentBlock = await posSynch.getCurrentBlock();
 
-    generalInfo["posSynch"].isSynched = await posSynch.isSynched();
-    generalInfo["posSynch"].synch = await posSynch.getSynchPercentage();
-    generalInfo["posSynch"].genesisBlock = await posSynch.genesisBlock;
-    generalInfo["posSynch"].lastEraSynch = await posSynch.getLastSynchEra();
-    generalInfo["posSynch"].currentEra = await posSynch.getCurrentEra();
-    generalInfo["posSynch"].currentSlot = await posSynch.getCurrentSlot();
+    generalInfo["pos"].isSynched = await posSynch.isSynched();
+    generalInfo["pos"].synch = await posSynch.getSynchPercentage();
+    generalInfo["pos"].lastEraSynch = await posSynch.getLastSynchEra();
+    generalInfo["pos"].currentEra = await posSynch.getCurrentEra();
+    generalInfo["pos"].currentSlot = await posSynch.getCurrentSlot();
+    // Static data
+    generalInfo["pos"].contractAddress = staticDataPoS.contractAddress;
+    generalInfo["pos"].blocksPerSlot = staticDataPoS.blocksPerSlot;
+    generalInfo["pos"].slotsPerEra = staticDataPoS.slotsPerEra;
+    generalInfo["pos"].slotDeadline = staticDataPoS.slotDeadline;
+    generalInfo["pos"].genesisBlock = staticDataPoS.genesisBlock;
+    generalInfo["pos"].minStake = staticDataPoS.minStake.toString();
 
-    generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
-    generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
-    generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
-    generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+    generalInfo["rollup"].isSynched = await rollupSynch.isSynched();
+    generalInfo["rollup"].synch = await rollupSynch.getSynchPercentage();
+    generalInfo["rollup"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
+    generalInfo["rollup"].lastBatchSynched = await rollupSynch.getLastBatch();
+    // Statid data
+    generalInfo["rollup"].contractAddress = staticDataRollup.contractAddress;
+    generalInfo["rollup"].maxTx = staticDataRollup.maxTx;
+    generalInfo["rollup"].maxOnChainTx = staticDataRollup.maxOnChainTx;
+    generalInfo["rollup"].feeOnChainTx = staticDataRollup.feeOnChainTx.toString();
+    generalInfo["rollup"].nLevels = staticDataRollup.nLevels;
 
     return generalInfo;
 }

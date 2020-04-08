@@ -129,17 +129,19 @@ class SynchPoS {
         // Initialize class variables
         this.genesisBlock = 0;
         this.totalSynch = 0;
+        this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
+            .call({from: this.ethAddress}));
         this.blocksPerSlot = Number(await this.contractPoS.methods.BLOCKS_PER_SLOT()
             .call({from: this.ethAddress}));
         this.slotsPerEra = Number(await this.contractPoS.methods.SLOTS_PER_ERA()
             .call({from: this.ethAddress}));
         this.slotDeadline = Number(await this.contractPoS.methods.SLOT_DEADLINE()
             .call({from: this.ethAddress}));
+        this.minStake = bigInt(await this.contractPoS.methods.MIN_STAKE()
+            .call({from: this.ethAddress}));
         this.blocksNextInfo = this.blocksPerSlot*this.slotsPerEra;
         
         if (this.creationHash) {
-            this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
-                .call({from: this.ethAddress}));
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
         }
@@ -469,6 +471,21 @@ class SynchPoS {
             return Number(await this.contractPoS.methods.SLOT_DEADLINE()
                 .call({from: this.ethAddress}));
         }
+    }
+
+    /**
+     * Get static data 
+     * @returns {Object} - static data info  
+     */
+    async getStaticData() {
+        return {
+            contractAddress: this.rollupPoSAddress,
+            blocksPerSlot: this.blocksPerSlot,
+            slotsPerEra: this.slotsPerEra,
+            slotDeadline: this.slotDeadline,
+            genesisBlock: this.genesisBlock,
+            minStake: this.minStake,
+        };
     }
 }
 
