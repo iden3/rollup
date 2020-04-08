@@ -22,7 +22,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // Define struct to store data for each id, batchlastLeafIndex + relativeIndex = index of the leaf.
     struct leafInfo{
-        uint64 batchNum;
+        uint64 forgedBatch;
         uint32 relativeIndex;
         address ethAddress;
     }
@@ -230,25 +230,27 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // build txData for deposit
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDeposit), loadAmount, ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
+        // Increment index leaf balance tree
+        batchToIndex[getStateDepth()+1].depositOnChainCount++;
         // Insert tree informations
-        leaf.batchNum = uint64(getStateDepth()+1); //batch it will be forged
-        leaf.relativeIndex = ++batchToIndex[getStateDepth()+1].depositOnChainCount;
+        leaf.forgedBatch = uint64(getStateDepth()+1); //batch it will be forged
+        leaf.relativeIndex = batchToIndex[getStateDepth()+1].depositOnChainCount;
         leaf.ethAddress = ethAddress;
     }
 
    /**
      * @dev Deposit off-chain transaction
      * add new leaf to balance tree and initializes it with a load amount
-     * @param zip token and Ethaddress zipped
+     * @param encodedAddressTokens token and Ethaddress encoded
      * @param babyPubKey public key babyjubjub represented as point (Ax, Ay)
      * @param relativeIndex relative index of this leaf
     */
     function depositOffChain(
-        uint256 zip,
+        uint256 encodedAddressTokens,
         uint256[2] memory babyPubKey,
         uint32 relativeIndex
     ) internal {
-        (address ethAddress, uint32 tokenId) = unZipAddressTokens(zip);
+        (address ethAddress, uint32 tokenId) = decodeAddressTokens(encodedAddressTokens);
         require(ethAddress != address(0), 'Must specify withdraw address');
         require(tokenList[tokenId] != address(0), 'token has not been registered');
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
@@ -264,7 +266,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
          hashOnChainData);
         miningOnChainTxsHash = hashEntry(onChainHash);
         // Insert tree information
-        leaf.batchNum = uint64(getStateDepth());
+        leaf.forgedBatch = uint64(getStateDepth());
         leaf.relativeIndex = relativeIndex;
         leaf.ethAddress = ethAddress;
     }
@@ -363,9 +365,11 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         bytes32 txDataDepositAndTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, fromEthAddress, fromBabyPubKey,
         toLeaf.ethAddress, toBabyPubKey, msg.value);
+        // Increment index leaf balance tree
+        batchToIndex[getStateDepth()+1].depositOnChainCount++;
         // Insert tree informations
-        fromLeaf.batchNum = uint64(getStateDepth()+1); //batch it will be forged
-        fromLeaf.relativeIndex = ++batchToIndex[getStateDepth()+1].depositOnChainCount;
+        fromLeaf.forgedBatch = uint64(getStateDepth()+1); //batch it will be forged
+        fromLeaf.relativeIndex = batchToIndex[getStateDepth()+1].depositOnChainCount;
         fromLeaf.ethAddress = fromEthAddress;
     }
 
@@ -423,7 +427,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint256[] memory inputs = new uint256[](3);
         inputs[0] = valueExitTree;
         inputs[1] = numExitRoot;
-        inputs[1] = exitRoot;
+        inputs[2] = exitRoot;
         uint256 nullifier = hashGeneric(inputs);
         require(exitNullifier[nullifier] == false, 'withdraw has been already done');
         // Check sparse merkle tree proof
@@ -463,10 +467,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         //index+deposits offchain = lastLeafIndex + depositOnChainCount of the previous batch
         uint32 depositCount = batchToIndex[getStateDepth()].depositOnChainCount;
-      
         require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
         for (uint256 i = 0; i < depositOffChainLength; i++) {
-           depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], ++depositCount);
+           depositCount++;
+           depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], depositCount);
         }
         //previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
         if (getStateDepth() != 0){
@@ -475,7 +479,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         else{
             batchToIndex[getStateDepth()].lastLeafIndex = depositCount;
         }
-       
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
             'on-chain hash does not match current mining on-chain hash');
@@ -579,12 +582,12 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @dev Retrieve leafInfo from Babyjub address and tokenID
      * @param fromBabyPubKey public key babyjubjub
      * @param tokenId token ID
-     * @return batchNum relativeIndex and ethAddress
+     * @return forgedBatch relativeIndex and ethAddress
      */
     function getLeafInfo(uint256[2] memory fromBabyPubKey, uint32 tokenId)
-     public view returns(uint64 batchNum, uint32 relativeIndex, address ethAddress) {
+     public view returns(uint64 forgedBatch, uint32 relativeIndex, address ethAddress) {
           leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
-          return (leaf.batchNum, leaf.relativeIndex, leaf.ethAddress);
+          return (leaf.forgedBatch, leaf.relativeIndex, leaf.ethAddress);
     }
 
      /**
@@ -597,10 +600,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      public view returns (uint64) {
           leafInfo memory leaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
           require(leaf.ethAddress != address(0), 'leaf does not exist');
-          if(leaf.batchNum == 0)
+          if(leaf.forgedBatch == 0)
               return leaf.relativeIndex;
           else
-              return (batchToIndex[leaf.batchNum-1].lastLeafIndex + leaf.relativeIndex);
+          {
+              require(leaf.forgedBatch-1 < getStateDepth(), 'batch must be forged');
+              return (batchToIndex[leaf.forgedBatch-1].lastLeafIndex + leaf.relativeIndex);
+          }
     }
     ///////////
     // helpers ERC20 functions

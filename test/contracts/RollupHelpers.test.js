@@ -511,8 +511,8 @@ contract("RollupHelpers functions", (accounts) => {
         it("should zip and unzip tokenId adn and address", async () => { 
             const ethAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
             const tokenId = 3;
-            let jsZip = helpers.zipAddressToken(ethAddr, tokenId);
-            const unzip = await insHelpers.testUnZipAddressTokens(jsZip.toString());
+            let jsZip = helpers.encodeAddressToken(ethAddr, tokenId);
+            const unzip = await insHelpers.testdecodeAddressTokens(jsZip.toString());
             expect(BigInt(unzip[0])).to.be.equal(BigInt(ethAddr));
             expect(parseInt(unzip[1].toString())).to.be.equal(tokenId);
         });

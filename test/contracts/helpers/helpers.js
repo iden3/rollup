@@ -159,7 +159,7 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, hashOnchainData){
     return dataOnChain;
 }
 
-function zipAddressToken(address, token) {
+function encodeAddressToken(address, token) {
     let res = BigInt(0);
     res = res.add( bigInt(token));
     res = res.add( bigInt(address).shl(32));
@@ -177,5 +177,5 @@ module.exports = {
     hashOnChainData,
     buildhashOnChain,
     hashOnChain,
-    zipAddressToken
+    encodeAddressToken
 };

@@ -742,7 +742,7 @@ contract("Rollup", (accounts) => {
         batch.addCoin(0, 1);
 
         // Create the off-chain deposit
-        const jsZip = helpers.zipAddressToken(id1, tokenId);
+        const jsZip = helpers.encodeAddressToken(id1, tokenId);
         const offChaindeposit = [jsZip.toString(), wallets[6].publicKey[0].toString(), wallets[6].publicKey[1].toString()];
         // Add corresponding Tx to the Batchbuilder
         const txOnchain = {

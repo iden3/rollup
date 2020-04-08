@@ -143,9 +143,9 @@ contract RollupHelpersTest is RollupHelpers{
      return hashEntry(onChainHash);
   }
 
-  function testUnZipAddressTokens(uint256 zip)
+  function testdecodeAddressTokens(uint256 zip)
     public pure returns (address, uint32) {
-   return unZipAddressTokens(zip);
+   return decodeAddressTokens(zip);
   }
   function float2FixTest(uint16 float) public pure returns (uint256){
     return float2Fix(float);

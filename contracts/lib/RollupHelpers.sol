@@ -309,14 +309,14 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev unZip uint256 containing address and tokenID information
+   * @dev decode uint256 containing address and tokenID information
    * @param tokenAndAddress 64bits 0-padding | 160bits address | 32bits tokeinId
    * @return ethAddr and tokenId.
    */
-  function unZipAddressTokens(uint256 tokenAndAddress)
+  function decodeAddressTokens(uint256 tokenAndAddress)
     internal pure returns (address ethAddr, uint32 tokenId) {
-    ethAddr = address(bytes20(bytes32(tokenAndAddress) >> 32 << (256-160)));
-    tokenId = uint32(bytes4(bytes32(tokenAndAddress) << (256 - 32)));
+    ethAddr = address(tokenAndAddress >> 32);
+    tokenId = uint32(tokenAndAddress);
   }
   /**
    * @dev Retrieve ethereum address from a msg plus signature
