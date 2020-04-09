@@ -20,9 +20,9 @@ describe("Rollup Basic circuit TXs", function () {
     this.timeout(100000);
 
     before( async() => {
-        // const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
-        // fs.writeFileSync(path.join(`${__dirname}`, "circuit-example.json"), JSON.stringify(cirDef));
-        const cirDef = JSON.parse(fs.readFileSync(path.join(`${__dirname}`, "circuit-example.json")));
+        const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        fs.writeFileSync(path.join(`${__dirname}`, "circuit-example.json"), JSON.stringify(cirDef));
+        //const cirDef = JSON.parse(fs.readFileSync(path.join(`${__dirname}`, "circuit-example.json")));
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
