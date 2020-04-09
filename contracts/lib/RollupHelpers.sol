@@ -30,6 +30,7 @@ contract RollupHelpers {
   uint constant bytesOffChainTx = 3*2 + 2;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
   uint64 constant IDEN3_ROLLUP_TX = 4839017969649077913;
+
   /**
    * @dev Load poseidon smart contract
    * @param _poseidonContractAddr poseidon contract address
@@ -112,12 +113,12 @@ contract RollupHelpers {
       // Check old key is final node
       uint exist = 0;
       uint levCounter = 0;
-      while((exist == 0) && (levCounter < maxLevels)) {
+      while ((exist == 0) && (levCounter < maxLevels)) {
         exist = (uint8(oldKey >> levCounter) & 0x01) ^ (uint8(key >> levCounter) & 0x01);
         levCounter += 1;
       }
 
-      if(exist == 0) {
+      if (exist == 0) {
         return false;
       }
       newHash = hashFinalNode(oldKey, oldValue);
@@ -202,7 +203,7 @@ contract RollupHelpers {
 
   /**
    * @dev build transaction data
-   * @param amountF number of token to send
+   * @param amountF amount to send encoded as half precision float
    * @param token token identifier
    * @param nonce nonce parameter
    * @param maxFeeF maximum fee
@@ -263,9 +264,9 @@ contract RollupHelpers {
    * @param fromEthAddr ethereum addres sender
    * @param fromAx x coordinate public key BabyJubJub sender
    * @param fromAy y coordinate public key BabyJubJub sender
-   * @param toEthAddr ethereum addres reciever
-   * @param toAx x coordinate public key BabyJubJub reciever
-   * @param toAy y coordinate public key BabyJubJub reciever
+   * @param toEthAddr ethereum addres receiver
+   * @param toAx x coordinate public key BabyJubJub receiver
+   * @param toAy y coordinate public key BabyJubJub receiver
    * @return entry structure
    */
   function buildOnChainData(
@@ -309,9 +310,9 @@ contract RollupHelpers {
   }
 
   /**
-   * @dev decode uint256 containing address and tokenID information
-   * @param tokenAndAddress 64bits 0-padding | 160bits address | 32bits tokeinId
-   * @return ethAddr and tokenId.
+   * @dev decode uint256 containing address and tokenId information
+   * @param tokenAndAddress 64 bits 0-padding | 160 bits address | 32bits tokenId
+   * @return ethAddr and tokenId
    */
   function decodeAddressTokens(uint256 tokenAndAddress)
     internal pure returns (address ethAddr, uint32 tokenId) {

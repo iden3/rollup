@@ -29,12 +29,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // store account information, hash(Ax, Ay, tokenId)
     mapping(uint256 => leafInfo) treeInfo;
 
-    struct indexInfo{
-        uint64 lastLeafIndex;//lastLeafIndex
-        uint32 depositOnChainCount; //depositOnChainCount
+    // Define struct to store batch information regarding number of deposits and keep track of index accounts
+    struct batchInfo{
+        uint64 lastLeafIndex;
+        uint32 depositOnChainCount;
     }
-    // batchnum to Index
-    mapping(uint256 => indexInfo) public batchToIndex;
+
+    // Batch number to batch information
+    mapping(uint256 => batchInfo) public batchToInfo;
 
     // Maxim Deposit allowed
     uint constant MAX_AMOUNT_DEPOSIT = (1 << 128);
@@ -187,6 +189,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         Entry memory onChainHash = buildOnChainHash(fillingOnChainTxsHash, txData, loadAmount,
             hashOnChainData);
         fillingOnChainTxsHash = hashEntry(onChainHash);
+
         // Update number of on-chain transactions
         currentOnChainTx++;
 
@@ -225,16 +228,19 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
         require(leaf.ethAddress == address(0), 'leaf already exist');
+
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
+
         // build txData for deposit
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDeposit), loadAmount, ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
         // Increment index leaf balance tree
-        batchToIndex[getStateDepth()+1].depositOnChainCount++;
+        batchToInfo[getStateDepth()+1].depositOnChainCount++;
         // Insert tree informations
-        leaf.forgedBatch = uint64(getStateDepth()+1); //batch it will be forged
-        leaf.relativeIndex = batchToIndex[getStateDepth()+1].depositOnChainCount;
+        // batch it will be forged
+        leaf.forgedBatch = uint64(getStateDepth()+1);
+        leaf.relativeIndex = batchToInfo[getStateDepth()+1].depositOnChainCount;
         leaf.ethAddress = ethAddress;
     }
 
@@ -253,10 +259,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         (address ethAddress, uint32 tokenId) = decodeAddressTokens(encodedAddressTokens);
         require(ethAddress != address(0), 'Must specify withdraw address');
         require(tokenList[tokenId] != address(0), 'token has not been registered');
+
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
         require(leaf.ethAddress == address(0), 'leaf already exist');
+
         // burn fee
         address(0).transfer(FEE_OFFCHAIN_DEPOSIT);
+
         // build txData for deposit
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
         Entry memory onChainData = buildOnChainData(ethAddress, babyPubKey[0], babyPubKey[1],
@@ -265,6 +274,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         Entry memory onChainHash = buildOnChainHash(miningOnChainTxsHash, uint256(txDataDeposit), 0,
          hashOnChainData);
         miningOnChainTxsHash = hashEntry(onChainHash);
+
         // Insert tree information
         leaf.forgedBatch = uint64(getStateDepth());
         leaf.relativeIndex = relativeIndex;
@@ -286,10 +296,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
+
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
         require(leaf.ethAddress != address(0), 'leaf does no exist');
+
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
+
         // build txData for deposit on top
         bytes32 txDataDepositOnTop = buildTxData(0, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataDepositOnTop), loadAmount, leaf.ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
@@ -366,10 +379,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, fromEthAddress, fromBabyPubKey,
         toLeaf.ethAddress, toBabyPubKey, msg.value);
         // Increment index leaf balance tree
-        batchToIndex[getStateDepth()+1].depositOnChainCount++;
+        batchToInfo[getStateDepth()+1].depositOnChainCount++;
         // Insert tree informations
         fromLeaf.forgedBatch = uint64(getStateDepth()+1); //batch it will be forged
-        fromLeaf.relativeIndex = batchToIndex[getStateDepth()+1].depositOnChainCount;
+        fromLeaf.relativeIndex = batchToInfo[getStateDepth()+1].depositOnChainCount;
         fromLeaf.ethAddress = fromEthAddress;
     }
 
@@ -461,23 +474,25 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
             'old state root does not match current state root');
-        //add deposits off-chain
+
+        // add deposits off-chain
         // verify all the fields of the off-chain deposit
         uint64 depositOffChainLength = uint64(compressedOnChainTx.length/3);
 
-        //index+deposits offchain = lastLeafIndex + depositOnChainCount of the previous batch
-        uint32 depositCount = batchToIndex[getStateDepth()].depositOnChainCount;
+        // index + deposits offchain = lastLeafIndex + depositOnChainCount of the previous batch
+        uint32 depositCount = batchToInfo[getStateDepth()].depositOnChainCount;
         require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
         for (uint256 i = 0; i < depositOffChainLength; i++) {
            depositCount++;
            depositOffChain(compressedOnChainTx[i*3],[compressedOnChainTx[i*3+1], compressedOnChainTx[i*3+2]], depositCount);
         }
-        //previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
+
+        // previous last Leaf index + onchain deposit in the preovious batch, + offchain deposits in current batch = new index
         if (getStateDepth() != 0){
-             batchToIndex[getStateDepth()].lastLeafIndex = batchToIndex[getStateDepth()-1].lastLeafIndex + depositCount;
+             batchToInfo[getStateDepth()].lastLeafIndex = batchToInfo[getStateDepth()-1].lastLeafIndex + depositCount;
         }
         else{
-            batchToIndex[getStateDepth()].lastLeafIndex = depositCount;
+            batchToInfo[getStateDepth()].lastLeafIndex = depositCount;
         }
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
@@ -591,7 +606,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     }
 
      /**
-     * @dev Retrieve leaf idex from Babyjub address and tokenID
+     * @dev Retrieve leaf index from Babyjub address and tokenID
      * @param fromBabyPubKey public key babyjubjub
      * @param tokenId token ID
      * @return leaf index
@@ -600,12 +615,11 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      public view returns (uint64) {
           leafInfo memory leaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
           require(leaf.ethAddress != address(0), 'leaf does not exist');
-          if(leaf.forgedBatch == 0)
+          if (leaf.forgedBatch == 0) {
               return leaf.relativeIndex;
-          else
-          {
+          } else {
               require(leaf.forgedBatch-1 < getStateDepth(), 'batch must be forged');
-              return (batchToIndex[leaf.forgedBatch-1].lastLeafIndex + leaf.relativeIndex);
+              return (batchToInfo[leaf.forgedBatch-1].lastLeafIndex + leaf.relativeIndex);
           }
     }
     ///////////
