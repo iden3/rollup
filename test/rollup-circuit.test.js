@@ -27,7 +27,7 @@ describe("Rollup Basic circuit TXs", function () {
         console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
 
-    /* it("Should create empty txs", async () => {
+    it("Should create empty txs", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -1494,7 +1494,7 @@ describe("Rollup Basic circuit TXs", function () {
         } catch (error) {
             assert.include(error.message, "doesn't match main");
         }
-    }); */
+    });
 
     it("Should create 1 deposit on-chain and should check error deposit on top on-chain with invalid loadamount", async () => {
         // Start a new state
@@ -1684,6 +1684,300 @@ describe("Rollup Basic circuit TXs", function () {
             assert(false);
         } catch (error) {
             assert.include(error.message, "doesn't match main");
+        }
+    });
+
+    it("Should create 2 deposit on-chain and then should check error 1 transfer on-chain with invalid amount", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+
+        bb.addTx({
+            loadAmount: 3000,
+            coin: 0,
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        bb.addTx({
+            loadAmount: 2000,
+            coin: 0,
+            fromAx: account2.ax,
+            fromAy: account2.ay,
+            fromEthAddr: account2.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        await bb.build();
+        await rollupDB.consolidate(bb);
+
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        bb2.addTx({
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 0,
+            onChain: true
+        });
+
+        await bb2.build();
+        await rollupDB.consolidate(bb2);
+        const input = bb2.getInput();
+
+        // manipulate input
+        const tx = {
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 1000,
+            nonce: 0,
+            onChain: true
+        };
+        let newAccount = 0;
+        const txData = utils.buildTxData(Object.assign({newAccount: newAccount}, tx));
+        input.txData[0] = txData;
+
+        try {
+            circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "doesn't match main");
+        }
+    });
+
+    it("Should create 2 deposit on-chain and then should check error 1 transfer on-chain with invalid nonce", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+
+        bb.addTx({
+            loadAmount: 3000,
+            coin: 0,
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        bb.addTx({
+            loadAmount: 2000,
+            coin: 0,
+            fromAx: account2.ax,
+            fromAy: account2.ay,
+            fromEthAddr: account2.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        await bb.build();
+        await rollupDB.consolidate(bb);
+
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        bb2.addTx({
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 0,
+            onChain: true
+        });
+
+        await bb2.build();
+        await rollupDB.consolidate(bb2);
+        const input = bb2.getInput();
+
+        // manipulate input
+        const tx = {
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 1,
+            onChain: true
+        };
+        let newAccount = 0;
+        const txData = utils.buildTxData(Object.assign({newAccount: newAccount}, tx));
+        input.txData[0] = txData;
+
+        try {
+            circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "doesn't match main");
+        }
+    });
+
+    it("Should create 2 deposit on-chain and then should check error 1 transfer on-chain with invalid to", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+
+        bb.addTx({
+            loadAmount: 3000,
+            coin: 0,
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        bb.addTx({
+            loadAmount: 2000,
+            coin: 0,
+            fromAx: account2.ax,
+            fromAy: account2.ay,
+            fromEthAddr: account2.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        await bb.build();
+        await rollupDB.consolidate(bb);
+
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        bb2.addTx({
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 0,
+            onChain: true
+        });
+
+        await bb2.build();
+        await rollupDB.consolidate(bb2);
+        const input = bb2.getInput();
+
+        // manipulate input
+        input.toAx[0] = bigInt("0x" + account1.ax);
+        input.toAy[0] = bigInt("0x" + account1.ay);
+        input.toEthAddr[0] = bigInt(account1.ethAddress);
+
+        try {
+            circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "doesn't match main");
+        }
+    });
+
+    it("Should create 2 deposit on-chain and then should check error 1 transfer on-chain with invalid state", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+
+        bb.addTx({
+            loadAmount: 1000,
+            coin: 0,
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        bb.addTx({
+            loadAmount: 2000,
+            coin: 0,
+            fromAx: account2.ax,
+            fromAy: account2.ay,
+            fromEthAddr: account2.ethAddress,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        });
+
+        await bb.build();
+        await rollupDB.consolidate(bb);
+
+        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        bb2.addTx({
+            fromAx: account1.ax,
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 0,
+            onChain: true
+        });
+
+        await bb2.build();
+        await rollupDB.consolidate(bb2);
+        const input = bb2.getInput();
+
+        // manipulate input
+        input.amount1[0] = bigInt(3000);
+
+        try {
+            circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "main.Tx[0].processor1.checkOldInput:");
         }
     });
 
