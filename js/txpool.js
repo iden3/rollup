@@ -1,4 +1,4 @@
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 const utils = require("./utils");
 const Constants = require("./constants");
 const TmpState = require("./tmpstate");
@@ -18,7 +18,7 @@ class TXPool {
      */
 
     constructor(rollupDB, conversion, cfg) {
-        this.MASK256 = bigInt(1).shl(256).sub(bigInt(1));
+        this.MASK256 = bigInt(1).shiftLeft(256).minus(bigInt(1));
         cfg = cfg || {};
         this.maxSlots = cfg.maxSlots || 64;
         this.executableSlots = cfg.executableSlots || 16;
@@ -46,7 +46,7 @@ class TXPool {
         for (let i = 0; i<this.slotsMap.length; i++) {
             if (this.slotsMap[i].isZero()) continue;
             for (let j=0; j<256; j++) {
-                if (!this.slotsMap[i].and(bigInt(1).shl(j)).isZero()) {
+                if (!this.slotsMap[i].and(bigInt(1).shiftLeft(j)).isZero()) {
                     if (i*256+j<this.maxSlots) {
                         slotKeys.push(Constants.DB_TxPollTx.add(bigInt(i*256+j)));
                     }
@@ -70,9 +70,9 @@ class TXPool {
         return [
             utils.buildTxData(tx),
             tx.rqTxData || 0,
-            bigInt(tx.timestamp).shl(32).add(bigInt(tx.slot)),
-            bigInt("0x" + tx.fromAx),
-            bigInt("0x" + tx.fromAy),
+            bigInt(tx.timestamp).shiftLeft(32).add(bigInt(tx.slot)),
+            bigInt(tx.fromAx, 16),
+            bigInt(tx.fromAy, 16),
         ];
     }
 
@@ -101,8 +101,8 @@ class TXPool {
         return tx;
 
         function extract(n, o, s) {
-            const mask = bigInt(1).shl(s).sub(bigInt(1));
-            return n.shr(o).and(mask).toJSNumber();
+            const mask = bigInt(1).shiftLeft(s).minus(bigInt(1));
+            return n.shiftRight(o).and(mask).toJSNumber();
         }
     }
 
@@ -165,10 +165,10 @@ class TXPool {
                 let r = 0;
                 let s = this.slotsMap[i];
                 while (!s.and(bigInt(1)).isZero()) {
-                    s = s.shr(1);
+                    s = s.shiftRight(1);
                     r ++;
                 }
-                this.slotsMap[i] = this.slotsMap[i].add(bigInt(1).shl(r));
+                this.slotsMap[i] = this.slotsMap[i].add(bigInt(1).shiftLeft(r));
                 if ((i*256+r) < this.maxSlots) {
                     return i*256+r;
                 } else {
@@ -180,12 +180,12 @@ class TXPool {
     }
 
     _isSlotAllocated(s) {
-        return !this.slotsMap[Math.floor(s/256)].and(bigInt(1).shl(s%256)).isZero();
+        return !this.slotsMap[Math.floor(s/256)].and(bigInt(1).shiftLeft(s%256)).isZero();
     }
 
     _freeSlot(s) {
         if (this._isSlotAllocated(s)) {
-            this.slotsMap[Math.floor(s/256)] = this.slotsMap[Math.floor(s/256)].sub(bigInt(1).shl(s%256));
+            this.slotsMap[Math.floor(s/256)] = this.slotsMap[Math.floor(s/256)].minus(bigInt(1).shiftLeft(s%256));
         }
     }
 
@@ -394,10 +394,10 @@ class TXPool {
             const convRate = this.conversion[tx.coin];
 
             if (convRate) {
-                const num = tx.userFee.mul(bigInt(Math.floor(convRate.price*2**64)));
+                const num = tx.userFee.times(bigInt(Math.floor(convRate.price*2**64)));
                 const den = bigInt(10).pow(bigInt(convRate.decimals));
 
-                tx.normalizedFee = (num.div(den)).toJSNumber() / 2**64;
+                tx.normalizedFee = (num.divide(den)).toJSNumber() / 2**64;
             } else {
                 tx.normalizedFee = 0;
             }

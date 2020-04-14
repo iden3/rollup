@@ -1,9 +1,8 @@
 const poseidon = require("circomlib").poseidon;
-const bigInt = require("snarkjs").bigInt;
+const leBuff2int = require("circomlib").leBuff2int;
 
 function string2Int(str) {
-    Buffer.from(str);
-    return bigInt.beBuff2int(Buffer.from(str));
+    return leBuff2int(Buffer.from(str));
 }
 
 const hash = poseidon.createHash(1, 8, 57);

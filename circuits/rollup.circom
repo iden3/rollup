@@ -221,7 +221,7 @@ template Rollup(nTx, nLevels) {
         }
 
         for (j=0; j<4; j++) {
-            if (i-j-1 < -1/2) {
+            if (i-j-1 >= 0) {
                 Tx[i].pastTxData[j] <== txData[i-j-1];
             } else {
                 Tx[i].pastTxData[j] <== 0;

@@ -1,5 +1,5 @@
 const utils = require("./utils");
-const { bigInt } = require("snarkjs");
+const bigInt = require("big-integer");
 const poseidon = require("circomlib").poseidon;
 
 class RollupTx {
@@ -18,24 +18,26 @@ class RollupTx {
         this.rqTxData = bigInt(tx.rqTxData || 0);
 
         // parse toAccount
-        if (typeof tx.toAx === "string") this.toAx = bigInt("0x" + tx.toAx);
+        if (typeof tx.toAx === "string") this.toAx = bigInt(tx.toAx, 16);
         else this.toAx = bigInt(tx.toAx || 0);
 
-        if (typeof tx.toAy === "string") this.toAy = bigInt("0x" + tx.toAy);
+        if (typeof tx.toAy === "string") this.toAy = bigInt(tx.toAy, 16);
         else this.toAy = bigInt(tx.toAy || 0);
 
-        this.toEthAddr = bigInt(tx.toEthAddr || 0);
+        if (typeof tx.toEthAddr === "string") this.toEthAddr = bigInt(tx.toEthAddr.slice(2), 16);
+        else this.toEthAddr = bigInt(tx.toEthAddr || 0);
 
         // on-chain
         this.loadAmount = bigInt(tx.loadAmount || 0);
         // parse fromAccount
-        if (typeof tx.fromAx === "string") this.fromAx = bigInt("0x" + tx.fromAx);
+        if (typeof tx.fromAx === "string") this.fromAx = bigInt(tx.fromAx, 16);
         else this.fromAx = bigInt(tx.fromAx || 0);
 
-        if (typeof tx.fromAy === "string") this.fromAy = bigInt("0x" + tx.fromAy);
+        if (typeof tx.fromAy === "string") this.fromAy = bigInt(tx.fromAy, 16);
         else this.fromAy = bigInt(tx.fromAy || 0);
 
-        this.fromEthAddr = bigInt(tx.fromEthAddr || 0);
+        if (typeof tx.fromEthAddr === "string") this.fromEthAddr = bigInt(tx.fromEthAddr.slice(2), 16);
+        else this.fromEthAddr = bigInt(tx.fromEthAddr || 0);
 
         this._roundValues();
     }
@@ -55,13 +57,13 @@ class RollupTx {
         let res = bigInt(0);
     
         res = res.add(IDEN3_ROLLUP_TX);
-        res = res.add( this.amountF.shl(64) );
-        res = res.add( this.coin.shl(80) );
-        res = res.add( this.nonce.shl(112) );
-        res = res.add( this.userFeeF.shl(160) );
-        res = res.add( this.rqOffset.shl(176) );
-        res = res.add( this.onChain.shl(179) );
-        res = res.add( this.newAccount.shl(180) );
+        res = res.add( this.amountF.shiftLeft(64) );
+        res = res.add( this.coin.shiftLeft(80) );
+        res = res.add( this.nonce.shiftLeft(112) );
+        res = res.add( this.userFeeF.shiftLeft(160) );
+        res = res.add( this.rqOffset.shiftLeft(176) );
+        res = res.add( this.onChain.shiftLeft(179) );
+        res = res.add( this.newAccount.shiftLeft(180) );
     
         return res;
     }
@@ -86,12 +88,12 @@ class RollupTx {
         this.s = signature.S;
 
         if (typeof fromAx === "string")
-            this.fromAx = bigInt("0x" + fromAx);
+            this.fromAx = bigInt(fromAx, 16);
         else
             this.fromAx = bigInt(fromAx || 0);
 
         if (typeof fromAy === "string")
-            this.fromAy = bigInt("0x" + fromAy);
+            this.fromAy = bigInt(fromAy, 16);
         else
             this.fromAy = bigInt(fromAy || 0);
     }

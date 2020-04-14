@@ -3,7 +3,7 @@ const ec = new EC("secp256k1");
 const keccak256 = require("js-sha3").keccak256;
 const crypto = require("crypto");
 const eddsa = require("circomlib").eddsa;
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 const utils = require("./utils");
 const poseidon = require("circomlib").poseidon;
 
@@ -60,9 +60,9 @@ module.exports = class RollupAccount {
         const h = hash([
             txData,
             tx.rqTxData || 0,
-            bigInt("0x" + tx.toAx),
-            bigInt("0x" + tx.toAy),
-            bigInt(tx.toEthAddr),
+            bigInt(tx.toAx, 16),
+            bigInt(tx.toAy, 16),
+            bigInt(utils.isStrHex(tx.toEthAddr) ? tx.toEthAddr.slice(2): tx.toEthAddr, 16),
         ]);
 
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);

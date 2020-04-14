@@ -10,7 +10,7 @@ const exec = util.promisify( require("child_process").exec);
 const RollupAccount = require("../../js/rollupaccount");
 const RollupDB = require("../../js/rollupdb");
 const { SMTLevelDb } = require("../../rollup-utils/smt-leveldb");
-const { bigInt } = require("snarkjs");
+const bigInt = require("big-integer");
 
 async function initRollupDb(rollupDB) {
 
@@ -75,7 +75,7 @@ async function checkDb(memDb, toCheckDb){
     // Check root
     const memRoot = await memDb.db.getRoot();
     const checkRoot = await toCheckDb.db.getRoot();
-    expect(memRoot).to.be.equal(checkRoot);
+    expect(memRoot.toString()).to.be.equal(checkRoot.toString());
     
     // Check database
     const keys = Object.keys(memDb.db.nodes);
@@ -87,6 +87,8 @@ async function checkDb(memDb, toCheckDb){
 }
 
 describe("Rollup Db - batchbuilder", async function(){
+    this.timeout(20000);
+
     it("Should get states correctly", async () => {
         // Start a new state
         const db = new SMTMemDB();
@@ -393,6 +395,7 @@ describe("Rollup Db - batchbuilder", async function(){
 });
 
 describe("RollupDb - LevelDb", async function () {
+    this.timeout(20000);
     let rollupMemDb;
     let rollupLevelDb;
 
@@ -420,6 +423,7 @@ describe("RollupDb - LevelDb", async function () {
 });
 
 describe("RollupDb - rollback functionality", async function () {
+    this.timeout(20000);
     let rollupDb;
 
     const account1 = new RollupAccount(1);

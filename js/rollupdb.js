@@ -1,7 +1,7 @@
 const SMT = require("circomlib").SMT;
 const SMTTmpDb = require("./smttmpdb");
 const BatchBuilder = require("./batchbuilder");
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 const Constants = require("./constants");
 const utils = require("./utils");
 const poseidon = require("circomlib").poseidon;
@@ -101,7 +101,7 @@ class RollupDB {
     }
 
     async getStateByAxAy(ax, ay) {
-        const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x" + ay));
+        const keyAxAy = Constants.DB_AxAy.add(bigInt(ax, 16)).add(bigInt(ay, 16));
         const valStates = await this.db.get(keyAxAy);
         if (!valStates) return null;
         // get last state
@@ -120,7 +120,7 @@ class RollupDB {
     }
 
     async getStateByEthAddr(ethAddr) {
-        const keyEth = Constants.DB_EthAddr.add(bigInt(ethAddr));
+        const keyEth = Constants.DB_EthAddr.add(bigInt(ethAddr.slice(2), 16));
         const valStates = await this.db.get(keyEth);
         if (!valStates) return null;
         // get last state
@@ -216,8 +216,8 @@ class RollupDB {
             if (!axAyToUpdate) continue;
             for (const encodedAxAy of axAyToUpdate) {
                 if (!alreadyUpdated.includes(encodedAxAy)){
-                    const ax = encodedAxAy.shr(256);
-                    const ay = encodedAxAy.and(bigInt(1).shl(256).sub(bigInt(1)));  
+                    const ax = encodedAxAy.shiftRight(256);
+                    const ay = encodedAxAy.and(bigInt(1).shiftLeft(256).minus(bigInt(1)));  
                     const keyAxAy = Constants.DB_AxAy.add(ax).add(ay);
                     const states = await this.db.get(keyAxAy);
                     this._purgeStates(states, numBatch);

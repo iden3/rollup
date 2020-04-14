@@ -1,9 +1,9 @@
 const path = require("path");
 const snarkjs = require("snarkjs");
-const compiler = require("circom");
+const tester = require("circom").tester;
 
 describe("Compile all circuits {24 Levels}", function () {
-    this.timeout(100000);
+    this.timeout(0);
 
     let circuitBalanceUpdater;
     let circuitDecodeFloat;
@@ -16,60 +16,60 @@ describe("Compile all circuits {24 Levels}", function () {
     let circuitStatePacker;
 
     it("Balance updater", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "balancesupdater_test.circom"));
-        circuitBalanceUpdater = new snarkjs.Circuit(cirDef);
+        circuitBalanceUpdater = await tester(path.join(__dirname, "circuits", "balancesupdater_test.circom"));
+        await circuitBalanceUpdater.loadConstraints();
     });
 
     it("Decode float", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "decodefloat_test.circom"));
-        circuitDecodeFloat = new snarkjs.Circuit(cirDef);
+        circuitDecodeFloat = await tester(path.join(__dirname, "circuits", "decodefloat_test.circom"));
+        await circuitDecodeFloat.loadConstraints();
     });
 
     it("Decode Tx", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "decodetx_test.circom"));
-        circuitDecodeTx = new snarkjs.Circuit(cirDef);
+        circuitDecodeTx = await tester(path.join(__dirname, "circuits", "decodetx_test.circom"));
+        await circuitDecodeTx.loadConstraints();
     });
 
     it("Fee plan decoder", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "feeplandecoder_test.circom"));
-        circuitFeePlanDecoder = new snarkjs.Circuit(cirDef);
+        circuitFeePlanDecoder = await tester(path.join(__dirname, "circuits", "feeplandecoder_test.circom"));
+        await circuitFeePlanDecoder.loadConstraints();
     });
 
     it("Fee selector", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "feeselector_test.circom"));
-        circuitFeeSelector = new snarkjs.Circuit(cirDef);
+        circuitFeeSelector = await tester(path.join(__dirname, "circuits", "feeselector_test.circom"));
+        await circuitFeeSelector.loadConstraints();
     });
 
     it("Required transaction verifier", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "requiredtxverifier_test.circom"));
-        circuitRequiredTxVerifier = new snarkjs.Circuit(cirDef);
+        circuitRequiredTxVerifier = await tester(path.join(__dirname, "circuits", "requiredtxverifier_test.circom"));
+        await circuitRequiredTxVerifier.loadConstraints();
     });
 
     it("Rollup transaction", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "rolluptx_test.circom"));
-        circuitRollupTx = new snarkjs.Circuit(cirDef);
+        circuitRollupTx = await tester(path.join(__dirname, "circuits", "rolluptx_test.circom"));
+        await circuitRollupTx.loadConstraints();
     });
 
     it("Rollup transactions states", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "rolluptxstates_test.circom"));
-        circuitRollupTxStates = new snarkjs.Circuit(cirDef);
+        circuitRollupTxStates = await tester(path.join(__dirname, "circuits", "rolluptxstates_test.circom"));
+        await circuitRollupTxStates.loadConstraints();
     });
 
     it("State packer", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "statepacker_test.circom"));
-        circuitStatePacker = new snarkjs.Circuit(cirDef);
+        circuitStatePacker = await tester(path.join(__dirname, "circuits", "statepacker_test.circom"));
+        await circuitStatePacker.loadConstraints();
     });
 
     it("", async () => {
-        console.log("balancesupdater.circom: " + circuitBalanceUpdater.nConstraints);
-        console.log("decodefloat.circom: " + circuitDecodeFloat.nConstraints);
-        console.log("decodetx.circom: " + circuitDecodeTx.nConstraints);
-        console.log("feeplandecoder.circom: " + circuitFeePlanDecoder.nConstraints);
-        console.log("feeselector.circom: " + circuitFeeSelector.nConstraints);
-        console.log("requiredtxverifier.circom: " + circuitRequiredTxVerifier.nConstraints);
-        console.log("rolluptx.circom: " + circuitRollupTx.nConstraints);
-        console.log("rolluptxstates.circom: " + circuitRollupTxStates.nConstraints);
-        console.log("statepacker.circom: " + circuitStatePacker.nConstraints);
+        console.log("balancesupdater.circom: " + circuitBalanceUpdater.constraints.length);
+        console.log("decodefloat.circom: " + circuitDecodeFloat.constraints.length);
+        console.log("decodetx.circom: " + circuitDecodeTx.constraints.length);
+        console.log("feeplandecoder.circom: " + circuitFeePlanDecoder.constraints.length);
+        console.log("feeselector.circom: " + circuitFeeSelector.constraints.length);
+        console.log("requiredtxverifier.circom: " + circuitRequiredTxVerifier.constraints.length);
+        console.log("rolluptx.circom: " + circuitRollupTx.constraints.length);
+        console.log("rolluptxstates.circom: " + circuitRollupTxStates.constraints.length);
+        console.log("statepacker.circom: " + circuitStatePacker.constraints.length);
         
     });
 });

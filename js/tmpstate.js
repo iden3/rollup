@@ -70,8 +70,8 @@ class TmpState {
         if (tx.onChain) return false;
 
         stFrom.nonce++;
-        stFrom.amount = stFrom.amount.sub(amount);
-        stFrom.amount = stFrom.amount.sub(userFee);
+        stFrom.amount = stFrom.amount.minus(amount);
+        stFrom.amount = stFrom.amount.minus(userFee);
         if (tx.toIdx) {
             stTo.amount = stTo.amount.add(amount);
         }

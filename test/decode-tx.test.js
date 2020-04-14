@@ -1,7 +1,6 @@
 const chai = require("chai");
 const path = require("path");
-const snarkjs = require("snarkjs");
-const compiler = require("circom");
+const tester = require("circom").tester;
 const RollupAccount = require("../js/rollupaccount");
 const RollupTx = require("../js/tx");
 const { random } = require("./helpers/utils-circuit");
@@ -18,9 +17,9 @@ describe("Decode Tx test", function () {
     const toAcc = new RollupAccount(1);
 
     before( async() => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "decodetx_test.circom"));
-        circuit = new snarkjs.Circuit(cirDef);
-        console.log("NConstraints `decodetx.circom` circuit: " + circuit.nConstraints + "\n");
+        circuit = await tester(path.join(__dirname, "circuits", "decodetx_test.circom"));
+        await circuit.loadConstraints();
+        console.log("Constraints `decodetx.circom` circuit: " + circuit.constraints.length + "\n");
     });
 
     it("Should check decode txData", async () => {
@@ -53,23 +52,19 @@ describe("Decode Tx test", function () {
             inIdx: 0,
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const amount = w[circuit.getSignalIdx("main.amount")].toString();
-        const coin = w[circuit.getSignalIdx("main.coin")].toString();
-        const nonce = w[circuit.getSignalIdx("main.nonce")].toString();
-        const userFee = w[circuit.getSignalIdx("main.userFee")].toString();
-        const rqOffset = w[circuit.getSignalIdx("main.rqOffset")].toString();
-        const onChain = w[circuit.getSignalIdx("main.onChain")].toString();
-        const newAccount = w[circuit.getSignalIdx("main.newAccount")].toString();
+        const checkOut = {
+            amount: rollupTx.amount,
+            coin: rollupTx.coin,
+            nonce: rollupTx.nonce,
+            userFee: rollupTx.userFee,
+            rqOffset: rollupTx.rqOffset,
+            onChain: rollupTx.onChain,
+            newAccount: rollupTx.newAccount,
+        };
 
-        expect(rollupTx.amount.toString()).to.be.equal(amount);
-        expect(rollupTx.coin.toString()).to.be.equal(coin);
-        expect(rollupTx.nonce.toString()).to.be.equal(nonce);
-        expect(rollupTx.userFee.toString()).to.be.equal(userFee);
-        expect(rollupTx.rqOffset.toString()).to.be.equal(rqOffset);
-        expect(rollupTx.onChain.toString()).to.be.equal(onChain);
-        expect(rollupTx.newAccount.toString()).to.be.equal(newAccount);
+        await circuit.assertOut(w, checkOut);
     });
 
     it("Should check signature off-chain", async () => {
@@ -107,12 +102,13 @@ describe("Decode Tx test", function () {
             inIdx: 0,
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const sigOffChainHash = w[circuit.getSignalIdx("main.sigOffChainHash")].toString();
+        const checkOut = {
+            sigOffChainHash: rollupTx.getHashSignature(), 
+        };
 
-        const sigHash = rollupTx.getHashSignature();
-        expect(sigHash.toString()).to.be.equal(sigOffChainHash);
+        await circuit.assertOut(w, checkOut);
     });
 
     it("Should check on-chain hash", async () => {
@@ -154,13 +150,13 @@ describe("Decode Tx test", function () {
             inIdx: 0,
         };
 
-        const w = circuit.calculateWitness(input, {logOutput: false});
+        const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const newOnChainHash = w[circuit.getSignalIdx("main.newOnChainHash")].toString();
+        const checkOut = {
+            newOnChainHash: rollupTx.getOnChainHash(oldOnChainHash), 
+        };
 
-        const newOnChainHashJs = rollupTx.getOnChainHash(oldOnChainHash);
-        
-        expect(newOnChainHashJs.toString()).to.be.equal(newOnChainHash);
+        await circuit.assertOut(w, checkOut);
     });
 
     it("Should check off-chain Vs on-chain order", async () => {
@@ -198,7 +194,7 @@ describe("Decode Tx test", function () {
         };
 
         // off-chain --> off-chain
-        circuit.calculateWitness(input, {logOutput: false});
+        await circuit.calculateWitness(input, {logOutput: false});
 
         // off-chain --> on-chain
         tx.onChain = 1;
@@ -206,7 +202,7 @@ describe("Decode Tx test", function () {
         input.txData = rollupTx.getTxData();
         input.previousOnChain = 0;
         try {
-            circuit.calculateWitness(input, {logOutput: false});
+            await circuit.calculateWitness(input, {logOutput: false});
             expect(true).to.be.equal(false);
         } catch (error) {
             expect(error.message.includes("Constraint doesn't match"))
@@ -218,14 +214,14 @@ describe("Decode Tx test", function () {
         rollupTx = new RollupTx(tx);
         input.txData = rollupTx.getTxData();
         input.previousOnChain = 1;
-        circuit.calculateWitness(input, {logOutput: false});
+        await circuit.calculateWitness(input, {logOutput: false});
 
         // on-chain --> on-chain
         tx.onChain = 1;
         rollupTx = new RollupTx(tx);
         input.txData = rollupTx.getTxData();
         input.previousOnChain = 1;
-        circuit.calculateWitness(input, {logOutput: false});
+        await circuit.calculateWitness(input, {logOutput: false});
     });
 
     it("Should check incremental Idx", async () => {
@@ -255,18 +251,21 @@ describe("Decode Tx test", function () {
         };
 
         // correct incremental
-        let w = circuit.calculateWitness(input, {logOutput: false});
-        let outIdx = w[circuit.getSignalIdx("main.outIdx")].toString();
-        
-        expect(outIdx).to.be.equal((input.inIdx+1).toString());
+        let w = await circuit.calculateWitness(input, {logOutput: false});
+
+        let checkOut = {
+            outIdx: input.inIdx + 1, 
+        };
+
+        await circuit.assertOut(w, checkOut);
 
         // incorrect incremental
         input.inIdx = 5;
         try {
-            circuit.calculateWitness(input, {logOutput: false});
+            await circuit.calculateWitness(input, {logOutput: false});
             expect(true).to.be.equal(false);
         } catch(error){
-            expect(error.message.includes("Constraint doesn't match main.idxChecker"))
+            expect(error.message.includes("Constraint doesn't match"))
                 .equal(true);    
         }
 
@@ -276,10 +275,10 @@ describe("Decode Tx test", function () {
         rollupTx = new RollupTx(tx);
         input.txData = rollupTx.getTxData();
         input.previousOnChain = 1;
-        w = circuit.calculateWitness(input, {logOutput: false});
-        outIdx = w[circuit.getSignalIdx("main.outIdx")].toString();
+        w = await circuit.calculateWitness(input, {logOutput: false});
+        checkOut.outIdx = input.inIdx;
         
-        expect(outIdx).to.be.equal((input.inIdx).toString());
+        await circuit.assertOut(w, checkOut);
 
         // correct incremental
         tx.onChain = 0;
@@ -287,9 +286,9 @@ describe("Decode Tx test", function () {
         rollupTx = new RollupTx(tx);
         input.txData = rollupTx.getTxData();
         input.previousOnChain = 1;
-        w = circuit.calculateWitness(input, {logOutput: false});
-        outIdx = w[circuit.getSignalIdx("main.outIdx")].toString();
+        w = await circuit.calculateWitness(input, {logOutput: false});
+        checkOut.outIdx = input.inIdx;
         
-        expect(outIdx).to.be.equal((input.inIdx).toString());
+        await circuit.assertOut(w, checkOut);
     });
 });

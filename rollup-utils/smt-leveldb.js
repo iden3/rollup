@@ -1,6 +1,6 @@
 /* eslint-disable no-return-await */
 /* eslint-disable no-await-in-loop */
-/* global BigInt */
+const bigInt = require("big-integer");
 const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
 const { SMT } = require("circomlib");
 const LevelDb = require("./level-db");
@@ -23,7 +23,7 @@ class SMTLevelDb {
      * @returns {BigInt} - root
      */
     async getRoot() {
-        const value = await this.db.getOrDefault("smt-root", this._toString(BigInt(0)));
+        const value = await this.db.getOrDefault("smt-root", this._toString(bigInt(0)));
         return this._fromString(value);
     }
 
@@ -61,7 +61,7 @@ class SMTLevelDb {
      * @returns {String}
      */
     _key2str(k) {
-        const keyS = BigInt(k).toString();
+        const keyS = bigInt(k).toString();
         return keyS;
     }
 
@@ -71,7 +71,7 @@ class SMTLevelDb {
      */
     _normalize(n) {
         for (let i = 0; i < n.length; i++) {
-            n[i] = BigInt(n[i]);
+            n[i] = bigInt(n[i]);
         }
     }
 

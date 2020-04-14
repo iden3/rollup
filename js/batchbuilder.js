@@ -4,7 +4,7 @@ const SMTTmpDb = require("./smttmpdb");
 const utils = require("./utils");
 const assert = require("assert");
 const crypto = require("crypto");
-const { bigInt } = require("snarkjs");
+const bigInt = require("big-integer");
 const poseidon = require("circomlib").poseidon;
 const Constants = require("./constants");
 
@@ -201,7 +201,7 @@ module.exports = class BatchBuilder {
         }
 
         let effectiveAmount = amount;
-        const underFlowOk = (oldState1.amount.add(loadAmount).sub(amount).sub(operatorFee).greaterOrEquals(bigInt(0)));
+        const underFlowOk = (oldState1.amount.add(loadAmount).minus(amount).minus(operatorFee).greaterOrEquals(bigInt(0)));
         if (!underFlowOk) {
             if (tx.onChain) {
                 effectiveAmount = bigInt(0);
@@ -217,22 +217,22 @@ module.exports = class BatchBuilder {
         this.input.fromIdx[i] = tx.fromIdx;
         this.input.toIdx[i] = tx.toIdx;
         this.input.txData[i] = utils.buildTxData(Object.assign({newAccount: newAccount}, tx));
-        this.input.toAx[i] = bigInt("0x" + tx.toAx),
-        this.input.toAy[i] = bigInt("0x" + tx.toAy),
-        this.input.toEthAddr[i] = bigInt(tx.toEthAddr),
+        this.input.toAx[i] = bigInt(tx.toAx, 16),
+        this.input.toAy[i] = bigInt(tx.toAy, 16),
+        this.input.toEthAddr[i] = bigInt(utils.isStrHex(tx.toEthAddr) ? tx.toEthAddr.slice(2): tx.toEthAddr, 16),
         this.input.rqTxData[i]= tx.rqTxData || 0;
         this.input.s[i]= tx.s || 0;
         this.input.r8x[i]= tx.r8x || 0;
         this.input.r8y[i]= tx.r8y || 0;
         this.input.loadAmount[i]= loadAmount;
-        this.input.fromEthAddr[i]= bigInt(oldState1.ethAddress);
-        this.input.fromAx[i]= bigInt("0x" + oldState1.ax);
-        this.input.fromAy[i]= bigInt("0x" + oldState1.ay);
+        this.input.fromEthAddr[i]= bigInt(oldState1.ethAddress.slice(2), 16);
+        this.input.fromAx[i]= bigInt(oldState1.ax, 16);
+        this.input.fromAy[i]= bigInt(oldState1.ay, 16);
 
         this.input.step[i] = ((!tx.onChain) && tx.step) ? 1 : 0;
 
         const newState1 = Object.assign({}, oldState1);
-        newState1.amount = oldState1.amount.add(loadAmount).sub(effectiveAmount).sub(operatorFee);
+        newState1.amount = oldState1.amount.add(loadAmount).minus(effectiveAmount).minus(operatorFee);
         if (!tx.onChain) {
             newState1.nonce++;
             this._incCounter(tx.coin, this.input.step[i]);
@@ -379,11 +379,11 @@ module.exports = class BatchBuilder {
 
             // State 1
             //It should not matter what the Tx have, because we get the input from the oldState
-            this.input.ax1[i]= bigInt("0x" + oldState1.ax);
-            this.input.ay1[i]= bigInt("0x" + oldState1.ay);
+            this.input.ax1[i]= bigInt(oldState1.ax, 16);
+            this.input.ay1[i]= bigInt(oldState1.ay, 16);
             this.input.amount1[i]= oldState1.amount;  
             this.input.nonce1[i]= oldState1.nonce; 
-            this.input.ethAddr1[i]= bigInt(oldState1.ethAddress);
+            this.input.ethAddr1[i]= bigInt(oldState1.ethAddress.slice(2), 16);
 
 
             this.input.siblings1[i] = siblings;
@@ -446,11 +446,11 @@ module.exports = class BatchBuilder {
 
                 // State 2
                 //It should not matter what the Tx have, because we get the input from the oldState
-                this.input.ax2[i]= bigInt("0x" + oldState2.ax);
-                this.input.ay2[i]= bigInt("0x" + oldState2.ay);
+                this.input.ax2[i]= bigInt(oldState2.ax, 16);
+                this.input.ay2[i]= bigInt(oldState2.ay, 16);
                 this.input.amount2[i]= oldState2.amount;
                 this.input.nonce2[i]= oldState2.nonce; 
-                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress);
+                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress.slice(2), 16);
 
 
                 this.input.siblings2[i] = siblings;
@@ -471,11 +471,11 @@ module.exports = class BatchBuilder {
 
                 // State 2
                 //It should not matter what the Tx have, because we get the input from the oldState
-                this.input.ax2[i]= bigInt("0x" + oldState2.ax);
-                this.input.ay2[i]= bigInt("0x" + oldState2.ay);
+                this.input.ax2[i]= bigInt(oldState2.ax, 16);
+                this.input.ay2[i]= bigInt(oldState2.ay, 16);
                 this.input.amount2[i]= oldState2.amount;
                 this.input.nonce2[i]= oldState2.nonce;
-                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress);
+                this.input.ethAddr2[i]= bigInt(oldState2.ethAddress.slice(2), 16);
 
 
                 this.input.siblings2[i] = siblings;
@@ -572,7 +572,7 @@ module.exports = class BatchBuilder {
         // Database NumBatch
         if (op1 == "INSERT") {
             // AxAy
-            const encodeAxAy =  this.input.fromAy[i].add(this.input.fromAx[i].shl(256));
+            const encodeAxAy =  this.input.fromAy[i].add(this.input.fromAx[i].shiftLeft(256));
             const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(this.newBatchNumberDb);
             let oldStatesAxAy = await this.dbState.get(keyNumBatchAxAy);
             let newStatesAxAy;
@@ -610,7 +610,7 @@ module.exports = class BatchBuilder {
 
     _uniqueAccount(coin, ax, ay){
         const h = poseidon.createHash(6, 8, 57);
-        return h([coin, `0x${ax}`, `0x${ay}`]);
+        return h([bigInt(coin), bigInt(ax, 16), bigInt(ay, 16)]);
     }
 
     _incCounter(coin, step) {
@@ -642,8 +642,8 @@ module.exports = class BatchBuilder {
         };
         for (let i=0; i<this.feePlan.length; i++) {
             const feeF = utils.fix2float(this.feePlan[i][1]);
-            res.feePlanCoins = res.feePlanCoins.add( bigInt(this.feePlan[i][0]).shl(16*i) );
-            res.feePlanFees = res.feePlanFees.add( bigInt(feeF).shl(16*i) );
+            res.feePlanCoins = res.feePlanCoins.add( bigInt(this.feePlan[i][0]).shiftLeft(16*i) );
+            res.feePlanFees = res.feePlanFees.add( bigInt(feeF).shiftLeft(16*i) );
         }
         return res;
     }
@@ -781,7 +781,6 @@ module.exports = class BatchBuilder {
 
         // check last transaction is on-chain
         const { onChain } = utils.decodeTxData(this.input.txData[this.maxNTx-1]);
-
         if (onChain) {
             const hash = poseidon.createHash(6, 8, 57);
             
@@ -846,14 +845,14 @@ module.exports = class BatchBuilder {
         const hash = crypto.createHash("sha256")
             .update(b)
             .digest("hex");
-        const h = bigInt("0x" + hash).mod(r);
+        const h = bigInt(hash, 16).mod(r);
         return h;
     }
 
     _getCounters() {
         let res = bigInt(0);
         for (let i=0; i<this.counters.length; i++) {
-            res = res.add( bigInt(this.counters[i]).shl(16*i) );
+            res = res.add( bigInt(this.counters[i]).shiftLeft(16*i) );
         }
         return res;
     }

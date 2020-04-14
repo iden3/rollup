@@ -1,6 +1,5 @@
 const path = require("path");
-const compiler = require("circom");
-const snarkjs = require("snarkjs");
+const tester = require("circom").tester;
 const babyJub = require("circomlib").babyJub;
 
 describe("Unpack Babyjubjub Ax point", function () {
@@ -9,16 +8,13 @@ describe("Unpack Babyjubjub Ax point", function () {
     this.timeout(1000000);
 
     before( async() => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "unpackax_test.circom"), {reduceConstraints:false});
-        // const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
-        // circuit = new snarkjs.Circuit(cirDef);
-        circuit = new snarkjs.Circuit(cirDef);
-        console.log("NConstrains unpack point: " + circuit.nConstraints);
+        circuit = await tester(path.join(__dirname, "circuits", "unpackax_test.circom"), {reduceConstraints:false});
+        await circuit.loadConstraints();
+        console.log("Constraints `unpackax.circom` circuit: " + circuit.constraints.length + "\n");
     });
 
     it("Should unpack babyjubjub point", async () => {
         // const privKey = Buffer.alloc(32, 1);
-
         // const pubKey = eddsa.prv2pub(privKey);
         // console.log("pubKey: ", pubKey);
 
@@ -29,8 +25,13 @@ describe("Unpack Babyjubjub Ax point", function () {
 
         const w = await circuit.calculateWitness({ Ax: babyAx }, {logTrigger:false, logOutput: false, logSet: false});
 
-        const Ay = w[circuit.getSignalIdx("main.Ay")];
+        // const res = await circuit.getDecoratedOutput(w);
+        // console.log(res);
 
-        console.log(Ay);
+        const checkOut = {
+            Ay: babyJub.Base8[1],
+        };
+
+        await circuit.assertOut(w, checkOut);
     });
 });
