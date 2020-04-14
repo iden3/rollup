@@ -96,7 +96,7 @@ describe("txPool test", function () {
     this.timeout(0);
 
     before( async() => {
-        // circuit = await tester(path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
+        circuit = await tester(path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
 
         // const testerAux = require("circom").testerAux;
         // const pathTmp = "/tmp/circom_11728nWkeunFG3svf";

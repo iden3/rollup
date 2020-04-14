@@ -6,7 +6,7 @@ const utils = require("../js/utils");
 
 const assert = chai.assert;
 
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("big-integer");
 
 describe("Decode float test", function () {
     let circuit;
