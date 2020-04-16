@@ -528,7 +528,6 @@ module.exports = class BatchBuilder {
                 const hash = poseidon.createHash(6, 8, 57);
 
                 const dataOnChain = hash([
-                    this.input.fromEthAddr[i],
                     this.input.fromAx[i],
                     this.input.fromAy[i],
                     this.input.toEthAddr[i],
@@ -541,6 +540,7 @@ module.exports = class BatchBuilder {
                     this.input.txData[i],
                     this.input.loadAmount[i],
                     dataOnChain,
+                    this.input.fromEthAddr[i],
                 ]);
                 this.input.imOnChain[i] = bigInt(1);
             } else {
@@ -785,7 +785,6 @@ module.exports = class BatchBuilder {
             const hash = poseidon.createHash(6, 8, 57);
             
             const dataOnChain = hash([
-                this.input.fromEthAddr[this.maxNTx-1],
                 this.input.fromAx[this.maxNTx-1],
                 this.input.fromAy[this.maxNTx-1],
                 this.input.toEthAddr[this.maxNTx-1],
@@ -798,6 +797,7 @@ module.exports = class BatchBuilder {
                 this.input.txData[this.maxNTx-1],
                 this.input.loadAmount[this.maxNTx-1],
                 dataOnChain,
+                this.input.fromEthAddr[this.maxNTx-1],
             ]);
 
         } else {

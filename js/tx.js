@@ -103,7 +103,6 @@ class RollupTx {
         const hash = poseidon.createHash(6, 8, 57);
 
         const dataOnChain = hash([
-            this.fromEthAddr,
             this.fromAx,
             this.fromAy,
             this.toEthAddr,
@@ -116,6 +115,7 @@ class RollupTx {
             txData,
             this.loadAmount,
             dataOnChain,
+            this.fromEthAddr,
         ]);
         return h;
     }
