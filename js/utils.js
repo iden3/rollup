@@ -90,16 +90,10 @@ function buildTxData(tx) {
     return res;
 }
 
-/**
- * Decode rollup transactions
- * @param {String} txDataEncodedHex - rollup transaction encoded as an hex string
- * @returns {Object} - Raw rollup transaction
- */
-function decodeTxData(txDataEncodedHex) {
-    const txDataBi = bigInt(txDataEncodedHex);
+function decodeTxData(txDataEncoded) {
+    const txDataBi = bigInt(txDataEncoded);
     let txData = {};
 
-    txData.IDEN3_ROLLUP_TX = txDataBi.and(bigInt(1).shl(64).sub(bigInt(1)));
     txData.amount = float2fix(txDataBi.shr(64).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
     txData.tokenId = txDataBi.shr(80).and(bigInt(1).shl(32).sub(bigInt(1)));
     txData.nonce = txDataBi.shr(112).and(bigInt(1).shl(48).sub(bigInt(1)));
@@ -226,6 +220,11 @@ function encodeDepositOffchain2(depositsOffchain) {
     return buffer;
 }
 
+function hashIdx(coin, ax, ay){
+    const h = poseidon.createHash(6, 8, 57);
+    return h([coin, `0x${ax}`, `0x${ay}`]);
+}
+
 module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
 module.exports.decodeTxData = decodeTxData;
@@ -238,3 +237,4 @@ module.exports.txRoundValues = txRoundValues;
 module.exports.signRollupTx = signRollupTx;
 module.exports.verifyTxSig = verifyTxSig;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
+module.exports.hashIdx = hashIdx; 

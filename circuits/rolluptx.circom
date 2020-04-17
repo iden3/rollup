@@ -11,7 +11,6 @@ include "statepacker.circom";
 
 template RollupTx(nLevels) {
 
-
     // Fee Plan
     signal input feePlanCoin[16];
     signal input feePlanFee[16];
@@ -20,10 +19,12 @@ template RollupTx(nLevels) {
     signal input pastTxData[4];
     signal input futureTxData[3];
 
-    //TX
-
+    // Tx
     signal input fromIdx;
     signal input toIdx;
+    signal input toAx;
+    signal input toAy;
+    signal input toEthAddr;
     signal input amount;
     signal input coin;
     signal input nonce;
@@ -32,18 +33,18 @@ template RollupTx(nLevels) {
     signal input onChain;
     signal input newAccount;
 
-    signal input offChainHash;
+    signal input sigOffChainHash;
 
     signal input rqTxData;
     signal input s;
     signal input r8x;
     signal input r8y;
 
-    // For InChain TX
+    // For on-chain TX
     signal input loadAmount;
-    signal input ethAddr;
-    signal input ax;
-    signal input ay;
+    signal input fromEthAddr;
+    signal input fromAx;
+    signal input fromAy;
 
     signal input step;
 
@@ -81,9 +82,7 @@ template RollupTx(nLevels) {
     signal input countersIn;
     signal output countersOut;
 
-
     var i;
-
 
 // feeSelector
 ///////////////
@@ -106,7 +105,6 @@ template RollupTx(nLevels) {
     states.loadAmount <== loadAmount;
     states.newAccount <== newAccount;
 
-
 // requiredTxVerifier
 //////////
     component requiredTxVerifier = RequiredTxVerifier();
@@ -124,20 +122,38 @@ template RollupTx(nLevels) {
 
 // nonceChecker
 //////////
-
     component nonceChecker = ForceEqualIfEnabled();
     nonceChecker.in[0] <== nonce;
     nonceChecker.in[1] <== nonce1;
     nonceChecker.enabled <== (1-onChain);
 
-
-// ethAddrChecker
+// toAxChecker
 //////////
+    component toAxChecker = ForceEqualIfEnabled();
+    toAxChecker.in[0] <== toAx;
+    toAxChecker.in[1] <== ax2;
+    toAxChecker.enabled <== (1 - onChain)*(1 - states.isExit);
 
-    component ethAddrChecker = ForceEqualIfEnabled();
-    ethAddrChecker.in[0] <== ethAddr;
-    ethAddrChecker.in[1] <== ethAddr1;
-    ethAddrChecker.enabled <== onChain;
+// toAyChecker
+//////////
+    component toAyChecker = ForceEqualIfEnabled();
+    toAyChecker.in[0] <== toAy;
+    toAyChecker.in[1] <== ay2;
+    toAyChecker.enabled <== (1 - onChain)*(1 - states.isExit);
+
+// toEthAddrChecker
+//////////
+    component toEthAddrChecker = ForceEqualIfEnabled();
+    toEthAddrChecker.in[0] <== toEthAddr;
+    toEthAddrChecker.in[1] <== ethAddr2;
+    toEthAddrChecker.enabled <== (1 - onChain)*(1 - states.isExit);
+
+// fromEthAddrChecker
+//////////
+    component fromEthAddrChecker = ForceEqualIfEnabled();
+    fromEthAddrChecker.in[0] <== fromEthAddr;
+    fromEthAddrChecker.in[1] <== ethAddr1;
+    fromEthAddrChecker.enabled <== onChain;
 
 // oldState1 Packer
 /////////////////
@@ -169,12 +185,12 @@ template RollupTx(nLevels) {
 
     component s1Ax = Mux1();
     s1Ax.c[0] <== ax1;
-    s1Ax.c[1] <== ax;
+    s1Ax.c[1] <== fromAx;
     s1Ax.s <== states.s1;
 
     component s1Ay = Mux1();
     s1Ay.c[0] <== ay1;
-    s1Ay.c[1] <== ay;
+    s1Ay.c[1] <== fromAy;
     s1Ay.s <== states.s1;
 
     component s1Nonce = Mux1();
@@ -184,7 +200,7 @@ template RollupTx(nLevels) {
 
     component s1EthAddr = Mux1();
     s1EthAddr.c[0] <== ethAddr1;
-    s1EthAddr.c[1] <== ethAddr;
+    s1EthAddr.c[1] <== fromEthAddr;
     s1EthAddr.s <== states.s1;
 
     component s1OldKey = Mux1();
@@ -243,8 +259,7 @@ template RollupTx(nLevels) {
     sigVerifier.R8x <== r8x;
     sigVerifier.R8y <== r8y;
 
-    sigVerifier.M <== offChainHash;
-
+    sigVerifier.M <== sigOffChainHash;
 
 // balancesUpdater
 ///////////////
@@ -335,8 +350,4 @@ template RollupTx(nLevels) {
     s5.c[1] <== processor2.newRoot;
     s5.s <== states.isExit;
     s5.out ==> newExitRoot;
-
-
-
-
 }

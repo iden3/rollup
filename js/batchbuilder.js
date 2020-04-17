@@ -114,24 +114,21 @@ module.exports = class BatchBuilder {
         const i = this.input.txData.length;
 
         // Find and set Idx
-        const fromAcc = this._uniqueAccount(tx.coin, tx.fromAx, tx.fromAy);   
-        const fromIdx = await this.dbState.get(fromAcc);
-        
-        let toAcc;
+        const hashFromIdx = utils.hashIdx(tx.coin, tx.fromAx, tx.fromAy);
+        const hashToIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy);
+
+        let fromIdx = await this.dbState.get(hashFromIdx);
+
         let toIdx;
-        
-        if (tx.toAx == 0 && tx.toAy == 0 && tx.toEthAddr == 0){
-            toIdx = 0;
-        } else {
-            toAcc = this._uniqueAccount(tx.coin, tx.toAx, tx.toAy);
-            toIdx = await this.dbState.get(toAcc);
-        }
+        if (tx.toAx == 0 && tx.toAy == 0) toIdx = 0;
+        else toIdx = await this.dbState.get(hashToIdx);
 
         if (toIdx === undefined)
-            throw new Error("trying to send to a wrong account");
-   
+            throw new Error("trying to send to a non existing account");
+
         this._addIdx(tx, fromIdx, toIdx);
-   
+
+        // Round values
         const amountF = utils.fix2float(tx.amount || 0);
         const amount = utils.float2fix(amountF);
 
@@ -272,7 +269,6 @@ module.exports = class BatchBuilder {
             await this.dbState.multiIns([
                 [keyIdx, tx.fromIdx],
             ]);
-            
             // Database AxAy
             const keyAxAy = Constants.DB_AxAy.add(this.input.fromAx[i]).add(this.input.fromAy[i]);
             const lastAxAyStates = await this.dbState.get(keyAxAy);
@@ -603,7 +599,7 @@ module.exports = class BatchBuilder {
         }  
     }
 
-    _addIdx(tx, from, to){
+    _addIdx(tx, from, to){  
         // From
         if (!from) tx.fromIdx = this.finalIdx + 1;
         else tx.fromIdx = from;
@@ -808,7 +804,6 @@ module.exports = class BatchBuilder {
         }
         return res;
     }
-    
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
@@ -833,8 +828,8 @@ module.exports = class BatchBuilder {
     }
 
     getOffChainHash() {
-        if (!this.builded) throw new Error("Batch must first be builded"); 
-
+        if (!this.builded) throw new Error("Batch must first be builded");
+        
         const headerSize = Math.ceil(this.maxNTx/8);
         const txSize = (this.nLevels/8)*2+2;
         const data = this.getDataAvailable();

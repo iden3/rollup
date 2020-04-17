@@ -37,23 +37,55 @@ async function initBlock(rollupDB) {
     const account1 = new RollupAccount(1);
     const account2 = new RollupAccount(2);
 
-    bb.addTx({ fromIdx: 1, loadAmount: eth(10), coin: 0, ax: account1.ax, ay: account1.ay,
-        ethAddress: account1.ethAddress, onChain: true });
+    bb.addTx({  
+        loadAmount: eth(10), 
+        coin: 0, 
+        fromAx: account1.ax, 
+        fromAy: account1.ay,
+        fromEthAddr: account1.ethAddress,
+        toAx: 0,
+        toAy: 0,
+        toEthAddr: 0,
+        onChain: true 
+    });
 
-    bb.addTx({ fromIdx: 2, loadAmount: dai(100), coin: 1, ax: account1.ax, ay: account1.ay,
-        ethAddress: account1.ethAddress, onChain: true });
+    bb.addTx({  
+        loadAmount: dai(100), 
+        coin: 1, 
+        fromAx: account1.ax, 
+        fromAy: account1.ay,
+        fromEthAddr: account1.ethAddress,
+        toAx: 0,
+        toAy: 0,
+        toEthAddr: 0, 
+        onChain: true 
+    });
 
-    bb.addTx({ fromIdx: 3, loadAmount: 0, coin: 0, ax: account2.ax, ay: account2.ay,
-        ethAddress: account2.ethAddress, onChain: true });
+    bb.addTx({  
+        loadAmount: 0, 
+        coin: 0, 
+        fromAx: account2.ax, 
+        fromAy: account2.ay,
+        fromEthAddr: account2.ethAddress,
+        toAx: 0,
+        toAy: 0,
+        toEthAddr: 0, 
+        onChain: true 
+    });
 
-    bb.addTx({ fromIdx: 4, loadAmount: 0, coin: 1, ax: account2.ax, ay: account2.ay,
-        ethAddress: account2.ethAddress, onChain: true });
+    bb.addTx({ 
+        loadAmount: 0, 
+        coin: 1, 
+        fromAx: account2.ax, 
+        fromAy: account2.ay,
+        fromEthAddr: account2.ethAddress,
+        toAx: 0,
+        toAy: 0,
+        toEthAddr: 0, 
+        onChain: true 
+    });
 
     await bb.build();
-    // const input = bb.getInput();
-
-    // const w = circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
-    // checkBatch(circuit, w, bb);
     await rollupDB.consolidate(bb);
 
     return [account1, account2];
@@ -68,11 +100,9 @@ describe("txPool test", function () {
         const cirDef = await compiler(path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
         // const cirDef = JSON.parse(fs.readFileSync(path.join(__dirname, "circuits", "circuit.json"), "utf8"));
         circuit = new snarkjs.Circuit(cirDef);
-        console.log("NConstrains Rollup: " + circuit.nConstraints);
     });
 
-    it("Should extract 4 tx from tx pool", async () => {
-
+    it("Should extract 4 tx from pool and check it on rollup circuit", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -83,12 +113,13 @@ describe("txPool test", function () {
         const txPool = await TxPool(rollupDB, conversion);
 
         const txs = [];
-        txs[0] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { fromIdx: 3, toIdx: 1, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { fromIdx: 4, toIdx: 2, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { fromIdx: 4, toIdx: 2, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -123,8 +154,7 @@ describe("txPool test", function () {
 
     });
 
-    it("Check purge", async () => {
-
+    it("Should check purge functionality", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -135,12 +165,12 @@ describe("txPool test", function () {
         const txPool = await TxPool(rollupDB, conversion, {executableSlots: 1, nonExecutableSlots: 1});
 
         const txs = [];
-        txs[0] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { fromIdx: 3, toIdx: 1, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { fromIdx: 4, toIdx: 2, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { fromIdx: 4, toIdx: 2, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -158,8 +188,7 @@ describe("txPool test", function () {
         assert.equal(txPool.txs.length, 2);
     });
 
-    it("Check send thousands of txs", async () => {
-
+    it("Should check send thousands of txs", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -170,12 +199,12 @@ describe("txPool test", function () {
         const txPool = await TxPool(rollupDB, conversion, {executableSlots: 1, nonExecutableSlots: 1, maxSlots: 10});
 
         const txs = [];
-        txs[0] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { fromIdx: 3, toIdx: 1, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { fromIdx: 4, toIdx: 2, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { fromIdx: 4, toIdx: 2, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -185,7 +214,6 @@ describe("txPool test", function () {
         account2.signTx(txs[5]);
 
         for (let i=0; i<100; i++) {
-            // console.log(i);
             await txPool.addTx(txs[i % txs.length ]);
         }
 
@@ -195,34 +223,38 @@ describe("txPool test", function () {
     });
 
     it("Should not add any transaction to the pool", async () => {
-
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
 
         const [account1, account2] = await initBlock(rollupDB);
+        const account3 = new RollupAccount(3);
 
         /// Block 2
         const txPool = await TxPool(rollupDB, conversion);
 
         const txs = [];
-        txs[0] = { fromIdx: 5, toIdx: 3, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // from: unexistent leaf
-        txs[1] = { fromIdx: 1, toIdx: 5, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // to: unexistent leaf
-        txs[2] = { fromIdx: 2, toIdx: 4, coin: 3, amount: dai(4), nonce: 0, userFee: cdai(1)}; // coin don't match YES???
-        txs[3] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(1000), nonce: 0, userFee: cdai(1)}; // insufficient funds
-        txs[4] = { fromIdx: 2, toIdx: 4, coin: 1, amount: dai(2), nonce: 10, userFee: cdai(3)}; // incorrect nonce 
-        txs[5] = { fromIdx: 1, toIdx: 3, coin: 0, amount: dai(5), nonce: 0, userFee: eth(40)}; // no fee errror ¡
-        txs[6] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20), onChain : true}; // onChain should be false
-        txs[7] = { fromIdx: 1, toIdx: 3, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(30)}; // incorrect signature
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // from: unexistent leaf
+        txs[1] = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // to: unexistent leaf
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 3, amount: dai(4), nonce: 0, userFee: cdai(1)}; // coin does not match
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(1000), nonce: 0, userFee: cdai(1)}; // insufficient funds
+        txs[4] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 10, userFee: cdai(3)}; // invalid nonce 
+        txs[5] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: dai(5), nonce: 0, userFee: eth(40)}; // insufficient fee funds
+        txs[6] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20), onChain : true}; // onChain should be false
+        txs[7] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(30)}; // invalid signature
 
-        account1.signTx(txs[0]);
+        account3.signTx(txs[0]);
         account1.signTx(txs[1]);
         account1.signTx(txs[2]);
         account1.signTx(txs[3]);
         account1.signTx(txs[4]);
         account1.signTx(txs[5]);
         account1.signTx(txs[6]);
-        account2.signTx(txs[7]);
+        account1.signTx(txs[7]);
+        
+        txs[7].fromAx = account2.ax; // invalid signature Ax
+        txs[7].fromAy = account2.ay; // invalid signature Ay
+
 
         for (let i=0; i<txs.length; i++) {
             await txPool.addTx(txs[i]);
@@ -238,12 +270,12 @@ describe("txPool test", function () {
         assert.deepEqual(calcSlots, expectedSlots);
     });
 
-    it("Should send thousand valid transactions", async () => {
+    it("Should process maximum valid transactions", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
 
-        const [account1] = await initBlock(rollupDB);
+        const [account1, account2] = await initBlock(rollupDB);
         /// Batch
         const cfg = {
             maxSlots : 512,
@@ -258,8 +290,9 @@ describe("txPool test", function () {
 
         for (let i = 0; i < 256; i++) {
             let tx = {
-                fromIdx: 1,
-                toIdx: 3,
+                toAx: account2.ax,
+                toAy: account2.ay,
+                toEthAddr: account2.ethAddress,
                 coin: 0,
                 amount: 1,
                 nonce: i,
