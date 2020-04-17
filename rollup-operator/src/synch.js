@@ -5,7 +5,7 @@ const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
-const { float2fix } = require("../../js/utils");
+const { float2fix, decodeDepositOffChain } = require("../../js/utils");
 const { timeout, purgeArray } = require("../src/utils");
 const Constants = require("./constants");
 
@@ -13,9 +13,11 @@ const Constants = require("./constants");
 //            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
 
-const offChainHashInput = 3;
-const feePlanCoinsInput = 6;
-const feePlanFeesInput = 7;
+const initialIdxInput = 6;
+const finalIdxInput = 0;
+const offChainHashInput = 4;
+const feePlanCoinsInput = 8;
+const feePlanFeesInput = 9;
 
 // db keys
 const batchStateKey = "batch-state";
@@ -576,6 +578,8 @@ class Synchronizer {
         const batch = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event);
+            
+            // Add off-chain tx
             await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
             await this._setUserFee(offChainTxs.txs);
             for (const tx of offChainTxs.txs) {
@@ -584,8 +588,12 @@ class Synchronizer {
                     if (bigInt(tx.toIdx) === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) {
                         await this._addExitEntry(tx, batch.batchNumber);
                     }
-                }
-                        
+                }      
+            }
+            
+            // Add deposits off-chain
+            for (const tx of offChainTxs.depositsOffChainData) {
+                batch.addTx(tx);
             }
         }
 
@@ -648,18 +656,30 @@ class Synchronizer {
     async _getTxOffChain(event) {
         const txForge = await this.web3.eth.getTransaction(event);
         const decodedData = abiDecoder.decodeMethod(txForge.input);
-        let inputRetrieved;
+        
+        let inputsCircuit;
+        let depositsOffChain;
+
         decodedData.params.forEach(elem => {
+            if (elem.name == "compressedOnChainTx") {
+                depositsOffChain = elem.value;
+            }
+            
             if (elem.name == "input") {
-                inputRetrieved = elem.value;
+                inputsCircuit = elem.value;
             }
         });
-        const inputOffChainHash = inputRetrieved[offChainHashInput];
-        const inputFeePlanCoin = inputRetrieved[feePlanCoinsInput];
-        const inputFeePlanFee = inputRetrieved[feePlanFeesInput];
+
+        const initialIdx = inputsCircuit[initialIdxInput];
+        const finalIdx = inputsCircuit[finalIdxInput];
+        const inputOffChainHash = inputsCircuit[offChainHashInput];
+        const inputFeePlanCoin = inputsCircuit[feePlanCoinsInput];
+        const inputFeePlanFee = inputsCircuit[feePlanFeesInput];
 
         const fromBlock = txForge.blockNumber - this.blocksPerSlot;
         const toBlock = txForge.blockNumber;
+        
+        // Get off-chain transaction data
         const logs = await this.rollupPoSContract.getPastEvents("dataCommitted", {
             fromBlock: fromBlock, // previous slot
             toBlock: toBlock, // current slot
@@ -695,7 +715,16 @@ class Synchronizer {
             };
             txs.push(tx);
         }
-        return {txs, inputFeePlanCoin, inputFeePlanFee};
+
+        // Get deposit off-chain data
+        let depositOffChainData = {};
+
+        const buffDepositsOffChain = Buffer.from(depositsOffChain.slice(2), "hex");
+        depositOffChainData.tx = decodeDepositOffChain(buffDepositsOffChain); 
+        depositOffChainData.tx = initialIdx;
+        depositOffChainData.tx = finalIdx;
+
+        return {txs, inputFeePlanCoin, inputFeePlanFee, depositOffChainData};
     }
 
     /**

@@ -220,6 +220,43 @@ function encodeDepositOffchain2(depositsOffchain) {
     return buffer;
 }
 
+/**
+ * Parse encoded deposit off-chain from smart contract
+ * |Ax|Ay|EthAddress|Token| - |32 bytes|32 bytes|20 bytes|4 bytes|
+ * @param {Buffer} depositsOffchain contains all deposits off-chain data
+ * @returns {Array} deposit transactions 
+ */
+function decodeDepositOffChain(depositsOffchain) {
+    const depositBytes = 88;
+    let txs = [];
+
+    const numDeposits = depositsOffchain.length/depositBytes;
+
+    for (let i = 0; i < numDeposits; i++){
+        
+        const ax = depositsOffchain.slice(0 + i*depositBytes, 32 + depositBytes * i);
+        const ay = depositsOffchain.slice(32 + i*depositBytes, 64 + depositBytes * i);
+        const ethAddress = depositsOffchain.slice(64 + i*depositBytes,84 + depositBytes * i);
+        const token = depositsOffchain.slice(84 + i*depositBytes, 88 + depositBytes * i);
+
+        const tx = {
+            loadAmount: 0,
+            coin: bigInt.beBuff2int(token).toJSNumber(),
+            fromAx: bigInt.beBuff2int(ax).toString(16),
+            fromAy: bigInt.beBuff2int(ay).toString(16),
+            fromEthAddr: `0x${bigInt.beBuff2int(ethAddress).toString(16)}`,
+            toAx: 0,
+            toAy: 0,
+            toEthAddr: 0,
+            onChain: true
+        };
+        txs.push(tx);
+    }
+
+    return txs;
+}
+
+
 function hashIdx(coin, ax, ay){
     const h = poseidon.createHash(6, 8, 57);
     return h([coin, `0x${ax}`, `0x${ay}`]);
@@ -238,3 +275,4 @@ module.exports.signRollupTx = signRollupTx;
 module.exports.verifyTxSig = verifyTxSig;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
 module.exports.hashIdx = hashIdx; 
+module.exports.decodeDepositOffChain = decodeDepositOffChain;
