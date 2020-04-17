@@ -117,7 +117,7 @@ contract("Rollup - RollupPoS", (accounts) => {
     });
 
     it("Forge batches by operator PoS", async () => {
-        const offChainHashInput = 3;
+        const offChainHashInput = 4;
 
         const proofA = ["0", "0"];
         const proofB = [["0", "0"], ["0", "0"]];
