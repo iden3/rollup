@@ -146,19 +146,19 @@ template DecodeTx(nLevels) {
 
 // onChainHash
 /////
-    component dataOnChain = Poseidon(6, 6, 8, 57);
-    dataOnChain.inputs[0] <== fromEthAddr;
-    dataOnChain.inputs[1] <== fromAx;
-    dataOnChain.inputs[2] <== fromAy;
-    dataOnChain.inputs[3] <== toEthAddr;
-    dataOnChain.inputs[4] <== toAx;
-    dataOnChain.inputs[5] <== toAy;
+    component dataOnChain = Poseidon(5, 6, 8, 57);
+    dataOnChain.inputs[0] <== fromAx;
+    dataOnChain.inputs[1] <== fromAy;
+    dataOnChain.inputs[2] <== toEthAddr;
+    dataOnChain.inputs[3] <== toAx;
+    dataOnChain.inputs[4] <== toAy;
 
-    component onChainHasher = Poseidon(4, 6, 8, 57);
+    component onChainHasher = Poseidon(5, 6, 8, 57);
     onChainHasher.inputs[0] <== oldOnChainHash;
     onChainHasher.inputs[1] <== txData;
     onChainHasher.inputs[2] <== loadAmount;
     onChainHasher.inputs[3] <== dataOnChain.out;
+    onChainHasher.inputs[4] <== fromEthAddr;
     // IMPORTANT NOTE FOR SECURITY AUDITORS:
     // Poseidon paper says that one of the pieces of the state must be keep fixed to keep the security.
     // The asumption that I'm doing here is that ay depends on ax of just one bit. and the eth address hase 253-140 =123 bits set to 0, so it is more than an element.
