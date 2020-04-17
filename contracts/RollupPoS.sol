@@ -8,7 +8,7 @@ contract RollupPoS is RollupPoSHelpers{
     RollupInterface rollupInterface;
 
     // Input snark definition
-    uint256 constant offChainHashInput = 3;
+    uint256 constant offChainHashInput = 4;
 
     // Maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
