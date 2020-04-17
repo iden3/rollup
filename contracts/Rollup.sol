@@ -83,16 +83,16 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 public NLevels = 24;
 
     // Input snark definition
-    uint256 constant newStateRootInput = 0;
-    uint256 constant newExitRootInput = 1;
-    uint256 constant onChainHashInput = 2;
-    uint256 constant offChainHashInput = 3;
-    uint256 constant nTxperTokenInput = 4;
-    uint256 constant oldStateRootInput = 5;
-    uint256 constant feePlanCoinsInput = 6;
-    uint256 constant feePlanFeesInput = 7;
-    uint256 constant initialIdx = 8;
-    uint256 constant finalIdx = 9;
+    uint256 constant finalIdx = 0;
+    uint256 constant newStateRootInput = 1;
+    uint256 constant newExitRootInput = 2;
+    uint256 constant onChainHashInput = 3;
+    uint256 constant offChainHashInput = 4;
+    uint256 constant nTxperTokenInput = 5;
+    uint256 constant initialIdx = 6;
+    uint256 constant oldStateRootInput = 7;
+    uint256 constant feePlanCoinsInput = 8;
+    uint256 constant feePlanFeesInput = 9;
 
     /**
      * @dev Event called when any on-chain transaction has benn done
