@@ -710,6 +710,7 @@ contract("Rollup", (accounts) => {
     });
 
     it("Should forge deposit off-chain", async () => {
+        // TODO: Comment does to belong to this test
         // Steps:
         // - Transaction from 'id3' to '0' --> forcewithdraw offchain
         // - Update rollupTree

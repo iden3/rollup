@@ -1,6 +1,7 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
+/* global BigInt */
 
 const chai = require("chai");
 const { expect } = chai;
@@ -14,6 +15,7 @@ const RollupTest = artifacts.require("../contracts/test/RollupTest");
 const Synchronizer = require("../src/synch");
 const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
+const utilsJs = require("../../js/utils");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const { timeout, buildPublicInputsSm, manageEvent } = require("../src/utils");
@@ -34,14 +36,21 @@ contract("Synchronizer - light mode", (accounts) => {
     
     async function forgeBlock(events = undefined, params = undefined) {
         const batch = await opRollupDb.buildBatch(maxTx, nLevels);
+        let compressedOnChain = "0x";
+        
         // Parse params
         if (params){
-            if(params.addCoins){
+            if (params.addCoins){
                 for(const element of params.addCoins){
                     await batch.addCoin(element.coin, element.fee);
                 }
             }
+
+            if (params.depositOnChainData){
+                compressedOnChain = params.depositOnChainData;                
+            }
         }
+        
         // Manage events
         if (events) {
             events.forEach(elem => {
@@ -52,7 +61,7 @@ contract("Synchronizer - light mode", (accounts) => {
         const inputSm = buildPublicInputsSm(batch, beneficiary);
         ptr = ptr - 1;
         await insRollupPoS.commitAndForge(hashChain[ptr] , `0x${batch.getDataAvailable().toString("hex")}`,
-            proofA, proofB, proofC, inputSm, {from: op1});
+            proofA, proofB, proofC, inputSm, compressedOnChain, {from: op1});
         await opRollupDb.consolidate(batch);
     }
 
@@ -112,11 +121,16 @@ contract("Synchronizer - light mode", (accounts) => {
         timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000},
     }; 
 
-    // BabyJubjub public key
-    const mnemonic = "urban add pulse prefer exist recycle verb angle sell year more mosquito";
-    const wallet = BabyJubWallet.fromMnemonic(mnemonic);
-    const Ax = wallet.publicKey[0].toString();
-    const Ay = wallet.publicKey[1].toString();
+    // BabyJubjub public keys
+    const rollupAccounts = [];
+
+    for (let i = 0 ; i < 3; i++){
+        const wallet = BabyJubWallet.createRandom();
+        const Ax = wallet.publicKey[0].toString();
+        const Ay = wallet.publicKey[1].toString();
+        
+        rollupAccounts.push({Ax, Ay});
+    }
 
     before(async () => {
         // Deploy poseidon
@@ -209,7 +223,7 @@ contract("Synchronizer - light mode", (accounts) => {
     it("Should add one deposit", async () => {
         const loadAmount = 10;
         const event0 = await insRollupTest.deposit(loadAmount, tokenId, id1,
-            [Ax, Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
+            [rollupAccounts[0].Ax, rollupAccounts[0].Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
         eventsInitial.push(event0.logs[0]);
     });
 
@@ -237,10 +251,10 @@ contract("Synchronizer - light mode", (accounts) => {
         const loadAmount = 10;
         const events = [];
         const event0 = await insRollupTest.deposit(loadAmount, tokenId, id2,
-            [Ax, Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
+            [rollupAccounts[1].Ax, rollupAccounts[1].Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
         events.push(event0.logs[0]);
         const event1 = await insRollupTest.deposit(loadAmount, tokenId, id3,
-            [Ax, Ay], { from: id3, value: web3.utils.toWei("1", "ether") });
+            [rollupAccounts[2].Ax, rollupAccounts[2].Ay], { from: id3, value: web3.utils.toWei("1", "ether") });
         events.push(event1.logs[0]);
         await forgeBlock();
         await forgeBlock(events);
@@ -248,49 +262,55 @@ contract("Synchronizer - light mode", (accounts) => {
         await utilsTest.checkSynch(synch, opRollupDb);
     });
 
-    it("Should retrieve balance tree information", async () => {
-        const axStr = wallet.publicKey[0].toString("16");
-        const ayStr = wallet.publicKey[1].toString("16");
-        // get info by Id
-        const resId = await synch.getStateById(1);
-        // check leaf info matches deposit
-        expect(resId.ax).to.be.equal(axStr);
-        expect(resId.ay).to.be.equal(ayStr);
-        expect(resId.ethAddress).to.be.equal(id1.toString().toLowerCase());
+    // it("Should retrieve balance tree information", async () => {
+    //     const axStr = wallet.publicKey[0].toString("16");
+    //     const ayStr = wallet.publicKey[1].toString("16");
+    //     // get info by Id
+    //     const resId = await synch.getStateById(1);
+    //     // check leaf info matches deposit
+    //     expect(resId.ax).to.be.equal(axStr);
+    //     expect(resId.ay).to.be.equal(ayStr);
+    //     expect(resId.ethAddress).to.be.equal(id1.toString().toLowerCase());
 
-        // get leafs info by AxAy
-        const resAxAy = await synch.getStateByAxAy(axStr, ayStr);
-        // check leaf info matches deposits
-        expect(resAxAy.length).to.be.equal(3); // 3 deposits with equal Ax, Ay
-        expect(resAxAy[0].ethAddress).to.be.equal(id1.toString().toLowerCase());
-        expect(resAxAy[1].ethAddress).to.be.equal(id2.toString().toLowerCase());
-        expect(resAxAy[2].ethAddress).to.be.equal(id3.toString().toLowerCase());
+    //     // get leafs info by AxAy
+    //     const resAxAy = await synch.getStateByAxAy(axStr, ayStr);
+    //     // check leaf info matches deposits
+    //     expect(resAxAy.length).to.be.equal(3); // 3 deposits with equal Ax, Ay
+    //     expect(resAxAy[0].ethAddress).to.be.equal(id1.toString().toLowerCase());
+    //     expect(resAxAy[1].ethAddress).to.be.equal(id2.toString().toLowerCase());
+    //     expect(resAxAy[2].ethAddress).to.be.equal(id3.toString().toLowerCase());
 
-        // get leaf info by ethAddress
-        const resEthAddress = await synch.getStateByEthAddr(id1.toString());
-        // check leaf info matches deposit
-        expect(resEthAddress[0].ax).to.be.equal(axStr);
-        expect(resEthAddress[0].ay).to.be.equal(ayStr);
+    //     // get leaf info by ethAddress
+    //     const resEthAddress = await synch.getStateByEthAddr(id1.toString());
+    //     // check leaf info matches deposit
+    //     expect(resEthAddress[0].ax).to.be.equal(axStr);
+    //     expect(resEthAddress[0].ay).to.be.equal(ayStr);
 
-        // get leaf info by ethAddress
-        const resEthAddress2 = await synch.getStateByEthAddr(id2.toString());
-        // check leaf info matches deposit
-        expect(resEthAddress2[0].ax).to.be.equal(axStr);
-        expect(resEthAddress2[0].ay).to.be.equal(ayStr);
+    //     // get leaf info by ethAddress
+    //     const resEthAddress2 = await synch.getStateByEthAddr(id2.toString());
+    //     // check leaf info matches deposit
+    //     expect(resEthAddress2[0].ax).to.be.equal(axStr);
+    //     expect(resEthAddress2[0].ay).to.be.equal(ayStr);
 
-        // get leaf info by ethAddress
-        const resEthAddress3 = await synch.getStateByEthAddr(id3.toString());
-        // check leaf info matches deposit
-        expect(resEthAddress3[0].ax).to.be.equal(axStr);
-        expect(resEthAddress3[0].ay).to.be.equal(ayStr);
-    });
+    //     // get leaf info by ethAddress
+    //     const resEthAddress3 = await synch.getStateByEthAddr(id3.toString());
+    //     // check leaf info matches deposit
+    //     expect(resEthAddress3[0].ax).to.be.equal(axStr);
+    //     expect(resEthAddress3[0].ay).to.be.equal(ayStr);
+    // });
 
     it("Should add off-chain tx and synch", async () => {
         const events = [];
         const tx = {
-            fromIdx: 1,
-            toIdx: 2,
-            amount: 3,
+            fromAx: BigInt(rollupAccounts[0].Ax).toString(16),
+            fromAy: BigInt(rollupAccounts[0].Ay).toString(16),
+            fromEthAddr: id1,
+            toAx: BigInt(rollupAccounts[1].Ax).toString(16),
+            toAy: BigInt(rollupAccounts[1].Ay).toString(16),
+            toEthAddr: id2,
+            coin: 0,
+            amount: 5,
+            nonce: 0,
         };
         events.push({event:"OffChainTx", tx: tx});
         await forgeBlock(events);
@@ -317,4 +337,17 @@ contract("Synchronizer - light mode", (accounts) => {
         // Check exit tree for all bacthes
         expect(arrayExists2.length).to.be.equal(0);
     });
+
+    // it("Should add off-chain deposit and synch", async () => {
+    //     const tx = {
+    //         fromAx: wallets[6].publicKey[0].toString(16),
+    //         fromAy:  wallets[6].publicKey[1].toString(16),
+    //         fromEthAddr: id1,
+    //         toAx: 0,
+    //         toAy: 0,
+    //         toEthAddr: 0,
+    //         coin: 0,
+    //         onChain: true
+    //     };
+    // });
 });

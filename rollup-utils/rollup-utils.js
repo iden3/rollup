@@ -145,15 +145,13 @@ function decodeTxData(txDataEncodedHex) {
     const txDataBi = BigInt(txDataEncodedHex);
     let txData = {};
 
-    txData.fromId = txDataBi.and(BigInt(1).shl(64).sub(BigInt(1)));
-    txData.toId = txDataBi.shr(64).and(BigInt(1).shl(64).sub(BigInt(1)));
-    txData.amount = float2fix(txDataBi.shr(128).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
-    txData.tokenId = txDataBi.shr(144).and(BigInt(1).shl(32).sub(BigInt(1)));
-    txData.nonce = txDataBi.shr(176).and(BigInt(1).shl(48).sub(BigInt(1)));
-    txData.maxFee = float2fix(txDataBi.shr(224).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
-    txData.rqOffset = txDataBi.shr(240).and(BigInt(1).shl(3).sub(BigInt(1)));
-    txData.onChain = txDataBi.shr(243).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
-    txData.newAccount = txDataBi.shr(244).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
+    txData.amount = float2fix(txDataBi.shr(64).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
+    txData.tokenId = txDataBi.shr(80).and(BigInt(1).shl(32).sub(BigInt(1)));
+    txData.nonce = txDataBi.shr(112).and(BigInt(1).shl(48).sub(BigInt(1)));
+    txData.maxFee = float2fix(txDataBi.shr(160).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
+    txData.rqOffset = txDataBi.shr(176).and(BigInt(1).shl(3).sub(BigInt(1)));
+    txData.onChain = txDataBi.shr(179).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
+    txData.newAccount = txDataBi.shr(180).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
 
     return txData;
 }

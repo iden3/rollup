@@ -463,6 +463,8 @@ class Synchronizer {
                 await this._purgeEvents(nextBatchSynched + numBatchesToSynch.length - 1);
             return true;
         } catch (error) {
+            console.log(error.message);
+            console.log(error.stack);
             this._logError(`error updating batch number: ${nextBatchSynched}`);
             this._logError("Events are not saved. Retry in the next synchronization loop");
             return false;
@@ -562,9 +564,12 @@ class Synchronizer {
             batchNumber: onChainData.batchNumber,
             txData: onChainData.txData,
             loadAmount: onChainData.loadAmount,
-            ethAddress: onChainData.ethAddress,
-            Ax: onChainData.Ax,
-            Ay: onChainData.Ay
+            fromEthAddr: onChainData.fromEthAddress,
+            fromAx: onChainData.fromAx,
+            fromAy: onChainData.fromAy,
+            toEthAddr: onChainData.toEthAddress,
+            toAx: onChainData.toAx,
+            toAy: onChainData.toAy,
         };
     }
 
@@ -592,7 +597,7 @@ class Synchronizer {
             }
             
             // Add deposits off-chain
-            for (const tx of offChainTxs.depositsOffChainData) {
+            for (const tx of offChainTxs.depositsOffChainData.txs) {
                 batch.addTx(tx);
             }
         }
@@ -635,14 +640,15 @@ class Synchronizer {
     async _getTxOnChain(event) {
         const txData = rollupUtils.decodeTxData(event.txData);
         return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
             amount: txData.amount,
             loadAmount: bigInt(event.loadAmount),
             coin: txData.tokenId,
-            ax: bigInt(event.Ax).toString(16),
-            ay: bigInt(event.Ay).toString(16),
-            ethAddress: event.ethAddress,
+            fromAx: bigInt(event.fromAx).toString(16),
+            fromAy: bigInt(event.fromAy).toString(16),
+            fromEthAddr: event.fromEthAddr,
+            toAx: bigInt(event.toAx).toString(16),
+            toAy: bigInt(event.toAy).toString(16),
+            toEthAddr: event.toEthAddr,
             onChain: true,
             newAccount: txData.newAccount,
         };
@@ -656,12 +662,12 @@ class Synchronizer {
     async _getTxOffChain(event) {
         const txForge = await this.web3.eth.getTransaction(event);
         const decodedData = abiDecoder.decodeMethod(txForge.input);
-        
+
         let inputsCircuit;
-        let depositsOffChain;
+        let depositsOffChain = "0x";
 
         decodedData.params.forEach(elem => {
-            if (elem.name == "compressedOnChainTx") {
+            if (elem.name == "compressedOnChainTx" && elem.value != null) {
                 depositsOffChain = elem.value;
             }
             
@@ -717,14 +723,14 @@ class Synchronizer {
         }
 
         // Get deposit off-chain data
-        let depositOffChainData = {};
+        let depositsOffChainData = {};
 
         const buffDepositsOffChain = Buffer.from(depositsOffChain.slice(2), "hex");
-        depositOffChainData.tx = decodeDepositOffChain(buffDepositsOffChain); 
-        depositOffChainData.tx = initialIdx;
-        depositOffChainData.tx = finalIdx;
+        depositsOffChainData.txs = decodeDepositOffChain(buffDepositsOffChain); 
+        depositsOffChainData.initialIdx = initialIdx;
+        depositsOffChainData.finalIdx = finalIdx;
 
-        return {txs, inputFeePlanCoin, inputFeePlanFee, depositOffChainData};
+        return {txs, inputFeePlanCoin, inputFeePlanFee, depositsOffChainData};
     }
 
     /**

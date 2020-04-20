@@ -63,7 +63,9 @@ function manageEvent(event) {
             toEthAddr: BigInt(event.args.toEthAddress).toString(),
             onChain: txData.onChain
         };
-    } else if (event.event == "OffChainTx") { //does not exxist right know
+    } else if (event.event == "OffChainTx") {
+        return event.tx;
+    } else if (event.event == "DepositOffChainTx") {
         return event.tx;
     }
 }
