@@ -1,17 +1,14 @@
-const chai = require("chai");
-const path = require("path");
-const tester = require("circom").tester;
-const bigInt = require("big-integer");
+const { assert } = require("chai");
+const Scalar = require("ffjavascript").Scalar;
 const SMTMemDB = require("circomlib").SMTMemDB;
-const RollupAccount = require("../js/rollupaccount");
-const RollupDB = require("../js/rollupdb");
-const checkBatch = require("./helpers/checkbatch");
-const TxPool = require("../js/txpool");
 
-const assert = chai.assert;
+const RollupAccount = require("../../js/rollupaccount");
+const RollupDB = require("../../js/rollupdb");
+const TxPool = require("../../js/txpool");
+const Constants = require("../../js/constants");
 
 const conversion = {
-    0: {   // Coin 1
+    0: {   
         token: "ETH",
         price: 210.21,
         decimals: 18
@@ -23,10 +20,10 @@ const conversion = {
     }
 };
 
-const eth = (e) => bigInt(e).times(bigInt(10).pow(bigInt(18)));
-const gwei = (e) => bigInt(e).times(bigInt(10).pow(bigInt(9)));
-const dai = (e) => bigInt(e).times(bigInt(10).pow(bigInt(18)));
-const cdai = (e) => bigInt(e).times(bigInt(10).pow(bigInt(16)));
+const eth = (e) => Scalar.mul(e, Scalar.pow(10, 18));
+const gwei = (e) => Scalar.mul(e, Scalar.pow(10, 9));
+const dai = (e) => Scalar.mul(e, Scalar.pow(10, 18));
+const cdai = (e) => Scalar.mul(e, Scalar.pow(10, 16));
 
 
 async function initBlock(rollupDB) {
@@ -42,9 +39,9 @@ async function initBlock(rollupDB) {
         fromAx: account1.ax, 
         fromAy: account1.ay,
         fromEthAddr: account1.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0,
+        toAx: Constants.exitAx,
+        toAy: Constants.exitAy,
+        toEthAddr: Constants.exitEthAddr,
         onChain: true 
     });
 
@@ -54,9 +51,9 @@ async function initBlock(rollupDB) {
         fromAx: account1.ax, 
         fromAy: account1.ay,
         fromEthAddr: account1.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0, 
+        toAx: Constants.exitAx,
+        toAy: Constants.exitAy,
+        toEthAddr: Constants.exitEthAddr, 
         onChain: true 
     });
 
@@ -66,9 +63,9 @@ async function initBlock(rollupDB) {
         fromAx: account2.ax, 
         fromAy: account2.ay,
         fromEthAddr: account2.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0, 
+        toAx: Constants.exitAx,
+        toAy: Constants.exitAy,
+        toEthAddr: Constants.exitEthAddr, 
         onChain: true 
     });
 
@@ -78,9 +75,9 @@ async function initBlock(rollupDB) {
         fromAx: account2.ax, 
         fromAy: account2.ay,
         fromEthAddr: account2.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0, 
+        toAx: Constants.exitAx,
+        toAy: Constants.exitAy,
+        toEthAddr: Constants.exitEthAddr, 
         onChain: true 
     });
 
@@ -90,21 +87,11 @@ async function initBlock(rollupDB) {
     return [account1, account2];
 }
 
-describe("txPool test", function () {
-    let circuit;
+describe("Rollup circuit - tx pool integration", function () {
 
-    this.timeout(0);
+    this.timeout(150000);
 
-    before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
-
-        // const testerAux = require("circom").testerAux;
-        // const pathTmp = "/tmp/circom_11728nWkeunFG3svf";
-
-        // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
-    });
-
-    it("Should extract 4 tx from pool and check it on rollup circuit", async () => {
+    it("Should extract 4 tx from pool and process it on rollup circuit", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -122,7 +109,6 @@ describe("txPool test", function () {
         txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
         txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
 
-
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
         account1.signTx(txs[2]);
@@ -134,21 +120,16 @@ describe("txPool test", function () {
             await txPool.addTx(txs[i]);
         }
 
-        const bb2 = await rollupDB.buildBatch(4, 8);
+        const bb = await rollupDB.buildBatch(4, 8);
 
-        await txPool.fillBatch(bb2);
+        await txPool.fillBatch(bb);
 
-        const calcSlots = bb2.offChainTxs.map((tx) => tx.slot);
+        const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
         const expectedSlots = [2,5,0,1];
 
         assert.deepEqual(calcSlots, expectedSlots);
 
-        const input2 = bb2.getInput();
-
-        // const w2 = await circuit.calculateWitness(input2, {logTrigger:false, logOutput: false, logSet: false});
-        // await checkBatch(circuit, w2, bb2);
-
-        await rollupDB.consolidate(bb2);
+        await rollupDB.consolidate(bb);
 
         await txPool.purge();
 
@@ -189,7 +170,7 @@ describe("txPool test", function () {
         assert.equal(txPool.txs.length, 2);
     });
 
-    it("Should check send thousands of txs", async () => {
+    it("Should check send hundreds of txs", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);

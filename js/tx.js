@@ -1,43 +1,45 @@
-const utils = require("./utils");
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
+
+const utils = require("./utils");
 
 class RollupTx {
 
     constructor(tx){
-        this.loadAmount = bigInt(tx.loadAmount || 0);this.fromIdx = bigInt(tx.fromIdx || 0);
-        this.toIdx = bigInt(tx.toIdx || 0);
-        this.loadAmount = bigInt(tx.loadAmount || 0);
-        this.amount = bigInt(tx.amount || 0);
-        this.coin = bigInt(tx.coin || 0);
-        this.nonce = bigInt(tx.nonce || 0);
-        this.userFee = bigInt(tx.userFee || 0);
-        this.rqOffset = bigInt(tx.rqOffset || 0);
-        this.onChain = bigInt(tx.onChain ? 1 : 0);
-        this.newAccount = bigInt(tx.newAccount ? 1 : 0);
-        this.rqTxData = bigInt(tx.rqTxData || 0);
+        this.loadAmount = Scalar.e(tx.loadAmount || 0);
+        this.fromIdx = Scalar.e(tx.fromIdx || 0);
+        this.toIdx = Scalar.e(tx.toIdx || 0);
+        this.loadAmount = Scalar.e(tx.loadAmount || 0);
+        this.amount = Scalar.e(tx.amount || 0);
+        this.coin = Scalar.e(tx.coin || 0);
+        this.nonce = Scalar.e(tx.nonce || 0);
+        this.userFee = Scalar.e(tx.userFee || 0);
+        this.rqOffset = Scalar.e(tx.rqOffset || 0);
+        this.onChain = Scalar.e(tx.onChain ? 1 : 0);
+        this.newAccount = Scalar.e(tx.newAccount ? 1 : 0);
+        this.rqTxData = Scalar.e(tx.rqTxData || 0);
 
         // parse toAccount
-        if (typeof tx.toAx === "string") this.toAx = bigInt(tx.toAx, 16);
-        else this.toAx = bigInt(tx.toAx || 0);
+        if (typeof tx.toAx === "string") this.toAx = Scalar.fromString(tx.toAx, 16);
+        else this.toAx = Scalar.e(tx.toAx || 0);
 
-        if (typeof tx.toAy === "string") this.toAy = bigInt(tx.toAy, 16);
-        else this.toAy = bigInt(tx.toAy || 0);
+        if (typeof tx.toAy === "string") this.toAy = Scalar.fromString(tx.toAy, 16);
+        else this.toAy = Scalar.e(tx.toAy || 0);
 
-        if (typeof tx.toEthAddr === "string") this.toEthAddr = bigInt(tx.toEthAddr.slice(2), 16);
-        else this.toEthAddr = bigInt(tx.toEthAddr || 0);
+        if (typeof tx.toEthAddr === "string") this.toEthAddr = Scalar.fromString(tx.toEthAddr, 16);
+        else this.toEthAddr = Scalar.e(tx.toEthAddr || 0);
 
         // on-chain
-        this.loadAmount = bigInt(tx.loadAmount || 0);
+        this.loadAmount = Scalar.e(tx.loadAmount || 0);
         // parse fromAccount
-        if (typeof tx.fromAx === "string") this.fromAx = bigInt(tx.fromAx, 16);
-        else this.fromAx = bigInt(tx.fromAx || 0);
+        if (typeof tx.fromAx === "string") this.fromAx = Scalar.fromString(tx.fromAx, 16);
+        else this.fromAx = Scalar.e(tx.fromAx || 0);
 
-        if (typeof tx.fromAy === "string") this.fromAy = bigInt(tx.fromAy, 16);
-        else this.fromAy = bigInt(tx.fromAy || 0);
+        if (typeof tx.fromAy === "string") this.fromAy = Scalar.fromString(tx.fromAy, 16);
+        else this.fromAy = Scalar.e(tx.fromAy || 0);
 
-        if (typeof tx.fromEthAddr === "string") this.fromEthAddr = bigInt(tx.fromEthAddr.slice(2), 16);
-        else this.fromEthAddr = bigInt(tx.fromEthAddr || 0);
+        if (typeof tx.fromEthAddr === "string") this.fromEthAddr = Scalar.fromString(tx.fromEthAddr, 16);
+        else this.fromEthAddr = Scalar.e(tx.fromEthAddr || 0);
 
         this._roundValues();
     }
@@ -48,22 +50,22 @@ class RollupTx {
         const userFeeF = utils.fix2float(this.userFee);
         this.userFee = utils.float2fix(userFeeF);
 
-        this.amountF = bigInt(amountF);
-        this.userFeeF = bigInt(userFeeF);
+        this.amountF = Scalar.e(amountF);
+        this.userFeeF = Scalar.e(userFeeF);
     }
 
     getTxData() {
-        const IDEN3_ROLLUP_TX = bigInt("4839017969649077913");
-        let res = bigInt(0);
+        const IDEN3_ROLLUP_TX = Scalar.e("4839017969649077913");
+        let res = Scalar.e(0);
     
-        res = res.add(IDEN3_ROLLUP_TX);
-        res = res.add( this.amountF.shiftLeft(64) );
-        res = res.add( this.coin.shiftLeft(80) );
-        res = res.add( this.nonce.shiftLeft(112) );
-        res = res.add( this.userFeeF.shiftLeft(160) );
-        res = res.add( this.rqOffset.shiftLeft(176) );
-        res = res.add( this.onChain.shiftLeft(179) );
-        res = res.add( this.newAccount.shiftLeft(180) );
+        res = Scalar.add(res, IDEN3_ROLLUP_TX);
+        res = Scalar.add(res, Scalar.shl(this.amountF, 64));
+        res = Scalar.add(res, Scalar.shl(this.coin, 80));
+        res = Scalar.add(res, Scalar.shl(this.nonce, 112));
+        res = Scalar.add(res, Scalar.shl(this.userFeeF, 160));
+        res = Scalar.add(res, Scalar.shl(this.rqOffset, 176));
+        res = Scalar.add(res, Scalar.shl(this.onChain, 179));
+        res = Scalar.add(res, Scalar.shl(this.newAccount, 180));
     
         return res;
     }
@@ -88,14 +90,14 @@ class RollupTx {
         this.s = signature.S;
 
         if (typeof fromAx === "string")
-            this.fromAx = bigInt(fromAx, 16);
+            this.fromAx = Scalar.fromString(fromAx, 16);
         else
-            this.fromAx = bigInt(fromAx || 0);
+            this.fromAx = Scalar.e(fromAx || 0);
 
         if (typeof fromAy === "string")
-            this.fromAy = bigInt(fromAy, 16);
+            this.fromAy = Scalar.fromString(fromAy, 16);
         else
-            this.fromAy = bigInt(fromAy || 0);
+            this.fromAy = Scalar.e(fromAy || 0);
     }
 
     getOnChainHash(oldOnChainHash){
@@ -111,7 +113,7 @@ class RollupTx {
         ]);
 
         const h = hash([
-            bigInt(oldOnChainHash || 0),
+            Scalar.e(oldOnChainHash || 0),
             txData,
             this.loadAmount,
             dataOnChain,

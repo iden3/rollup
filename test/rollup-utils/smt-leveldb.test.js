@@ -1,11 +1,10 @@
-/* global BigInt */
-const chai = require("chai");
+const { expect } = require("chai");
 const util = require("util");
 const exec = util.promisify( require("child_process").exec);
 const SMT = require("circomlib").SMT;
-const { SMTLevelDb } = require("../../rollup-utils/smt-leveldb");
+const Scalar = require("ffjavascript").Scalar;
 
-const { expect } = chai;
+const { SMTLevelDb } = require("../../rollup-utils/smt-leveldb");
 
 describe("Smt level Db", () => {
     const pathDb = `${__dirname}/tmp-smt`;
@@ -20,15 +19,15 @@ describe("Smt level Db", () => {
         const rt = await db.getRoot();
         smt = new SMT(db, rt);
 
-        expect(smt.root.isZero()).to.be.equal(true);
+        expect(Scalar.isZero(smt.root)).to.be.equal(true);
     });
 
     it("test all smt functions", async () => {
-        const key1 = BigInt(111);
-        const value1 = BigInt(222);
-        const key2 = BigInt(333);
-        const value2 = BigInt(444);
-        const value3 = BigInt(555);
+        const key1 = Scalar.e(111);
+        const value1 = Scalar.e(222);
+        const key2 = Scalar.e(333);
+        const value2 = Scalar.e(444);
+        const value3 = Scalar.e(555);
 
         await smt.insert(key1, value1);
         await smt.insert(key2, value2);

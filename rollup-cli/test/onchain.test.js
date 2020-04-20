@@ -56,7 +56,7 @@ function manageEvent(event) {
             toIdx: txData.toId,
             amount: txData.amount,
             loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.tokenId,
+            coin: txData.coin,
             ax: BigInt(event.args.Ax).toString(16),
             ay: BigInt(event.args.Ay).toString(16),
             ethAddress: BigInt(event.args.ethAddress).toString(),

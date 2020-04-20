@@ -7,10 +7,10 @@ const crypto = require("crypto");
 describe("Unpack Babyjubjub Ax point", function () {
     let circuit;
 
-    this.timeout(1000000);
+    this.timeout(10000);
 
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "unpackax_test.circom"), {reduceConstraints:false});
+        circuit = await tester(path.join(__dirname, "circuits-test", "unpackax_test.circom"), {reduceConstraints:false});
         await circuit.loadConstraints();
         console.log("Constraints `unpackax.circom` circuit: " + circuit.constraints.length + "\n");
     });
