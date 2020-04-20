@@ -94,6 +94,14 @@ async function getPublicPoSVariables(insRollupPoS) {
     return [slotPerEra, blocksPerSlot, blockPerEra, amountToStake, genesisBlock, deadlineBlocks];
 }
 
+async function getPublicPoBVariables(insRollupPoB) {
+    const blocksPerSlot = await insRollupPoB.BLOCKS_PER_SLOT();
+    const amountMinBid = await insRollupPoB.MIN_BID();
+    const genesisBlock = await insRollupPoB.genesisBlock();
+    const deadlineBlocks = Number(await insRollupPoB.SLOT_DEADLINE());
+
+    return [blocksPerSlot, amountMinBid, genesisBlock, deadlineBlocks];
+}
 
 
 function padZeroes(str, length) {
@@ -188,4 +196,5 @@ module.exports = {
     buildhashOnChain,
     hashOnChain,
     signRollupTx,
+    getPublicPoBVariables
 };
