@@ -1,7 +1,8 @@
 const winston = require("winston");
 const fs = require("fs");
-const { timeout } = require("./utils");
 const chalk = require("chalk");
+
+const { timeout } = require("./utils");
 
 /**
  * Synchronize pool file

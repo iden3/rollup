@@ -2,10 +2,11 @@ const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
 const winston = require("winston");
 const chalk = require("chalk");
-const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
 
 const rollupUtils = require("../../rollup-utils/rollup-utils");
-const { float2fix } = require("../../js/utils");
+const { float2fix, extract } = require("../../js/utils");
 const { timeout, purgeArray } = require("../src/utils");
 const Constants = require("./constants");
 
@@ -219,10 +220,10 @@ class Synchronizer {
                 }
                     
                 // Check root matches with the one saved
-                const stateRoot = bigInt(await this.rollupContract.methods.getStateRoot(stateDepth)
+                const stateRoot = Scalar.e(await this.rollupContract.methods.getStateRoot(stateDepth)
                     .call({ from: this.ethAddress }, stateSaved.blockNumber));
                     
-                const stateRootHex = `0x${bigInt(stateRoot).toString(16)}`;
+                const stateRootHex = `0x${Scalar.e(stateRoot).toString(16)}`;
 
                 if (lastBatchSaved > 0 && (stateRootHex !== stateSaved.root)) {
                     // clear database
@@ -233,10 +234,10 @@ class Synchronizer {
                 }
 
                 // Check current mining onChain hash
-                const stateMiningOnChainHash = bigInt(await this.rollupContract.methods.miningOnChainTxsHash()
+                const stateMiningOnChainHash = Scalar.e(await this.rollupContract.methods.miningOnChainTxsHash()
                     .call({ from: this.ethAddress }, stateSaved.blockNumber));
 
-                const stateMiningOnChainHashHex = `0x${bigInt(stateMiningOnChainHash).toString(16)}`;
+                const stateMiningOnChainHashHex = `0x${Scalar.e(stateMiningOnChainHash).toString(16)}`;
                 if (lastBatchSaved > 0 && (stateMiningOnChainHashHex !== stateSaved.miningOnChainHash)) {
                     // clear database
                     await this._clearRollback(lastBatchSaved);
@@ -581,7 +582,7 @@ class Synchronizer {
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
                 if (this.mode !== Constants.mode.light){
-                    if (bigInt(tx.toIdx) === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) {
+                    if (Scalar.eq(tx.toIdx, 0) && Scalar.neq(tx.amount, 0)) {
                         await this._addExitEntry(tx, batch.batchNumber);
                     }
                 }
@@ -593,7 +594,7 @@ class Synchronizer {
             const tx = await this._getTxOnChain(event);
             batch.addTx(tx);
             if (this.mode !== Constants.mode.light)
-                if (tx.toIdx === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) 
+                if (Scalar.eq(tx.toIdx, 0) && Scalar.neq(tx.amount, 0)) 
                     await this._addExitEntry(tx, batch.batchNumber);
         }
         await batch.build();
@@ -630,10 +631,10 @@ class Synchronizer {
             fromIdx: txData.fromId,
             toIdx: txData.toId,
             amount: txData.amount,
-            loadAmount: bigInt(event.loadAmount),
+            loadAmount: Scalar.e(event.loadAmount),
             coin: txData.coin,
-            ax: bigInt(event.Ax).toString(16),
-            ay: bigInt(event.Ay).toString(16),
+            ax: Scalar.e(event.Ax).toString(16),
+            ay: Scalar.e(event.Ay).toString(16),
             ethAddress: event.ethAddress,
             onChain: true,
             newAccount: txData.newAccount,
@@ -705,11 +706,11 @@ class Synchronizer {
      * @param {String} feePlanFee - fee plan fee encoded as hex string  
      */
     async _addFeePlan(bb, feePlanCoins, feePlanFee) {
-        const tmpCoins = bigInt(feePlanCoins);
-        const tmpFeeF = bigInt(feePlanFee);
+        const tmpCoins = Scalar.e(feePlanCoins);
+        const tmpFeeF = Scalar.e(feePlanFee);
         for (let i = 0; i < 16; i++){
-            const coin = tmpCoins.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1)));
-            const fee = float2fix(tmpFeeF.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
+            const coin = extract(tmpCoins, 16*i, 16);
+            const fee = float2fix( Scalar.toNumber(extract(tmpFeeF, 16*i, 16)));
             await bb.addCoin(coin, fee);
         }
     }

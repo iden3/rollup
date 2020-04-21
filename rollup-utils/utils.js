@@ -1,8 +1,8 @@
 /* global BigInt */
-const { bigInt, bn128 } = require("snarkjs");
+const { bigInt } = require("snarkjs");
 
-const F = bn128.Fr;
-const Poseidon = require("circomlib/src/poseidon");
+const Poseidon = require("circomlib").poseidon;
+const F = Poseidon.F;
 
 const hash = Poseidon.createHash(6, 8, 57);
 

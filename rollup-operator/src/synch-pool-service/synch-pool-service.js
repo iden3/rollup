@@ -1,11 +1,12 @@
 const Web3 = require("web3");
 const winston = require("winston");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const fs = require("fs");
+const chalk = require("chalk");
+
 const erc20Abi = require("./erc20-abi");
 const ApiBitfinex = require("./api-bitfinex");
-const fs = require("fs");
 const { timeout } = require("../utils");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
-const chalk = require("chalk");
 
 // Database keys
 const lastBlockKey = "last-block-pool";

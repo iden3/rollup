@@ -1,5 +1,6 @@
 /* global BigInt */
 const rollupUtils = require("../../rollup-utils/rollup-utils");
+const Scalar = require("ffjavascript").Scalar;
 
 /**
  * Promise to be resolved in a certain amount of time
@@ -16,7 +17,7 @@ function timeout(ms) {
  * @returns {String} - String encoded as hexadecimal with 256 characters
  */
 function padding256(n) {
-    let nstr = BigInt(n).toString(16);
+    let nstr = Scalar.e(n).toString(16);
     while (nstr.length < 64) nstr = "0"+nstr;
     nstr = `0x${nstr}`;
     return nstr;
@@ -52,11 +53,11 @@ function manageEvent(event) {
             fromIdx: txData.fromId,
             toIdx: txData.toId,
             amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
+            loadAmount: Scalar.e(event.args.loadAmount),
             coin: txData.coin,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
+            ax: Scalar.e(event.args.Ax).toString(16),
+            ay: Scalar.e(event.args.Ay).toString(16),
+            ethAddress: Scalar.e(event.args.ethAddress).toString(),
             onChain: true
         };
     } else if (event.event == "OffChainTx") {

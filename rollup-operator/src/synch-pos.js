@@ -1,8 +1,10 @@
 const Web3 = require("web3");
 const winston = require("winston");
 const chalk = require("chalk");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
+
 const { timeout } = require("../src/utils");
-const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
 // db keys
 const lastEraKey = "last-era-synch";
@@ -393,7 +395,7 @@ class SynchPoS {
      * @returns {Object} operator data
      */
     async getOperatorById(opId){
-        return this.operators[(bigInt(opId).toString())];
+        return this.operators[(Scalar.e(opId).toString())];
     }
 
     /**

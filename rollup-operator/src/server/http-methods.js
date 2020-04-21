@@ -1,4 +1,5 @@
-const { stringifyBigInts } = require("snarkjs");
+const { stringifyBigInts } = require("ffjavascript").utils;
+
 const utils = require("./utils");
 
 /**
