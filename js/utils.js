@@ -174,7 +174,6 @@ function verifyTxSig(tx) {
         const pubKey = [Scalar.fromString(tx.fromAx, 16), Scalar.fromString(tx.fromAy, 16)];
         return eddsa.verifyPoseidon(h, signature, pubKey);
     } catch (E) {
-        console.log("Enter here");
         return false;
     }
 }

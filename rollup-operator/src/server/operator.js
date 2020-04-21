@@ -8,11 +8,11 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const rmRf = require("rimraf");
 const ip = require("ip");
-
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const { unstringifyBigInts } = require("ffjavascript").utils;
+
 const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
 const RollupDB = require("../../../js/rollupdb");
-const { unstringifyBigInts } = require("snarkjs");
 const MemDb = require("../../../rollup-utils/mem-db");
 const LevelDb = require("../../../rollup-utils/level-db");
 const { HttpMethods } = require("./http-methods");

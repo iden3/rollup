@@ -1,5 +1,5 @@
-/*global BigInt*/
 const Web3 = require("web3");
+const Scalar = require("ffjavascript").Scalar;
 
 /**
  * Interface to interact with rollup PoS contract
@@ -20,7 +20,7 @@ class OperatorManager {
         this.posAddress = contractAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.rollupPoS = new this.web3.eth.Contract(abi, this.posAddress);
-        this.gasMul = BigInt(gasMul);
+        this.gasMul = Scalar.e(gasMul);
         // Default is described in:
         // https://iden3.io/post/istanbul-zkrollup-ethereum-throughput-limits-analysis
         this.gasLimit = (gasLimit === "default") ? (2 * 616240): gasLimit;
@@ -32,8 +32,8 @@ class OperatorManager {
      */
     async _getGasPrice(){
         const strAvgGas = await this.web3.eth.getGasPrice();
-        const avgGas = BigInt(strAvgGas);
-        return (avgGas * this.gasMul).toString();
+        const avgGas = Scalar.e(strAvgGas);
+        return Scalar.mul(avgGas, this.gasMul).toString();
     }
 
     /**
@@ -131,7 +131,7 @@ class OperatorManager {
      * @param {Array} proofB - zkSnark proof
      * @param {Array} proofC - zkSnark proof
      * @param {Array} input - zkSnark public inputs
-     * @returns {Object} - signed transaction
+     * @returns {Object} - signed transactiontthis.gasMulhis.gasMul
      */
     async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
         const tx = {

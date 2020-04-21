@@ -1,8 +1,8 @@
 /* global BigInt */
-const chai = require("chai");
-const { expect } = chai;
+const { expect } = require("chai");
 const lodash = require("lodash");
-const { stringifyBigInts } = require("snarkjs");
+const { stringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
 
 async function publicDataPoS(insRollupPoS){
     const publicData = {};
@@ -11,7 +11,7 @@ async function publicDataPoS(insRollupPoS){
     publicData.slotsPerEra = Number(await insRollupPoS.SLOTS_PER_ERA());
     publicData.slotDeadline = Number(await insRollupPoS.SLOT_DEADLINE());
     publicData.maxTx = Number(await insRollupPoS.MAX_TX());
-    publicData.minStake = BigInt(await insRollupPoS.MIN_STAKE());
+    publicData.minStake = Scalar.e(await insRollupPoS.MIN_STAKE());
     publicData.genesisBlock = Number(await insRollupPoS.genesisBlock());
 
     return publicData;

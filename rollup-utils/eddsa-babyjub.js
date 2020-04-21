@@ -160,7 +160,7 @@ class PrivateKey {
 
     /**
      * Retrieve private scalar of the PrivateKey
-     * @returns {bigInt} Prvate scalar derived from PrivateKey
+     * @returns {bigInt} Private scalar derived from PrivateKey
      */
     toPrivScalar() {
         const h1 = createBlakeHash("blake512").update(this.sk).digest();

@@ -54,6 +54,7 @@ function manageEvent(event) {
         return {
             IDEN3_ROLLUP_TX: txData.IDEN3_ROLLUP_TX,
             amount: txData.amount,
+<<<<<<< HEAD
             loadAmount: Scalar.fromString(event.args.loadAmount),
             coin: txData.coin,
             fromAx: Scalar.fromString(event.args.fromAx).toString(16),
@@ -63,6 +64,14 @@ function manageEvent(event) {
             toAy: Scalar.fromString(event.args.toAy).toString(16),
             toEthAddr: Scalar.fromString(event.args.toEthAddress).toString(16),
             onChain: txData.onChain
+=======
+            loadAmount: Scalar.e(event.args.loadAmount),
+            coin: txData.coin,
+            ax: Scalar.e(event.args.Ax).toString(16),
+            ay: Scalar.e(event.args.Ay).toString(16),
+            ethAddress: Scalar.e(event.args.ethAddress).toString(),
+            onChain: true
+>>>>>>> operator update to Scalar
         };
     } else if (event.event == "OffChainTx") {
         return event.tx;
