@@ -1,11 +1,12 @@
 
 const SMT = require("circomlib").SMT;
-const SMTTmpDb = require("./smttmpdb");
-const utils = require("./utils");
 const assert = require("assert");
 const crypto = require("crypto");
 const { bigInt } = require("snarkjs");
 const poseidon = require("circomlib").poseidon;
+
+const SMTTmpDb = require("./smttmpdb");
+const utils = require("./utils");
 const Constants = require("./constants");
 
 const poseidonHash = poseidon.createHash(6, 8, 57);

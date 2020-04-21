@@ -18,21 +18,19 @@ contract RollupTest is Rollup {
 
       // Verify old state roots
       require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
-        'old state root does not match current state root');
+          'old state root does not match current state root');
 
-      // Initial index must be the final idex of the last batch
+      // Initial index must be the final index of the last batch
       require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdx], 'Initial index does not match');
 
-      // deposits off-chain that will be added in this batch
+      // Deposits that will be added in this batch
       uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
-
-      // deposits on-chain that will be added in this batch
       uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
-      // operator must pay for every offChain deposit
+      // Operator must pay for every off-chain deposit
       require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
-
-      // add deposits off-chain
+    
+      // Add deposits off-chain
       for (uint32 i = 0; i < depositOffChainLength; i++) {  
           uint32 initialByte = DEPOSIT_BYTES*i;
           uint256 Ax = abi.decode(compressedOnChainTx[initialByte:initialByte+32], (uint256));
@@ -43,8 +41,7 @@ contract RollupTest is Rollup {
           depositOffChain(token, ethAddress, [Ax, Ay], depositCount);
       }
 
-      // depositCount = depositsOnchain + depositsOffchain
-      // last leaf index + depositsOnchain + depositsOffchain = new index
+      // Update and verify lastLeafIndex
       batchToInfo[getStateDepth()+1].lastLeafIndex = batchToInfo[getStateDepth()].lastLeafIndex + depositCount;
       require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdx], 'Final index does not match');
 

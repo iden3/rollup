@@ -146,30 +146,6 @@ function hashState(st) {
     return hash(state2array(st));
 }
 
-
-/**
- * Sign rollup transaction and add signature to transaction
- * @param {Object} walletBabyJub - Rerpresents a babyjubjub wallet which will sign the rollup transaction 
- * @param {Object} tx - Rollup transaction 
- */
-function signRollupTx(walletBabyJub, tx) {
-    const data = buildTxData(tx.amount, tx.coin, tx.nonce,
-        tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
-    const hash = poseidon.createHash(5, 8, 57);
-
-    const h = hash([
-        data,
-        tx.rqTxData || 0,
-        bigInt("0x" + tx.toAx),
-        bigInt("0x" + tx.toAy),
-        bigInt(tx.toEthAddr),
-    ]);
-    const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
-    tx.r8x = signature.R8[0];
-    tx.r8y = signature.R8[1];
-    tx.s = signature.S;
-}
-
 function verifyTxSig(tx) {
     try {
         const data = buildTxData(tx);
@@ -195,25 +171,7 @@ function verifyTxSig(tx) {
 }
 
 function encodeDepositOffchain(depositsOffchain) {
-    let bytes = [];
-    for (let i=0; i<depositsOffchain.length; i++) {
-        pushBigInt(bigInt("0x" + depositsOffchain[i].fromAx), 256/8);
-        pushBigInt(bigInt("0x" + depositsOffchain[i].fromAy), 256/8);
-        pushBigInt(bigInt(depositsOffchain[i].fromEthAddr), 160/8);
-        pushBigInt(bigInt(depositsOffchain[i].coin), 32/8);
-    }
-    return Buffer.from(bytes);
-
-    function pushBigInt(n, size) {
-        for (let i=0; i<size; i++) {
-            bytes.push(Number(n.shr(((size-1-i)*8)).and(bigInt(255))));
-        }
-    }
-}
-
-function encodeDepositOffchain2(depositsOffchain) {
     let buffer = Buffer.alloc(0);
-    console.log(buffer);
     for (let i=0; i<depositsOffchain.length; i++) {
         buffer = Buffer.concat([
             buffer,
@@ -223,6 +181,7 @@ function encodeDepositOffchain2(depositsOffchain) {
             bigInt(depositsOffchain[i].coin).beInt2Buff(4),
         ]);
     }
+    
     return buffer;
 }
 
@@ -235,6 +194,5 @@ module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
-module.exports.signRollupTx = signRollupTx;
 module.exports.verifyTxSig = verifyTxSig;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;

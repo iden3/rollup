@@ -4,6 +4,7 @@
 const fs = require('fs');
 const readline = require('readline');
 const { Writable } = require('stream');
+
 const { Wallet } = require('./src/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
@@ -15,8 +16,8 @@ const { error } = require('./helpers/list-errors');
 const walletPathDefault = './wallet.json';
 const configPathDefault = './config.json';
 const noncePathDefault = './nonceJson.json';
-
 const { version } = require('./package');
+
 const { argv } = require('yargs') // eslint-disable-line
     .version(version)
     .usage(`
@@ -65,7 +66,7 @@ offchainTx command
     -a or --amount <amount>
         Amount to send
     --tk or --tokenid <token ID>
-    -r or --recipient <recipient ID>
+    -r or --recipient <recipient babyJub compressed publick key>
     -s or --sender <sender ID>
     -e or --fee <user fee>
     --no or --nonce <nonce TX> (optional)
@@ -84,7 +85,7 @@ onchainTx command
         Amount to move inside rollup
     --tk or --tokenid <token ID>
     -n or --numexitbatch <num exit batch>
-    -r or --recipient <recipient ID>
+    -r or --recipient <recipient babyJub Compressed publick key>
     -s or --sender <sender ID>
     --id <ID>
     -c or --configpath <parameter file> (optional)
@@ -140,7 +141,7 @@ const value = (argv.value) ? argv.value : 'novalue';
 const configPath = (argv.configpath) ? argv.configpath : configPathDefault;
 
 const type = (argv.type) ? argv.type : 'notype';
-const recipient = (argv.recipient || argv.recipient === 0) ? argv.recipient : 'norecipient';
+const recipient = (argv.recipient) ? argv.recipient : 'norecipient';
 const sender = (argv.sender || argv.sender === 0) ? argv.sender : 'nosender';
 const id = (argv.id || argv.id === 0) ? argv.id : 'noid';
 const amount = (argv.amount) ? argv.amount.toString() : -1;
@@ -277,14 +278,14 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 }
                 if (type.toUpperCase() === 'SEND') {
                     const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId,
-                        userFee, sender, nonce, actualNonce);
+                        userFee, nonce, actualNonce);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
                     }
                 } else if (type.toUpperCase() === 'WITHDRAWOFFCHAIN') {
                     const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee,
-                        sender, nonce, actualNonce);
+                        nonce, actualNonce);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
@@ -313,29 +314,30 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 checkparamsOnchain(type, actualConfig);
                 const abi = JSON.parse(fs.readFileSync(actualConfig.abiRollupPath, 'utf-8'));
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+
                 if (type.toUpperCase() === 'DEPOSIT') {
                     const Tx = await depositTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
                         tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITONTOP') {
                     const Tx = await depositOnTopTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
-                        tokenId, wallet, passphrase, abi, recipient, gasLimit, gasMultiplier);
+                        tokenId, recipient, wallet, passphrase, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'FORCEWITHDRAW') {
-                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
-                        wallet, passphrase, abi, id, gasLimit, gasMultiplier);
+                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, tokenId, amount,
+                        wallet, passphrase, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, wallet,
-                        passphrase, abi, actualConfig.urlOperator, id, numExitBatch, gasLimit, gasMultiplier);
+                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, tokenId, wallet,
+                        passphrase, abi, actualConfig.urlOperator, numExitBatch, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
                     const Tx = await transferTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
-                        tokenId, wallet, passphrase, abi, sender, recipient, gasLimit, gasMultiplier);
+                        tokenId, recipient, wallet, passphrase, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITANDTRANSFER') {
                     const Tx = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount, amount,
-                        tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, recipient, gasLimit, gasMultiplier);
+                        tokenId, recipient, wallet, passphrase, actualConfig.controllerAddress, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'APPROVE') {
                     const abiTokens = JSON.parse(fs.readFileSync(actualConfig.abiTokensPath, 'utf-8'));
@@ -423,8 +425,8 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(id, 'noid', 'your id');
         checkparam(numExitBatch, 'nonumexitbatch', 'num exit batch');
+        checkparam(tokenId, 'notokenid', 'token ID');
         break;
     case 'FORCEWITHDRAW':
         checkparam(amount, -1, 'amount');
@@ -432,7 +434,7 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
-        checkparam(id, 'noid', 'your id');
+        checkparam(tokenId, 'notokenid', 'token ID');
         break;
     case 'TRANSFER':
         checkparam(amount, -1, 'amount');
@@ -441,7 +443,6 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
-        checkparam(sender, 'nosender', 'sender');
         checkparam(recipient, 'norecipient', 'recipient');
         break;
     case 'DEPOSITANDTRANSFER':
@@ -475,7 +476,6 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(userFee, 'nouserfee', 'fee');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(sender, 'nosender', 'sender');
         break;
     case 'WITHDRAWOFFCHAIN':
         checkparam(amount, -1, 'amount');

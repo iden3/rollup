@@ -99,7 +99,6 @@ contract RollupHelpersTest is RollupHelpers{
     return hashEntry(entry);
   }
 
-
   function buildOnChainDataTest(
     uint256 fromAx,
     uint256 fromAy,

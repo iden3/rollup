@@ -5,20 +5,18 @@
 /* global BigInt */
 
 const ethUtil = require("ethereumjs-util");
-const chai = require("chai");
+const { expect } = require("chai");
 const { smt } = require("circomlib");
-
-const { expect } = chai;
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const poseidonJs = require("circomlib/src/poseidon");
+const SMTMemDB = require("circomlib/src/smt_memdb");
+
 const utils = require("../../js/utils");
 const treeUtils = require("../../rollup-utils/rollup-tree-utils");
 const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTest");
 const { padZeroes} = require("./helpers/helpers");
 const helpers= require("./helpers/helpers");
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
-
 
 const MAX_LEVELS = 24;
 
@@ -43,6 +41,7 @@ async function fillSmtTree() {
     await tree.insert(key2, value2);
     await tree.insert(key3, value3);
 }
+
 contract("RollupHelpers functions", (accounts) => {
     const {
         0: owner,
@@ -396,9 +395,6 @@ contract("RollupHelpers functions", (accounts) => {
         const fromEthAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
         const toEthAddr = "0x0000000000000000000000000000000000000000";
         const IDEN3_ROLLUP_TX = BigInt("4839017969649077913");
-        //ethAddr with 0x and axay no?
-
-
 
         let txData;
         let hashOnchainData;
@@ -470,15 +466,13 @@ contract("RollupHelpers functions", (accounts) => {
 
         it("helpers and batchbuilder must have the same results", async () => { 
 
-            // necessary variables in order to be = to batchbuilder
+            // necessary variables in order to be equal to batchbuilder
             let amount = 0; 
             let oldOnChainHash = 0;
             let nonce = 0;
             let userFee = 0;
             let rqOffset = 0;
             const tx = {
-                fromIdx: 1, // it does not matter for the hash, but is needed a valid transactoin
-                toIdx: 0, //same
                 IDEN3_ROLLUP_TX,
                 amount,
                 loadAmount,
@@ -530,6 +524,5 @@ contract("RollupHelpers functions", (accounts) => {
             expect(BigInt(decodedOffchainDeposit[2])).to.be.equal(BigInt(fromEthAddr));
             expect(decodedOffchainDeposit[3].toString()).to.be.equal(coin.toString());
         });
-
     });
 });

@@ -9,9 +9,10 @@ app.use(bodyParser.json());
 
 app.post('/pool', (req, res) => {
     const transaction = req.body;
-    if (transaction.fromIdx === undefined || transaction.toIdx === undefined
-        || transaction.amount === undefined || transaction.r8x === undefined || transaction.nonce === undefined
-    || transaction.coin === undefined || transaction.userFee === undefined) {
+    if (transaction.fromAx === undefined || transaction.fromAy === undefined
+        || transaction.fromEthAddr === undefined || transaction.toAx === undefined || transaction.toAy === undefined
+        || transaction.toEthAddr === undefined || transaction.amount === undefined || transaction.r8x === undefined
+        || transaction.nonce === undefined || transaction.coin === undefined || transaction.userFee === undefined) {
         res.sendStatus(500);
     } else {
         res.sendStatus(200);
@@ -26,15 +27,15 @@ app.get('/accounts', async (req, res) => {
     const sibilings = [];
     if (ax !== undefined && ay !== undefined) {
         res.send([{
-            tokenId: 0, balance: 10, Ax: ax, Ay: ay, ethaddress: 5, nonce: 0, id: 1, numExitRoot: 6, sibilings,
+            tokenId: 0, balance: 10, Ax: ax, Ay: ay, ethAddress: 5, nonce: 0, id: 1, numExitRoot: 6, sibilings,
         }, {
-            tokenId: 1, balance: 10, Ax: ax, Ay: ay, ethaddress: 5, nonce: 0, id: 2, numExitRoot: 6, sibilings,
+            tokenId: 1, balance: 10, Ax: ax, Ay: ay, ethAddress: 5, nonce: 0, id: 2, numExitRoot: 6, sibilings,
         }]);
     } else if (ethAddr !== undefined) {
         res.send([{
-            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: ethAddr, nonce: 0, id: 1, numExitRoot: 6, sibilings,
+            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethAddress: ethAddr, nonce: 0, id: 1, numExitRoot: 6, sibilings,
         }, {
-            tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethaddress: ethAddr, nonce: 0, id: 2, numExitRoot: 6, sibilings,
+            tokenId: 1, balance: 10, Ax: 3, Ay: 4, ethAddress: ethAddr, nonce: 0, id: 2, numExitRoot: 6, sibilings,
         }]);
     } else {
         res.sendStatus(404);

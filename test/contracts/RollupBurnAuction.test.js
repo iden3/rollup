@@ -6,12 +6,14 @@
 
 // REQUIREMENTS
 
-const chai = require("chai");
+const { expect } = require("chai");
 const {stringifyBigInts} = require("snarkjs");
-const { expect } = chai;
-const RollupBurnAuction = artifacts.require("../contracts/test/RollupBurnAuctionTest");
 const abiDecoder = require("abi-decoder");
+
+const RollupBurnAuction = artifacts.require("../contracts/test/RollupBurnAuctionTest");
+
 abiDecoder.addABI(RollupBurnAuction.abi);
+
 
 contract("RollupBurnAuction", (accounts) => {
 

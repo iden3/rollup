@@ -4,16 +4,15 @@
 /* global contract */
 /* global web3 */
 
-const chai = require("chai");
+const { expect } = require("chai");
+const SMTMemDB = require("circomlib/src/smt_memdb");
+const abiDecoder = require("abi-decoder");
 
-const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
 const { getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 
-const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupPoS.abi);
 
 // async function getTxGasSpent(resTx) {
@@ -50,8 +49,8 @@ contract("RollupPoS", (accounts) => {
     let amountToStake;
     let amountToStakeNumber;
 
-    const wallets =[];
-    for (let i = 0; i<10; i++){
+    const wallets = [];
+    for (let i = 0; i<10; i++) {
         wallets.push(BabyJubWallet.createRandom());
     }
 

@@ -1,4 +1,5 @@
 const ethers = require('ethers');
+
 const { getGasPrice } = require('./utils');
 
 /**
@@ -17,13 +18,16 @@ const { getGasPrice } = require('./utils');
 */
 async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletRollup,
     ethAddress, abi, gasLimit = 5000000, gasMultiplier = 1) {
-    let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
-    const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
+
+    let walletEth = walletRollup.ethWallet.wallet;
+    const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);
-    const address = ethAddress || await walletEth.getAddress();
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
+
+    const address = ethAddress || await walletEth.getAddress();
+
     const feeOnchainTx = await contractWithSigner.FEE_ONCHAIN_TX();
     const overrides = {
         gasLimit,

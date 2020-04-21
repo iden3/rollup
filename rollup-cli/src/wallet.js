@@ -1,7 +1,8 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable prefer-destructuring */
-/* global BigInt */
 const { eddsa } = require('circomlib');
+const { bigInt } = require('snarkjs');
+
 const { EthereumWallet, verifyEthereum } = require('../src/ethereum-wallet');
 const { BabyJubWallet, verifyBabyJub } = require('../../rollup-utils/babyjub-wallet');
 const utils = require('../../js/utils');
@@ -78,12 +79,13 @@ class Wallet {
    * @param {Object} tx -transaction
    */
     signRollupTx(tx) {
-        const IDEN3_ROLLUP_TX = BigInt('1625792389453394788515067275302403776356063435417596283072371667635754651289');
         const data = utils.buildTxData(tx);
         const h = hash([
-            IDEN3_ROLLUP_TX,
             data,
             tx.rqTxData || 0,
+            bigInt(`${tx.toAx}`),
+            bigInt(`${tx.toAy}`),
+            bigInt(tx.toEthAddr),
         ]);
 
         const signature = eddsa.signPoseidon(this.babyjubWallet.privateKey, h);

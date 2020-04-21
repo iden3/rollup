@@ -2,11 +2,11 @@ const EC = require("elliptic").ec;
 const ec = new EC("secp256k1");
 const keccak256 = require("js-sha3").keccak256;
 const crypto = require("crypto");
-const babyJub = require("circomlib").babyJub;
 const eddsa = require("circomlib").eddsa;
 const bigInt = require("snarkjs").bigInt;
-const utils = require("./utils");
 const poseidon = require("circomlib").poseidon;
+
+const utils = require("./utils");
 
 module.exports = class RollupAccount {
     constructor(privateKey) {

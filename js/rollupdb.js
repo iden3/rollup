@@ -1,10 +1,12 @@
 const SMT = require("circomlib").SMT;
+const bigInt = require("snarkjs").bigInt;
+const poseidon = require("circomlib").poseidon;
+
 const SMTTmpDb = require("./smttmpdb");
 const BatchBuilder = require("./batchbuilder");
-const bigInt = require("snarkjs").bigInt;
 const Constants = require("./constants");
 const utils = require("./utils");
-const poseidon = require("circomlib").poseidon;
+
 const poseidonHash = poseidon.createHash(6, 8, 57);
 
 class RollupDB {
