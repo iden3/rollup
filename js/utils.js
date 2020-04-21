@@ -153,30 +153,6 @@ function hashState(st) {
     return hash(state2array(st));
 }
 
-
-/**
- * Sign rollup transaction and add signature to transaction
- * @param {Object} walletBabyJub - Rerpresents a babyjubjub wallet which will sign the rollup transaction 
- * @param {Object} tx - Rollup transaction 
- */
-function signRollupTx(walletBabyJub, tx) {
-    const data = buildTxData(tx.amount, tx.coin, tx.nonce,
-        tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
-    const hash = poseidon.createHash(5, 8, 57);
-
-    const h = hash([
-        data,
-        tx.rqTxData || 0,
-        bigInt("0x" + tx.toAx),
-        bigInt("0x" + tx.toAy),
-        bigInt(tx.toEthAddr),
-    ]);
-    const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
-    tx.r8x = signature.R8[0];
-    tx.r8y = signature.R8[1];
-    tx.s = signature.S;
-}
-
 function verifyTxSig(tx) {
     try {
         const data = buildTxData(tx);
@@ -223,7 +199,6 @@ module.exports.hashState = hashState;
 module.exports.state2array = state2array;
 module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
-module.exports.signRollupTx = signRollupTx;
 module.exports.verifyTxSig = verifyTxSig;
 module.exports.hashIdx = hashIdx;
 module.exports.isStrHex = isStrHex; 

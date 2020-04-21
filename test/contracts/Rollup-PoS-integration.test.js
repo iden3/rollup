@@ -4,21 +4,19 @@
 /* global contract */
 /* global web3 */
 
-const chai = require("chai");
+const { expect } = require("chai");
+const SMTMemDB = require("circomlib/src/smt_memdb");
+
 const timeTravel = require("./helpers/timeTravel.js");
 const { decodeMethod, getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
 const { buildPublicInputsSm, manageEvent } = require("../../rollup-operator/src/utils");
-const { expect } = chai;
 const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const Rollup = artifacts.require("../contracts/Rollup");
-
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
-
 
 
 contract("Rollup - RollupPoS", (accounts) => {

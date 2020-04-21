@@ -2,23 +2,23 @@
 /* global web3 */
 /* global BigInt */
 /* global artifacts */
-/* eslint-disable require-atomic-updates*/
+
+const { expect }  = require("chai");
+const abiDecoder = require("abi-decoder");
+const poseidon = require("circomlib").poseidon;
+const eddsa = require("circomlib").eddsa;
+const bigInt = require("snarkjs").bigInt;
 
 const { buildPublicInputsSm, manageEvent } = require("../../../rollup-operator/src/utils");
-const chai = require("chai");
-const { expect } = chai;
-const {
-    buildElement, hash
-} = require("../../../rollup-utils/utils");
+const { buildElement, hash } = require("../../../rollup-utils/utils");
+const { buildTxData } = require("../../../js/utils");
+
+const RollupPoS = artifacts.require("../contracts/RollupPoS");
+const Rollup = artifacts.require("../contracts/Rollup");
 
 const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
 const proofC = ["0", "0"];
-
-const abiDecoder = require("abi-decoder");
-const RollupPoS = artifacts.require("../contracts/RollupPoS");
-const Rollup = artifacts.require("../contracts/Rollup");
-const bigInt = require("snarkjs").bigInt;
 
 abiDecoder.addABI(RollupPoS.abi);
 abiDecoder.addABI(Rollup.abi);
@@ -46,7 +46,6 @@ class ForgerTest {
         this.nLevels = nLevels;
         this.beneficiary = beneficiary;
         this.insRollupTest= insRollupTest;
-        this.counter = 1;
     }
 
     async forgeBatch(events = undefined, compressedOnChainTx = []) {
@@ -160,13 +159,23 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, hashOnchainData, fromEt
     return dataOnChain;
 }
 
-function encodeAddressToken(address, token) {
-    let res = BigInt(0);
-    res = res.add( bigInt(token));
-    res = res.add( bigInt(address).shl(32));
-    return res;
-}
+function signRollupTx(walletBabyJub, tx) {
+    const data = buildTxData(tx.amount, tx.coin, tx.nonce,
+        tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
+    const hash = poseidon.createHash(5, 8, 57);
 
+    const h = hash([
+        data,
+        tx.rqTxData || 0,
+        bigInt("0x" + tx.toAx),
+        bigInt("0x" + tx.toAy),
+        bigInt(tx.toEthAddr),
+    ]);
+    const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
+    tx.r8x = signature.R8[0];
+    tx.r8y = signature.R8[1];
+    tx.s = signature.S;
+}
 module.exports = {
     buildFullInputSm,
     ForgerTest,
@@ -178,5 +187,5 @@ module.exports = {
     hashOnChainData,
     buildhashOnChain,
     hashOnChain,
-    encodeAddressToken
+    signRollupTx
 };

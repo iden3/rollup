@@ -574,6 +574,7 @@ contract RollupPoS is RollupPoSHelpers{
      * @dev operator commits data that must be forged afterwards
      * @param previousRndHash previous hash to match current hash
      * @param compressedTx data committed by the operator. Represents off-chain transactions
+     * @param compressedOnChainTx data committed by the operator. Represents off-chain deposits
      */
     function commitBatch(
         bytes32 previousRndHash,

@@ -20,13 +20,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     bytes32[] exitRoots;
     mapping(uint256 => bool) public exitNullifier;
 
-    // Define struct to store data for each id, batchlastLeafIndex + relativeIndex = index of the leaf.
+    // Define struct to store data of each leaf
+    // lastLeafIndex + relativeIndex = index of the leaf
     struct leafInfo{
         uint64 forgedBatch;
         uint32 relativeIndex;
         address ethAddress;
     }
-    // store account information, hash(Ax, Ay, tokenId)
+    // Store accounts information, treeInfo[hash(Ax, Ay, tokenId)] = leafInfo
     mapping(uint256 => leafInfo) treeInfo;
 
     // Define struct to store batch information regarding number of deposits and keep track of index accounts
@@ -77,7 +78,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // Flag to determine if the mechanism to forge batch has been initialized
     bool initialized = false;
 
-    // bytes of a encoded offchain deposit
+    // Bytes of a encoded offchain deposit
     uint32 constant DEPOSIT_BYTES = 88;
     // Number of levels in Snark circuit
     uint256 public NLevels = 24;
@@ -187,6 +188,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint256[2] memory toBabyPubKey,
         uint256 onChainFee
     ) private {
+        // Calculate onChain Hash
         Entry memory onChainData = buildOnChainData(fromBabyPubKey[0], fromBabyPubKey[1],
         toEthAddress, toBabyPubKey[0], toBabyPubKey[1]);
         uint256 hashOnChainData = hashEntry(onChainData);
@@ -236,15 +238,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
 
-        // build txData for deposit
+        // Build txData for deposit
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDeposit), loadAmount, ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
 
-        // Increment index leaf balance tree
+        // Increment deposit count in the batch that will be forged
         batchToInfo[getStateDepth()+2].depositOnChainCount++;
 
-        // Insert tree informations
-        // batch it will be forged
+        // Insert leaf informations
         leaf.forgedBatch = uint64(getStateDepth()+2);
         leaf.relativeIndex = batchToInfo[getStateDepth()+2].depositOnChainCount;
         leaf.ethAddress = ethAddress;
@@ -270,11 +271,13 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
         require(leaf.ethAddress == address(0), 'leaf already exist');
 
-        // burn fee
+        // Burn fee
         address(0).transfer(FEE_OFFCHAIN_DEPOSIT);
 
-        // build txData for deposit
+        // Build txData for deposit off-chain
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
+
+        // Calculate onChain Hash
         Entry memory onChainData = buildOnChainData(babyPubKey[0], babyPubKey[1],
         address(0), 0, 0);
         uint256 hashOnChainData = hashEntry(onChainData);
@@ -310,7 +313,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
 
-        // build txData for deposit on top
+        // Build txData for deposit on top
         bytes32 txDataDepositOnTop = buildTxData(0, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataDepositOnTop), loadAmount, leaf.ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
     }
@@ -337,7 +340,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         leafInfo storage toLeaf = treeInfo[uint256(keccak256(abi.encodePacked(toBabyPubKey,tokenId)))];
         require(toLeaf.ethAddress != address(0), 'reciever leaf does not exist');
 
-        // build txData for transfer
+        // Build txData for transfer
         bytes32 txDataTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataTransfer), 0, fromLeaf.ethAddress, fromBabyPubKey,
          toLeaf.ethAddress, toBabyPubKey, msg.value);
@@ -380,12 +383,15 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
-        // build txData for DepositAndtransfer
+
+        // Build txData for DepositAndtransfer
         bytes32 txDataDepositAndTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, true);
         _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, fromEthAddress, fromBabyPubKey,
         toLeaf.ethAddress, toBabyPubKey, msg.value);
+
         // Increment index leaf balance tree
         batchToInfo[getStateDepth()+2].depositOnChainCount++;
+
         // Insert tree informations
         fromLeaf.forgedBatch = uint64(getStateDepth()+2); //batch it will be forged
         fromLeaf.relativeIndex = batchToInfo[getStateDepth()+2].depositOnChainCount;
@@ -411,7 +417,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         leafInfo memory fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
         require(fromLeaf.ethAddress == msg.sender, 'Sender does not match identifier balance tree');
 
-        // build txData for withdraw
+        // Build txData for withdraw
         bytes32 txDataWithdraw = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataWithdraw), 0, msg.sender, fromBabyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
     }
@@ -440,8 +446,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         Entry memory exitEntry = buildTreeState(amount, tokenId, fromBabyPubKey[0],
         fromBabyPubKey[1], msg.sender, 0);
         uint256 valueExitTree = hashEntry(exitEntry);
+
         // Get exit root given its index depth
         uint256 exitRoot = uint256(getExitRoot(numExitRoot));
+
         // Check exit tree nullifier
         uint256[] memory inputs = new uint256[](3);
         inputs[0] = valueExitTree;
@@ -449,11 +457,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         inputs[2] = exitRoot;
         uint256 nullifier = hashGeneric(inputs);
         require(exitNullifier[nullifier] == false, 'withdraw has been already done');
+
         // Check sparse merkle tree proof
         bool result = smtVerifier(exitRoot, siblings, keyExitTree, valueExitTree, 0, 0, false, false, 24);
         require(result == true, 'invalid proof');
+
         // Withdraw token from rollup smart contract to ethereum address
         require(withdrawToken(tokenId, msg.sender, amount), 'Fail ERC20 withdraw');
+
         // Set nullifier
         exitNullifier[nullifier] = true;
     }
@@ -477,23 +488,21 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         bytes calldata compressedOnChainTx
     ) external payable override virtual isForgeBatch {
 
-       // Verify old state roots
+        // Verify old state roots
         require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
             'old state root does not match current state root');
 
-        // Initial index must be the final idex of the last batch
+        // Initial index must be the final index of the last batch
         require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdx], 'Initial index does not match');
 
-        // verify all the fields of the off-chain deposit
+        // Deposits that will be added in this batch
         uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
-
-        // deposits that will be added in this batch
         uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
-        // operator must pay for every off-chain deposit
+        // Operator must pay for every off-chain deposit
         require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
     
-        // add deposits off-chain
+        // Add deposits off-chain
         for (uint32 i = 0; i < depositOffChainLength; i++) {  
             uint32 initialByte = DEPOSIT_BYTES*i;
             uint256 Ax = abi.decode(compressedOnChainTx[initialByte:initialByte+32], (uint256));
@@ -504,8 +513,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
             depositOffChain(token, ethAddress, [Ax, Ay], depositCount);
         }
 
-        // depositCount = depositsOnchain + depositsOffchain
-        // last leaf index + depositsOnchain + depositsOffchain = new index
+        // Update and verify lastLeafIndex
         batchToInfo[getStateDepth()+1].lastLeafIndex = batchToInfo[getStateDepth()].lastLeafIndex + depositCount;
         require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdx], 'Final index does not match');
 
@@ -546,7 +554,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     }
 
     /**
-     * @dev withdraw all token fees to the beneficiaryAddress
+     * @dev withdraw all token fees to the beneficiary Address
      * @param feePlan fee of every token
      * @param nTxPerToken transactions per token
      * @param beneficiaryAddress address wich will recieve the tokens
@@ -554,9 +562,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     function withdrawTokens(bytes32[2] memory feePlan, bytes32 nTxPerToken, address payable beneficiaryAddress) internal {
         for (uint i = 0; i < 16; i++) {
             (uint tokenId, uint totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
-            bytes32(nTxPerToken), i);
+             bytes32(nTxPerToken), i);
 
-            if(totalTokenFee != 0) {
+            if (totalTokenFee != 0) {
                 require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee),
                     'Fail ERC20 withdraw');
             }
@@ -628,7 +636,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      public view returns (uint64) {
         leafInfo memory leaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
         require(leaf.ethAddress != address(0), 'leaf does not exist');
-        if(leaf.forgedBatch == 0)
+        if (leaf.forgedBatch == 0)
             return leaf.relativeIndex;
         else {
         require(leaf.forgedBatch-1 <= getStateDepth(), 'batch must be forged');

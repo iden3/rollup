@@ -1,92 +1,35 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable no-use-before-define */
 /* eslint-disable consistent-return */
+/* eslint-disable no-await-in-loop */
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const fs = require('fs');
-const chai = require('chai');
+const { expect } = require('chai');
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
 const SMTMemDB = require('circomlib/src/smt_memdb');
-const abiDecoder = require('abi-decoder');
 const path = require('path');
 
+const { ForgerTest } = require('./helpers/helpers');
 const { Wallet } = require('../src/wallet.js');
-const rollupUtils = require('../../rollup-utils/rollup-utils.js');
 const RollupDB = require('../../js/rollupdb');
 const { createWallet, deleteResources } = require('./config/build-resources');
-const { buildPublicInputsSm } = require('../../rollup-operator/src/utils');
 const {
     depositTx, depositOnTopTx, withdrawTx, forceWithdrawTx, transferTx, depositAndTransferTx,
 } = require('../src/cli-utils');
-
-const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
-const { expect } = chai;
 
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
 const RollupTest = artifacts.require('../../../../contracts/test/RollupTest');
 const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
 
-abiDecoder.addABI(RollupTest.abi);
+const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
 
-const proofA = ['0', '0'];
-const proofB = [['0', '0'], ['0', '0']];
-const proofC = ['0', '0'];
 const gasLimit = 5000000;
 const gasMultiplier = 1;
 
-function buildFullInputSm(bb, beneficiary) {
-    const input = buildPublicInputsSm(bb);
-    return {
-        beneficiary,
-        proofA,
-        proofB,
-        proofC,
-        input,
-    };
-}
-
-function manageEvent(event) {
-    if (event.event === 'OnChainTx') {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
-        return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
-            amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.coin,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true,
-        };
-    }
-}
-
 contract('Rollup', async (accounts) => {
-    async function forgeBlock(events = undefined) {
-        const block = await rollupDB.buildBatch(maxTx, nLevels);
-        if (events) {
-            events.forEach((elem) => {
-                block.addTx(manageEvent(elem));
-            });
-        }
-        await block.build();
-
-        const inputSm = buildFullInputSm(block, beneficiary);
-        await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
-            inputSm.proofB, inputSm.proofC, inputSm.input);
-
-        await rollupDB.consolidate(block);
-    }
-    function checkBatchNumber(events) {
-        events.forEach((elem) => {
-            const eventBatch = BigInt(elem.args.batchNumber);
-            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(rollupDB.lastBatch).toString());
-        });
-    }
     let insPoseidonUnit;
     let insTokenRollup;
     let insRollupTest;
@@ -95,10 +38,11 @@ contract('Rollup', async (accounts) => {
     let rollupDB;
     let db;
     const nLevels = 24;
+    let forgerTest;
 
     const maxTx = 10;
     const maxOnChainTx = 6;
-    const tokenInitialAmount = 100;
+    const tokenInitialAmount = 1000;
     const {
         0: owner,
         1: id1,
@@ -113,9 +57,11 @@ contract('Rollup', async (accounts) => {
     let abi;
     let UrlOperator;
     let walletJson;
+    let walletRollup;
 
-    let walletJsonTest;
-    let walletEthTest;
+    const tokenId = 0;
+    const wallets = [];
+
 
     before(async () => {
         await createWallet();
@@ -134,11 +80,6 @@ contract('Rollup', async (accounts) => {
         insRollupTest = await RollupTest.new(insVerifier.address, insPoseidonUnit._address,
             maxTx, maxOnChainTx, feeTokenAddress);
 
-
-        walletJson = JSON.parse(fs.readFileSync(walletPathDefault, 'utf8'));
-        const walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
-        walletEth = walletRollup.ethWallet.wallet;
-
         db = new SMTMemDB();
         rollupDB = await RollupDB(db);
 
@@ -146,15 +87,32 @@ contract('Rollup', async (accounts) => {
         UrlOperator = 'http://127.0.0.1:9000';
         addressSC = insRollupTest.address;
 
-        const walletTest = await Wallet.createRandom();
-        walletEthTest = walletTest.ethWallet.wallet;
-        walletJsonTest = await walletTest.toEncryptedJson('foo');
+        // Load encrypted wallet from file
+        walletJson = JSON.parse(fs.readFileSync(walletPathDefault, 'utf8'));
+        walletRollup = await Wallet.fromEncryptedJson(walletJson, password);
+        walletEth = walletRollup.ethWallet.wallet;
+
+        forgerTest = new ForgerTest(rollupDB, maxTx, nLevels, beneficiary, insRollupTest);
+
+        for (let i = 0; i < 2; i++) {
+            const newWallet = await Wallet.createRandom();
+            wallets.push(
+                {
+                    walletEth: newWallet.ethWallet.wallet,
+                    walletJson: await newWallet.toEncryptedJson('foo'),
+                    walletBaby: newWallet.babyjubWallet,
+                },
+            );
+        }
     });
 
     it('Distribute token rollup & funds', async () => {
-        web3.eth.sendTransaction({ to: walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });// provide funds to our account
-        web3.eth.sendTransaction({ to: walletEthTest.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });// provide funds to test account
+        web3.eth.sendTransaction({ to: walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });
+        web3.eth.sendTransaction({ to: wallets[0].walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });
+        web3.eth.sendTransaction({ to: wallets[1].walletEth.address, from: providerfunds, value: web3.utils.toWei('5', 'ether') });
         await insTokenRollup.transfer(walletEth.address, 50, { from: id1 });
+        await insTokenRollup.transfer(wallets[0].walletEth.address, 50, { from: id1 });
+        await insTokenRollup.transfer(wallets[1].walletEth.address, 50, { from: id1 });
     });
 
     it('Rollup token listing', async () => {
@@ -162,7 +120,7 @@ contract('Rollup', async (accounts) => {
         const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
         const resId1 = await insTokenRollup.balanceOf(id1);
         expect(resWalletEth.toString()).to.be.equal('50');
-        expect(resId1.toString()).to.be.equal('50');
+        expect(resId1.toString()).to.be.equal('850');
 
         // Add token to rollup token list
         const resAddToken = await insRollupTest.addToken(insTokenRollup.address,
@@ -174,14 +132,13 @@ contract('Rollup', async (accounts) => {
     });
 
     it('Deposit balance tree', async () => {
-    // Steps:
-    // - Transaction to deposit 'TokenRollup' from 'walletEth' to 'rollup smart contract'(owner)
-    // - Check 'tokenRollup' balances
-    // - Add leaf to balance tree
-    // - Check 'filling on-chain' hash
+        // Steps:
+        // - Transaction to deposit 'TokenRollup' from 'walletEth' to 'rollup smart contract'(owner)
+        // - Check 'tokenRollup' balances
+        // - Add leaf to balance tree
+        // - Check 'filling on-chain' hash
 
         const depositAmount = 10;
-        const tokenId = 0;
 
         const tx = {
             from: walletEth.address,
@@ -205,19 +162,18 @@ contract('Rollup', async (accounts) => {
         expect(resRollup.toString()).to.be.equal('10');
         expect(resWalletEth.toString()).to.be.equal('40');
 
-        await forgeBlock();
+        await forgerTest.forgeBatch();
 
         // Forge block with deposit transaction
 
-        await forgeBlock(event);
+        await forgerTest.forgeBatch(event);
 
-        checkBatchNumber(event);
+        forgerTest.checkBatchNumber(event);
     });
 
     it('Deposit on top and forge it', async () => {
         const onTopAmount = 5;
-        const tokenId = 0;
-        const idFrom = 1;
+        const babyjubReciever = walletRollup.babyjubWallet.publicKeyCompressed.toString('hex');
 
         const tx = {
             from: walletEth.address,
@@ -231,8 +187,8 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await depositOnTopTx(web3.currentProvider.host, addressSC, onTopAmount, tokenId,
-            walletJson, password, abi, idFrom, gasLimit, gasMultiplier);
+        await depositOnTopTx(web3.currentProvider.host, addressSC, onTopAmount, tokenId, babyjubReciever,
+            walletJson, password, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
         // Check token balances for walletEth and rollup smart contract
@@ -241,12 +197,12 @@ contract('Rollup', async (accounts) => {
         expect(resRollup.toString()).to.be.equal('15');
         expect(reswalletEth.toString()).to.be.equal('35');
 
-        await forgeBlock();
+        await forgerTest.forgeBatch();
 
-        await forgeBlock(event);
+        await forgerTest.forgeBatch(event);
         // create balance tree and add leaf
 
-        checkBatchNumber(event);
+        forgerTest.checkBatchNumber(event);
     });
 
     it('Should add force withdraw', async () => {
@@ -258,21 +214,20 @@ contract('Rollup', async (accounts) => {
         // - it creates an exit root, it is created
 
         const amount = 10;
-        const idFrom = 1;
 
-        await forceWithdrawTx(web3.currentProvider.host, addressSC, amount,
-            walletJson, password, abi, idFrom, gasLimit, gasMultiplier);
+        await forceWithdrawTx(web3.currentProvider.host, addressSC, tokenId, amount,
+            walletJson, password, abi, gasLimit, gasMultiplier);
 
         // forge block with no transactions
         // forge block force withdraw
         // Simulate exit tree to retrieve siblings
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
-        await forgeBlock();
+        await forgerTest.forgeBatch();
 
-        await forgeBlock(event);
+        await forgerTest.forgeBatch(event);
 
-        checkBatchNumber(event);
+        forgerTest.checkBatchNumber(event);
     });
 
     it('Should withdraw tokens', async () => {
@@ -281,11 +236,10 @@ contract('Rollup', async (accounts) => {
         // - Transaction to withdraw amount indicated in previous step
 
         // Note that `amount` on the exit is hardcoded on dummy api-client
-        const idFrom = 1;
         const numExitRoot = 6;
 
-        await withdrawTx(web3.currentProvider.host, addressSC,
-            walletJson, password, abi, UrlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
+        await withdrawTx(web3.currentProvider.host, addressSC, tokenId,
+            walletJson, password, abi, UrlOperator, numExitRoot, gasLimit, gasMultiplier);
 
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const reswalletEth = await insTokenRollup.balanceOf(walletEth.address);
@@ -301,214 +255,89 @@ contract('Rollup', async (accounts) => {
         // - Check 'filling on-chain' hash
 
         const depositAmount = 10;
-        const tokenId = 0;
-
         const tx = {
-            from: walletEth.address,
+            from: wallets[0].walletEth.address,
             gasLimit: web3.utils.toHex(800000),
             gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
             to: insTokenRollup.address,
             data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
         };
 
-        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
+        const signPromise = await web3.eth.accounts.signTransaction(tx, wallets[0].walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await depositTx(web3.currentProvider.host, addressSC, depositAmount, tokenId,
-            walletJson, password, walletEth.address, abi, gasLimit, gasMultiplier);
+            wallets[0].walletJson, password, wallets[0].walletEth.address, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         // Check token balances for walletEth and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
+        const resWalletEth = await insTokenRollup.balanceOf(wallets[0].walletEth.address);
         expect(resRollup.toString()).to.be.equal('15');
-        expect(resWalletEth.toString()).to.be.equal('35');
+        expect(resWalletEth.toString()).to.be.equal('40');
 
-        await forgeBlock();
+        await forgerTest.forgeBatch();
 
         // Forge block with deposit transaction
-        await forgeBlock(event);
+        await forgerTest.forgeBatch(event);
 
-        checkBatchNumber(event);
+        forgerTest.checkBatchNumber(event);
     });
     it('Should transfer', async () => {
         // Steps:
         // - Transaction onChain performing a "send" offchain Tx
+
         const amount = 10;
-        const tokenId = 0;
-        const fromId = 1;
-        const toId = 2;
+        const babyjubReciever = wallets[0].walletBaby.publicKeyCompressed.toString('hex');
+
         // from 1 to 2
-        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
+        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId, babyjubReciever,
+            walletJson, password, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
-        await forgeBlock();
+        await forgerTest.forgeBatch();
 
         // Forge block with deposit transaction
-        await forgeBlock(event);
+        await forgerTest.forgeBatch(event);
 
-        checkBatchNumber(event);
+        forgerTest.checkBatchNumber(event);
     });
     it('Should DepositAndTransfer', async () => {
         // Steps:
         // - Combine both deposit and transfer deposit from wallet.Eth
+
         const depositAmount = 10;
-        const tokenId = 0;
         const amount = 5;
-        const toId = 2;
+        const babyjubReciever = wallets[0].walletBaby.publicKeyCompressed.toString('hex');
 
         const tx = {
-            from: walletEth.address,
+            from: wallets[1].walletEth.address,
             gasLimit: web3.utils.toHex(800000),
             gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
             to: insTokenRollup.address,
             data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
         };
 
-        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
+        const signPromise = await web3.eth.accounts.signTransaction(tx, wallets[1].walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await depositAndTransferTx(web3.currentProvider.host, addressSC, depositAmount,
-            amount, tokenId, walletJson, password, walletEth.address, abi, toId, gasLimit, gasMultiplier);
+            amount, tokenId, babyjubReciever, wallets[1].walletJson, password, wallets[1].walletEth.address, abi, gasLimit, gasMultiplier);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         // Check token balances for walletEth and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
+        const resWalletEth = await insTokenRollup.balanceOf(wallets[1].walletEth.address);
         expect(resRollup.toString()).to.be.equal('25');
-        expect(resWalletEth.toString()).to.be.equal('25');
+        expect(resWalletEth.toString()).to.be.equal('40');
 
-        await forgeBlock();
-
-        // Forge block with deposit transaction
-        await forgeBlock(event);
-
-        checkBatchNumber(event);
-    });
-
-    it('Should Deposit and give ownership to another account', async () => {
-        // Steps:
-        // - Transaction deposit from 'walletEth' but owner is walletEthTest
-        const depositAmount = 10;
-        const tokenId = 0;
-
-        const tx = {
-            from: walletEth.address,
-            gasLimit: web3.utils.toHex(800000),
-            gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
-            to: insTokenRollup.address,
-            data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
-        };
-
-        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
-        await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
-
-        await depositTx(web3.currentProvider.host, addressSC, depositAmount, tokenId,
-            walletJson, password, walletEthTest.address, abi, gasLimit, gasMultiplier);
-
-        const event = await insRollupTest.getPastEvents('OnChainTx');
-
-        // Check token balances for walletEth and rollup smart contract
-        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
-        expect(resRollup.toString()).to.be.equal('35');
-        expect(resWalletEth.toString()).to.be.equal('15');
-
-        await forgeBlock();
+        await forgerTest.forgeBatch();
 
         // Forge block with deposit transaction
-        await forgeBlock(event);
+        await forgerTest.forgeBatch(event);
 
-        checkBatchNumber(event);
-    });
-    it('ShouldTransfer from wallet Test', async () => {
-        // Steps:
-        // - Try transfer from walletEth account with expected error
-        // - Try transfer from walletEthTest account wich is the owner of the leaf
-        const amount = 10;
-        const tokenId = 0;
-        const fromId = 4;
-        const toId = 2;
-        // from 1 to 2
-        try {
-            await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
-                walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
-        } catch (error) {
-            expect((error.message).includes('Sender does not match identifier balance tree')).to.be.equal(true);
-        }
-        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJsonTest, password, abi, fromId, toId, gasLimit, gasMultiplier);
-
-        const event = await insRollupTest.getPastEvents('OnChainTx');
-        await forgeBlock();
-        // Forge block with deposit transaction
-        await forgeBlock(event);
-
-        checkBatchNumber(event);
-    });
-
-    it('Should Deposit and transfer, with ownership to another account', async () => {
-        // Steps:
-        // - Perform Deposit and transfer from WalletEth but owner is walletEthTest
-        const depositAmount = 10;
-        const tokenId = 0;
-        const amount = 5;
-        const toId = 2;
-
-        const tx = {
-            from: walletEth.address,
-            gasLimit: web3.utils.toHex(800000),
-            gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
-            to: insTokenRollup.address,
-            data: insTokenRollup.contract.methods.approve(insRollupTest.address, depositAmount).encodeABI(),
-        };
-
-        const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
-        await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
-
-        await depositAndTransferTx(web3.currentProvider.host, addressSC, depositAmount,
-            amount, tokenId, walletJson, password, walletEthTest.address, abi, toId, gasLimit, gasMultiplier);
-        const event = await insRollupTest.getPastEvents('OnChainTx');
-
-        // Check token balances for walletEth and rollup smart contract
-        const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        const resWalletEth = await insTokenRollup.balanceOf(walletEth.address);
-        expect(resRollup.toString()).to.be.equal('45');
-        expect(resWalletEth.toString()).to.be.equal('5');
-
-        await forgeBlock();
-
-        // Forge block with deposit transaction
-        await forgeBlock(event);
-
-        checkBatchNumber(event);
-    });
-    it('ShouldTransfer from wallet Test', async () => {
-        // Steps:
-        // - Try transfer from walletEth account with expected error
-        // - Try transfer from walletEthTest account wich is the owner of the leaf
-        const amount = 10;
-        const tokenId = 0;
-        const fromId = 5;
-        const toId = 2;
-        // from 1 to 2
-        try {
-            await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
-                walletJson, password, abi, fromId, toId, gasLimit, gasMultiplier);
-        } catch (error) {
-            expect((error.message).includes('Sender does not match identifier balance tree')).to.be.equal(true);
-        }
-        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId,
-            walletJsonTest, password, abi, fromId, toId, gasLimit, gasMultiplier);
-
-        const event = await insRollupTest.getPastEvents('OnChainTx');
-        await forgeBlock();
-        // Forge block with deposit transaction
-        await forgeBlock(event);
-
-        checkBatchNumber(event);
+        forgerTest.checkBatchNumber(event);
     });
 
     after(async () => {

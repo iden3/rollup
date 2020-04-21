@@ -4,14 +4,12 @@
 /* global web3 */
 
 const { stringifyBigInts } = require("snarkjs");
-const chai = require("chai");
-const { expect } = chai;
+const { expect } = require("chai");
+const SMTMemDB = require("circomlib/src/smt_memdb");
 
 const HelpersPoSTest = artifacts.require("../contracts/test/RollupPoSHelpersTest");
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
-
 
 async function checkHashOffChain(bb, insPoS, maxTx) {
     await bb.build();
@@ -20,7 +18,6 @@ async function checkHashOffChain(bb, insPoS, maxTx) {
     const res = await insPoS.hashOffChainTxTest(data, maxTx);
     expect(hashOffChain.toString()).to.be.equal(res.toString());
 }
-
 
 contract("RollupPoSHelpers functions", (accounts) => {
 
@@ -33,8 +30,8 @@ contract("RollupPoSHelpers functions", (accounts) => {
     let db;
     let rollupDB;
 
-    const wallets =[];
-    for (let i = 0; i<10; i++){
+    const wallets = [];
+    for (let i = 0; i<10; i++) {
         wallets.push(BabyJubWallet.createRandom());
     }
 
@@ -83,7 +80,7 @@ contract("RollupPoSHelpers functions", (accounts) => {
         await checkHashOffChain(bb, insPoSHelpers, maxTx);
 
         // non-empty off-chain tx with 8 txMax
-        const tx = { //coin is 0
+        const tx = { // coin is 0
             fromAx: wallets[1].publicKey[0].toString(16),
             fromAy:  wallets[1].publicKey[1].toString(16),
             fromEthAddr: id1,
