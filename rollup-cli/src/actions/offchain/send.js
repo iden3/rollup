@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-syntax */
-const { stringifyBigInts } = require('snarkjs');
+const { stringifyBigInts } = require('ffjavascript').utils;
 
 const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
 
@@ -35,7 +35,7 @@ function _addNonce(nonceObject, currentBatch, nonce, tokenId) {
 /**
  * send off-chain transaction
  * @param {String} urlOperator - url from operator
- * @param {Number} idTo - reciever
+ * @param {String[2]} babyjubTo - babyjub public key reciever
  * @param {String} amount - amount to transfer
  * @param {Object} walletRollup - ethAddress and babyPubKey together
  * @param {Number} tokenId - token type identifier, the sender and the reciever must use the same token
@@ -86,7 +86,7 @@ async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userF
         newAccount: 0,
     };
     walletRollup.signRollupTx(tx); // sign included in transaction
-    const parseTx = stringifyBigInts(tx);// convert bigint to Strings
+    const parseTx = stringifyBigInts(tx);
     const resTx = await apiOperator.sendTx(parseTx);
 
     let nonceObjectToWrite;

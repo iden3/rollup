@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { stringifyBigInts } = require("snarkjs");
+const { stringifyBigInts } = require("ffjavascript").utils;
 
 /**
  * Client to interact with operator API
