@@ -1,19 +1,11 @@
-const chai = require("chai");
 const path = require("path");
-const snarkjs = require("snarkjs");
 const tester = require("circom").tester;
-
-const assert = chai.assert;
-
-const bigInt = require("snarkjs").bigInt;
 
 describe("FeeSelectorTest test", function () {
     let circuit;
 
-    this.timeout(100000);
-
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "feeselector_test.circom"));
+        circuit = await tester(path.join(__dirname, "circuits-test", "feeselector_test.circom"));
         await circuit.loadConstraints();
         console.log("Constraints `feeselector.circom` circuit: " + circuit.constraints.length + "\n");
     });

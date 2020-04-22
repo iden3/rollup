@@ -1,13 +1,14 @@
-const chai = require("chai");
+const { assert } = require("chai");
 const path = require("path");
 const tester = require("circom").tester;
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 const SMTMemDB = require("circomlib").SMTMemDB;
-const RollupAccount = require("../js/rollupaccount");
-const RollupDB = require("../js/rollupdb");
+
+const RollupAccount = require("../../js/rollupaccount");
+const RollupDB = require("../../js/rollupdb");
 const checkBatch = require("./helpers/checkbatch");
-const assert = chai.assert;
-const utils = require("../js/utils");
+const utils = require("../../js/utils");
+const Constants = require("../../js/constants");
 
 const NTX = 5;
 const NLEVELS = 8;
@@ -19,9 +20,9 @@ async function depositTx(bb, account, loadamount) {
         fromAx: account.ax,
         fromAy: account.ay,
         fromEthAddr: account.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0,
+        toAx: Constants.exitAx,
+        toAy: Constants.exitAy,
+        toEthAddr: Constants.exitEthAddr,
         onChain: true
     });
 
@@ -49,7 +50,7 @@ describe("Rollup Basic circuit TXs", function () {
     this.timeout(1000000);
 
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        circuit = await tester(path.join(__dirname, "circuits-test", "rollup_test.circom"), {reduceConstraints:false});
         await circuit.loadConstraints();
         console.log("Constraints `rollup.circom` circuit: " + circuit.constraints.length + "\n");
 
@@ -216,9 +217,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 500,
             nonce: 0,
@@ -248,9 +249,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             loadAmount: 2000,
             amount: 500,
@@ -551,9 +552,9 @@ describe("Rollup Basic circuit TXs", function () {
         const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx = {
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 50,
             nonce: 0,
@@ -595,9 +596,9 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx);
 
         const tx2 = {
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 10,
             nonce: 1,
@@ -606,9 +607,9 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx2);
 
         const tx3 = {
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 200,
             nonce: 2,
@@ -617,9 +618,9 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx3);
 
         const tx4 = {
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 100,
             nonce: 3,
@@ -663,9 +664,9 @@ describe("Rollup Basic circuit TXs", function () {
         const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx1 = {
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 30,
             nonce: 0,
@@ -674,9 +675,9 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx1);
 
         const tx2 = {
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 30,
             nonce: 1,
@@ -690,9 +691,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         };
 
@@ -764,9 +765,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         };
 
@@ -777,9 +778,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             ethAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         };
 
@@ -921,9 +922,9 @@ describe("Rollup Basic circuit TXs", function () {
         const input2 = bb2.getInput();
 
         // manipulate input
-        input2.ax1[4] = bigInt(account1.ax, 16);
-        input2.ay1[4] = bigInt(account1.ay, 16);
-        input2.ethAddr1[4] = bigInt(account1.ethAddress.slice(2), 16);
+        input2.ax1[4] = Scalar.fromString(account1.ax, 16);
+        input2.ay1[4] = Scalar.fromString(account1.ay, 16);
+        input2.ethAddr1[4] = Scalar.fromString(account1.ethAddress, 16);
 
         try {
             await circuit.calculateWitness(input2, {logTrigger: false, logOutput: false, logSet: false});
@@ -1005,7 +1006,7 @@ describe("Rollup Basic circuit TXs", function () {
         
         // manipulate input loadamount
         const auxLoadAmount = input.loadAmount[0];
-        input.loadAmount[0] = bigInt(2000);
+        input.loadAmount[0] = Scalar.e(2000);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1024,9 +1025,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account2.ax,
             fromAy: account2.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: false
         };
         let newAccount = 1;
@@ -1046,7 +1047,7 @@ describe("Rollup Basic circuit TXs", function () {
 
         // manipulate input fromEthAddr
         const auxFromEthAddr = input.fromEthAddr[0];
-        input.fromEthAddr[0] = bigInt(account2.ethAddress.slice(2), 16);
+        input.fromEthAddr[0] = Scalar.e(account2.ethAddress.slice(2), 16);
          
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1061,8 +1062,8 @@ describe("Rollup Basic circuit TXs", function () {
         // manipulate input fromAx & fromAy
         const auxFromAx = input.fromAx[0];
         const auxFromAy = input.fromAy[0];
-        input.fromAx[0] = bigInt(account2.ax, 16);
-        input.fromAy[0] = bigInt(account2.ay, 16);
+        input.fromAx[0] = Scalar.fromString(account2.ax, 16);
+        input.fromAy[0] = Scalar.fromString(account2.ay, 16);
         
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1101,7 +1102,7 @@ describe("Rollup Basic circuit TXs", function () {
 
         // manipulate input loadamount
         const auxLoadAmount = input.loadAmount[1];
-        input.loadAmount[1] = bigInt(3000);
+        input.loadAmount[1] = Scalar.e(3000);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1115,7 +1116,7 @@ describe("Rollup Basic circuit TXs", function () {
 
         // manipulate input amount
         const auxAmount = input.amount1[1];
-        input.amount1[1] = bigInt(3000);
+        input.amount1[1] = Scalar.e(3000);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1131,8 +1132,8 @@ describe("Rollup Basic circuit TXs", function () {
         // manipulate input fromAx & fromAy
         const auxFromAx = input.fromAx[1];
         const auxFromAy = input.fromAy[1];
-        input.fromAx[1] = bigInt(account2.ax, 16);
-        input.fromAy[1] = bigInt(account2.ay, 16);
+        input.fromAx[1] = Scalar.fromString(account2.ax, 16);
+        input.fromAy[1] = Scalar.fromString(account2.ay, 16);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1147,7 +1148,7 @@ describe("Rollup Basic circuit TXs", function () {
 
         // manipulate input fromEthAddr
         const auxFromEthAddr = input.fromEthAddr[1];
-        input.fromEthAddr[1] = bigInt(account2.ethAddress.slice(2), 16);
+        input.fromEthAddr[1] = Scalar.fromString(account2.ethAddress, 16);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1253,9 +1254,9 @@ describe("Rollup Basic circuit TXs", function () {
         const auxToAx = input.toAx[0];
         const auxToAy = input.toAy[0];
         const auxToEthAddr = input.toEthAddr[0];
-        input.toAx[0] = bigInt(account1.ax, 16);
-        input.toAy[0] = bigInt(account1.ay, 16);
-        input.toEthAddr[0] = bigInt(account1.ethAddress.slice(2), 16);
+        input.toAx[0] = Scalar.fromString(account1.ax, 16);
+        input.toAy[0] = Scalar.fromString(account1.ay, 16);
+        input.toEthAddr[0] = Scalar.fromString(account1.ethAddress, 16);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1271,7 +1272,7 @@ describe("Rollup Basic circuit TXs", function () {
 
         // manipulate input state
         const auxAmount = input.amount1[0];
-        input.amount1[0] = bigInt(3000);
+        input.amount1[0] = Scalar.e(3000);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1316,9 +1317,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 500,
             nonce: 0,
@@ -1334,9 +1335,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 1000,
             nonce: 0,
@@ -1361,9 +1362,9 @@ describe("Rollup Basic circuit TXs", function () {
         const auxFromAx = input.fromAx[0];
         const auxFromAy = input.fromAy[0];
         const auxFromEthAddr = input.fromEthAddr[0];
-        input.fromAx[0] = bigInt(account2.ax, 16);
-        input.fromAy[0] = bigInt(account2.ay, 16);
-        input.fromEthAddr[0] = bigInt(account2.ethAddress.slice(2), 16);
+        input.fromAx[0] = Scalar.fromString(account2.ax, 16);
+        input.fromAy[0] = Scalar.fromString(account2.ay, 16);
+        input.fromEthAddr[0] = Scalar.fromString(account2.ethAddress, 16);
 
         try {
             await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
@@ -1405,9 +1406,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 800,
             nonce: 0,
@@ -1418,9 +1419,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             coin: 0,
             amount: 400,
             nonce: 0,
@@ -1454,9 +1455,9 @@ describe("Rollup Basic circuit TXs", function () {
             fromAx: account3.ax,
             fromAy: account3.ay,
             fromEthAddr: account3.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
 

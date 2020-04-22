@@ -631,7 +631,7 @@ class Synchronizer {
             toIdx: txData.toId,
             amount: txData.amount,
             loadAmount: bigInt(event.loadAmount),
-            coin: txData.tokenId,
+            coin: txData.coin,
             ax: bigInt(event.Ax).toString(16),
             ay: bigInt(event.Ay).toString(16),
             ethAddress: event.ethAddress,

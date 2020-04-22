@@ -1,4 +1,4 @@
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 
 /*
 
@@ -22,13 +22,13 @@ class SMTTmpDb {
 
     _key2str(k) {
         // const keyS = bigInt(key).leInt2Buff(32).toString("hex");
-        const keyS = bigInt(k).toString();
+        const keyS = Scalar.e(k).toString();
         return keyS;
     }
 
     _normalize(n) {
         for (let i=0; i<n.length; i++) {
-            n[i] = bigInt(n[i]);
+            n[i] = Scalar.e(n[i]);
         }
     }
 

@@ -1,6 +1,11 @@
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
+
+function extract(num, origin, len) {
+    const mask = Scalar.sub(Scalar.shl(1, len), 1);
+    return Scalar.band(Scalar.shr(num, origin), mask);
+}
 
 function padZeros(str, length) {
     if (length > str.length)
@@ -13,34 +18,38 @@ function float2fix(fl) {
     const e = (fl >> 11);
     const e5 = (fl >> 10) & 1;
 
-    const exp = bigInt(10).pow(bigInt(e));
-    let res = bigInt(m).times(exp);
+    const exp = Scalar.pow(10, e);
+
+    let res = Scalar.mul(m, exp);
     if (e5 && e) {
-        res = res.add(exp.divide(bigInt(2)));
+        res = Scalar.add(res, Scalar.div(exp, 2));
     }
     return res;
 }
 
 function fix2float(_f) {
-    const f = bigInt(_f);
+    const f = Scalar.e(_f);
 
     function floorFix2Float(_f) {
-        const f = bigInt(_f);
-        if (f.isZero()) return 0;
+        const f = Scalar.e(_f);
+        if (Scalar.isZero(f)) return 0;
 
         let m = f;
-        let e =0;
-        while (! m.shiftRight(10).isZero()) {
-            m = m.divide(bigInt(10));
+        let e = 0;
+
+        while (!Scalar.isZero(Scalar.shr(m, 10))) {
+            m = Scalar.div(m, 10);
             e++;
         }
 
-        const res = Number(m) + (e << 11);
+        const res = Scalar.toNumber(m) + (e << 11);
         return res;
     }
 
     function dist(n1, n2) {
-        return n1.minus(n2).abs();
+        const tmp = Scalar.sub(n1, n2);
+
+        return Scalar.abs(tmp);
     }
 
     const fl1 = floorFix2Float(f);
@@ -48,59 +57,59 @@ function fix2float(_f) {
     const fl2 = fl1 | 0x400;
     const fi2 = float2fix(fl2);
 
-    let m3 = (fl1 & 0x3FF)+1;
+    let m3 = (fl1 & 0x3FF) + 1;
     let e3 = (fl1 >> 11);
     if (m3 == 0x400) {
         m3 = 0x66; // 0x400 / 10
         e3++;
     }
-    const fl3 = m3 + (e3<<11);
+    const fl3 = m3 + (e3 << 11);
     const fi3 = float2fix(fl3);
 
     let res = fl1;
     let d = dist(fi1, f);
 
     let d2 = dist(fi2, f);
-    if (d.greater(d2)) {
-        res=fl2;
-        d=d2;
+    if (Scalar.gt(d, d2)) {
+        res = fl2;
+        d = d2;
     }
 
     let d3 = dist(fi3, f);
-    if (d.greater(d3)) {
-        res=fl3;
+    if (Scalar.gt(d, d3)) {
+        res = fl3;
     }
 
     return res;
 }
 
 function buildTxData(tx) {
-    const IDEN3_ROLLUP_TX = bigInt("4839017969649077913");
-    let res = bigInt(0);
+    const IDEN3_ROLLUP_TX = Scalar.fromString("4839017969649077913");
+    let res = Scalar.e(0);
 
-    res = res.add( bigInt(IDEN3_ROLLUP_TX || 0));
-    res = res.add( bigInt(fix2float(tx.amount || 0)).shiftLeft(64));
-    res = res.add( bigInt(tx.coin || 0).shiftLeft(80));
-    res = res.add( bigInt(tx.nonce || 0).shiftLeft(112));
-    res = res.add( bigInt(fix2float(tx.userFee || 0)).shiftLeft(160));
-    res = res.add( bigInt(tx.rqOffset || 0).shiftLeft(176));
-    res = res.add( bigInt(tx.onChain ? 1 : 0).shiftLeft(179));
-    res = res.add( bigInt(tx.newAccount ? 1 : 0).shiftLeft(180));
+    res = Scalar.add(res, IDEN3_ROLLUP_TX);
+    res = Scalar.add(res, Scalar.shl(fix2float(tx.amount || 0), 64));
+    res = Scalar.add(res, Scalar.shl(tx.coin || 0, 80));
+    res = Scalar.add(res, Scalar.shl(tx.nonce || 0, 112));
+    res = Scalar.add(res, Scalar.shl(fix2float(tx.userFee || 0), 160));
+    res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 176));
+    res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 179));
+    res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 180));
 
     return res;
 }
 
 function decodeTxData(txDataEncoded) {
-    const txDataBi = bigInt(txDataEncoded);
+    const txDataBi = Scalar.fromString(txDataEncoded);
     let txData = {};
 
-    txData.amount = float2fix(txDataBi.shiftRight(64).and(bigInt(1).shiftLeft(16).minus(bigInt(1))).toJSNumber());
-    txData.tokenId = txDataBi.shiftRight(80).and(bigInt(1).shiftLeft(32).minus(bigInt(1)));
-    txData.nonce = txDataBi.shiftRight(112).and(bigInt(1).shiftLeft(48).minus(bigInt(1)));
-    txData.maxFee = float2fix(txDataBi.shiftRight(160).and(bigInt(1).shiftLeft(16).minus(bigInt(1))).toJSNumber());
-    txData.rqOffset = txDataBi.shiftRight(176).and(bigInt(1).shiftLeft(3).minus(bigInt(1)));
-    txData.onChain = txDataBi.shiftRight(179).and(bigInt(1)).equals(1) ? true : false ;
-    txData.newAccount = txDataBi.shiftRight(180).and(bigInt(1)).equals(1) ? true : false ;
+    txData.amount = float2fix(Scalar.toNumber(extract(txDataBi, 64, 16)));
+    txData.coin = extract(txDataBi, 80, 32);
+    txData.nonce = extract(txDataBi, 112, 48);
+    txData.userFee = float2fix(Scalar.toNumber(extract(txDataBi, 160, 16)));
+    txData.rqOffset = extract(txDataBi, 176, 3);
+    txData.onChain = Scalar.isZero(extract(txDataBi, 179, 1)) ? false : true;
+    txData.newAccount = Scalar.isZero(extract(txDataBi, 180, 1)) ? false : true;
 
     return txData;
 }
@@ -113,24 +122,28 @@ function txRoundValues(tx) {
 }
 
 function state2array(st) {
-    const data = bigInt(st.coin).add( bigInt(st.nonce).shiftLeft(32) );
+    let data = Scalar.e(0);
+    
+    data = Scalar.add(data, st.coin);
+    data = Scalar.add(data, Scalar.shl(st.nonce, 32));
+
     return [
         data,
-        bigInt(st.amount),
-        bigInt(st.ax, 16),
-        bigInt(st.ay, 16),
-        bigInt(st.ethAddress.slice(2), 16),
+        Scalar.e(st.amount),
+        Scalar.fromString(st.ax, 16),
+        Scalar.fromString(st.ay, 16),
+        Scalar.fromString(st.ethAddress, 16),
     ];
 }
 
 function array2state(a) {
     return {
-        coin: parseInt(bigInt(a[0]).and(bigInt(1).shiftLeft(32).minus(bigInt(1))).toString(), 10),
-        nonce: parseInt(bigInt(a[0]).shiftRight(32).and(bigInt(1).shiftLeft(32).minus(bigInt(1))).toString() , 10),
-        amount: bigInt(a[1]),
-        ax: bigInt(a[2]).toString(16),
-        ay: bigInt(a[3]).toString(16),
-        ethAddress: "0x" + padZeros(bigInt(a[4]).toString(16), 40),
+        coin: Scalar.toNumber(extract(a[0], 0, 32)),
+        nonce: Scalar.toNumber(extract(a[0], 32, 48)),
+        amount: Scalar.e(a[1]),
+        ax: Scalar.e(a[2]).toString(16),
+        ay: Scalar.e(a[3]).toString(16),
+        ethAddress: "0x" + padZeros(Scalar.e(a[4]).toString(16), 40),
     };
 }
 
@@ -148,29 +161,30 @@ function verifyTxSig(tx) {
         const h = hash([
             data,
             tx.rqTxData || 0,
-            bigInt(tx.toAx, 16),
-            bigInt(tx.toAy, 16),
-            bigInt(tx.toEthAddr.slice(2), 16),
+            Scalar.fromString(tx.toAx, 16),
+            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.toEthAddr, 16),
         ]);
         const signature = {
-            R8: [bigInt(tx.r8x), bigInt(tx.r8y)],
-            S: bigInt(tx.s)
+            R8: [Scalar.e(tx.r8x), Scalar.e(tx.r8y)],
+            S: Scalar.e(tx.s)
         };
-        
-        const pubKey = [ bigInt(tx.fromAx, 16), bigInt(tx.fromAy, 16)];
+
+        const pubKey = [Scalar.fromString(tx.fromAx, 16), Scalar.fromString(tx.fromAy, 16)];
         return eddsa.verifyPoseidon(h, signature, pubKey);
-    } catch(E) {
+    } catch (E) {
+        console.log("Enter here");
         return false;
     }
 }
 
-function hashIdx(coin, ax, ay){
+function hashIdx(coin, ax, ay) {
     const h = poseidon.createHash(6, 8, 57);
-    return h([bigInt(coin), bigInt(ax, 16), bigInt(ay, 16)]);
+    return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
 }
 
-function isStrHex(input){
-    if (typeof(input) == "string" && input.slice(0, 2) == "0x"){
+function isStrHex(input) {
+    if (typeof (input) == "string" && input.slice(0, 2) == "0x") {
         return true;
     }
     return false;
@@ -188,3 +202,4 @@ module.exports.txRoundValues = txRoundValues;
 module.exports.verifyTxSig = verifyTxSig;
 module.exports.hashIdx = hashIdx;
 module.exports.isStrHex = isStrHex; 
+module.exports.extract = extract;

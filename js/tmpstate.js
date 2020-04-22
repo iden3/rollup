@@ -1,3 +1,5 @@
+const Scalar = require("ffjavascript").Scalar;
+
 const utils = require("./utils");
 
 class TmpState {
@@ -30,7 +32,7 @@ class TmpState {
         // Check there is enough funds
         const amount = utils.float2fix(utils.fix2float(tx.amount));
         const userFee = utils.float2fix(utils.fix2float(tx.userFee));
-        if (!(stFrom.amount.greaterOrEquals(userFee.add(amount)))) return "NOT_NOW";
+        if (!Scalar.geq(stFrom.amount, Scalar.add(userFee, amount))) return "NOT_NOW";
 
         // Check coins match
         if (tx.toIdx) {
@@ -59,7 +61,7 @@ class TmpState {
         // Check there is enough funds
         const amount = utils.float2fix(utils.fix2float(tx.amount));
         const userFee = utils.float2fix(utils.fix2float(tx.userFee));
-        if (!(stFrom.amount.greaterOrEquals(userFee.add(amount)))) return false;
+        if (!Scalar.geq(stFrom.amount, Scalar.add(userFee, amount))) return false;
 
         // Check coins match
         if (tx.toIdx) {
@@ -70,10 +72,10 @@ class TmpState {
         if (tx.onChain) return false;
 
         stFrom.nonce++;
-        stFrom.amount = stFrom.amount.minus(amount);
-        stFrom.amount = stFrom.amount.minus(userFee);
+        stFrom.amount = Scalar.sub(stFrom.amount, amount);
+        stFrom.amount = Scalar.sub(stFrom.amount, userFee);
         if (tx.toIdx) {
-            stTo.amount = stTo.amount.add(amount);
+            stTo.amount = Scalar.add(stTo.amount, amount);
         }
         return true;
     }

@@ -1,17 +1,12 @@
-const chai = require("chai");
+const { assert } = require("chai");
 const path = require("path");
-const snarkjs = require("snarkjs");
 const tester = require("circom").tester;
-const utils = require("../js/utils");
+const Scalar = require("ffjavascript").Scalar;
 
-const assert = chai.assert;
-
-const bigInt = require("big-integer");
+const utils = require("../../js/utils");
 
 describe("Decode float test", function () {
     let circuit;
-
-    this.timeout(100000);
 
     const testVector = [
         [0x307B, "123000000"],
@@ -28,7 +23,7 @@ describe("Decode float test", function () {
     ];
 
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "decodefloat_test.circom"));
+        circuit = await tester(path.join(__dirname, "circuits-test", "decodefloat_test.circom"));
         await circuit.loadConstraints();
         console.log("Constraints `decodefloat.circom` circuit: " + circuit.constraints.length + "\n");
     });
@@ -39,7 +34,7 @@ describe("Decode float test", function () {
             const fx = utils.float2fix(testVector[i][0]);
             assert.equal(fx.toString() , testVector[i][1]);
 
-            const fl = utils.fix2float(bigInt(testVector[i][1]));
+            const fl = utils.fix2float(Scalar.e(testVector[i][1]));
             const fx2 = utils.float2fix(fl);
             assert.equal(fx2.toString() , testVector[i][1]);
         }

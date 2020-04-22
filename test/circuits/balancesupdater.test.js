@@ -1,16 +1,12 @@
-const chai = require("chai");
+const { assert } = require("chai");
 const path = require("path");
 const tester = require("circom").tester;
-
-const assert = chai.assert;
 
 describe("Balance updater test", function () {
     let circuit;
 
-    this.timeout(100000);
-
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "balancesupdater_test.circom"));
+        circuit = await tester(path.join(__dirname, "circuits-test", "balancesupdater_test.circom"));
         await circuit.loadConstraints();
         console.log("Constraints `balanceupdater.circom` circuit: " + circuit.constraints.length + "\n");
     });

@@ -1,23 +1,22 @@
-const chai = require("chai");
+const { expect } = require("chai");
 const path = require("path");
 const tester = require("circom").tester;
-const RollupAccount = require("../js/rollupaccount");
-const RollupTx = require("../js/tx");
-const { random } = require("./helpers/utils-circuit");
 
-const { expect } = chai;
+const RollupAccount = require("../../js/rollupaccount");
+const RollupTx = require("../../js/tx");
+const { random } = require("./helpers/utils-circuit");
 
 describe("Decode Tx test", function () {
     let circuit;
 
-    this.timeout(100000);
+    this.timeout(10000);
 
     // Accounts
     const fromAcc = new RollupAccount(0);
     const toAcc = new RollupAccount(1);
 
     before( async() => {
-        circuit = await tester(path.join(__dirname, "circuits", "decodetx_test.circom"));
+        circuit = await tester(path.join(__dirname, "circuits-test", "decodetx_test.circom"));
         await circuit.loadConstraints();
         console.log("Constraints `decodetx.circom` circuit: " + circuit.constraints.length + "\n");
     });

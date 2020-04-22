@@ -1,8 +1,9 @@
-const bigInt = require("big-integer");
+const Scalar = require("ffjavascript").Scalar;
+const assert = require("assert");
+
 const utils = require("./utils");
 const Constants = require("./constants");
 const TmpState = require("./tmpstate");
-const assert = require("assert");
 
 class TXPool {
 
@@ -18,7 +19,7 @@ class TXPool {
      */
 
     constructor(rollupDB, conversion, cfg) {
-        this.MASK256 = bigInt(1).shiftLeft(256).minus(bigInt(1));
+        this.MASK256 =  Scalar.sub(Scalar.shl(1, 256), 1);
         cfg = cfg || {};
         this.maxSlots = cfg.maxSlots || 64;
         this.executableSlots = cfg.executableSlots || 16;
@@ -27,7 +28,7 @@ class TXPool {
 
         this.rollupDB = rollupDB;
         this.txs = [];
-        this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
+        this.slotsMap = Array(Math.floor((this.maxSlots-1)/256) + 1).fill(Scalar.e(0));
         this.conversion = conversion || {};
         this.MaxCoins = 15; // We don't use the last slot to avoid problems.
 
@@ -38,17 +39,17 @@ class TXPool {
     async _load() {
         let slots = await this.rollupDB.db.get(Constants.DB_TxPoolSlotsMap);
         if (slots) {
-            this.slotsMap = slots.map( s => bigInt(s) );
+            this.slotsMap = slots.map( s => Scalar.e(s) );
         } else {
-            this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(bigInt(0));
+            this.slotsMap = Array( Math.floor((this.maxSlots-1)/256) +1).fill(Scalar.e(0));
         }
         const slotKeys = [];
         for (let i = 0; i<this.slotsMap.length; i++) {
-            if (this.slotsMap[i].isZero()) continue;
+            if (Scalar.isZero(this.slotsMap[i])) continue;
             for (let j=0; j<256; j++) {
-                if (!this.slotsMap[i].and(bigInt(1).shiftLeft(j)).isZero()) {
-                    if (i*256+j<this.maxSlots) {
-                        slotKeys.push(Constants.DB_TxPollTx.add(bigInt(i*256+j)));
+                if (!Scalar.isZero(Scalar.band(this.slotsMap[i], Scalar.shl(1, j)))) {    
+                    if (i*256+j < this.maxSlots) {
+                        slotKeys.push(Scalar.add(Constants.DB_TxPollTx, i*256+j));
                     }
                 }
             }
@@ -69,41 +70,36 @@ class TXPool {
     _tx2Array(tx) {
         return [
             utils.buildTxData(tx),
-            tx.rqTxData || 0,
-            bigInt(tx.timestamp).shiftLeft(32).add(bigInt(tx.slot)),
-            bigInt(tx.fromAx, 16),
-            bigInt(tx.fromAy, 16),
+            Scalar.e(tx.rqTxData || 0),
+            Scalar.add(Scalar.shl(tx.timestamp, 32), tx.slot),
+            Scalar.fromString(tx.fromAx, 16),
+            Scalar.fromString(tx.fromAy, 16),
         ];
     }
 
     _array2Tx(arr) {
         const tx = {};
-        const d0 = bigInt(arr[0]);
-        tx.fromIdx = extract(d0, 0, 64);
-        tx.toIdx = extract(d0, 64, 64);
-        tx.amount = utils.float2fix(extract(d0, 128, 16));
-        tx.coin = extract(d0, 144, 16);
-        tx.nonce = extract(d0, 176, 16);
-        tx.userFee = utils.float2fix(extract(d0, 224, 16));
-        tx.rqOffset = extract(d0, 240, 3);
-        tx.onChain = extract(d0, 243, 1);
-        tx.newAccount = extract(d0, 244, 1);
+        const d0 = Scalar.e(arr[0]);
+        tx.fromIdx = utils.extract(d0, 0, 64);
+        tx.toIdx = utils.extract(d0, 64, 64);
+        tx.amount = utils.float2fix(utils.extract(d0, 128, 16));
+        tx.coin = utils.extract(d0, 144, 16);
+        tx.nonce = utils.extract(d0, 176, 16);
+        tx.userFee = utils.float2fix(utils.extract(d0, 224, 16));
+        tx.rqOffset = utils.extract(d0, 240, 3);
+        tx.onChain = utils.extract(d0, 243, 1);
+        tx.newAccount = utils.extract(d0, 244, 1);
 
-        tx.rqTxData = bigInt(arr[1]);
+        tx.rqTxData = Scalar.e(arr[1]);
 
-        const d2 = bigInt(arr[2]);
-        tx.slot = extract(d2, 0, 32);
-        tx.timestamp = extract(d2, 32, 64);
+        const d2 = Scalar.e(arr[2]);
+        tx.slot = utils.extract(d2, 0, 32);
+        tx.timestamp = utils.extract(d2, 32, 64);
 
-        tx.fromAx = bigInt(arr[3]).toString(16);
-        tx.fromAy = bigInt(arr[4]).toString(16);
+        tx.fromAx = Scalar.e(arr[3]).toString(16);
+        tx.fromAy = Scalar.e(arr[4]).toString(16);
 
         return tx;
-
-        function extract(n, o, s) {
-            const mask = bigInt(1).shiftLeft(s).minus(bigInt(1));
-            return n.shiftRight(o).and(mask).toJSNumber();
-        }
     }
 
     async addTx(_tx) {
@@ -152,7 +148,7 @@ class TXPool {
         this.txs.push(tx);
 
         await this.rollupDB.db.multiIns([
-            [Constants.DB_TxPollTx.add(bigInt(tx.slot)), this._tx2Array(tx)]
+            [Scalar.add(Constants.DB_TxPollTx, tx.slot), this._tx2Array(tx)]
         ]);
         await this._updateSlots();
         return tx.slot;
@@ -161,14 +157,14 @@ class TXPool {
     _allocateFreeSlot() {
         let i = 0;
         for (i=0; i<this.slotsMap.length; i++) {
-            if (!this.slotsMap[i].equals( this.MASK256 ) ) {
+            if (!Scalar.eq(this.slotsMap[i], this.MASK256)) {
                 let r = 0;
                 let s = this.slotsMap[i];
-                while (!s.and(bigInt(1)).isZero()) {
-                    s = s.shiftRight(1);
+                while (! Scalar.isZero(Scalar.band(s, 1))) {
+                    s = Scalar.shr(s, 1);
                     r ++;
                 }
-                this.slotsMap[i] = this.slotsMap[i].add(bigInt(1).shiftLeft(r));
+                this.slotsMap[i] = Scalar.add(this.slotsMap[i], Scalar.shl(1, r));
                 if ((i*256+r) < this.maxSlots) {
                     return i*256+r;
                 } else {
@@ -180,18 +176,15 @@ class TXPool {
     }
 
     _isSlotAllocated(s) {
-        return !this.slotsMap[Math.floor(s/256)].and(bigInt(1).shiftLeft(s%256)).isZero();
+        return !Scalar.isZero(Scalar.band(this.slotsMap[Math.floor(s/256)], Scalar.shl(1, s%256)));
     }
 
     _freeSlot(s) {
         if (this._isSlotAllocated(s)) {
-            this.slotsMap[Math.floor(s/256)] = this.slotsMap[Math.floor(s/256)].minus(bigInt(1).shiftLeft(s%256));
+            this.slotsMap[Math.floor(s/256)] = Scalar.sub(this.slotsMap[Math.floor(s/256)], Scalar.shl(1, s%256));
         }
     }
 
-    /*
-
-    */
     _genUpdateSlots()  {
         let pCurrent = null, pNext =null;
 
@@ -394,10 +387,10 @@ class TXPool {
             const convRate = this.conversion[tx.coin];
 
             if (convRate) {
-                const num = tx.userFee.times(bigInt(Math.floor(convRate.price*2**64)));
-                const den = bigInt(10).pow(bigInt(convRate.decimals));
+                const num = Scalar.mul(tx.userFee, Math.floor(convRate.price * 2**64));
+                const den = Scalar.pow(10, convRate.decimals);
 
-                tx.normalizedFee = (num.divide(den)).toJSNumber() / 2**64;
+                tx.normalizedFee = Number(Scalar.div(num, den)) / 2**64;
             } else {
                 tx.normalizedFee = 0;
             }

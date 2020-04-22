@@ -1,93 +1,13 @@
-const chai = require("chai");
-const { expect } = chai;
-const { assert } = chai;
-const { stringifyBigInts } = require("snarkjs");
+const { assert, expect } = require("chai");
+const Scalar = require("ffjavascript").Scalar;
 const lodash = require("lodash");
 const SMTMemDB = require("circomlib").SMTMemDB;
-const util = require("util");
-const exec = util.promisify( require("child_process").exec);
 
 const RollupAccount = require("../../js/rollupaccount");
 const RollupDB = require("../../js/rollupdb");
-const { SMTLevelDb } = require("../../rollup-utils/smt-leveldb");
-const bigInt = require("big-integer");
-
-async function initRollupDb(rollupDB) {
-
-    const bb = await rollupDB.buildBatch(4, 8);
-
-    const account1 = new RollupAccount(1);
-    const account2 = new RollupAccount(2);
-
-    bb.addTx({ 
-        loadAmount: 10, 
-        coin: 0, 
-        fromAx: account1.ax, 
-        fromAy: account1.ay,
-        fromEthAddr: account1.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0,
-        onChain: true 
-    });
-
-    bb.addTx({ 
-        loadAmount: 10, 
-        coin: 1, 
-        fromAx: account1.ax, 
-        fromAy: account1.ay,
-        fromEthAddr: account1.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0, 
-        onChain: true 
-    });
-
-    bb.addTx({  
-        loadAmount: 0, 
-        coin: 0, 
-        fromAx: account2.ax, 
-        fromAy: account2.ay,
-        fromEthAddr: account2.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0, 
-        onChain: true 
-    });
-
-    bb.addTx({
-        loadAmount: 0, 
-        coin: 1, 
-        fromAx: account2.ax, 
-        fromAy: account2.ay,
-        fromEthAddr: account2.ethAddress,
-        toAx: 0,
-        toAy: 0,
-        toEthAddr: 0, 
-        onChain: true 
-    });
-
-    await bb.build();
-    await rollupDB.consolidate(bb);
-}
-
-async function checkDb(memDb, toCheckDb){
-    // Check root
-    const memRoot = await memDb.db.getRoot();
-    const checkRoot = await toCheckDb.db.getRoot();
-    expect(memRoot.toString()).to.be.equal(checkRoot.toString());
-    
-    // Check database
-    const keys = Object.keys(memDb.db.nodes);
-    for (const key of keys) {
-        const valueMem = JSON.stringify(stringifyBigInts(await memDb.db.get(key)));
-        const valueToCheck = JSON.stringify(stringifyBigInts(await toCheckDb.db.get(key)));
-        expect(lodash.isEqual(valueMem, valueToCheck)).to.be.equal(true);
-    }
-}
+const Constants = require("../../js/constants");
 
 describe("Rollup Db - batchbuilder", async function(){
-    this.timeout(20000);
 
     it("Should get states correctly", async () => {
         // Start a new state
@@ -104,9 +24,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
     
@@ -116,9 +36,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account2.ax,
             fromAy: account2.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
     
@@ -128,9 +48,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
     
@@ -162,9 +82,9 @@ describe("Rollup Db - batchbuilder", async function(){
             toAy: account2.ay,
             toEthAddr: account2.ethAddress,
             coin: 1,
-            amount: bigInt("50"),
+            amount: Scalar.e("50"),
             nonce: 0,
-            userFee: bigInt("6")
+            userFee: Scalar.e("6")
         };
 
         account1.signTx(tx);
@@ -228,9 +148,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
         
@@ -240,9 +160,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account2.ax,
             fromAy: account2.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
         
@@ -290,9 +210,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
         
@@ -302,9 +222,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account2.ax,
             fromAy:account2.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
         
@@ -350,9 +270,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
         
@@ -362,9 +282,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account2.ax,
             fromAy: account2.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             onChain: true
         });
         
@@ -379,9 +299,9 @@ describe("Rollup Db - batchbuilder", async function(){
             fromAx: account3.ax,
             fromAy: account3.ay,
             fromEthAddr: account3.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
         });
         
         try {
@@ -394,36 +314,8 @@ describe("Rollup Db - batchbuilder", async function(){
     });
 });
 
-describe("RollupDb - LevelDb", async function () {
-    this.timeout(20000);
-    let rollupMemDb;
-    let rollupLevelDb;
-
-    const pathDb = `${__dirname}/tmp-rollupDb`;
-
-    it("should initialize with memory database", async () => {
-        const db = new SMTMemDB();
-        rollupMemDb = await RollupDB(db);
-        await initRollupDb(rollupMemDb);
-    });
-
-    it("should initialize with level-db database", async () => {
-        const db = new SMTLevelDb(pathDb);
-        rollupLevelDb = await RollupDB(db);
-        await initRollupDb(rollupLevelDb);
-    });
-
-    it("should check equal databases", async () => {
-        await checkDb(rollupMemDb, rollupLevelDb);
-    });
-
-    after(async () => {
-        await exec(`rm -rf ${pathDb}`);
-    });
-});
-
 describe("RollupDb - rollback functionality", async function () {
-    this.timeout(20000);
+
     let rollupDb;
 
     const account1 = new RollupAccount(1);
@@ -444,9 +336,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account1.ax, 
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         });
 
@@ -469,9 +361,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account1.ax, 
             fromAy: account1.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         });
 
@@ -481,9 +373,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account2.ax, 
             fromAy: account2.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         });
 
@@ -547,9 +439,9 @@ describe("RollupDb - rollback functionality", async function () {
         const stateId2 = await rollupDb.getStateByIdx(2);
         const stateId3 = await rollupDb.getStateByIdx(3);
 
-        expect(stateId1.amount.toJSNumber()).to.be.equal(oldStateId1.amount.toJSNumber() - tx.amount);
-        expect(stateId2.amount.toJSNumber()).to.be.equal(oldStateId2.amount.toJSNumber());
-        expect(stateId3.amount.toJSNumber()).to.be.equal(oldStateId3.amount.toJSNumber() + tx.amount);
+        expect(Scalar.toNumber(stateId1.amount)).to.be.equal(Scalar.toNumber(oldStateId1.amount) - tx.amount);
+        expect(Scalar.toNumber(stateId2.amount)).to.be.equal(Scalar.toNumber(oldStateId2.amount));
+        expect(Scalar.toNumber(stateId3.amount)).to.be.equal(Scalar.toNumber(oldStateId3.amount) + tx.amount);
 
         // rollback database
         await rollupDb.rollbackToBatch(oldNumBatch);
@@ -584,9 +476,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account1.ax, 
             fromAy: account1.ay,
             fromEthAddr: account3.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         };
 
@@ -597,7 +489,7 @@ describe("RollupDb - rollback functionality", async function () {
 
         // check current state database
         const stateId3 = await rollupDb.getStateByIdx(3);
-        expect(stateId3.amount.toJSNumber()).to.be.equal(tx.loadAmount);
+        expect(Scalar.toNumber(stateId3.amount)).to.be.equal(tx.loadAmount);
 
         const stateAxAy = await rollupDb.getStateByAxAy(account1.ax, account1.ay);
         expect(stateAxAy.length).to.be.equal(3);
@@ -647,9 +539,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account1.ax, 
             fromAy: account1.ay,
             fromEthAddr: account3.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true
         };
 
@@ -660,7 +552,7 @@ describe("RollupDb - rollback functionality", async function () {
 
         // check current state database
         const stateId4 = await rollupDb.getStateByIdx(4);
-        expect(stateId4.amount.toJSNumber()).to.be.equal(tx.loadAmount);
+        expect(Scalar.toNumber(stateId4.amount)).to.be.equal(tx.loadAmount);
 
         const stateAxAy = await rollupDb.getStateByAxAy(account1.ax, account1.ay);
         expect(stateAxAy.length).to.be.equal(3);
@@ -687,9 +579,9 @@ describe("RollupDb - rollback functionality", async function () {
         const stateId1 = await rollupDb.getStateByIdx(1);
         const stateId2 = await rollupDb.getStateByIdx(2);
         const stateId3 = await rollupDb.getStateByIdx(3);
-        expect(stateId1.amount.toJSNumber()).to.be.equal(oldStateId1.amount.toJSNumber() - tx2.amount);
-        expect(stateId2.amount.toJSNumber()).to.be.equal(oldStateId2.amount.toJSNumber());
-        expect(stateId3.amount.toJSNumber()).to.be.equal(oldStateId3.amount.toJSNumber() + tx2.amount);
+        expect(Scalar.toNumber(stateId1.amount)).to.be.equal(Scalar.toNumber(oldStateId1.amount) - tx2.amount);
+        expect(Scalar.toNumber(stateId2.amount)).to.be.equal(Scalar.toNumber(oldStateId2.amount));
+        expect(Scalar.toNumber(stateId3.amount)).to.be.equal(Scalar.toNumber(oldStateId3.amount) + tx2.amount);
 
         // rollback database
         await rollupDb.rollbackToBatch(oldNumBatch);
@@ -761,9 +653,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account1.ax, 
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         });
 
@@ -773,9 +665,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account2.ax, 
             fromAy: account2.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         });
 
@@ -785,9 +677,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account3.ax, 
             fromAy: account3.ay,
             fromEthAddr: account3.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0, 
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr, 
             onChain: true 
         }); 
 
@@ -810,9 +702,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account3.ax,
             fromAy: account3.ay,
             fromEthAddr: account3.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             amount: 5,
             coin: 0,
         };
@@ -846,9 +738,9 @@ describe("RollupDb - rollback functionality", async function () {
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account2.ethAddress,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
             amount: amountToWithdraw,
             coin: 0,
         };
