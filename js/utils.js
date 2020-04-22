@@ -183,6 +183,21 @@ function hashIdx(coin, ax, ay) {
     return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
 }
 
+function encodeDepositOffchain(depositsOffchain) {
+    let buffer = Buffer.alloc(0);
+    for (let i=0; i<depositsOffchain.length; i++) {
+        buffer = Buffer.concat([
+            buffer,
+            bigInt("0x" + depositsOffchain[i].fromAx).beInt2Buff(32),
+            bigInt("0x" + depositsOffchain[i].fromAy).beInt2Buff(32),
+            bigInt(depositsOffchain[i].fromEthAddr).beInt2Buff(20),
+            bigInt(depositsOffchain[i].coin).beInt2Buff(4),
+        ]);
+    }
+    
+    return buffer;
+}
+
 function isStrHex(input) {
     if (typeof (input) == "string" && input.slice(0, 2) == "0x") {
         return true;
@@ -203,3 +218,4 @@ module.exports.verifyTxSig = verifyTxSig;
 module.exports.hashIdx = hashIdx;
 module.exports.isStrHex = isStrHex; 
 module.exports.extract = extract;
+module.exports.encodeDepositOffchain = encodeDepositOffchain;
