@@ -2,7 +2,6 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const ethUtil = require("ethereumjs-util");
 const { expect } = require("chai");
@@ -10,6 +9,7 @@ const { smt } = require("circomlib");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const poseidonJs = require("circomlib/src/poseidon");
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const Scalar = require("ffjavascript").Scalar;
 
 const utils = require("../../js/utils");
 const treeUtils = require("../../rollup-utils/rollup-tree-utils");
@@ -17,21 +17,22 @@ const HelpersTest = artifacts.require("../contracts/test/RollupHelpersTest");
 const { padZeroes} = require("./helpers/helpers");
 const helpers= require("./helpers/helpers");
 const RollupDB = require("../../js/rollupdb");
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 const MAX_LEVELS = 24;
 
 let tree;
-const key1 = BigInt(7);
-const value1 = BigInt(77);
-const key2 = BigInt(8);
-const value2 = BigInt(88);
-const key3 = BigInt(32);
-const value3 = BigInt(3232);
+const key1 = Scalar.e(7);
+const value1 = Scalar.e(77);
+const key2 = Scalar.e(8);
+const value2 = Scalar.e(88);
+const key3 = Scalar.e(32);
+const value3 = Scalar.e(3232);
 
-const key4 = BigInt(6);
-const key5 = BigInt(22);
-const key6 = BigInt(0);
-const key7 = BigInt(9);
+const key4 = Scalar.e(6);
+const key5 = Scalar.e(22);
+const key6 = Scalar.e(0);
+const key7 = Scalar.e(9);
 
 
 async function fillSmtTree() {
@@ -226,11 +227,11 @@ contract("RollupHelpers functions", (accounts) => {
 
         const isNonExistence = !resProof.found;
         const isOld = !resProof.isOld0;
-        const oldKey = resProof.notFoundKey ? resProof.notFoundKey.toString() : BigInt(0).toString();
-        const oldValue = resProof.notFoundKey ? resProof.notFoundValue.toString() : BigInt(0).toString();
+        const oldKey = resProof.notFoundKey ? resProof.notFoundKey.toString() : Scalar.e(0).toString();
+        const oldValue = resProof.notFoundKey ? resProof.notFoundValue.toString() : Scalar.e(0).toString();
 
         // Manipulate root
-        const rootFake = BigInt(30890499764467592830739030727222305800976141688008169211302).toString();
+        const rootFake = Scalar.e(30890499764467592830739030727222305800976141688008169211302).toString();
         const resSm1 = await insHelpers.smtVerifierTest(rootFake, siblings, key1.toString(), value1.toString(),
             oldKey, oldValue, isNonExistence, isOld, MAX_LEVELS);
         expect(resSm1).to.be.equal(false);
@@ -242,13 +243,13 @@ contract("RollupHelpers functions", (accounts) => {
         expect(resSm2).to.be.equal(false);
 
         // Manipulate key
-        const keyFake = BigInt(46).toString();
+        const keyFake = Scalar.e(46).toString();
         const resSm3 = await insHelpers.smtVerifierTest(root, siblings, keyFake.toString(), value1.toString(),
             oldKey, oldValue, isNonExistence, isOld, MAX_LEVELS);
         expect(resSm3).to.be.equal(false);
 
         // Manipulate value
-        const valueFake = BigInt(7).toString();
+        const valueFake = Scalar.e(7).toString();
         const resSm4 = await insHelpers.smtVerifierTest(root, siblings, key1.toString(), valueFake.toString(),
             oldKey, oldValue, isNonExistence, isOld, MAX_LEVELS);
         expect(resSm4).to.be.equal(false);
@@ -336,24 +337,24 @@ contract("RollupHelpers functions", (accounts) => {
         const amountDeposit = 2;
         const tokenId = 3;
         const nonce = 4;
-        const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-        const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
+        const Ax = Scalar.e(30890499764467592830739030727222305800976141688008169211302);
+        const Ay = Scalar.e(19826930437678088398923647454327426275321075228766562806246);
         const ethAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
 
         const res = await insHelpers.buildTreeStateTest(amountDeposit, tokenId, Ax.toString(),
             Ay.toString(), ethAddr, nonce);
         
-        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, BigInt(ethAddr), nonce);
+        const infoLeaf = treeUtils.hashStateTree(amountDeposit, tokenId, Ax, Ay, Scalar.e(ethAddr), nonce);
 
         expect(res[0]).to.be.equal(infoLeaf.elements.e0);
         expect(res[1]).to.be.equal(infoLeaf.elements.e1);
-        expect(BigInt(res[2]).toString()).to.be.equal(BigInt(infoLeaf.elements.e2).toString());
-        expect(BigInt(res[3]).toString()).to.be.equal(BigInt(infoLeaf.elements.e3).toString());
+        expect(Scalar.fromString(res[2]).toString()).to.be.equal(Scalar.fromString(infoLeaf.elements.e2).toString());
+        expect(Scalar.fromString(res[3]).toString()).to.be.equal(Scalar.fromString(infoLeaf.elements.e3).toString());
         expect(res[4]).to.be.equal(infoLeaf.elements.e4);
 
         const resHash = await insHelpers.hashTreeStateTest(amountDeposit, tokenId, Ax.toString(),
             Ay.toString(), ethAddr, nonce);
-        expect(BigInt(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
+        expect(Scalar.e(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
     });
 
     it("float to fix", async () => {
@@ -373,7 +374,7 @@ contract("RollupHelpers functions", (accounts) => {
         
         for (let i = 0; i < testVector.length; i ++) {
             const resSm = await insHelpers.float2FixTest(testVector[i][0]);
-            expect(BigInt(resSm).toString()).to.be.equal(testVector[i][1]);
+            expect(Scalar.e(resSm).toString()).to.be.equal(testVector[i][1]);
         }
     });
 
@@ -388,13 +389,10 @@ contract("RollupHelpers functions", (accounts) => {
         const newAccount = true;
         const oldOnChainHash = 1;
         const loadAmount = 2;
-        const fromAx = BigInt(30890499764467592830739030727222305800976141688008169211302);
-        const fromAy = BigInt(19826930437678088398923647454327426275321075228766562806246);
-        const toAx = BigInt(0);
-        const toAy = BigInt(0);
+        const fromAx = Scalar.e(30890499764467592830739030727222305800976141688008169211302);
+        const fromAy = Scalar.e(19826930437678088398923647454327426275321075228766562806246);
         const fromEthAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
-        const toEthAddr = "0x0000000000000000000000000000000000000000";
-        const IDEN3_ROLLUP_TX = BigInt("4839017969649077913");
+        const IDEN3_ROLLUP_TX = Scalar.fromString("4839017969649077913");
 
         let txData;
         let hashOnchainData;
@@ -419,9 +417,9 @@ contract("RollupHelpers functions", (accounts) => {
 
         it("Build on chain data", async () => {            
             const res = await insHelpers.buildOnChainDataTest(fromAx.toString(), fromAy.toString(), 
-                toEthAddr, toAx.toString(), toAy.toString());
+                exitEthAddr, exitAx, exitAy);
 
-            const onChainJs = helpers.buildOnChainData(fromAx, fromAy, BigInt(toEthAddr), toAx, toAy);
+            const onChainJs = helpers.buildOnChainData(fromAx, fromAy, Scalar.e(exitEthAddr), Scalar.e(exitAx), Scalar.e(exitAy));
                 
             expect(res[0]).to.be.equal(onChainJs.e0);
             expect(res[1]).to.be.equal(onChainJs.e1);
@@ -431,10 +429,10 @@ contract("RollupHelpers functions", (accounts) => {
         });
 
         it("hash on chain data", async () => {            
-            const res = await insHelpers.hashOnChainDataTest(fromAx.toString(), fromAy.toString(), toEthAddr, toAx.toString(), toAy.toString());
+            const res = await insHelpers.hashOnChainDataTest(fromAx.toString(), fromAy.toString(), exitEthAddr, exitAx, exitAy);
 
             hashOnchainData = helpers.hashOnChainData({fromAx: fromAx.toString(16), fromAy: fromAy.toString(16), 
-                toEthAddr: BigInt(toEthAddr), toAx: toAx.toString(16), toAy:toAy.toString(16)});
+                toEthAddr: exitEthAddr, toAx: exitAx, toAy: exitAy});
                 
             expect(res.toString()).to.be.equal(hashOnchainData.toString());
         });
@@ -444,7 +442,7 @@ contract("RollupHelpers functions", (accounts) => {
                 txData.toString(), loadAmount, hashOnchainData.toString(), fromEthAddr);
 
             let onChainJs = helpers.buildhashOnChain(oldOnChainHash,
-                txData, loadAmount,  BigInt(hashOnchainData.toString()), BigInt(fromEthAddr));
+                txData, loadAmount, Scalar.fromString(hashOnchainData.toString()), Scalar.e(fromEthAddr));
 
             expect(res[0]).to.be.equal(onChainJs.e0);
             expect(res[1]).to.be.equal(onChainJs.e1);
@@ -461,7 +459,7 @@ contract("RollupHelpers functions", (accounts) => {
             onChainHash = helpers.hashOnChain(oldOnChainHash,
                 txData, loadAmount, hashOnchainData.toString(), fromEthAddr);
                 
-            expect(BigInt(res).toString()).to.be.equal(onChainHash.toString());
+            expect( Scalar.e(res).toString()).to.be.equal(onChainHash.toString());
         });
 
         it("helpers and batchbuilder must have the same results", async () => { 
@@ -480,9 +478,9 @@ contract("RollupHelpers functions", (accounts) => {
                 fromAx: fromAx.toString(16),
                 fromAy: fromAy.toString(16),
                 fromEthAddr,
-                toAx: toAx.toString(16),
-                toAy: toAy.toString(16),
-                toEthAddr,
+                toAx: exitAx,
+                toAy: exitAy,
+                toEthAddr: exitEthAddr,
                 onChain: true
             };
             let db = new SMTMemDB();
@@ -497,15 +495,15 @@ contract("RollupHelpers functions", (accounts) => {
                 nonce, userFee, rqOffset, onChain, newAccount);
                 
             const hashSC = await insHelpers.buildAndHashOnChain(fromEthAddr,
-                fromAx.toString(), fromAy.toString(), toEthAddr, toAx.toString(), toAy.toString(), 
+                fromAx.toString(), fromAy.toString(), exitEthAddr, exitAx, exitAy, 
                 oldOnChainHash, txData.toString(), loadAmount);
     
-            expect(BigInt(hashSC).toString()).to.be.equal(hashBatchbuilder.toString());
+            expect(Scalar.e(hashSC).toString()).to.be.equal(hashBatchbuilder.toString());
         });
 
         it("encode and decode offchain deposit", async () => { 
-            const fromAx = BigInt(30890499764467592830739030727222305800976141688008169211302).toString(16);
-            const fromAy = BigInt(19826930437678088398923647454327426275321075228766562806246).toString(16);
+            const fromAx = Scalar.e(30890499764467592830739030727222305800976141688008169211302).toString(16);
+            const fromAy = Scalar.e(19826930437678088398923647454327426275321075228766562806246).toString(16);
             const fromEthAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
             const coin = 3;
 
@@ -521,7 +519,7 @@ contract("RollupHelpers functions", (accounts) => {
 
             expect(decodedOffchainDeposit[0].toString(16)).to.be.equal(fromAx);
             expect(decodedOffchainDeposit[1].toString(16)).to.be.equal(fromAy);
-            expect(BigInt(decodedOffchainDeposit[2])).to.be.equal(BigInt(fromEthAddr));
+            expect(Scalar.e(decodedOffchainDeposit[2])).to.be.equal(Scalar.e(fromEthAddr));
             expect(decodedOffchainDeposit[3].toString()).to.be.equal(coin.toString());
         });
     });

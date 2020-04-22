@@ -1,6 +1,7 @@
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
+const { beInt2Buff } = require("ffjavascript").utils;
 
 function extract(num, origin, len) {
     const mask = Scalar.sub(Scalar.shl(1, len), 1);
@@ -188,10 +189,10 @@ function encodeDepositOffchain(depositsOffchain) {
     for (let i=0; i<depositsOffchain.length; i++) {
         buffer = Buffer.concat([
             buffer,
-            bigInt("0x" + depositsOffchain[i].fromAx).beInt2Buff(32),
-            bigInt("0x" + depositsOffchain[i].fromAy).beInt2Buff(32),
-            bigInt(depositsOffchain[i].fromEthAddr).beInt2Buff(20),
-            bigInt(depositsOffchain[i].coin).beInt2Buff(4),
+            beInt2Buff(Scalar.fromString(depositsOffchain[i].fromAx, 16), 32),
+            beInt2Buff(Scalar.fromString(depositsOffchain[i].fromAy, 16), 32),
+            beInt2Buff(Scalar.fromString(depositsOffchain[i].fromEthAddr, 16), 20),
+            beInt2Buff(Scalar.e(depositsOffchain[i].coin), 4),
         ]);
     }
     

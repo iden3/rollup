@@ -8,8 +8,10 @@ const { expect } = require("chai");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const abiDecoder = require("abi-decoder");
 
+
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const RollupDB = require("../../js/rollupdb");
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 const { getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 
@@ -99,13 +101,14 @@ contract("RollupPoS", (accounts) => {
             const maxTx = 10;
             const nLevels = 24;
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
+
             bb.addTx({
                 fromAx: wallets[1].publicKey[0].toString(16),
                 fromAy:  wallets[1].publicKey[1].toString(16),
                 fromEthAddr: id1,
-                toAx: 0,
-                toAy: 0,
-                toEthAddr: 0,
+                toAx: exitAx,
+                toAy: exitAy,
+                toEthAddr: exitEthAddr,
                 loadAmount: 1000,
                 coin: 0,
                 onChain: true
@@ -115,9 +118,9 @@ contract("RollupPoS", (accounts) => {
                 fromAx: wallets[2].publicKey[0].toString(16),
                 fromAy:  wallets[2].publicKey[1].toString(16),
                 fromEthAddr: id1,
-                toAx: 0,
-                toAy: 0,
-                toEthAddr: 0,
+                toAx: exitAx,
+                toAy: exitAy,
+                toEthAddr: exitEthAddr,
                 loadAmount: 2000,
                 coin: 0,
                 onChain: true

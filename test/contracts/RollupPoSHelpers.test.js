@@ -3,13 +3,13 @@
 /* global contract */
 /* global web3 */
 
-const { stringifyBigInts } = require("snarkjs");
 const { expect } = require("chai");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 
 const HelpersPoSTest = artifacts.require("../contracts/test/RollupPoSHelpersTest");
 const RollupDB = require("../../js/rollupdb");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 async function checkHashOffChain(bb, insPoS, maxTx) {
     await bb.build();
@@ -52,9 +52,9 @@ contract("RollupPoSHelpers functions", (accounts) => {
             fromAx: wallets[1].publicKey[0].toString(16),
             fromAy:  wallets[1].publicKey[1].toString(16),
             fromEthAddr: id1,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
             onChain: true
         });
 
@@ -64,9 +64,9 @@ contract("RollupPoSHelpers functions", (accounts) => {
             fromAx: wallets[2].publicKey[0].toString(16),
             fromAy:  wallets[2].publicKey[1].toString(16),
             fromEthAddr: id1,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
             onChain: true
         });
         await bb.build();
@@ -133,7 +133,7 @@ contract("RollupPoSHelpers functions", (accounts) => {
     it("Should calculate effective stake for amount < 1 finney", async () => {
         let input = web3.utils.toWei("0.5", "finney");
         let resStake = await insPoSHelpers.effectiveStakeTest(input);
-        expect(parseInt(stringifyBigInts(resStake))).to.be.equal(0);
+        expect(parseInt((resStake).toString())).to.be.equal(0);
     });
 
     it("Should calculate effective stake with very low relative error", async () => {
@@ -143,7 +143,7 @@ contract("RollupPoSHelpers functions", (accounts) => {
                     // test from 0.001 ether to 10000 ethers
                     let input = web3.utils.toWei((k+j*10**i).toString(), "finney");
                     let resStake = await insPoSHelpers.effectiveStakeTest(input);
-                    let result = parseInt(stringifyBigInts(resStake));
+                    let result = parseInt((resStake).toString());
                     let expected = Math.floor(Math.pow(parseInt(input)/1e+15,1.25));
                     // bigger the input, lower the relative error
                     expect(Math.abs((result-expected)/result)).to.be.below(0.0015);

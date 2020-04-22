@@ -2,13 +2,13 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const { expect } = require("chai");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const Scalar = require("ffjavascript").Scalar;
+const { stringifyBigInts } = require("ffjavascript").utils;
 
-const utils = require("../../rollup-utils/utils");
 const { buildFullInputSm, ForgerTest, decodeMethod, signRollupTx } = require("./helpers/helpers");
 const { encodeDepositOffchain } = require("../../js/utils");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
@@ -17,7 +17,7 @@ const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const StakerManager = artifacts.require("../contracts/RollupPoS");
 const RollupTest = artifacts.require("../contracts/test/RollupTest");
 const RollupDB = require("../../js/rollupdb");
-
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 contract("Rollup", (accounts) => { 
 
@@ -122,7 +122,7 @@ contract("Rollup", (accounts) => {
         let feeAddToken2 =  await insRollupTest.feeAddToken();
 
         //the account get the payment from the add token fee
-        expect((BigInt(balanceFeeTokenAddress2).sub(BigInt(balanceFeeTokenAddress))).toString()).to.be.equal(feeAddToken.toString());
+        expect(Scalar.sub(balanceFeeTokenAddress2, balanceFeeTokenAddress).toString()).to.be.equal(feeAddToken.toString());
         //the add token fee is increased
         expect(feeAddToken2.toString()).to.be.equal((parseInt(feeAddToken)*1.25).toString());
         expect(resAddToken.logs[0].event).to.be.equal("AddToken");
@@ -171,8 +171,8 @@ contract("Rollup", (accounts) => {
         await forgerTest.forgeBatch([resDeposit.logs[0]]);
 
         let balanceBeneficiary2 = await web3.eth.getBalance(beneficiary);
-        expect(BigInt(balanceBeneficiary2) - BigInt(balanceBeneficiary)).to.be.equal(
-            BigInt(feeOnChain) - BigInt(feeOnChain) / BigInt(maxOnChainTx * 3));
+        expect(Scalar.sub(balanceBeneficiary2, balanceBeneficiary)).to.be.equal(
+            Scalar.sub(feeOnChain, Scalar.div(feeOnChain, maxOnChainTx * 3)));
 
         const leafId= await insRollupTest.getLeafId([wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], tokenId);
         expect(leafId.toString()).to.be.equal("1");
@@ -273,26 +273,26 @@ contract("Rollup", (accounts) => {
         const id = 1;
 
         const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
         const tokenId = 0;
 
         // Should trigger error since we are try get withdraw from different sender
         try {
             await insRollupTest.withdraw(leafId.amount.toString(),
-                BigInt(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
+                Scalar.e(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
                 tokenId, { from: id2 });
         } catch (error) {
             expect((error.message).includes("invalid proof")).to.be.equal(true);
         }
         // send withdraw transaction
         await insRollupTest.withdraw(leafId.amount.toString(),
-            BigInt(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
+            Scalar.e(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
             tokenId, { from: id1 });
         // Should trigger error since we are repeating the withdraw transaction
         try {
             await insRollupTest.withdraw(leafId.amount.toString(),
-                BigInt(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
+                Scalar.e(lastBatch).toString(), siblingsId, [wallets[1].publicKey[0].toString(), wallets[1].publicKey[1].toString()], 
                 tokenId, { from: id1 });
         } catch (error) {
             expect((error.message).includes("withdraw has been already done")).to.be.equal(true);
@@ -460,11 +460,11 @@ contract("Rollup", (accounts) => {
         const tokenId = 0;
 
         const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
 
         await insRollupTest.withdraw(leafId.amount.toString(),
-            BigInt(lastBatch).toString(), siblingsId, [wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()], 
+            Scalar.e(lastBatch).toString(), siblingsId, [wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()], 
             tokenId, { from: id2 });
 
         // Check token balances for id1 and rollup smart contract
@@ -491,9 +491,9 @@ contract("Rollup", (accounts) => {
             fromAx: wallets[3].publicKey[0].toString(16),
             fromAy:  wallets[3].publicKey[1].toString(16),
             fromEthAddr: id3,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
             coin: 0,
             amount: 1,
             nonce: 0,
@@ -503,9 +503,9 @@ contract("Rollup", (accounts) => {
             fromAx: wallets[3].publicKey[0].toString(16),
             fromAy:  wallets[3].publicKey[1].toString(16),
             fromEthAddr: id3,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
             coin: 0,
             amount: 1,
             nonce: 1,
@@ -528,13 +528,11 @@ contract("Rollup", (accounts) => {
         await rollupDB.consolidate(batch);
 
         const balanceAfter = await insTokenRollup.balanceOf(beneficiary);
-        expect(BigInt(balanceBefore).add(BigInt(2)).toString()).to.be.
-            equal(BigInt(balanceAfter).toString());
+        expect(Scalar.add(balanceBefore, 2)).to.be.equal(Scalar.e(balanceAfter));
         expect(resForge.logs[0].event).to.be.equal("ForgeBatch");
         
         // Off-chain are included next bacth forged
-        expect(BigInt(rollupDB.lastBatch).toString()).to.be.
-            equal(BigInt(resForge.logs[0].args.batchNumber).toString());
+        expect(Scalar.e(rollupDB.lastBatch)).to.be.equal(Scalar.e(resForge.logs[0].args.batchNumber));
         
         // Recover hash off-chain from calldata
         // note: data compressedTx will be available on forge Batch Mechanism
@@ -549,7 +547,7 @@ contract("Rollup", (accounts) => {
         });
 
         // Off-chain hash is 3th position of the input
-        expect(BigInt(inputSm.input[offChainHashInput]).toString()).to.be.equal(BigInt(inputRetrieved[offChainHashInput]).toString());
+        expect(Scalar.e(inputSm.input[offChainHashInput])).to.be.equal(Scalar.e(inputRetrieved[offChainHashInput]));
 
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-4).toString()); //2 fees + 2 amountTransfer = 4
@@ -567,12 +565,12 @@ contract("Rollup", (accounts) => {
         const id = 3;
         const tokenId = 0;
         const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
 
 
         await insRollupTest.withdraw(leafId.amount.toString(),
-            BigInt(lastBatch).toString(), siblingsId, [wallets[3].publicKey[0].toString(), wallets[3].publicKey[1].toString()], 
+            Scalar.e(lastBatch).toString(), siblingsId, [wallets[3].publicKey[0].toString(), wallets[3].publicKey[1].toString()], 
             tokenId, { from: id3 });
     
         // Check token balances for id1 and rollup smart contract
@@ -633,11 +631,11 @@ contract("Rollup", (accounts) => {
         const tokenId = 0;
 
         const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
-        const siblingsId = utils.arrayBigIntToArrayStr(infoId.siblings);
+        const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
 
         await insRollupTest.withdraw(leafId.amount.toString(),
-            BigInt(lastBatch).toString(), siblingsId, [wallets[5].publicKey[0].toString(), wallets[5].publicKey[1].toString()], 
+            Scalar.e(lastBatch).toString(), siblingsId, [wallets[5].publicKey[0].toString(), wallets[5].publicKey[1].toString()], 
             tokenId, { from: id3 });
     
             
@@ -685,13 +683,13 @@ contract("Rollup", (accounts) => {
         await rollupDB.consolidate(batch);
     
         const balanceAfter = await insTokenRollup.balanceOf(beneficiary);
-        expect(BigInt(balanceBefore).add(BigInt(1)).toString()).to.be.
-            equal(BigInt(balanceAfter).toString());
+        expect(Scalar.add(balanceBefore, 1)).to.be.
+            equal(Scalar.e(balanceAfter));
         expect(resForge.logs[0].event).to.be.equal("ForgeBatch");
             
         // Off-chain are included next bacth forged
-        expect(BigInt(rollupDB.lastBatch).toString()).to.be.
-            equal(BigInt(resForge.logs[0].args.batchNumber).toString());
+        expect(Scalar.e(rollupDB.lastBatch)).to.be.
+            equal(Scalar.e(resForge.logs[0].args.batchNumber));
         // Recover hash off-chain from calldata
         // note: data compressedTx will be available on forge Batch Mechanism
         const blockNumber = resForge.logs[0].args.blockNumber.toString();
@@ -704,7 +702,7 @@ contract("Rollup", (accounts) => {
             }
         });
         // Off-chain hash is 3th position of the input
-        expect(BigInt(inputSm.input[offChainHashInput]).toString()).to.be.equal(BigInt(inputRetrieved[offChainHashInput]).toString());
+        expect(Scalar.e(inputSm.input[offChainHashInput])).to.be.equal(Scalar.e(inputRetrieved[offChainHashInput]));
     
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-2).toString());
@@ -747,9 +745,9 @@ contract("Rollup", (accounts) => {
             fromAx: wallets[6].publicKey[0].toString(16),
             fromAy:  wallets[6].publicKey[1].toString(16),
             fromEthAddr: id1,
-            toAx: 0,
-            toAy: 0,
-            toEthAddr: 0,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
             coin: 0,
             onChain: true
         };

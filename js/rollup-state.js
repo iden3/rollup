@@ -21,10 +21,10 @@ class RollupState {
         const state = {};
         state.coin = Scalar.toNumber(utils.extract(stateArray[0], 0, 32));
         state.nonce = Scalar.toNumber(utils.extract(stateArray[0], 32, 48));
-        state.amount = bigInt(stateArray[1]);
+        state.amount = Scalar.e(stateArray[1]);
         state.ax = Scalar.e(stateArray[2]).toString(16);
         state.ay = Scalar.e(stateArray[3]).toString(16);
-        state.ethAddress = "0x" + padZeros(Scalar.e(stateArray[4]).toString(16), 40);
+        state.ethAddress = "0x" + utils.padZeros(Scalar.e(stateArray[4]).toString(16), 40);
         return new RollupState(id, state);
     }
 

@@ -1,13 +1,12 @@
 
 /* global web3 */
-/* global BigInt */
 /* global artifacts */
 
 const { expect }  = require("chai");
 const abiDecoder = require("abi-decoder");
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
-const bigInt = require("snarkjs").bigInt;
+const Scalar = require("ffjavascript").Scalar;
 
 const { buildPublicInputsSm, manageEvent } = require("../../../rollup-operator/src/utils");
 const { buildElement, hash } = require("../../../rollup-utils/utils");
@@ -70,8 +69,8 @@ class ForgerTest {
 
     checkBatchNumber(events) {
         events.forEach(elem => {
-            const eventBatch = BigInt(elem.args.batchNumber);
-            expect(eventBatch.add(BigInt(2)).toString()).to.be.equal(BigInt(this.rollupDB.lastBatch).toString());
+            const eventBatch = Scalar.e(elem.args.batchNumber);
+            expect(Scalar.add(eventBatch, 2)).to.be.equal(Scalar.e(this.rollupDB.lastBatch));
         });
     }    
 }
@@ -122,11 +121,11 @@ function buildOnChainData(fromAx, fromAy, toEthAddress, Ax, Ay) {
 
 function hashOnChainData(tx){
     const dataOnChain = hash([
-        BigInt("0x" + tx.fromAx),
-        BigInt("0x" + tx.fromAy),
-        tx.toEthAddr,
-        BigInt("0x" + tx.toAx),
-        BigInt("0x" + tx.toAy),
+        Scalar.fromString(tx.fromAx, 16),
+        Scalar.fromString(tx.fromAy, 16),
+        Scalar.fromString(tx.toEthAddr, 16),
+        Scalar.fromString(tx.toAx, 16),
+        Scalar.fromString(tx.toAy, 16),
     ]);
     return dataOnChain;
 }
@@ -167,15 +166,16 @@ function signRollupTx(walletBabyJub, tx) {
     const h = hash([
         data,
         tx.rqTxData || 0,
-        bigInt("0x" + tx.toAx),
-        bigInt("0x" + tx.toAy),
-        bigInt(tx.toEthAddr),
+        Scalar.fromString(tx.toAx, 16),
+        Scalar.fromString(tx.toAy, 16),
+        Scalar.fromString(tx.toEthAddr, 16),
     ]);
     const signature = eddsa.signPoseidon(walletBabyJub.privateKey.toString("hex"), h);
     tx.r8x = signature.R8[0];
     tx.r8y = signature.R8[1];
     tx.s = signature.S;
 }
+
 module.exports = {
     buildFullInputSm,
     ForgerTest,
@@ -187,5 +187,5 @@ module.exports = {
     hashOnChainData,
     buildhashOnChain,
     hashOnChain,
-    signRollupTx
+    signRollupTx,
 };

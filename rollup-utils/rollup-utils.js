@@ -1,11 +1,13 @@
-/* global BigInt */
-const {
-    hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff,
-} = require("./utils");
-const { float2fix, fix2float } = require("../js/utils");
 const eddsa = require("circomlib").eddsa;
 const crypto = require("crypto");
 const web3 = require("web3");
+const Scalar = require("ffjavascript").Scalar;
+
+const {
+    hash, padZeroes, buildElement, arrayHexToBigInt, num2Buff,
+} = require("./utils");
+const { fix2float } = require("../js/utils");
+
 
 /**
  * Simulate off-chain transaction hash
@@ -17,9 +19,9 @@ function createOffChainTx(numTx) {
     let buffTotalTx = Buffer.alloc(0);
     let hashTotal = 0;
     for (let i = 0; i < numTx; i++) {
-        const from = BigInt(i).toString("16");
-        const to = BigInt(i).toString("16");
-        const amount = BigInt(i).toString("16");
+        const from = Scalar.e(i).toString("16");
+        const to = Scalar.e(i).toString("16");
+        const amount = Scalar.e(i).toString("16");
 
         const fromBuff = Buffer.from(padZeroes(from, 6), "hex");
         const toBuff = Buffer.from(padZeroes(to, 6), "hex");
@@ -29,7 +31,7 @@ function createOffChainTx(numTx) {
         buffTotalTx = Buffer.concat([buffTotalTx, txBuff]);
 
         // Caculate hash to check afterwards
-        const e1 = BigInt(`0x${txBuff.toString("hex")}`);
+        const e1 = Scalar.fromString(`0x${txBuff.toString("hex")}`, 16);
         const hashTmp = hash([e1, 0, 0, 0, 0]);
         hashTotal = hash([hashTotal, hashTmp]);
     }
@@ -47,12 +49,12 @@ function hashOffChainTx(hexOffChainTx) {
     // remove '0x'
     const hexOffChain = hexOffChainTx.substring(2);
     const numTx = hexOffChain.length / 16;
-    let hashTotal = BigInt(0);
+    let hashTotal = Scalar.e(0);
 
     let tmpStr = "";
     for (let i = 0; i < numTx; i++) {
         tmpStr = hexOffChain.substring(i * 16, (i + 1) * 16);
-        const hashTmp = hash([BigInt(`0x${tmpStr.toString("hex")}`)]);
+        const hashTmp = hash([Scalar.fromString(`0x${tmpStr.toString("hex")}`, 16)]);
         hashTotal = hash([hashTotal, hashTmp]);
     }
     return hashTotal;
@@ -137,28 +139,6 @@ function buildTxData(fromId, toId, amount, token, nonce, maxFee, rqOffset, onCha
 }
 
 /**
- * Decode rollup transactions
- * @param {String} txDataEncodedHex - rollup transaction encoded as an hex string
- * @returns {Object} - Raw rollup transaction
- */
-function decodeTxData(txDataEncodedHex) {
-    const txDataBi = BigInt(txDataEncodedHex);
-    let txData = {};
-
-    txData.fromId = txDataBi.and(BigInt(1).shl(64).sub(BigInt(1)));
-    txData.toId = txDataBi.shr(64).and(BigInt(1).shl(64).sub(BigInt(1)));
-    txData.amount = float2fix(txDataBi.shr(128).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
-    txData.tokenId = txDataBi.shr(144).and(BigInt(1).shl(32).sub(BigInt(1)));
-    txData.nonce = txDataBi.shr(176).and(BigInt(1).shl(48).sub(BigInt(1)));
-    txData.maxFee = float2fix(txDataBi.shr(224).and(BigInt(1).shl(16).sub(BigInt(1))).toJSNumber());
-    txData.rqOffset = txDataBi.shr(240).and(BigInt(1).shl(3).sub(BigInt(1)));
-    txData.onChain = txDataBi.shr(243).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
-    txData.newAccount = txDataBi.shr(244).and(BigInt(1).shl(1).sub(BigInt(1))) ? true : false ;
-
-    return txData;
-}
-
-/**
  * Simulates on-chain hash for on-chain transactions
  * @param {BigInt} oldOnChainHash - previous on.chain hash
  * @param {BigInt} txData - transaction data encoded
@@ -195,7 +175,7 @@ function hashOnChain(oldOnChainHash, txData, loadAmount, ethAddress, Ax, Ay) {
  * @param {Object} tx - Rollup transaction 
  */
 function signRollupTx(walletBabyJub, tx) {
-    const IDEN3_ROLLUP_TX = BigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
+    const IDEN3_ROLLUP_TX = Scalar.e("1625792389453394788515067275302403776356063435417596283072371667635754651289");
     const data = buildTxData(tx.fromIdx, tx.toIdx, tx.amount, tx.coin, tx.nonce,
         tx.userFee, tx.rqOffset, tx.onChain, tx.newAccount);
 
@@ -222,11 +202,11 @@ function buildFeeInputSm(feePlan) {
     if (feePlan.length > 16){
         throw new Error("Not allowed more than 16 coins with fee");
     }
-    let feePlanCoins = BigInt(0);
-    let feePlanFees = BigInt(0);
+    let feePlanCoins = Scalar.e(0);
+    let feePlanFees = Scalar.e(0);
     for (let i = 0; i < feePlan.length; i++) {
-        feePlanCoins = feePlanCoins.add( BigInt(feePlan[i][0]).shl(16*i) );
-        feePlanFees = feePlanFees.add( BigInt(feePlan[i][1]).shl(16*i) );
+        feePlanCoins = Scalar.add(feePlanCoins, Scalar.shl(feePlan[i][0], 16*i));
+        feePlanFees = Scalar.add(feePlanFees, Scalar.shl(feePlan[i][1], 16*i));
     }
     return [feePlanCoins.toString(), feePlanFees.toString()];
 }
@@ -266,7 +246,6 @@ module.exports = {
     buildOffChainTx,
     buildTxData,
     hashOnChain,
-    decodeTxData,
     signRollupTx,
     buildFeeInputSm,
     getSeedFromPrivKey,

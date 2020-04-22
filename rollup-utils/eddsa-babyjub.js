@@ -1,7 +1,7 @@
 const crypto = require("crypto");
 const createBlakeHash = require("blake-hash");
 const { babyJub, eddsa } = require("circomlib");
-const { bigInt } = require("snarkjs");
+const { leBuff2int } = require("ffjavascript").utils;
 
 
 /**
@@ -165,7 +165,7 @@ class PrivateKey {
     toPrivScalar() {
         const h1 = createBlakeHash("blake512").update(this.sk).digest();
         const sBuff = eddsa.pruneBuffer(h1.slice(0, 32));
-        return (bigInt.leBuff2int(sBuff)).shr(3);
+        return (leBuff2int(sBuff)).shr(3);
     }
 
     /**

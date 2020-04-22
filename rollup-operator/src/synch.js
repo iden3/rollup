@@ -4,8 +4,7 @@ const winston = require("winston");
 const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
 
-const rollupUtils = require("../../rollup-utils/rollup-utils");
-const { float2fix } = require("../../js/utils");
+const { float2fix, decodeTxData } = require("../../js/utils");
 const { timeout, purgeArray } = require("../src/utils");
 const Constants = require("./constants");
 
@@ -625,7 +624,7 @@ class Synchronizer {
      * @returns {Object} rollup transaction  
      */
     async _getTxOnChain(event) {
-        const txData = rollupUtils.decodeTxData(event.txData);
+        const txData = decodeTxData(event.txData);
         return {
             fromIdx: txData.fromId,
             toIdx: txData.toId,

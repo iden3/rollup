@@ -1,4 +1,5 @@
-/* global BigInt */
+const Scalar = require("ffjavascript").Scalar;
+
 const utils = require("../../js/utils");
 
 /**
@@ -12,11 +13,11 @@ function timeout(ms) {
 
 /**
  * Convert to hexadecimal string padding until 256 characters
- * @param {Number | BigInt} n - input number
+ * @param {Number | Scalar} n - input number
  * @returns {String} - String encoded as hexadecimal with 256 characters
  */
 function padding256(n) {
-    let nstr = BigInt(n).toString(16);
+    let nstr = Scalar.e(n).toString(16);
     while (nstr.length < 64) nstr = "0"+nstr;
     nstr = `0x${nstr}`;
     return nstr;
@@ -53,14 +54,14 @@ function manageEvent(event) {
         return {
             IDEN3_ROLLUP_TX: txData.IDEN3_ROLLUP_TX,
             amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.tokenId,
-            fromAx: BigInt(event.args.fromAx).toString(16),
-            fromAy: BigInt(event.args.fromAy).toString(16),
-            fromEthAddr: BigInt(event.args.fromEthAddress).toString(),
-            toAx: BigInt(event.args.toAx).toString(16),
-            toAy: BigInt(event.args.toAy).toString(16),
-            toEthAddr: BigInt(event.args.toEthAddress).toString(),
+            loadAmount: Scalar.fromString(event.args.loadAmount),
+            coin: txData.coin,
+            fromAx: Scalar.fromString(event.args.fromAx).toString(16),
+            fromAy: Scalar.fromString(event.args.fromAy).toString(16),
+            fromEthAddr: Scalar.fromString(event.args.fromEthAddress).toString(16),
+            toAx: Scalar.fromString(event.args.toAx).toString(16),
+            toAy: Scalar.fromString(event.args.toAy).toString(16),
+            toEthAddr: Scalar.fromString(event.args.toEthAddress).toString(16),
             onChain: txData.onChain
         };
     } else if (event.event == "OffChainTx") {

@@ -2,6 +2,7 @@ const { assert, expect } = require("chai");
 const Scalar = require("ffjavascript").Scalar;
 
 const utils = require("../../js/utils");
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 describe("Utils", function () {
 
@@ -115,9 +116,9 @@ describe("Utils", function () {
     it("Verify transaction signed", async () => { 
         
         const tx = { 
-            toAx: '1bfe0e9f372206b8b826a05fe8727d3fefdd5150d5b4379c5660dd04923338c4',
-            toAy: '14902884d8d2fa42b287721d9ddc2d891bad72475c7aaf7ea41206161a127752',
-            toEthAddr: '0x2b5ad5c4795c026514f8317c7a215e218dccd6cf',
+            toAx: "1bfe0e9f372206b8b826a05fe8727d3fefdd5150d5b4379c5660dd04923338c4",
+            toAy: "14902884d8d2fa42b287721d9ddc2d891bad72475c7aaf7ea41206161a127752",
+            toEthAddr: "0x2b5ad5c4795c026514f8317c7a215e218dccd6cf",
             coin: 0,
             amount: 500,
             nonce: 0,
@@ -125,9 +126,9 @@ describe("Utils", function () {
             r8x: "770591572776893072560329255187340888258936546349417314856384396374667363890",
             r8y: "962686632833179341069561379306513064401103432079312175650332281958115485290",
             s: "356195177343820326086198566657583616848421081213756974140987858209661398985",
-            fromAx: '144e7e10fd47e0c67a733643b760e80ed399f70e78ae97620dbb719579cd645d',
-            fromAy: '1676a120dec6e3d678a947bc34003456ed46077efe7314d38a7db9b5c03a9446',
-            fromEthAddr: '0x7e5f4552091a69125d5dfcb7b8c2659029395bdf' 
+            fromAx: "144e7e10fd47e0c67a733643b760e80ed399f70e78ae97620dbb719579cd645d",
+            fromAy: "1676a120dec6e3d678a947bc34003456ed46077efe7314d38a7db9b5c03a9446",
+            fromEthAddr: "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf" 
         };
 
         const res = utils.verifyTxSig(tx);
@@ -141,8 +142,8 @@ describe("Utils", function () {
 
         const tx = {
             coin: 1,
-            fromAx: '144e7e10fd47e0c67a733643b760e80ed399f70e78ae97620dbb719579cd645d',
-            fromAy: '1676a120dec6e3d678a947bc34003456ed46077efe7314d38a7db9b5c03a9446',
+            fromAx: "144e7e10fd47e0c67a733643b760e80ed399f70e78ae97620dbb719579cd645d",
+            fromAy: "1676a120dec6e3d678a947bc34003456ed46077efe7314d38a7db9b5c03a9446",
         };
 
         const hashIdx = utils.hashIdx(tx.coin, tx.fromAx, tx.fromAy);
@@ -158,5 +159,25 @@ describe("Utils", function () {
         expect(utils.isStrHex(num)).to.be.equal(false);
         expect(utils.isStrHex(strNoHex)).to.be.equal(false);
         expect(utils.isStrHex(strHex)).to.be.equal(true);
+    });
+
+    it("Encode Deposi tOffchain", async () => { 
+
+        const fromAx = Scalar.e(30890499764467592830739030727222305800976141688008169211302).toString();
+        const fromAy = Scalar.e(19826930437678088398923647454327426275321075228766562806246).toString();
+        const fromEthAddr = "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c";
+
+        const txDepositOffchain = {
+            fromAx,
+            fromAy,
+            fromEthAddr,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
+            coin: 0,
+            onChain: true
+        };
+        const encodedDeposit = utils.encodeDepositOffchain([txDepositOffchain]);
+        expect(encodedDeposit).not.to.be.equal(undefined);
     });
 });

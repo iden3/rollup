@@ -7,8 +7,8 @@
 // REQUIREMENTS
 
 const { expect } = require("chai");
-const {stringifyBigInts} = require("snarkjs");
 const abiDecoder = require("abi-decoder");
+const { stringifyBigInts } = require("ffjavascript").utils;
 
 const RollupBurnAuction = artifacts.require("../contracts/test/RollupBurnAuctionTest");
 
