@@ -1,6 +1,7 @@
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
+const { beInt2Buff } = require("ffjavascript").utils;
 
 function extract(num, origin, len) {
     const mask = Scalar.sub(Scalar.shl(1, len), 1);
@@ -183,6 +184,21 @@ function hashIdx(coin, ax, ay) {
     return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
 }
 
+function encodeDepositOffchain(depositsOffchain) {
+    let buffer = Buffer.alloc(0);
+    for (let i=0; i<depositsOffchain.length; i++) {
+        buffer = Buffer.concat([
+            buffer,
+            beInt2Buff(Scalar.fromString(depositsOffchain[i].fromAx, 16), 32),
+            beInt2Buff(Scalar.fromString(depositsOffchain[i].fromAy, 16), 32),
+            beInt2Buff(Scalar.fromString(depositsOffchain[i].fromEthAddr, 16), 20),
+            beInt2Buff(Scalar.e(depositsOffchain[i].coin), 4),
+        ]);
+    }
+    
+    return buffer;
+}
+
 function isStrHex(input) {
     if (typeof (input) == "string" && input.slice(0, 2) == "0x") {
         return true;
@@ -203,3 +219,4 @@ module.exports.verifyTxSig = verifyTxSig;
 module.exports.hashIdx = hashIdx;
 module.exports.isStrHex = isStrHex; 
 module.exports.extract = extract;
+module.exports.encodeDepositOffchain = encodeDepositOffchain;

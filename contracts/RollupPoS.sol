@@ -8,7 +8,7 @@ contract RollupPoS is RollupPoSHelpers{
     RollupInterface rollupInterface;
 
     // Input snark definition
-    uint256 constant offChainHashInput = 3;
+    uint256 constant offChainHashInput = 4;
 
     // Maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
@@ -567,16 +567,19 @@ contract RollupPoS is RollupPoSHelpers{
         bytes32 previousHash;
         bool committed;
         uint256 offChainHash;
+        uint256 onChainHash;
     }
 
     /**
      * @dev operator commits data that must be forged afterwards
      * @param previousRndHash previous hash to match current hash
      * @param compressedTx data committed by the operator. Represents off-chain transactions
+     * @param compressedOnChainTx data committed by the operator. Represents off-chain deposits
      */
     function commitBatch(
         bytes32 previousRndHash,
-        bytes memory compressedTx
+        bytes memory compressedTx,
+        bytes memory compressedOnChainTx
     ) public {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
@@ -595,6 +598,7 @@ contract RollupPoS is RollupPoSHelpers{
         commitSlot[slot].committed = true;
         commitSlot[slot].offChainHash = hashOffChainTx(compressedTx, MAX_TX);
         commitSlot[slot].previousHash = previousRndHash;
+        commitSlot[slot].onChainHash = uint256(sha256(compressedOnChainTx));
         emit dataCommitted(commitSlot[slot].offChainHash);
     }
 
@@ -610,22 +614,32 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2] memory proofA,
         uint[2][2] memory proofB,
         uint[2] memory proofC,
-        uint[8] memory input
+        uint[10] memory input,
+        bytes memory compressedOnChainTx
      ) public virtual {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
         // message sender must be the controller address
         require(msg.sender == op.controllerAddress, 'message sender must be controllerAddress');
-        uint32 updateEra = currentEra() + 2;
-        _updateRaffles();
-        Raffle storage raffle = raffles[updateEra];
+
         // Check input off-chain hash matches hash commited
         require(commitSlot[slot].offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
+
+        // Check on-chain hash matches hash commited
+        require(commitSlot[slot].onChainHash == uint256(sha256(compressedOnChainTx)),
+            'hash on chain input does not match hash commited');
+
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
-        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input);
+
+        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
+
+        uint32 updateEra = currentEra() + 2;
+        _updateRaffles();
+        Raffle storage raffle = raffles[updateEra];
+
         // update previous hash committed by the operator
         op.rndHash = commitSlot[slot].previousHash;
         // clear committed data
@@ -641,10 +655,11 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
     ) external {
-        commitBatch(previousRndHash, compressedTx);
-        forgeCommittedBatch(proofA, proofB, proofC, input);
+        commitBatch(previousRndHash, compressedTx, compressedOnChainTx);
+        forgeCommittedBatch(proofA, proofB, proofC, input, compressedOnChainTx);
     }
 
     /**

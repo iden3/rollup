@@ -3,9 +3,9 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require("chai");
+const Scalar = require("ffjavascript").Scalar;
 
 const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
@@ -53,7 +53,7 @@ contract("RollupPoS", (accounts) => {
             }
             // get genesis block
             const genesisBlockNum = await insRollupPoS.genesisBlock();
-            expect(genesisBlockNum.toString()).to.be.equal(BigInt(1000).toString());
+            expect(genesisBlockNum.toString()).to.be.equal(Scalar.e(1000).toString());
             // fill with first block of each era
             for (let i = 0; i < 20; i++) {
                 eraBlock.push(i * blockPerEra + Number(genesisBlockNum) + 1);
@@ -63,7 +63,7 @@ contract("RollupPoS", (accounts) => {
             await insRollupPoS.setBlockNumber(eraBlock[0]);
             // check block has been settled
             const currentBlock = await insRollupPoS.getBlockNumber();
-            expect(currentBlock.toString()).to.be.equal(BigInt(1001).toString());
+            expect(currentBlock.toString()).to.be.equal(Scalar.e(1001).toString());
         });
 
         it("add 2 operators", async () => {

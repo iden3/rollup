@@ -809,7 +809,7 @@ module.exports = class BatchBuilder {
         }
         return res;
     }
-
+    
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 

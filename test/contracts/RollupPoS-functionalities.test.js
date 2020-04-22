@@ -4,15 +4,17 @@
 /* global contract */
 /* global web3 */
 
-const chai = require("chai");
+const { expect } = require("chai");
+const SMTMemDB = require("circomlib/src/smt_memdb");
+const abiDecoder = require("abi-decoder");
 
-const { expect } = chai;
+
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 const { getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
+const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 
-const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupPoS.abi);
 
 // async function getTxGasSpent(resTx) {
@@ -24,6 +26,7 @@ abiDecoder.addABI(RollupPoS.abi);
 
 contract("RollupPoS", (accounts) => {
     const {
+        1: id1,
         6: relayStaker,
         7: beneficiaryAddress,
         9: slashAddress,
@@ -47,6 +50,11 @@ contract("RollupPoS", (accounts) => {
     let genesisBlock;
     let amountToStake;
     let amountToStakeNumber;
+
+    const wallets = [];
+    for (let i = 0; i<10; i++) {
+        wallets.push(BabyJubWallet.createRandom());
+    }
 
     const initialMsg = "rollup";
     hashChain.push(web3.utils.keccak256(initialMsg));
@@ -93,23 +101,28 @@ contract("RollupPoS", (accounts) => {
             const maxTx = 10;
             const nLevels = 24;
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
+
             bb.addTx({
-                fromIdx: 1,
+                fromAx: wallets[1].publicKey[0].toString(16),
+                fromAy:  wallets[1].publicKey[1].toString(16),
+                fromEthAddr: id1,
+                toAx: exitAx,
+                toAy: exitAy,
+                toEthAddr: exitEthAddr,
                 loadAmount: 1000,
                 coin: 0,
-                ax: 0,
-                ay: 0,
-                ethAddress: 0,
                 onChain: true
             });
     
             bb.addTx({
-                fromIdx: 2,
+                fromAx: wallets[2].publicKey[0].toString(16),
+                fromAy:  wallets[2].publicKey[1].toString(16),
+                fromEthAddr: id1,
+                toAx: exitAx,
+                toAy: exitAy,
+                toEthAddr: exitEthAddr,
                 loadAmount: 2000,
                 coin: 0,
-                ax: 0,
-                ay: 0,
-                ethAddress: 0,
                 onChain: true
             });
             await bb.build();
@@ -257,9 +270,14 @@ contract("RollupPoS", (accounts) => {
             const maxTx = 10;
             // non-empty off-chain tx with 10 maxTx
             const tx = {
-                fromIdx: 1,
-                toIdx: 2,
+                fromAx: wallets[1].publicKey[0].toString(16),
+                fromAy:  wallets[1].publicKey[1].toString(16),
+                fromEthAddr: id1,
+                toAx: wallets[2].publicKey[0].toString(16),
+                toAy: wallets[2].publicKey[1].toString(16),
+                toEthAddr: id1,
                 amount: 50,
+                coin: 0
             };
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
@@ -270,7 +288,7 @@ contract("RollupPoS", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", hashOffChain , "0", "0", "0", "0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0","0"];
             // reset rollup PoS
             insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);
@@ -288,7 +306,7 @@ contract("RollupPoS", (accounts) => {
             // try to commit batch with wrong previous hash
             let index = await getIndexHash(opId);
             try {
-                await insRollupPoS.commitBatch(hashChain[index - 2], compressedTxTest, {from: operators[0].address});
+                await insRollupPoS.commitBatch(hashChain[index - 2], compressedTxTest, [],  {from: operators[0].address});
                 // above function should trigger an error
                 // otherwise test should not pass
                 expect(true).to.be.equal(false);
@@ -297,7 +315,7 @@ contract("RollupPoS", (accounts) => {
             }
 
             // check commit hash
-            const resCommit = await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
+            const resCommit = await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
             expect(resCommit.logs[0].event).to.be.equal("dataCommitted");
             expect(resCommit.logs[0].args.hashOffChain.toString()).to.be.equal(hashOffChain);
             // Get compressedTx from block number
@@ -314,7 +332,7 @@ contract("RollupPoS", (accounts) => {
             expect(`0x${compressedTxTest.toString("hex")}`).to.be.equal(inputRetrieved);
             // try to update data committed before without forging
             try {
-                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
                 // above function should trigger an error
                 // otherwise test should not pass
                 expect(true).to.be.equal(false);
@@ -323,7 +341,7 @@ contract("RollupPoS", (accounts) => {
             }
             
             // Forge batch
-            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+            await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
 
             // Check raffle random number has been updated
             currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
@@ -332,7 +350,7 @@ contract("RollupPoS", (accounts) => {
 
             // try to forge data when there is no data committed
             try {
-                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
                 // above function should trigger an error
                 // otherwise test should not pass
                 expect(true).to.be.equal(false);
@@ -344,8 +362,8 @@ contract("RollupPoS", (accounts) => {
                 // commit data just before deadline
                 index = await getIndexHash(opId);
                 await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot - deadlineBlocks - 2);
-                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
-                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
 
                 // Check raffle random number has been updated
                 currentRaffleRandom = await insRollupPoS.getRaffle(5); // currentEra + 2 = 3 + 2 = 5
@@ -356,7 +374,7 @@ contract("RollupPoS", (accounts) => {
                 await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot - deadlineBlocks + 1);
                 index = await getIndexHash(opId);
                 try { 
-                    await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
+                    await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
                     // above function should trigger an error
                     // otherwise test should not pass
                     expect(true).to.be.equal(false);
@@ -378,15 +396,15 @@ contract("RollupPoS", (accounts) => {
 
                 // commit data before deadline, try to update it, not forge block and slash operator
                 // commit and forge
-                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
-                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, {from: operators[0].address});
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
+                await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, input, [], {from: operators[0].address});
                 // commit again but not forge
                 index = await getIndexHash(opId);
-                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
+                await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
                 // move forward and try to update committed info after deadline
                 await insRollupPoS.setBlockNumber(eraBlock[3] + blocksPerSlot + blocksPerSlot - deadlineBlocks + 1);
                 try {
-                    await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, {from: operators[0].address});
+                    await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
                     // above function should trigger an error
                     // otherwise test should not pass
                     expect(true).to.be.equal(false);

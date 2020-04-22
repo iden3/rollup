@@ -9,42 +9,48 @@ const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.j
 const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
 const { Wallet } = require('./wallet');
 const { approve } = require('./actions/onchain/approve.js');
+const { hexToPoint } = require('../helpers/utils');
 
-async function sendTx(urlOperator, idTo, amount, walletJson, passphrase, tokenId, userFee, idFrom, nonce, nonceObject) {
+async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return send(urlOperator, idTo, amount, walletRollup, tokenId, userFee, idFrom, nonce, nonceObject);
+    const babyjubTo = hexToPoint(babyjubCompressed);
+    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject);
 }
 
-async function depositTx(nodeEth, addressSC, loadAmount, tokenid, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
+async function depositTx(nodeEth, addressSC, loadAmount, tokenId, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return deposit(nodeEth, addressSC, loadAmount, tokenid, walletRollup, ethAddress, abi, gasLimit, gasMultiplier);
+    return deposit(nodeEth, addressSC, loadAmount, tokenId, walletRollup, ethAddress, abi, gasLimit, gasMultiplier);
 }
 
-async function depositOnTopTx(nodeEth, addressSC, loadAmount, tokenid, walletJson, passphrase, abi, idTo, gasLimit, gasMultiplier) {
+async function depositOnTopTx(nodeEth, addressSC, loadAmount, tokenId, babyjubCompressed,
+    walletJson, passphrase, abi, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return depositOnTop(nodeEth, addressSC, loadAmount, tokenid, walletRollup, abi, idTo, gasLimit, gasMultiplier);
+    const babyjubTo = hexToPoint(babyjubCompressed);
+    return depositOnTop(nodeEth, addressSC, loadAmount, tokenId, babyjubTo, walletRollup, abi, gasLimit, gasMultiplier);
 }
 
-async function withdrawTx(nodeEth, addressSC, walletJson, passphrase, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier) {
+async function withdrawTx(nodeEth, addressSC, tokenId, walletJson, passphrase, abi, urlOperator, numExitRoot, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return withdraw(nodeEth, addressSC, walletRollup, abi, urlOperator, idFrom, numExitRoot, gasLimit, gasMultiplier);
+    return withdraw(nodeEth, addressSC, tokenId, walletRollup, abi, urlOperator, numExitRoot, gasLimit, gasMultiplier);
 }
 
-async function forceWithdrawTx(nodeEth, addressSC, amount, walletJson, passphrase, abi, idFrom, gasLimit, gasMultiplier) {
+async function forceWithdrawTx(nodeEth, addressSC, tokenId, amount, walletJson, passphrase, abi, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return forceWithdraw(nodeEth, addressSC, amount, walletRollup, abi, idFrom, gasLimit, gasMultiplier);
+    return forceWithdraw(nodeEth, addressSC, tokenId, amount, walletRollup, abi, gasLimit, gasMultiplier);
 }
 
-async function transferTx(nodeEth, addressSC, amount, tokenid, walletJson, passphrase, abi, idFrom, idTo, gasLimit, gasMultiplier) {
+async function transferTx(nodeEth, addressSC, amount, tokenId, babyjubCompressed, walletJson, passphrase, abi, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return transfer(nodeEth, addressSC, amount, tokenid, walletRollup, abi, idFrom, idTo, gasLimit, gasMultiplier);
+    const babyjubTo = hexToPoint(babyjubCompressed);
+    return transfer(nodeEth, addressSC, amount, tokenId, babyjubTo, walletRollup, abi, gasLimit, gasMultiplier);
 }
 
-async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenid, walletJson, passphrase, ethAddress, abi,
-    idTo, gasLimit, gasMultiplier) {
+async function depositAndTransferTx(nodeEth, addressSC, loadAmount, amount, tokenId,
+    babyjubCompressed, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenid, walletRollup,
-        ethAddress, abi, idTo, gasLimit, gasMultiplier);
+    const babyjubTo = hexToPoint(babyjubCompressed);
+    return depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenId, babyjubTo, walletRollup,
+        ethAddress, abi, gasLimit, gasMultiplier);
 }
 
 async function showAccounts(urlOperator, filters) {

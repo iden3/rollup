@@ -151,7 +151,7 @@ class RollupDB {
         const rootExitTree = rootValues[1];
         const dbExit = new SMTTmpDb(this.db);
         const tmpExitTree = new SMT(dbExit, rootExitTree);
-        const resFindExit = await tmpExitTree.find(bigInt(idx));
+        const resFindExit = await tmpExitTree.find(Scalar.e(idx));
         // get leaf information
         if (resFindExit.found) {
             const foundValueId = poseidonHash([resFindExit.foundValue, idx]);

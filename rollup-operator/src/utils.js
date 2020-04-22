@@ -1,5 +1,6 @@
-/* global BigInt */
-const rollupUtils = require("../../rollup-utils/rollup-utils");
+const Scalar = require("ffjavascript").Scalar;
+
+const utils = require("../../js/utils");
 
 /**
  * Promise to be resolved in a certain amount of time
@@ -12,11 +13,11 @@ function timeout(ms) {
 
 /**
  * Convert to hexadecimal string padding until 256 characters
- * @param {Number | BigInt} n - input number
+ * @param {Number | Scalar} n - input number
  * @returns {String} - String encoded as hexadecimal with 256 characters
  */
 function padding256(n) {
-    let nstr = BigInt(n).toString(16);
+    let nstr = Scalar.e(n).toString(16);
     while (nstr.length < 64) nstr = "0"+nstr;
     nstr = `0x${nstr}`;
     return nstr;
@@ -29,14 +30,16 @@ function padding256(n) {
  */
 function buildPublicInputsSm(bb) {
     return [
+        padding256(bb.getFinalIdx()),
         padding256(bb.getNewStateRoot()),
         padding256(bb.getNewExitRoot()),
         padding256(bb.getOnChainHash()),
         padding256(bb.getOffChainHash()),
         padding256(bb.getCountersOut()),
+        padding256(bb.getInitIdx()),
         padding256(bb.getOldStateRoot()),
         padding256(bb.getFeePlanCoins()),
-        padding256(bb.getFeePlanFees()),
+        padding256(bb.getFeePlanFees())
     ];
 }
 
@@ -47,17 +50,19 @@ function buildPublicInputsSm(bb) {
  */
 function manageEvent(event) {
     if (event.event == "OnChainTx") {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
+        const txData = utils.decodeTxData(event.args.txData);
         return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
+            IDEN3_ROLLUP_TX: txData.IDEN3_ROLLUP_TX,
             amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
+            loadAmount: Scalar.fromString(event.args.loadAmount),
             coin: txData.coin,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true
+            fromAx: Scalar.fromString(event.args.fromAx).toString(16),
+            fromAy: Scalar.fromString(event.args.fromAy).toString(16),
+            fromEthAddr: Scalar.fromString(event.args.fromEthAddress).toString(16),
+            toAx: Scalar.fromString(event.args.toAx).toString(16),
+            toAy: Scalar.fromString(event.args.toAy).toString(16),
+            toEthAddr: Scalar.fromString(event.args.toEthAddress).toString(16),
+            onChain: txData.onChain
         };
     } else if (event.event == "OffChainTx") {
         return event.tx;

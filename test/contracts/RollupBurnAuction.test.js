@@ -6,12 +6,14 @@
 
 // REQUIREMENTS
 
-const chai = require("chai");
-const {stringifyBigInts} = require("snarkjs");
-const { expect } = chai;
-const RollupBurnAuction = artifacts.require("../contracts/test/RollupBurnAuctionTest");
+const { expect } = require("chai");
 const abiDecoder = require("abi-decoder");
+const { stringifyBigInts } = require("ffjavascript").utils;
+
+const RollupBurnAuction = artifacts.require("../contracts/test/RollupBurnAuctionTest");
+
 abiDecoder.addABI(RollupBurnAuction.abi);
+
 
 contract("RollupBurnAuction", (accounts) => {
 
@@ -29,7 +31,7 @@ contract("RollupBurnAuction", (accounts) => {
         A: ["0", "0"],
         B: [["0", "0"], ["0", "0"]],
         C: ["0", "0"],
-        input: ["0", "0", "0", "0", "0", "0", "0", "0"]
+        input: ["0", "0", "0", "0", "0", "0", "0", "0", "0","0"]
     };
     
     // INITIAL SETUP
@@ -286,7 +288,7 @@ contract("RollupBurnAuction", (accounts) => {
 
     async function successForge(addr, proof) {
         // Forge
-        await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, {
+        await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, [], {
             from: addr,
             value: "0"
         });
@@ -295,7 +297,7 @@ contract("RollupBurnAuction", (accounts) => {
     async function failForge(addr, proof, failMessage, messageType) {
         try {
             // Forge
-            await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, {
+            await insRollupBurnAuction.forgeBatch(addr, proof.A, proof.B, proof.C, proof.input, [], {
                 from: addr,
                 value: "0"
             });
