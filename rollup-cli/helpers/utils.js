@@ -1,6 +1,6 @@
 
-/* global BigInt */
 const { babyJub } = require('circomlib');
+const { Scalar } = require('ffjavascript');
 
 function pointHexToCompress(pointHex) {
     if (!pointHex[0].startsWith('0x')) {
@@ -10,7 +10,7 @@ function pointHexToCompress(pointHex) {
         pointHex[1] = `0x${pointHex[1]}`;
     }
     const point = [
-        BigInt(pointHex[0]), BigInt(pointHex[1]),
+        Scalar.e(pointHex[0]), Scalar.e(pointHex[1]),
     ];
     const buf = babyJub.packPoint(point);
 

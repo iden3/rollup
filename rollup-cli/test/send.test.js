@@ -11,7 +11,7 @@ const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
 describe('Send', async function () {
     this.timeout(10000);
     const UrlOperator = 'http://127.0.0.1:9000';
-    const babyjubTo = [0x1, 0x23];
+    const babyjubTo = ['0x12', '0x23'];
     const amount = 10;
     let wallet;
     const password = 'foo';

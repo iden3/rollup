@@ -1,7 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable prefer-destructuring */
 const { eddsa } = require('circomlib');
-const { bigInt } = require('snarkjs');
+const { Scalar } = require('ffjavascript');
 
 const { EthereumWallet, verifyEthereum } = require('../src/ethereum-wallet');
 const { BabyJubWallet, verifyBabyJub } = require('../../rollup-utils/babyjub-wallet');
@@ -83,9 +83,9 @@ class Wallet {
         const h = hash([
             data,
             tx.rqTxData || 0,
-            bigInt(`${tx.toAx}`),
-            bigInt(`${tx.toAy}`),
-            bigInt(tx.toEthAddr),
+            Scalar.fromString(tx.toAx, 16),
+            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.toEthAddr, 16),
         ]);
 
         const signature = eddsa.signPoseidon(this.babyjubWallet.privateKey, h);
