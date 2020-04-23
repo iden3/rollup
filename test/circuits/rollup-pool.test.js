@@ -92,7 +92,7 @@ async function initBlock(rollupDB) {
 
 describe("txPool test", function () {
 
-    this.timeout(60000);
+    this.timeout(150000);
 
     before( async() => {
         circuit = await tester(path.join(__dirname, "circuits-test", "rollup_pool_test.circom"), {reduceConstraints:false});

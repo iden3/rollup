@@ -119,7 +119,7 @@ module.exports = class BatchBuilder {
         let fromIdx = await this.dbState.get(hashFromIdx);
 
         let toIdx;
-        if (tx.toAx == 0 && tx.toAy == 0) toIdx = 0;
+        if (tx.toAx == Constants.exitAx && tx.toAy == Constants.exitAy) toIdx = 0;
         else {
             const hashToIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy); 
             toIdx = await this.dbState.get(hashToIdx);

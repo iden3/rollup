@@ -35,10 +35,10 @@ function _addNonce(nonceObject, currentBatch, nonce, tokenId) {
 /**
  * send off-chain transaction
  * @param {String} urlOperator - url from operator
- * @param {String[2]} babyjubTo - babyjub public key reciever
+ * @param {String[2]} babyjubTo - babyjub public key receiver
  * @param {String} amount - amount to transfer
  * @param {Object} walletRollup - ethAddress and babyPubKey together
- * @param {Number} tokenId - token type identifier, the sender and the reciever must use the same token
+ * @param {Number} tokenId - token type identifier, the sender and the receive must use the same token
  * @param {String} userFee - amount of fee that the user is willing to pay
  * @param {Number} idFrom - self balance tree identifier
  * @param {String} nonce - hardcoded from user
@@ -55,9 +55,9 @@ async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userF
     const generalInfo = await apiOperator.getState();
     const currentBatch = generalInfo.data.rollupSynch.lastBatchSynched;
 
-    const recieverAccounts = await apiOperator.getAccounts({ ax: babyjubTo[0], ay: babyjubTo[1] });
+    const receiverAccounts = await apiOperator.getAccounts({ ax: babyjubTo[0], ay: babyjubTo[1] });
 
-    const recieverLeaf = recieverAccounts.data.find((x) => x.tokenId === tokenId);
+    const receiverLeaf = receiverAccounts.data.find((x) => x.tokenId === tokenId);
     let nonceToSend;
     if (nonce !== undefined) nonceToSend = nonce;
     else {
@@ -76,7 +76,7 @@ async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userF
         fromEthAddr,
         toAx: babyjubTo[0],
         toAy: babyjubTo[1],
-        toEthAddr: recieverLeaf.ethAddress,
+        toEthAddr: receiverLeaf.ethAddress,
         coin: tokenId,
         amount,
         nonce: nonceToSend,

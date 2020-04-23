@@ -2,9 +2,8 @@
 /* global contract */
 /* global web3 */
 
-const chai = require("chai");
+const { expect } = require("chai");
 
-const { expect } = chai;
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const MemDb = require("../../rollup-utils/mem-db");
 const SynchPoS = require("../src/synch-pos");

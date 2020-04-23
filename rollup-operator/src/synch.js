@@ -5,17 +5,20 @@ const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 
-const { float2fix, decodeTxData } = require("../../js/utils");
+const { float2fix, decodeTxData, extract, decodeDepositOffChain } = require("../../js/utils");
 const { timeout, purgeArray } = require("../src/utils");
 const Constants = require("./constants");
+const GlobalConst = require("../../js/constants");
 
 // offChainTx --> From | To | Amount |
 //            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
 
-const offChainHashInput = 3;
-const feePlanCoinsInput = 6;
-const feePlanFeesInput = 7;
+const initialIdxInput = 6;
+const finalIdxInput = 0;
+const offChainHashInput = 4;
+const feePlanCoinsInput = 8;
+const feePlanFeesInput = 9;
 
 // db keys
 const batchStateKey = "batch-state";
@@ -457,10 +460,12 @@ class Synchronizer {
                     await this.db.insert(lastBatchKey, this._toString(batchSynch));
                 }
             }
-            if (this.mode !== Constants.mode.archive)
-                await this._purgeEvents(nextBatchSynched + numBatchesToSynch.length - 1);
+            // if (this.mode !== Constants.mode.archive)
+            //     await this._purgeEvents(nextBatchSynched + numBatchesToSynch.length - 1);
             return true;
         } catch (error) {
+            console.log(error.stack);
+            console.log(error.message);
             this._logError(`error updating batch number: ${nextBatchSynched}`);
             this._logError("Events are not saved. Retry in the next synchronization loop");
             return false;
@@ -560,9 +565,12 @@ class Synchronizer {
             batchNumber: onChainData.batchNumber,
             txData: onChainData.txData,
             loadAmount: onChainData.loadAmount,
-            ethAddress: onChainData.ethAddress,
-            Ax: onChainData.Ax,
-            Ay: onChainData.Ay
+            fromEthAddr: onChainData.fromEthAddress,
+            fromAx: onChainData.fromAx,
+            fromAy: onChainData.fromAy,
+            toEthAddr: onChainData.toEthAddress,
+            toAx: onChainData.toAx,
+            toAy: onChainData.toAy,
         };
     }
 
@@ -574,28 +582,62 @@ class Synchronizer {
      */
     async _updateTree(offChain, onChain) {
         const batch = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
+        const tmpNewAccounts = {};
+        let tmpInitialIdx = batch.finalIdx;
+
+        // events on-chain tx
+        for (const event of onChain) {
+            const tx = await this._getTxOnChain(event);
+            batch.addTx(tx);
+            // if (this.mode !== Constants.mode.light)
+            if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.eq(tx.amount, 0)) 
+                await this._addExitEntry(tx, batch.batchNumber);
+            
+            // Add temporary new account information
+            if (tx.newAccount) {
+                tmpInitialIdx += 1;
+                tmpNewAccounts[tmpInitialIdx] = {
+                    ax: tx.fromAx,
+                    ay: tx.fromAy,
+                    ethAddress: tx.fromEthAddr,
+                    coin: tx.coin,
+                };
+            }
+        }
+
+        // data availability deposits on-chain
         for (const event of offChain) {
-            const offChainTxs = await this._getTxOffChain(event);
+            const txs = await this._getDepositOffChain(event);
+            for (const tx of txs) {
+                batch.addTx(tx);
+                // Add temporary new account information
+                if (tx.newAccount) {
+                    tmpInitialIdx += 1;
+                    tmpNewAccounts[tmpInitialIdx] = {
+                        ax: tx.fromAx,
+                        ay: tx.fromAy,
+                        ethAddress: tx.fromEthAddr,
+                        coin: tx.coin,
+                    };
+                }         
+            }
+        }
+
+        // Data availability off-chain tx 
+        for (const event of offChain) {
+            const offChainTxs = await this._getTxOffChain(event, tmpNewAccounts);
             await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-            await this._setUserFee(offChainTxs.txs);
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
-                if (this.mode !== Constants.mode.light){
-                    if (Scalar.eq(tx.toIdx, 0) && Scalar.neq(tx.amount, 0)) {
-                        await this._addExitEntry(tx, batch.batchNumber);
-                    }
+                // if (this.mode !== Constants.mode.light){
+                if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.eq(tx.amount, 0)) {
+                    await this._addExitEntry(tx, batch.batchNumber);
                 }
+                // }
                         
             }
         }
 
-        for (const event of onChain) {
-            const tx = await this._getTxOnChain(event);
-            batch.addTx(tx);
-            if (this.mode !== Constants.mode.light)
-                if (Scalar.eq(tx.toIdx, 0) && Scalar.neq(tx.amount, 0)) 
-                    await this._addExitEntry(tx, batch.batchNumber);
-        }
         await batch.build();
         await this.treeDb.consolidate(batch);
         return true;
@@ -627,25 +669,47 @@ class Synchronizer {
     async _getTxOnChain(event) {
         const txData = decodeTxData(event.txData);
         return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
-            amount: txData.amount,
+            amount: Scalar.e(txData.amount),
             loadAmount: Scalar.e(event.loadAmount),
-            coin: txData.coin,
-            ax: Scalar.e(event.Ax).toString(16),
-            ay: Scalar.e(event.Ay).toString(16),
-            ethAddress: event.ethAddress,
+            coin: Scalar.e(txData.coin),
+            fromAx: Scalar.e(event.fromAx).toString(16),
+            fromAy: Scalar.e(event.fromAy).toString(16),
+            fromEthAddr: Scalar.fromString(event.fromEthAddr, 16).toString(16),
+            toAx: Scalar.e(event.toAx).toString(16),
+            toAy: Scalar.e(event.toAy).toString(16),
+            toEthAddr: Scalar.fromString(event.toEthAddr, 16).toString(16),
             onChain: true,
             newAccount: txData.newAccount,
         };
     }
 
     /**
+     * Reconstruct deposits off-chain from data availability
+     * @param {Object} event - forge event data
+     * @returns {Array} deposits off-chain   
+     */
+    async _getDepositOffChain(event){
+        const txForge = await this.web3.eth.getTransaction(event);
+        const decodedData = abiDecoder.decodeMethod(txForge.input);
+
+        let depositOffChainCompressed = "0x";
+
+        decodedData.params.forEach(elem => {
+            if (elem.name == "compressedOnChainTx" && elem.value != null) {
+                depositOffChainCompressed = elem.value;
+            }
+        });
+        
+        return decodeDepositOffChain(Buffer.from(depositOffChainCompressed.slice(2), "hex"));
+    }
+
+    /**
      * Reconstruct transactions from off-chain event
      * @param {Object} event - off-chain event data
+     * @param {Object} tmpNewAccounts - new accounts created in this same batch. They are not consolidated.
      * @returns {Object} rollup transaction and fee plan data  
      */
-    async _getTxOffChain(event) {
+    async _getTxOffChain(event, tmpNewAccounts) {
         const txForge = await this.web3.eth.getTransaction(event);
         const decodedData = abiDecoder.decodeMethod(txForge.input);
         let inputRetrieved;
@@ -687,9 +751,43 @@ class Synchronizer {
         const nTx = txsBuff.length / bytesOffChainTx;
         for (let i = 0; i < nTx; i++) {
             const step = (headerBuff[Math.floor(i/8)] & 0x80 >> (i%8)) ? 1 : 0;
+
+            const fromIdx = txsBuff.readUIntBE(8*i, 3);
+            const toIdx = txsBuff.readUIntBE(8*i + 3, 3);
+
+            // get fromIdx info
+            let fromState;
+            const tmpFromState = await this.treeDb.getStateByIdx(fromIdx);
+            if (tmpFromState){
+                fromState = tmpFromState;
+            } else {
+                fromState = tmpNewAccounts[fromIdx];
+            }
+
+            // get toIdx info
+            let toState;
+            if (Scalar.neq(toIdx, 0)){
+                const tmpToState = await this.treeDb.getStateByIdx(toIdx);
+                if (tmpToState){
+                    toState = tmpToState;
+                } else {
+                    toState = tmpNewAccounts[toIdx];
+                }
+            } else {
+                toState = {};
+                toState.ax = GlobalConst.exitAx;
+                toState.ay = GlobalConst.exitAy;
+                toState.ethAddress = GlobalConst.exitEthAddr;
+            }
+
             const tx = {
-                fromIdx: txsBuff.readUIntBE(8*i, 3),
-                toIdx: txsBuff.readUIntBE(8*i + 3, 3),
+                fromAx: fromState.ax,
+                fromAy: fromState.ay,
+                fromEthAddr: fromState.ethAddress,
+                toAx: toState.ax,
+                toAy: toState.ay,
+                toEthAddr: toState.ethAddress,
+                coin: fromState.coin,
                 amount: float2fix(txsBuff.readUIntBE(8*i + 6, 2)),
                 step,
             };
@@ -732,6 +830,17 @@ class Synchronizer {
      */
     async getStateById(id) {
         return await this.treeDb.getStateByIdx(id);
+    }
+
+    /**
+     * Get rollup account state
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @returns {Object} - rollup state
+     */
+    async getStateByAccount(coin, ax, ay) {
+        return await this.treeDb.getStateByAccount(coin, ax, ay);
     }
 
     /**
@@ -800,20 +909,19 @@ class Synchronizer {
     async getOffChainTxByBatch(numBatch) {
         const res = [];
         // add off-chain tx
-        if (this.mode === Constants.mode.archive){
-            const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
-            const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${numBatch}`);
-            let eventForge = [];
-            if (tmpForgeArray) 
-                eventForge = this._fromString(tmpForgeArray);
+        // if (this.mode === Constants.mode.archive){
+        const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
+        const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${numBatch}`);
+        let eventForge = [];
+        if (tmpForgeArray) 
+            eventForge = this._fromString(tmpForgeArray);
 
-            for (const hashTx of eventForge) {
-                const offChainTxs = await this._getTxOffChain(hashTx);
-                await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-                await this._setUserFee(offChainTxs.txs);
-                for (const tx of offChainTxs.txs) res.push(tx);
-            }
+        for (const hashTx of eventForge) {
+            const offChainTxs = await this._getTxOffChain(hashTx);
+            await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
+            for (const tx of offChainTxs.txs) res.push(tx);
         }
+        // }
         return res;
     }
 
@@ -824,12 +932,12 @@ class Synchronizer {
      */
     async getExitsBatchById(idx){
         let exitsBatches = [];
-        if (this.mode !== Constants.mode.light) {
-            const key = `${exitInfoKey}${separator}${idx}`;
-            const value = await this.db.getOrDefault(key, "");
-            if (value !== "")
-                exitsBatches = [...this._fromString(value)];
-        }
+        // if (this.mode !== Constants.mode.light) {
+        const key = `${exitInfoKey}${separator}${idx}`;
+        const value = await this.db.getOrDefault(key, "");
+        if (value !== "")
+            exitsBatches = [...this._fromString(value)];
+        // }
         return exitsBatches;
     }
 

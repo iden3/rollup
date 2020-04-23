@@ -12,7 +12,7 @@ const { getGasPrice } = require('./utils');
  * @param {String} loadAmount - initial Amount on balance tree
  * @param {String} amount - amount to transfer
  * @param {Number} tokenId - token type identifier
- * @param {String[2]} babyjubTo - babyjub public key reciever
+ * @param {String[2]} babyjubTo - babyjub public key receiver
  * @param {Object} walletRollup - ethAddress and babyPubKey together
  * @param {String} ethAddress - allowed address to control new balance tree leaf
  * @param {String} abi - abi of rollup contract

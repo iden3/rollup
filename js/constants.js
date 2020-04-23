@@ -20,6 +20,6 @@ module.exports.DB_NumBatch_AxAy = hash([string2Int("Rollup_DB_NumBatch_AxAy")]);
 module.exports.DB_NumBatch_EthAddr = hash([string2Int("Rollup_DB_NumBatch_EthAddr")]);
 module.exports.DB_InitialIdx = hash([string2Int("Rollup_DB_Initial_Idx")]);
 
-module.exports.exitAx = "0x0000000000000000000000000000000000000000000000000000000000000000";
-module.exports.exitAy = "0x0000000000000000000000000000000000000000000000000000000000000000";
-module.exports.exitEthAddr = "0x0000000000000000000000000000000000000000";
+module.exports.exitAx = Scalar.fromString("0000000000000000000000000000000000000000000000000000000000000000", 16).toString(16);
+module.exports.exitAy = Scalar.fromString("0000000000000000000000000000000000000000000000000000000000000000", 16).toString(16);
+module.exports.exitEthAddr = Scalar.fromString("0x0000000000000000000000000000000000000000", 16).toString(16);

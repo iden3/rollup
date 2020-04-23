@@ -2,11 +2,11 @@ const fs = require("fs");
 const path = require("path");
 const { expect } = require("chai");
 const _ = require("lodash");
+const SMTMemDB = require("circomlib/src/smt_memdb");
 
 const Pool = require("../../js/txpool");
 const SynchPool = require("../src/synch-pool");
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
 const { timeout } = require("../src/utils");
 
 describe("Synchronizer test", function () {

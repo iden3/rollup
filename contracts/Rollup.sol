@@ -338,7 +338,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(fromLeaf.ethAddress == msg.sender, 'Sender does not match identifier balance tree');
 
         leafInfo storage toLeaf = treeInfo[uint256(keccak256(abi.encodePacked(toBabyPubKey,tokenId)))];
-        require(toLeaf.ethAddress != address(0), 'reciever leaf does not exist');
+        require(toLeaf.ethAddress != address(0), 'Receiver leaf does not exist');
 
         // Build txData for transfer
         bytes32 txDataTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
@@ -557,7 +557,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @dev withdraw all token fees to the beneficiary Address
      * @param feePlan fee of every token
      * @param nTxPerToken transactions per token
-     * @param beneficiaryAddress address wich will recieve the tokens
+     * @param beneficiaryAddress address wich will receive the tokens
      */
     function withdrawTokens(bytes32[2] memory feePlan, bytes32 nTxPerToken, address payable beneficiaryAddress) internal {
         for (uint i = 0; i < 16; i++) {

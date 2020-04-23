@@ -1,7 +1,9 @@
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
-const { beInt2Buff } = require("ffjavascript").utils;
+const { beInt2Buff, beBuff2int } = require("ffjavascript").utils;
+
+const Constants = require("./constants");
 
 function extract(num, origin, len) {
     const mask = Scalar.sub(Scalar.shl(1, len), 1);
@@ -198,6 +200,43 @@ function encodeDepositOffchain(depositsOffchain) {
     return buffer;
 }
 
+/**
+ * Parse encoded deposit off-chain from smart contract
+ * |Ax|Ay|EthAddress|Token| - |32 bytes|32 bytes|20 bytes|4 bytes|
+ * @param {Buffer} depositsOffchain contains all deposits off-chain data
+ * @returns {Array} deposit transactions 
+ */
+function decodeDepositOffChain(depositsOffchain) {
+    const depositBytes = 88;
+    let txs = [];
+  
+    const numDeposits = depositsOffchain.length / depositBytes;
+  
+    for (let i = 0; i < numDeposits; i++){
+        
+        const ax = depositsOffchain.slice(0 + i*depositBytes, 32 + depositBytes * i);
+        const ay = depositsOffchain.slice(32 + i*depositBytes, 64 + depositBytes * i);
+        const ethAddress = depositsOffchain.slice(64 + i*depositBytes,84 + depositBytes * i);
+        const token = depositsOffchain.slice(84 + i*depositBytes, 88 + depositBytes * i);
+
+        const tx = {
+            loadAmount: 0,
+            coin: Scalar.toNumber(beBuff2int(token)),
+            fromAx: beBuff2int(ax).toString(16),
+            fromAy: beBuff2int(ay).toString(16),
+            fromEthAddr: `0x${beBuff2int(ethAddress).toString(16)}`,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
+            onChain: true,
+            newAccount: true,
+        };
+        txs.push(tx);
+    }
+  
+    return txs;
+  }
+
 function isStrHex(input) {
     if (typeof (input) == "string" && input.slice(0, 2) == "0x") {
         return true;
@@ -219,3 +258,4 @@ module.exports.hashIdx = hashIdx;
 module.exports.isStrHex = isStrHex; 
 module.exports.extract = extract;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
+module.exports.decodeDepositOffChain = decodeDepositOffChain;

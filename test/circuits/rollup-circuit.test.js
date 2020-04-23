@@ -47,7 +47,7 @@ async function initBlock2deposits(rollupDB) {
 describe("Rollup Basic circuit TXs", function () {
     let circuit;
 
-    this.timeout(1000000);
+    this.timeout(250000);
 
     before( async() => {
         circuit = await tester(path.join(__dirname, "circuits-test", "rollup_test.circom"), {reduceConstraints:false});

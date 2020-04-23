@@ -30,7 +30,7 @@ contract RollupHelpers {
   uint constant bytesOffChainTx = 3*2 + 2;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
   uint64 constant IDEN3_ROLLUP_TX = 4839017969649077913;
-  
+
   /**
    * @dev Load poseidon smart contract
    * @param _poseidonContractAddr poseidon contract address

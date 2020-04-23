@@ -14,7 +14,7 @@ describe("Balance updater test", function () {
     it("Should check a normal offChain transaction", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 20,
+            oldStAmountReceiver: 20,
             amount: 5,
             loadAmount: 0,
             userFee: 2,
@@ -33,7 +33,7 @@ describe("Balance updater test", function () {
     it("Should check a normal onChain transaction", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 20,
+            oldStAmountReceiver: 20,
             amount: 0,
             loadAmount: 5,
             userFee: 2,
@@ -52,7 +52,7 @@ describe("Balance updater test", function () {
     it("Should check underflow onChain", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 20,
+            oldStAmountReceiver: 20,
             amount: 11,
             loadAmount: 0,
             userFee: 0,
@@ -71,7 +71,7 @@ describe("Balance updater test", function () {
     it("Should check underflow offChain", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 20,
+            oldStAmountReceiver: 20,
             amount: 9,
             loadAmount: 0,
             userFee: 2,
@@ -103,7 +103,7 @@ describe("Balance updater test", function () {
     it("Should check fee operator > fee user ", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 20,
+            oldStAmountReceiver: 20,
             amount: 1,
             loadAmount: 0,
             userFee: 2,
@@ -126,7 +126,7 @@ describe("Balance updater test", function () {
     it("Should check increment counters offChain", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 10,
+            oldStAmountReceiver: 10,
             amount: 1,
             loadAmount: 0,
             userFee: 2,
@@ -145,7 +145,7 @@ describe("Balance updater test", function () {
     it("Should check increment counters onChain", async () => {
         const input = {
             oldStAmountSender: 10,
-            oldStAmountRecieiver: 10,
+            oldStAmountReceiver: 10,
             amount: 0,
             loadAmount: 3,
             userFee: 2,

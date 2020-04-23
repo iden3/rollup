@@ -52,28 +52,20 @@ function manageEvent(event) {
     if (event.event == "OnChainTx") {
         const txData = utils.decodeTxData(event.args.txData);
         return {
-            IDEN3_ROLLUP_TX: txData.IDEN3_ROLLUP_TX,
             amount: txData.amount,
-<<<<<<< HEAD
-            loadAmount: Scalar.fromString(event.args.loadAmount),
-            coin: txData.coin,
-            fromAx: Scalar.fromString(event.args.fromAx).toString(16),
-            fromAy: Scalar.fromString(event.args.fromAy).toString(16),
-            fromEthAddr: Scalar.fromString(event.args.fromEthAddress).toString(16),
-            toAx: Scalar.fromString(event.args.toAx).toString(16),
-            toAy: Scalar.fromString(event.args.toAy).toString(16),
-            toEthAddr: Scalar.fromString(event.args.toEthAddress).toString(16),
-            onChain: txData.onChain
-=======
             loadAmount: Scalar.e(event.args.loadAmount),
             coin: txData.coin,
-            ax: Scalar.e(event.args.Ax).toString(16),
-            ay: Scalar.e(event.args.Ay).toString(16),
-            ethAddress: Scalar.e(event.args.ethAddress).toString(),
-            onChain: true
->>>>>>> operator update to Scalar
+            fromAx: Scalar.e(event.args.fromAx).toString(16),
+            fromAy: Scalar.e(event.args.fromAy).toString(16),
+            fromEthAddr: Scalar.fromString(event.args.fromEthAddress, 16).toString(16),
+            toAx: Scalar.e(event.args.toAx).toString(16),
+            toAy: Scalar.e(event.args.toAy).toString(16),
+            toEthAddr: Scalar.fromString(event.args.toEthAddress, 16).toString(16),
+            onChain: txData.onChain
         };
     } else if (event.event == "OffChainTx") {
+        return event.tx;
+    } else if (event.event == "DepositOffChainTx") {
         return event.tx;
     }
 }
