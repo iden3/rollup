@@ -210,6 +210,10 @@ class Synchronizer {
                 const stateDepth = parseInt(await this.rollupContract.methods.getStateDepth()
                     .call({from: this.ethAddress}, stateSaved.blockNumber));
 
+                console.log("current block: ", lastBatchSaved);
+                console.log("last batch saved: ", lastBatchSaved);
+                console.log("last state saved: ", stateSaved);
+
                 if (lastBatchSaved > 0 && stateDepth !== lastBatchSaved){
                     // clear database
                     await this._clearRollback(lastBatchSaved);

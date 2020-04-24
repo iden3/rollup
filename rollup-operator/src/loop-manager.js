@@ -384,6 +384,19 @@ class LoopManager{
             this.infoCurrentBatch.builded = true;
         }
 
+        // Check there are transaction to process
+        const numTxOnChain = this.infoCurrentBatch.batchData.onChainTxs.length;
+        const numTxOffChain = this.infoCurrentBatch.batchData.offChainTxs.length;
+        console.log("numTxOnChain: ", numTxOnChain);
+        console.log("numTxOffChain: ", numTxOffChain);
+
+        // if (numTxOnChain == 0 && numTxOffChain == 0 && this.infoCurrentBatch.batchData.batchNumber > 1){
+        //     this.timeouts.NEXT_STATE = 5000;
+        //     this.state = state.SYNCHRONIZING;
+        //     this._resetInfoBatch();
+        //     return;
+        // }
+
         // Check server proof is available
         const resServer = await this.cliServerProof.getStatus();
         if (resServer.data.state != stateServer.IDLE){
@@ -443,11 +456,22 @@ class LoopManager{
             const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
                 commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs); 
 
+            // Check gas price
+            console.log("Gas price Tx: ", tx.gasPrice);
+
+            if (tx.gasPrice > this.web3.utils.toWei("0.0002", "ether")){
+                this.timeouts.NEXT_STATE = 5000;
+                this.state = state.SYNCHRONIZING;
+                this._resetInfoBatch();
+                return;
+            }
+
             this._setInfoTx(tx, txSign.transactionHash, indexHash);
 
             this.state = state.MINING;
             this.timeouts.NEXT_STATE = 1000;
             const self = this;
+            
             try { // sanity check
                 await this.web3.eth.call(this.currentTx.tx);
             } catch (error) { // error evm transaction
