@@ -522,5 +522,53 @@ contract("RollupHelpers functions", (accounts) => {
             expect(Scalar.e(decodedOffchainDeposit[2])).to.be.equal(Scalar.e(fromEthAddr));
             expect(decodedOffchainDeposit[3].toString()).to.be.equal(coin.toString());
         });
+
+        it("Should update onchain fees properly", async () => {
+            const currentOnchainFee = web3.utils.toWei("1", "ether")
+            const moreFeeJs = Scalar.div( Scalar.mul( Scalar.fromString(currentOnchainFee), 101), 100);
+            const lessFeeJs = Scalar.div( Scalar.mul( Scalar.fromString(currentOnchainFee), 99), 100);
+
+            const sameFeeSC = await insHelpers.updateOnchainFeeTest(10, currentOnchainFee); 
+            const moreFeeSC = await insHelpers.updateOnchainFeeTest(11, currentOnchainFee); 
+            const lessFeeSC = await insHelpers.updateOnchainFeeTest(9, currentOnchainFee); 
+
+            expect(Scalar.fromString(currentOnchainFee)).to.be.equal(Scalar.e(sameFeeSC));
+            expect(moreFeeJs).to.be.equal(Scalar.e(moreFeeSC));
+            expect(lessFeeJs).to.be.equal(Scalar.e(lessFeeSC));
+        });
+
+        it("Should update deposit fees properly", async () => {
+
+            const currentDepositMul = web3.utils.toWei("1", "ether")
+            const leafs = 1 << 22;
+
+            const sameFee = await insHelpers.udateDepositFeeTest(1, 10, currentDepositMul);
+            const moreFee = await insHelpers.udateDepositFeeTest(leafs, 1, currentDepositMul);
+
+            expect(Scalar.fromString(currentDepositMul)).to.be.equal(Scalar.e(sameFee));
+            expect(Scalar.div(Scalar.mul(Scalar.fromString(currentDepositMul), 10000005), 10**7)).to.be.equal(Scalar.e(moreFee));
+
+            const deposits = 1000;
+
+            // 1.0000005 = 10000005 * 10**-7
+            // 1.0000005^x = 10000005^x * (10**-7)^x
+            const depositMulJs = 
+            Scalar.div( 
+                Scalar.mul(
+                    Scalar.fromString(currentDepositMul),
+                    Scalar.pow(10000005, deposits)
+                ),
+                Scalar.pow(10**7, deposits)
+            ); 
+
+            // gas Consumption 3523422 OMG 1/3 block NO escalable, should beter hardcodevalues
+            console.log("gas consumed by update fees of 1000 tx", 
+            (await insHelpers.udateDepositFeeTest.estimateGas(leafs, deposits, currentDepositMul)).toString());
+            const Fee1000Deposits = await insHelpers.udateDepositFeeTest(leafs, deposits, currentDepositMul);
+    
+            // ethereum loses precision, thats why we don't count the last 4 decimals
+            expect(Scalar.div(depositMulJs, 10**4)).to.be.equal(Scalar.div(Fee1000Deposits, 10**4));
+
+        });
     });
 });

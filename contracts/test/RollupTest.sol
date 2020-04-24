@@ -28,7 +28,7 @@ contract RollupTest is Rollup {
       uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
       // Operator must pay for every off-chain deposit
-      require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
+      require(msg.value >=  depositFeeMul / 1 ether * feeOnchainTx * depositOffChainLength, 'Amount deposited less than fee required');
     
       // Add deposits off-chain
       for (uint32 i = 0; i < depositOffChainLength; i++) {  
@@ -53,22 +53,31 @@ contract RollupTest is Rollup {
       require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
         'zk-snark proof is not valid');
 
+      fillingInfo storage currentFilling = fillingMap[getStateDepth()]; // curren batch filling Info
+
+      // Clean fillingOnChainTxsHash an its fees
+      uint payOnChainFees = totalMinningOnChainFee;
+
+      miningOnChainTxsHash = currentFilling.fillingOnChainTxsHash;
+      totalMinningOnChainFee = currentFilling.totalFillingOnChainFee;
+
+      // If the current state does not match currentFillingBatch means that
+      // currentFillingBatch > getStateDepth(), and that batch fees were already updated
+      if (getStateDepth() == currentFillingBatch) { 
+          feeOnchainTx = updateOnchainFee(currentFilling.currentOnChainTx, feeOnchainTx);
+          currentFillingBatch++;
+      }
+      delete fillingMap[getStateDepth()];
+
+      // Update deposit fee
+      depositFeeMul = updateDepositFee(input[finalIdx], depositCount, depositFeeMul);
+
+
       // Update state roots
       stateRoots.push(bytes32(input[newStateRootInput]));
 
       // Update exit roots
       exitRoots.push(bytes32(input[newExitRootInput]));
-
-      // Clean fillingOnChainTxsHash an its fees
-      uint payOnChainFees = totalMinningOnChainFee;
-
-      miningOnChainTxsHash = fillingOnChainTxsHash;
-      fillingOnChainTxsHash = 0;
-      totalMinningOnChainFee = totalFillingOnChainFee;
-      totalFillingOnChainFee = 0;
-
-      // Update number of on-chain transactions
-      currentOnChainTx = 0;
 
       // Calculate fees and pay them
       withdrawTokens([bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])],
@@ -86,11 +95,12 @@ contract RollupTest is Rollup {
     return IERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
-  function getMinningOnChainTxsHash() public view returns (uint256) {
-    return miningOnChainTxsHash;
+  function setCurrentFillingMap(uint256 onChainTx) public returns (uint256) {
+    fillingMap[currentFillingBatch].currentOnChainTx = onChainTx;
   }
 
-  function getFillingOnChainTxsHash() public view returns (uint256) {
-    return fillingOnChainTxsHash;
+  function setCurrentBatchToInfo(uint256 depositsNum, uint64 lastLeaf) public returns (uint256) {
+      batchToInfo[currentFillingBatch].lastLeafIndex = lastLeaf;
+      batchToInfo[currentFillingBatch].depositOnChainCount = uint32(depositsNum);
   }
 }
