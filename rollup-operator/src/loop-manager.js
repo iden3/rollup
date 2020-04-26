@@ -384,19 +384,6 @@ class LoopManager{
             this.infoCurrentBatch.builded = true;
         }
 
-        // Check there are transaction to process
-        const numTxOnChain = this.infoCurrentBatch.batchData.onChainTxs.length;
-        const numTxOffChain = this.infoCurrentBatch.batchData.offChainTxs.length;
-        console.log("numTxOnChain: ", numTxOnChain);
-        console.log("numTxOffChain: ", numTxOffChain);
-
-        // if (numTxOnChain == 0 && numTxOffChain == 0 && this.infoCurrentBatch.batchData.batchNumber > 1){
-        //     this.timeouts.NEXT_STATE = 5000;
-        //     this.state = state.SYNCHRONIZING;
-        //     this._resetInfoBatch();
-        //     return;
-        // }
-
         // Check server proof is available
         const resServer = await this.cliServerProof.getStatus();
         if (resServer.data.state != stateServer.IDLE){
@@ -437,8 +424,11 @@ class LoopManager{
             } else {
                 // sanity check
                 for (let i = 0; i < publicInputsBb.length; i++){
-                    if (publicInputsBb[i] !== proofServer.publicInputs[i])
+                    if (publicInputsBb[i] !== proofServer.publicInputs[i]){
                         this._errorTx("Proof public inputs does not match with batch public inputs");
+                        return;
+                    }
+                        
                 }
             }
 
@@ -456,14 +446,22 @@ class LoopManager{
             const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
                 commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs); 
 
-            // Check gas price
-            console.log("Gas price Tx: ", tx.gasPrice);
+            // Check gas price & if any transaction to process
+            const numTxOnChain = this.infoCurrentBatch.batchData.onChainTxs.length;
+            const numTxOffChain = this.infoCurrentBatch.batchData.offChainTxs.length;
+            const batchNumber = this.infoCurrentBatch.batchData.batchNumber;
+            const gasPrice = tx.gasPrice;
 
-            if (tx.gasPrice > this.web3.utils.toWei("0.0002", "ether")){
-                this.timeouts.NEXT_STATE = 5000;
-                this.state = state.SYNCHRONIZING;
-                this._resetInfoBatch();
-                return;
+            // console.log("Batch number: ", batchNumber);
+            // console.log("numTxOnChain: ", numTxOnChain);
+            // console.log("numTxOffChain: ", numTxOffChain);
+            // console.log("Gas price Tx: ", this.web3.utils.fromWei(tx.gasPrice.toString(), "ether"));
+
+            if (batchNumber > 1 && numTxOnChain == 0 && numTxOffChain == 0){
+                if (BigInt(gasPrice) > BigInt(this.web3.utils.toWei("0.0025", "ether"))){
+                    this._errorTx("No data to forge and gas cost too high");
+                    return;
+                }
             }
 
             this._setInfoTx(tx, txSign.transactionHash, indexHash);
