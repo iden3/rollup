@@ -1,27 +1,27 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const chai = require("chai");
 const ethers = require("ethers");
 const { expect } = chai;
-
+const SMTMemDB = require("circomlib/src/smt_memdb");
+const abiDecoder = require("abi-decoder");
 const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
+const Scalar = require("ffjavascript").Scalar;
+
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const Rollup = artifacts.require("../contracts/Rollup");
 
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
-
-const abiDecoder = require("abi-decoder");
-abiDecoder.addABI(Rollup.abi);
-
 const OperatorManager = require("../src/operator-manager");
 const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { buildPublicInputsSm } = require("../src/utils");
 const testUtils = require("./helpers/utils-test");
+const { encodeDepositOffchain } = require("../../js/utils");
+
+abiDecoder.addABI(Rollup.abi);
 
 contract("Operator Manager", async (accounts) => { 
 
@@ -43,7 +43,7 @@ contract("Operator Manager", async (accounts) => {
     const maxTx = 10;
     const maxOnChainTx = 5;
     const nLevels = 24;
-    const offChainHashInput = 3;
+    const offChainHashInput = 4;
 
     let insPoseidonUnit;
     let insRollupPoS;
@@ -159,7 +159,10 @@ contract("Operator Manager", async (accounts) => {
 
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
-        txSign = await opManager.getTxCommit(hashChain[8], `0x${batch.getDataAvailable().toString("hex")}`);
+        const depOffChainData = encodeDepositOffchain([]);
+
+        txSign = await opManager.getTxCommit(hashChain[8], `0x${batch.getDataAvailable().toString("hex")}`,
+            `0x${(depOffChainData).toString("hex")}`);
         const resCommit = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
         expect(resCommit.status).to.be.equal(true);
 
@@ -171,12 +174,12 @@ contract("Operator Manager", async (accounts) => {
         });
         let found = false;
         logs.forEach(elem => {
-            if (BigInt(elem.returnValues.hashOffChain).toString() == BigInt(input[offChainHashInput]).toString()) {
+            if (Scalar.eq(elem.returnValues.hashOffChain, input[offChainHashInput])) {
                 found = true;
             }
         });
         expect(found).to.be. equal(true);
-        txSign = await opManager.getTxForge(proofA, proofB, proofC, input);
+        txSign = await opManager.getTxForge(proofA, proofB, proofC, input, `0x${(depOffChainData).toString("hex")}`, 0);
         const resForge = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
         expect(resForge.status).to.be.equal(true);
     });
@@ -189,11 +192,12 @@ contract("Operator Manager", async (accounts) => {
         await batch.build();
         const input = await buildPublicInputsSm(batch);
         const commitData = `0x${batch.getDataAvailable().toString("hex")}`;
+        const depOffChainData = encodeDepositOffchain([]);
 
         await timeTravel.addBlocks(blockPerEra); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
         const res = await opManager.getTxCommitAndForge(hashChain[7], commitData, proofA,
-            proofB, proofC, input);
+            proofB, proofC, input, `0x${(depOffChainData).toString("hex")}`, 0);
         const resForge = await web3.eth.sendSignedTransaction(res[0].rawTransaction);
         await timeTravel.addBlocks(10); // era 2
         await insRollupPoS.setBlockNumber(eraBlock[2] + 10); // era 2 smart contract test
@@ -203,7 +207,7 @@ contract("Operator Manager", async (accounts) => {
         });
         let found = false;
         logs.forEach(elem => {
-            if (BigInt(elem.returnValues.hashOffChain).toString() == BigInt(input[offChainHashInput]).toString()) {
+            if (Scalar.eq(elem.returnValues.hashOffChain, input[offChainHashInput])) {
                 found = true;
             }
         });

@@ -27,6 +27,10 @@ const proofA = ["0", "0"];
 const proofB = [["0", "0"], ["0", "0"]];
 const proofC = ["0", "0"];
 
+function to18(e) {
+    return Scalar.mul(e, Scalar.pow(10, 18));
+}
+
 // timeouts test
 const timeoutAddBlocks = 2000;
 // timeouts test
@@ -90,7 +94,7 @@ contract("Synchronizer - light mode", (accounts) => {
     const maxTx = 10;
     const maxOnChainTx = 5;
     const nLevels = 24;
-    const tokenInitialAmount = 1000;
+    const tokenInitialAmount = to18(1000);
     const tokenId = 0;
     const url = "localhost";
     const hashChain = [];
@@ -125,7 +129,7 @@ contract("Synchronizer - light mode", (accounts) => {
         contractPoS: undefined,
         posAbi: RollupPoS.abi,
         logLevel: "debug",
-        mode: Constants.mode.light,
+        mode: Constants.mode.archive,
         timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000},
     }; 
 
@@ -148,7 +152,7 @@ contract("Synchronizer - light mode", (accounts) => {
             .send({ gas: 2500000, from: owner });
 
         // Deploy TokenRollup
-        insTokenRollup = await TokenRollup.new(id1, tokenInitialAmount);
+        insTokenRollup = await TokenRollup.new(id1, tokenInitialAmount.toString());
 
         // Deploy Verifier
         insVerifier = await Verifier.new();
@@ -192,18 +196,18 @@ contract("Synchronizer - light mode", (accounts) => {
     });
 
     it("manage rollup token", async () => { 
-        const amountDistribution = 100;
+        const amountDistribution = to18(100);
 
         await insRollupTest.addToken(insTokenRollup.address,
             { from: id1, value: web3.utils.toWei("1", "ether") });
-        await insTokenRollup.transfer(id2, amountDistribution, { from: id1 });
-        await insTokenRollup.transfer(id3, amountDistribution, { from: id1 });
+        await insTokenRollup.transfer(id2, amountDistribution.toString(), { from: id1 });
+        await insTokenRollup.transfer(id3, amountDistribution.toString(), { from: id1 });
         
-        await insTokenRollup.approve(insRollupTest.address, tokenInitialAmount,
+        await insTokenRollup.approve(insRollupTest.address, tokenInitialAmount.toString(),
             { from: id1 });
-        await insTokenRollup.approve(insRollupTest.address, amountDistribution,
+        await insTokenRollup.approve(insRollupTest.address, amountDistribution.toString(),
             { from: id2 });
-        await insTokenRollup.approve(insRollupTest.address, amountDistribution,
+        await insTokenRollup.approve(insRollupTest.address, amountDistribution.toString(),
             { from: id3 });
     });
 
@@ -230,8 +234,8 @@ contract("Synchronizer - light mode", (accounts) => {
     });
 
     it("Should add one deposit", async () => {
-        const loadAmount = 10;
-        const event0 = await insRollupTest.deposit(loadAmount, tokenId, rollupAccounts[0].ethAddr,
+        const loadAmount = to18(10);
+        const event0 = await insRollupTest.deposit(loadAmount.toString(), tokenId, rollupAccounts[0].ethAddr,
             [rollupAccounts[0].Ax, rollupAccounts[0].Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
         eventsInitial.push(event0.logs[0]);
     });
@@ -257,12 +261,12 @@ contract("Synchronizer - light mode", (accounts) => {
     });
 
     it("Should add two deposits and synch", async () => {
-        const loadAmount = 10;
+        const loadAmount = to18(10);
         const events = [];
-        const event0 = await insRollupTest.deposit(loadAmount, tokenId, rollupAccounts[1].ethAddr,
+        const event0 = await insRollupTest.deposit(loadAmount.toString(), tokenId, rollupAccounts[1].ethAddr,
             [rollupAccounts[1].Ax, rollupAccounts[1].Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
         events.push(event0.logs[0]);
-        const event1 = await insRollupTest.deposit(loadAmount, tokenId, rollupAccounts[2].ethAddr,
+        const event1 = await insRollupTest.deposit(loadAmount.toString(), tokenId, rollupAccounts[2].ethAddr,
             [rollupAccounts[2].Ax, rollupAccounts[2].Ay], { from: id3, value: web3.utils.toWei("1", "ether") });
         events.push(event1.logs[0]);
         await forgeBlock();
@@ -289,7 +293,7 @@ contract("Synchronizer - light mode", (accounts) => {
             expect(resId.ax).to.be.equal(ax);
             expect(resId.ay).to.be.equal(ay);
             expect(resId.ethAddress).to.be.equal(ethAddr);
-            expect(Scalar.eq(resId.amount, 10)).to.be.equal(true);
+            expect(Scalar.eq(resId.amount, to18(10))).to.be.equal(true);
         
             // get leafs info by AxAy
             const resAxAy = await synch.getStateByAxAy(ax, ay);
@@ -319,7 +323,7 @@ contract("Synchronizer - light mode", (accounts) => {
             toAy: rollupAccounts[1].AyHex,
             toEthAddr: rollupAccounts[1].ethAddr,
             coin: 0,
-            amount: 3,
+            amount: to18(3),
             nonce: 0,
             userFee: 0,
         };
@@ -348,6 +352,7 @@ contract("Synchronizer - light mode", (accounts) => {
             nonce: 0,
             userFee: 0,
             onChain: true,
+            newAccount: true,
         };
 
         events.push({event: "DepositOffChainTx", tx: tx});
@@ -367,7 +372,7 @@ contract("Synchronizer - light mode", (accounts) => {
         expect(resId.ax).to.be.equal(ax);
         expect(resId.ay).to.be.equal(ay);
         expect(resId.ethAddress).to.be.equal(ethAddr);
-        expect(Scalar.eq(resId.amount, 0)).to.be.equal(true);
+        expect(Scalar.eq(resId.amount, to18(0))).to.be.equal(true);
     });
 
     it("Should add deposit off-chain and off-chain transfer and synch", async () => {
@@ -398,7 +403,7 @@ contract("Synchronizer - light mode", (accounts) => {
             toAy: rollupAccounts[4].AyHex,
             toEthAddr: rollupAccounts[4].ethAddr,
             coin: 0,
-            amount: 3,
+            amount: to18(3),
             nonce: 0,
             userFee: 0,
         };
@@ -422,7 +427,7 @@ contract("Synchronizer - light mode", (accounts) => {
         expect(resId.ax).to.be.equal(ax);
         expect(resId.ay).to.be.equal(ay);
         expect(resId.ethAddress).to.be.equal(ethAddr);
-        expect(Scalar.eq(resId.amount, 3)).to.be.equal(true);
+        expect(Scalar.eq(resId.amount, to18(3))).to.be.equal(true);
     });
 
     it("Should add two off-chain withdraw tx and synch", async () => {
@@ -438,7 +443,7 @@ contract("Synchronizer - light mode", (accounts) => {
             toAy: GlobalConst.exitAy,
             toEthAddr: GlobalConst.exitEthAddr,
             coin: 0,
-            amount: 2,
+            amount: to18(2),
             nonce: 0,
             userFee: 0,
         };
@@ -457,7 +462,7 @@ contract("Synchronizer - light mode", (accounts) => {
             toAy: GlobalConst.exitAy,
             toEthAddr: GlobalConst.exitEthAddr,
             coin: 0,
-            amount: 2,
+            amount: to18(2),
             nonce: 0,
             userFee: 0,
         };
@@ -467,7 +472,7 @@ contract("Synchronizer - light mode", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        // // Check balances
+        // Check balances
         const coin = 0;
         const ax = Scalar.e(rollupAccounts[1].Ax).toString("16");
         const ay = Scalar.e(rollupAccounts[1].Ay).toString("16");
@@ -476,24 +481,207 @@ contract("Synchronizer - light mode", (accounts) => {
         const ay4 = Scalar.e(rollupAccounts[4].Ay).toString("16");
 
         const resId = await synch.getStateByAccount(coin, ax, ay);
-        expect(Scalar.eq(resId.amount, 11)).to.be.equal(true);
+        expect(Scalar.eq(resId.amount, to18(11))).to.be.equal(true);
 
         const resId4 = await synch.getStateByAccount(coin, ax4, ay4);
-        expect(Scalar.eq(resId4.amount, 1)).to.be.equal(true);
+        expect(Scalar.eq(resId4.amount, to18(1))).to.be.equal(true);
     });
 
-    it("Should check exit batches by id", async () => {
-        // const numExitBatch0 = 5;
-        // const numExitBatch1 = 6;
-        // let idx = 1;
-        // const arrayExits = await synch.getExitsBatchById(idx);
-        // expect(arrayExits.length).to.be.equal(2);
-        // expect(arrayExits.includes(numExitBatch0)).to.be.equal(true);
-        // expect(arrayExits.includes(numExitBatch1)).to.be.equal(true);
-        // // Check exit tree for all bacthes
-        // for (const numBatch of arrayExits){
-        //     const res = await synch.getExitTreeInfo(numBatch, idx);
-        //     expect(res.found).to.be.equal(true);
-        // }
+    it("Should check exit batches by account", async () => {
+        const numExitBatch0 = 8;
+        const numExitBatch1 = 9;
+
+        // Check exit information
+        const coin = 0;
+        const ax = Scalar.e(rollupAccounts[1].Ax).toString("16");
+        const ay = Scalar.e(rollupAccounts[1].Ay).toString("16");
+
+        const arrayExits = await synch.getExitsBatchById(coin, ax, ay);
+        expect(arrayExits.length).to.be.equal(1);
+        expect(arrayExits.includes(numExitBatch0)).to.be.equal(true);
+        
+        // Check exit tree for all bacthes
+        for (const numBatch of arrayExits){
+            const res = await synch.getExitTreeInfo(numBatch, coin, ax, ay);
+            expect(res.found).to.be.equal(true);
+            expect(Scalar.eq(res.state.amount, to18(2))).to.be.equal(true);
+        }
+
+        const ax4 = Scalar.e(rollupAccounts[4].Ax).toString("16");
+        const ay4 = Scalar.e(rollupAccounts[4].Ay).toString("16");
+
+        const arrayExits4 = await synch.getExitsBatchById(coin, ax4, ay4);
+        expect(arrayExits4.includes(numExitBatch1)).to.be.equal(true);
+
+        for (const numBatch of arrayExits4){
+            const res = await synch.getExitTreeInfo(numBatch, coin, ax4, ay4);
+            expect(res.found).to.be.equal(true);
+            expect(Scalar.eq(res.state.amount, to18(2))).to.be.equal(true);
+        }
+    });
+
+    it("Should add off-chain tx with fee and synch", async () => {
+        // Account |  0  |  1  |  2  |  3  |  4  |
+        // Amount  |  4  |  1  |  10 |  5  |  1  |
+
+        const tx = {
+            fromAx: rollupAccounts[1].AxHex,
+            fromAy: rollupAccounts[1].AyHex,
+            fromEthAddr: rollupAccounts[1].ethAddr,
+            toAx: rollupAccounts[3].AxHex,
+            toAy: rollupAccounts[3].AyHex,
+            toEthAddr: rollupAccounts[3].ethAddr,
+            coin: 0,
+            amount: to18(5),
+            nonce: 0,
+            userFee: to18(5),
+        };
+
+        const params = {
+            addCoins: [{coin: 0, fee:to18(5)}]
+        };
+        
+        const events = [];
+        events.push({event:"OffChainTx", tx: tx});
+        await forgeBlock(events, params);
+        await timeout(timeoutSynch);
+        await utilsTest.checkSynch(synch, opRollupDb);
+
+        // Check balances
+        const coin = 0;
+        const ax = Scalar.e(rollupAccounts[1].Ax).toString("16");
+        const ay = Scalar.e(rollupAccounts[1].Ay).toString("16");
+
+        const ax3 = Scalar.e(rollupAccounts[3].Ax).toString("16");
+        const ay3 = Scalar.e(rollupAccounts[3].Ay).toString("16");
+
+        const resId = await synch.getStateByAccount(coin, ax, ay);
+        expect(Scalar.eq(resId.amount, to18(1))).to.be.equal(true);
+
+        const resId3 = await synch.getStateByAccount(coin, ax3, ay3);
+        expect(Scalar.eq(resId3.amount, to18(5))).to.be.equal(true);
+    });
+
+    it("Should add on-chain and off-chain tx and synch", async () => {
+        // Account |  0  |  1  |  2  |  3  |  4  |
+        // Amount  |  4  |  1  |  20 |  4  |  0  |
+        
+        const events = [];
+        
+        // on-chain tx
+        const onTopAmount = to18(10);
+        const tokenId = 0;
+        const event = await insRollupTest.depositOnTop([rollupAccounts[4].Ax, rollupAccounts[4].Ay], onTopAmount.toString(), tokenId,
+            { from: id1, value: web3.utils.toWei("1", "ether") });
+        events.push(event.logs[0]);
+        
+        // off-chain tx
+        const tx1 = {
+            fromAx: rollupAccounts[4].AxHex,
+            fromAy: rollupAccounts[4].AyHex,
+            fromEthAddr: rollupAccounts[4].ethAddr,
+            toAx: rollupAccounts[3].AxHex,
+            toAy: rollupAccounts[3].AyHex,
+            toEthAddr: rollupAccounts[3].ethAddr,
+            coin: 0,
+            amount: to18(10),
+            nonce: 0,
+            userFee: to18(1),
+        };
+
+        events.push({event:"OffChainTx", tx: tx1});
+        const tx2 = {
+            fromAx: rollupAccounts[3].AxHex,
+            fromAy: rollupAccounts[3].AyHex,
+            fromEthAddr: rollupAccounts[3].ethAddr,
+            toAx: rollupAccounts[2].AxHex,
+            toAy: rollupAccounts[2].AyHex,
+            toEthAddr: rollupAccounts[2].ethAddr,
+            coin: 0,
+            amount: to18(10),
+            nonce: 0,
+            userFee: to18(1),
+        };
+
+        const params = {
+            addCoins: [{coin: 0, fee:to18(1)}]
+        };
+
+        events.push({event:"OffChainTx", tx: tx2});
+        await forgeBlock();
+        await forgeBlock(events, params);
+        await timeout(timeoutSynch);
+        await utilsTest.checkSynch(synch, opRollupDb);
+
+        // Check balances
+        const coin = 0;
+        const ax = Scalar.e(rollupAccounts[2].Ax).toString("16");
+        const ay = Scalar.e(rollupAccounts[2].Ay).toString("16");
+
+        const ax3 = Scalar.e(rollupAccounts[3].Ax).toString("16");
+        const ay3 = Scalar.e(rollupAccounts[3].Ay).toString("16");
+
+        const ax4 = Scalar.e(rollupAccounts[4].Ax).toString("16");
+        const ay4 = Scalar.e(rollupAccounts[4].Ay).toString("16");
+
+        const resId = await synch.getStateByAccount(coin, ax, ay);
+        expect(Scalar.eq(resId.amount, to18(20))).to.be.equal(true);
+
+        const resId3 = await synch.getStateByAccount(coin, ax3, ay3);
+        expect(Scalar.eq(resId3.amount, to18(4))).to.be.equal(true);
+
+        const resId4 = await synch.getStateByAccount(coin, ax4, ay4);
+        expect(Scalar.eq(resId4.amount, to18(0))).to.be.equal(true);
+    });
+
+    it("Should add two off-chain withdraw and synch", async () => {
+        // Account |  0  |  1  |  2  |  3  |  4  |
+        // Amount  |  4  |  1  |  20 |  4  |  0  |
+        
+        const events = [];
+        
+        // off-chain tx
+        const tx = {
+            fromAx: rollupAccounts[2].AxHex,
+            fromAy: rollupAccounts[2].AyHex,
+            fromEthAddr: rollupAccounts[2].ethAddr,
+            toAx: GlobalConst.exitAx,
+            toAy: GlobalConst.exitAy,
+            toEthAddr: GlobalConst.exitEthAddr,
+            coin: 0,
+            amount: to18(19),
+            nonce: 0,
+            userFee: to18(1),
+        };
+
+        events.push({event:"OffChainTx", tx: tx});
+
+        const params = {
+            addCoins: [{coin: 0, fee:to18(1)}]
+        };
+
+        await forgeBlock(events, params);
+        await timeout(timeoutSynch);
+        await utilsTest.checkSynch(synch, opRollupDb);
+
+        // Check balances
+        const numExitBatch = 13;
+        const coin = 0;
+        const ax = Scalar.e(rollupAccounts[2].Ax).toString("16");
+        const ay = Scalar.e(rollupAccounts[2].Ay).toString("16");
+
+        const resId = await synch.getStateByAccount(coin, ax, ay);
+        expect(Scalar.eq(resId.amount, to18(0))).to.be.equal(true);
+
+        const arrayExits = await synch.getExitsBatchById(coin, ax, ay);
+        expect(arrayExits.length).to.be.equal(1);
+        expect(arrayExits.includes(numExitBatch)).to.be.equal(true);
+        
+        // Check exit tree for all bacthes
+        for (const numBatch of arrayExits){
+            const res = await synch.getExitTreeInfo(numBatch, coin, ax, ay);
+            expect(res.found).to.be.equal(true);
+            expect(Scalar.eq(res.state.amount, to18(19))).to.be.equal(true);
+        }
     });
 });

@@ -20,6 +20,7 @@ module.exports = class BatchBuilder {
         this.nLevels = nLevels;
         this.offChainTxs = [];
         this.onChainTxs = [];
+        this.depOffChainTxs = [];
         this.dbState = new SMTTmpDb(rollupDB.db);
         this.stateTree = new SMT(this.dbState, root);
         this.dbExit = new SMTTmpDb(rollupDB.db);
@@ -876,6 +877,27 @@ module.exports = class BatchBuilder {
         } else {
             this.offChainTxs.push(tx);
         }
+    }
+
+    addDepositOffChain(tx) {
+        if (this.builded) throw new Error("Batch already builded");
+        this.depOffChainTxs.push(tx);
+    }
+
+    getDepOffChainData(){
+        if (!this.builded) throw new Error("Batch must first be builded");
+        let buffer = Buffer.alloc(0);
+        for (let i = 0; i < this.depOffChainTxs.length; i++) {
+            buffer = Buffer.concat([
+                buffer,
+                beInt2Buff(Scalar.fromString(depositsOffchain[i].fromAx, 16), 32),
+                beInt2Buff(Scalar.fromString(depositsOffchain[i].fromAy, 16), 32),
+                beInt2Buff(Scalar.fromString(depositsOffchain[i].fromEthAddr, 16), 20),
+                beInt2Buff(Scalar.e(depositsOffchain[i].coin), 4),
+            ]);
+        }
+        
+        return buffer;
     }
 
     addCoin(coin, fee) {

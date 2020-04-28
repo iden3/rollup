@@ -83,6 +83,11 @@ class TmpState {
     reset() {
         this.tmpStates = {};
     }
+
+    addStates(states) {
+        for (let idx of Object.keys(states))
+            this.tmpStates[idx] = states[idx];
+    }
 }
 
 module.exports = TmpState;

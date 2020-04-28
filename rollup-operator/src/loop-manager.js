@@ -417,7 +417,9 @@ class LoopManager{
             // get proof, commit data and forge block
             const proofServer = generateCall(res.data.proof);
             const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
-            
+            const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
+            const feeDepOffChain = Scalar.mul(this.infoCurrentBatch.batchData.depOffChainTxs.length, this.rollupSynch.feeDepOffChain);
+
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
             if (!proofServer.publicInputs){ // get inputs from batchBuilder
@@ -442,7 +444,8 @@ class LoopManager{
             const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
 
             const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
-                commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs); 
+                commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs,
+                depOffChainData, Scalar.toNumber(this.web3.utils.fromWei(feeDepOffChain.toString(), "ether"))); 
 
             this._setInfoTx(tx, txSign.transactionHash, indexHash);
 

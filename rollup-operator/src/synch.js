@@ -172,6 +172,8 @@ class Synchronizer {
             .call({from: this.ethAddress}));
         this.nLevels = Number(await this.rollupContract.methods.NLevels()
             .call({from: this.ethAddress}));
+        this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.FEE_OFFCHAIN_DEPOSIT()
+            .call({from: this.ethAddress}));
 
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
@@ -574,7 +576,6 @@ class Synchronizer {
         };
     }
 
-
     /**
      * Add on-chain and off-chain events to rollup database
      * @param {Array} offChain - Off-chain events 
@@ -590,7 +591,7 @@ class Synchronizer {
             const tx = await this._getTxOnChain(event);
             batch.addTx(tx);
             // if (this.mode !== Constants.mode.light)
-            if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.eq(tx.amount, 0)) 
+            if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.neq(tx.amount, 0)) 
                 await this._addExitEntry(tx, batch.batchNumber);
             
             // Add temporary new account information
@@ -630,11 +631,10 @@ class Synchronizer {
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
                 // if (this.mode !== Constants.mode.light){
-                if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.eq(tx.amount, 0)) {
-                    await this._addExitEntry(tx, batch.batchNumber);
+                if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.neq(tx.amount, 0)) {
+                    await this._addExitEntry(tx, batch.batchNumber, tmpNewAccounts);
                 }
-                // }
-                        
+                // }        
             }
         }
 
@@ -644,12 +644,28 @@ class Synchronizer {
     }
 
     /**
-     * Add exit batch numnber for a rollup identifier
+     * Add exit batch number for a rollup identifier
      * @param {Object} tx - rollup transaction to get the rollup identifier
-     * @param {Number} batchNumber - rollup batch number to add 
+     * @param {Number} batchNumber - rollup batch number to add
+     * @param {Object} tmpNewAccounts - new accounts created in this same batch. They are not consolidated.
      */
-    async _addExitEntry(tx, batchNumber){
-        const key = `${exitInfoKey}${separator}${tx.fromIdx}`;
+    async _addExitEntry(tx, batchNumber, tmpNewAccounts){
+        // get fromIdx
+        let fromIdx;
+        const tmpFromIdx = await this.treeDb.getIdx(tx.coin, tx.fromAx, tx.fromAy);
+        if (tmpFromIdx){
+            fromIdx = tmpFromIdx;
+        } else {
+            for (let idx in Object.keys(tmpNewAccounts)){
+                const state = tmpNewAccounts[idx];
+                if (state.ax == tx.fromAx && state.ay == tx.fromAy && state.coin == tx.coin){
+                    fromIdx = idx;
+                    break; 
+                }
+            }
+        }
+
+        const key = `${exitInfoKey}${separator}${fromIdx}`;
         const oldExitIdArray = await this.db.getOrDefault(key, "");
     
         let newExitIdArray = [];
@@ -863,13 +879,15 @@ class Synchronizer {
     }
 
     /**
-     * Get necessary data to perform a withdraw
-     * @param {Number} numBatch - rollup batch number
-     * @param {Number} id - rollup identifier
+     * Get necessary data to perform a withdrawal
+     * @param {Number} numBatch - number of batch
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
      * @returns {Object} - exit data  
      */
-    async getExitTreeInfo(numBatch, id) {
-        return await this.treeDb.getExitTreeInfo(numBatch, id);
+    async getExitTreeInfo(numBatch, coin, ax, ay) {
+        return await this.treeDb.getExitTreeInfo(numBatch, coin, ax, ay);
     }
 
     /**
@@ -926,13 +944,17 @@ class Synchronizer {
     }
 
     /**
-     * Get all avsilable exits batches fora rollup identifier
-     * @param {Number} idx - rollup batch number 
-     * @returns {Array} - list of batches where the rollup identifier has withdraws
+     * Get all available exits batches for a rollup account
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x') 
+     * @returns {Array} - list of batches where the rollup identifier has withdrawals
      */
-    async getExitsBatchById(idx){
+    async getExitsBatchById(coin, ax, ay){
         let exitsBatches = [];
         // if (this.mode !== Constants.mode.light) {
+        const idx = await this.treeDb.getIdx(coin, ax, ay);
+        if (!idx) return null;
         const key = `${exitInfoKey}${separator}${idx}`;
         const value = await this.db.getOrDefault(key, "");
         if (value !== "")

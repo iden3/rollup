@@ -1,8 +1,11 @@
-/* global BigInt */
 const { expect } = require("chai");
 const lodash = require("lodash");
 const { stringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
+
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function publicDataPoS(insRollupPoS){
     const publicData = {};
@@ -32,7 +35,39 @@ async function checkSynch(synch, opRollupDb){
     }
 }
 
+async function assertBalances(synch, rollupAccounts, arrayBalances){
+    const numAccounts = rollupAccounts.length;
+    const coin = 0;
+
+    for (let i = 0; i < numAccounts; i++){
+        if (arrayBalances[i] !== null){
+            const ax = Scalar.e(rollupAccounts[i].Ax).toString("16");
+            const ay = Scalar.e(rollupAccounts[i].Ay).toString("16");
+
+            const res = await synch.getStateByAccount(coin, ax, ay);
+            expect(Scalar.eq(res.amount, arrayBalances[i])).to.be.equal(true);
+        }
+    }
+}
+
+async function assertForgeBatch(rollupSynch, targetBatch, timeoutLoop){
+    let batchForged = false;
+    let counter = 0;
+    while(!batchForged && counter < 10) {
+        const lastBatchSynched = await rollupSynch.getLastBatch();
+        if (lastBatchSynched > targetBatch) {
+            batchForged = true;
+            break;
+        } 
+        await timeout(timeoutLoop);
+        counter += 1;
+    }
+    expect(batchForged).to.be.equal(true);
+}
+
 module.exports = {
     publicDataPoS,
     checkSynch,
+    assertBalances,
+    assertForgeBatch,
 };

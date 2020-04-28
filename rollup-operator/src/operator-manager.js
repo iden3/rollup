@@ -91,15 +91,16 @@ class OperatorManager {
      * Commit batch data
      * @param {String} prevHash - hash to reveal
      * @param {String} compressedTx - off-chain data transactions
+     * @param {String} compressedOnChainTx - deposit off-chain deposits compressed data
      * @returns {Object} - signed transaction 
      */
-    async getTxCommit(prevHash, compressedTx) {
+    async getTxCommit(prevHash, compressedTx, compressedOnChainTx) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
-            data: this.rollupPoS.methods.commitBatch(prevHash, compressedTx).encodeABI()
+            data: this.rollupPoS.methods.commitBatch(prevHash, compressedTx, compressedOnChainTx).encodeABI()
         };
         return await this.signTransaction(tx);
     }
@@ -110,15 +111,19 @@ class OperatorManager {
      * @param {Array} proofB - zkSnark proof
      * @param {Array} proofC - zkSnark proof
      * @param {Array} input - zkSnark public inputs
+     * @param {String} compressedOnChainTx - deposit off-chain deposits compressed data
+     * @param {Number} value - value payed on transaction
      * @returns {Object} - signed transaction
      */
-    async getTxForge(proofA, proofB, proofC, input) {
+    async getTxForge(proofA, proofB, proofC, input, compressedOnChainTx, value) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
-            data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input).encodeABI()
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
+            data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input,
+                compressedOnChainTx).encodeABI()
         };
         return await this.signTransaction(tx);
     }
@@ -131,16 +136,20 @@ class OperatorManager {
      * @param {Array} proofB - zkSnark proof
      * @param {Array} proofC - zkSnark proof
      * @param {Array} input - zkSnark public inputs
+     * @param {String} compressedOnChainTx - deposit off-chain deposits compressed data
+     * @param {Number} value - value payed on transaction in ether
      * @returns {Object} - signed transactiontthis.gasMulhis.gasMul
      */
-    async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
+    async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input,
+        compressedOnChainTx, value) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
             data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
-                proofA, proofB, proofC, input).encodeABI()
+                proofA, proofB, proofC, input, compressedOnChainTx).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
         return [txSign, tx];

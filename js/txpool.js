@@ -4,6 +4,7 @@ const assert = require("assert");
 const utils = require("./utils");
 const Constants = require("./constants");
 const TmpState = require("./tmpstate");
+const DepositsState = require("./txpool-deposits");
 
 class TXPool {
 
@@ -13,9 +14,8 @@ class TXPool {
             executableSlots,        // Max num of Executable TX in the pool
             nonExecutableSlots      // Max num of Non Executable TX in the pool
             timeout                 // seconds to keep a tx
+            feeDeposit              // Fee deposit off-chain in $
         }
-
-
      */
 
     constructor(rollupDB, conversion, cfg) {
@@ -25,6 +25,9 @@ class TXPool {
         this.executableSlots = cfg.executableSlots || 16;
         this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
         this.timeout = cfg.timeout || 3*3600;
+        // If no fee is configured, do not accept deposits off-chain
+        this.feeDeposit = cfg.feeDeposit || null;
+        this.depositsStates = new DepositsState(this.maxSlots, rollupDB);
 
         this.rollupDB = rollupDB;
         this.txs = [];
@@ -61,10 +64,18 @@ class TXPool {
         }
 
         await this.purge();
+
+        // load deposits off-chain transactions
+        await this.depositsStates.loadFromDb();
+        await this.depositsStates.purge();
     }
 
     setConversion(conversion) {
         this.conversion = conversion;
+    }
+
+    setFeeDeposit(feeDeposit) {
+        this.feeDeposit = feeDeposit;
     }
 
     _tx2Array(tx) {
@@ -111,35 +122,53 @@ class TXPool {
 
         const toIdx = await this.rollupDB.getIdx(_tx.coin, _tx.toAx, _tx.toAy);
         if (toIdx === null) {
-            console.log("Invalid Account Receiver");
-            return false;
+            const canBeAdded = this.depositsStates.exist(_tx);
+            if (canBeAdded){
+                const isFull = this.depositsStates.isFull(_tx);
+                if (isFull) {
+                    console.log("Deposits off-chain pool full");
+                    return false;
+                }
+                const acceptDeposit = await this.checkIfDeposit(_tx);
+                if (!acceptDeposit){
+                    console.log("Not enough fee to cover deposit off-chain");
+                    return false;
+                } else {
+                    const tx = Object.assign({ fromIdx: fromIdx }, _tx);
+                    utils.txRoundValues(tx);
+                    await this.depositsStates.addTx(tx, this.rollupDB.db);
+                    return true;
+                }
+            }
         }
 
         const tx = Object.assign({ fromIdx: fromIdx }, { toIdx: toIdx }, _tx);
-
         // Round amounts
         utils.txRoundValues(tx);
         tx.amount = utils.float2fix(utils.fix2float(tx.amount));
         tx.userFee = utils.float2fix(utils.fix2float(tx.userFee));
         tx.timestamp = (new Date()).getTime();
 
+
         const tmpState = new TmpState(this.rollupDB);
 
-        const canProcessRes = await tmpState.canProcess(tx);
-        if (canProcessRes == "NO") {
-            console.log("Invalid TX");
-            return false;
+        if (!tx.isDeposit){
+            const canProcessRes = await tmpState.canProcess(tx);
+            if (canProcessRes == "NO") {
+                console.log("Invalid TX");
+                return false;
+            }
+        
+            if (!utils.verifyTxSig(tx)) {
+                console.log("Invalid Signature");
+                return false;
+            }
         }
         
-        if (!utils.verifyTxSig(tx)) {
-            console.log("Invalid Signature");
-            return false;
-        }
-        
-        tx.slot=this._allocateFreeSlot();
+        tx.slot = this._allocateFreeSlot();
         if (tx.slot == -1) {
             await this.purge();
-            tx.slot=this._allocateFreeSlot();
+            tx.slot = this._allocateFreeSlot();
             if (tx.slot == -1) {
                 console.log("TX Pool Full");
                 return false;  // If all slots are full, just ignore the TX.
@@ -152,6 +181,26 @@ class TXPool {
         ]);
         await this._updateSlots();
         return tx.slot;
+    }
+
+    async checkIfDeposit(tx){
+        if (this.feeDeposit === null) return false;
+
+        const feeTx = utils.float2fix(utils.fix2float(tx.userFee));
+        const convRate = this.conversion[tx.coin];
+
+        if (convRate) {
+            const num = Scalar.mul(feeTx, Math.floor(convRate.price * 2**64));
+            const den = Scalar.pow(10, convRate.decimals);
+
+            const normalizeFeeTx = Number(Scalar.div(num, den)) / 2**64;
+
+            if (normalizeFeeTx > this.feeDeposit){
+                tx.normalizedFee = normalizeFeeTx;
+                return true; 
+            }
+        }
+        return false;
     }
 
     _allocateFreeSlot() {
@@ -186,7 +235,7 @@ class TXPool {
     }
 
     _genUpdateSlots()  {
-        let pCurrent = null, pNext =null;
+        let pCurrent = null, pNext = null;
 
         const doUpdateSlots = async () => {
             await this.rollupDB.db.multiIns([
@@ -418,8 +467,13 @@ class TXPool {
         const futureTxs = {};
         const txsByCoin = {};
 
-        const NSlots = bb.maxNTx - bb.onChainTxs.length;
+        let NSlots = bb.maxNTx - bb.onChainTxs.length;
 
+        // Each deposit off-chain uses 2 tx in the circuit
+        const numDepositsAdded = await this.depositsStates.fillBatch(bb, NSlots); 
+        NSlots = NSlots - 2*numDepositsAdded;
+
+        // Order tx
         await this._classifyTxs();
 
         const availableTxs = [];
@@ -467,6 +521,13 @@ class TXPool {
             } else {
                 tx.removed = true;
             }
+        }
+
+        // Add deposit off-chain transactions
+        const txDepositsOffChain = this.depositsStates.getTxToForge();
+        for (let tx of txDepositsOffChain){
+            if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
+                txsByCoin[tx.coin].push(tx);
         }
 
         const incTable = {};

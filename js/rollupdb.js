@@ -142,9 +142,13 @@ class RollupDB {
         return Promise.all(promises);
     }
 
-    async getExitTreeInfo(numBatch, idx){
+    async getExitTreeInfo(numBatch, coin, ax, ay){
         if (numBatch > this.lastBatch)
             return null;
+
+        const idx = await this.getIdx(coin, ax, ay);
+        if (!idx) return null;
+        
         const keyRoot = Scalar.add(Constants.DB_Batch, Scalar.e(numBatch));
         const rootValues = await this.db.get(keyRoot);
         if (!rootValues) return null;

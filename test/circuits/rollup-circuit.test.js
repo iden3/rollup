@@ -25,7 +25,6 @@ async function depositTx(bb, account, loadamount) {
         toEthAddr: Constants.exitEthAddr,
         onChain: true
     });
-
 }
 
 async function initBlock2deposits(rollupDB) {
