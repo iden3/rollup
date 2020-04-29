@@ -458,7 +458,7 @@ class LoopManager{
             // console.log("Gas price Tx: ", this.web3.utils.fromWei(tx.gasPrice.toString(), "ether"));
 
             if (batchNumber > 1 && numTxOnChain == 0 && numTxOffChain == 0){
-                console.log("Gas price:", BigInt(this.web3.utils.fromWei(BigInt(gasPrice).toString, "Gwei")));
+                console.log("Gas price:", this.web3.utils.fromWei(BigInt(gasPrice).toString(), "Gwei"));
                 console.log("Gas max price:", "10");
                 if (BigInt(gasPrice) > BigInt(this.web3.utils.toWei("10", "Gwei"))){
                     this._errorTx("No data to forge and gas cost too high");
