@@ -8,11 +8,11 @@ const Verifier = artifacts.require('../contracts/test/VerifierHelper');
 const RollupPoS = artifacts.require('../contracts/RollupPoS');
 const Rollup = artifacts.require('../contracts/test/Rollup');
 const fs = require('fs');
-
 const ethers = require('ethers');
 
 const mnemonic = 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous';
 const passString = 'foo';
+
 const walletPath = '../wallet-test.json';
 const configPath = '../config.json';
 
