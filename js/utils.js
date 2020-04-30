@@ -235,7 +235,7 @@ function decodeDepositOffChain(depositsOffchain) {
     }
   
     return txs;
-  }
+}
 
 function isStrHex(input) {
     if (typeof (input) == "string" && input.slice(0, 2) == "0x") {

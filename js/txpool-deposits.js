@@ -4,7 +4,7 @@ const utils = require("./utils");
 
 class DepositsState {
 
-    constructor(maxSlots, rollupDb) {
+    constructor(maxSlots, feeDeposit, conversion, rollupDb) {
         this.rollupDb = rollupDb;
         this.maxSlots = maxSlots;
         this.lastIdx = 2**24;
@@ -12,6 +12,17 @@ class DepositsState {
         this.states = {};
         this.txs = [];
         this.txOffChainToForge = [];
+        this.lenArrayTx = 8;
+        this.feeDeposit = feeDeposit || null;
+        this.conversion = conversion;
+    }
+
+    setFee(feeDeposit){
+        this.feeDeposit = feeDeposit;
+    }
+
+    setConversion(conversion){
+        this.conversion = conversion;
     }
 
     isFull(){
@@ -29,10 +40,16 @@ class DepositsState {
     }
 
     async addTx(tx) {
+        // Check is fee is enough to cover transaction
+        const res = this._checkFees(tx);
+        if (!res) return "NOT_ENOUGH_FEE";
+
         const hashIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy);
         this.newLeafs[hashIdx] = this.lastIdx;
         // set flag to identify deposit off-chain
         tx.isDeposit = true;
+        tx.toIdx = this.lastIdx;
+        tx.timestamp = (new Date()).getTime();
 
         this.txs.push(tx);
         this.lastIdx += 1;
@@ -45,6 +62,41 @@ class DepositsState {
             amount: tx.amount,
         }
         await this._saveTxToDb(tx);
+    }
+
+    _checkFees(tx){
+        if (this.feeDeposit === null) return false;
+
+        const feeTx = utils.float2fix(utils.fix2float(tx.userFee));
+        const convRate = this.conversion[tx.coin];
+
+        if (convRate) {
+            const num = Scalar.mul(feeTx, Math.floor(convRate.price * 2**64));
+            const den = Scalar.pow(10, convRate.decimals);
+
+            const normalizeFeeTx = Number(Scalar.div(num, den)) / 2**64;
+
+            if (normalizeFeeTx > this.feeDeposit){
+                return true; 
+            }
+        }
+        return false;
+    }
+
+    _setNormalizedFees() {
+        for (let i = 0; i < this.txs.length; i++) {
+            const tx = this.txs[i];
+            const convRate = this.conversion[tx.coin];
+
+            if (convRate) {
+                const num = Scalar.mul(tx.userFee, Math.floor(convRate.price * 2**64));
+                const den = Scalar.pow(10, convRate.decimals);
+
+                tx.normalizedFee = Number(Scalar.div(num, den)) / 2**64;
+            } else {
+                tx.normalizedFee = 0;
+            }
+        }
     }
 
     async _saveTxToDb(tx){
@@ -65,8 +117,10 @@ class DepositsState {
     async saveAllToDb(){
         let valTxs = [];
         
-        for (let i = 0; i < this.txs.length ; i++)
-            valTxs.push(this._tx2Array(tx));
+        for (let i = 0; i < this.txs.length ; i++){
+            const arrayTx = this._tx2Array(this.txs[i]);
+            valTxs = [...valTxs, ...arrayTx];
+        }
 
         await this.rollupDb.db.multiIns([
             [Constants.DB_TxPoolDepositTx, valTxs],
@@ -80,8 +134,12 @@ class DepositsState {
         if (!lastTxs) valTxs = [];
         else valTxs = [...lastTxs];
         
-        for (let valTx of valTxs)
-            this.txs.push(_array2Tx(valTx));
+        const numTx = valTxs.length / this.lenArrayTx;
+
+        for (let i = 0; i < numTx; i++){
+            const arrayTx = valTxs.slice(this.lenArrayTx*i, this.lenArrayTx*i + this.lenArrayTx);
+            this.txs.push(this._array2Tx(arrayTx));
+        }    
     }
 
     async purge(){
@@ -96,13 +154,18 @@ class DepositsState {
     }
 
 
-    fillBatch(bb, nFreeTx){
-        // this.candidateOnChainTxs = [];
+    async fillBatch(bb, nFreeTx){
+        this.candidateOnChainTxs = [];
+        this.candidateOffChainTxs = [];
         this.txToForge = [];
         
         const maxDepositsToAdd = Math.floor(nFreeTx/2);
 
-        // Sort deposits by normalize fee
+        if (!maxDepositsToAdd) return 0;
+
+        this._setNormalizedFees();
+
+        // Sort deposits by normalized fee
         this.txs.sort( (a, b) => {
             return b.normalizedFee - a.normalizedFee;
         });
@@ -113,12 +176,13 @@ class DepositsState {
             if (this.txs.length){
                 // get on-chain tx
                 const onChainTx = this._getOnChainTx(this.txs[i]);
-                // this.candidateOnChainTxs.push(onChainTx);
+                this.candidateOnChainTxs.push(onChainTx);
                 bb.addTx(onChainTx);
                 bb.addDepositOffChain(onChainTx);
 
                 // get off-chain tx
                 const offChainTx = this._getOffChainTx(this.txs[i]);
+                this.candidateOffChainTxs.push(offChainTx);
                 this.txToForge.push(offChainTx);
                 // bb.addTx(offChainTx);
 
@@ -129,7 +193,7 @@ class DepositsState {
                 depositsAdded += 1; 
             } else break;
         }
-
+        await this.saveAllToDb();
         return depositsAdded;
     }
 
@@ -137,13 +201,13 @@ class DepositsState {
         return this.txToForge;
     }
 
-    // getTxOffChainCandidates(){
-    //     return this.candidateOffChainTxs;
-    // }
+    getTxOffChainCandidates(){
+        return this.candidateOffChainTxs;
+    }
 
-    // getTxOnChainCandidates(){
-    //     return this.candidateOnChainTxs;
-    // }
+    getTxOnChainCandidates(){
+        return this.candidateOnChainTxs;
+    }
 
     _getOnChainTx(tx){
         return {
@@ -185,12 +249,29 @@ class DepositsState {
 
     _tx2Array(tx) {
         return [
-            utils.buildTxData(tx),
+            this._buildTxDataPool(tx),
             Scalar.e(tx.rqTxData || 0),
-            Scalar.e(tx.isDeposit ? 1 : 0),
+            Scalar.add(Scalar.shl(tx.timestamp, 1), tx.isDeposit ? 1 : 0),
             Scalar.fromString(tx.fromAx, 16),
             Scalar.fromString(tx.fromAy, 16),
+            Scalar.fromString(tx.toAx, 16),
+            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.toEthAddr, 16),
         ];
+    }
+
+    _buildTxDataPool(tx){
+        let res = Scalar.e(0);
+
+        res = Scalar.add(res, tx.fromIdx);
+        res = Scalar.add(res, Scalar.shl(tx.toIdx, 64));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.amount, 128), 128));
+        res = Scalar.add(res, Scalar.shl(tx.coin, 144));
+        res = Scalar.add(res, Scalar.shl(tx.nonce, 176));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.userFee), 224));
+        res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 240));
+
+        return res;
     }
 
     _array2Tx(arr) {
@@ -198,20 +279,23 @@ class DepositsState {
         const d0 = Scalar.e(arr[0]);
         tx.fromIdx = utils.extract(d0, 0, 64);
         tx.toIdx = utils.extract(d0, 64, 64);
-        tx.amount = utils.float2fix(utils.extract(d0, 128, 16));
+        tx.amount = utils.float2fix(Scalar.toNumber(utils.extract(d0, 128, 16)));
         tx.coin = utils.extract(d0, 144, 16);
         tx.nonce = utils.extract(d0, 176, 16);
-        tx.userFee = utils.float2fix(utils.extract(d0, 224, 16));
+        tx.userFee = utils.float2fix(Scalar.toNumber(utils.extract(d0, 224, 16)));
         tx.rqOffset = utils.extract(d0, 240, 3);
-        tx.onChain = utils.extract(d0, 243, 1);
-        tx.newAccount = utils.extract(d0, 244, 1);
 
         tx.rqTxData = Scalar.e(arr[1]);
 
-        tx.isDeposit = utils.extract(arr[1], 0, 1);
+        tx.isDeposit = utils.extract(arr[2], 0, 1);
+        tx.timestamp = utils.extract(arr[2], 1, 64);
 
-        tx.fromAx = Scalar.e(arr[2]).toString(16);
-        tx.fromAy = Scalar.e(arr[3]).toString(16);
+        tx.fromAx = Scalar.e(arr[3]).toString(16);
+        tx.fromAy = Scalar.e(arr[4]).toString(16);
+
+        tx.toAx = Scalar.e(arr[5]).toString(16);
+        tx.toAy = Scalar.e(arr[6]).toString(16);
+        tx.toEthAddr = Scalar.e(arr[7]).toString(16);
 
         return tx;
     }

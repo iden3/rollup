@@ -26,8 +26,7 @@ class TXPool {
         this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
         this.timeout = cfg.timeout || 3*3600;
         // If no fee is configured, do not accept deposits off-chain
-        this.feeDeposit = cfg.feeDeposit || null;
-        this.depositsStates = new DepositsState(this.maxSlots, rollupDB);
+        this.depositsStates = new DepositsState(this.maxSlots, cfg.feeDeposit, conversion || {}, rollupDB);
 
         this.rollupDB = rollupDB;
         this.txs = [];
@@ -72,43 +71,67 @@ class TXPool {
 
     setConversion(conversion) {
         this.conversion = conversion;
+        this.depositsStates.setConversion(this.conversion);
     }
 
     setFeeDeposit(feeDeposit) {
-        this.feeDeposit = feeDeposit;
+        this.depositsStates.setFee(feeDeposit);
+    }
+
+    _buildTxDataPool(tx){
+        let res = Scalar.e(0);
+
+        res = Scalar.add(res, tx.fromIdx);
+        res = Scalar.add(res, Scalar.shl(tx.toIdx, 64));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.amount), 128));
+        res = Scalar.add(res, Scalar.shl(tx.coin, 144));
+        res = Scalar.add(res, Scalar.shl(tx.nonce, 176));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.userFee), 224));
+        res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 240));
+        res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 243));
+        res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 244));
+
+        return res;
     }
 
     _tx2Array(tx) {
         return [
-            utils.buildTxData(tx),
+            this._buildTxDataPool(tx),
             Scalar.e(tx.rqTxData || 0),
             Scalar.add(Scalar.shl(tx.timestamp, 32), tx.slot),
             Scalar.fromString(tx.fromAx, 16),
             Scalar.fromString(tx.fromAy, 16),
+            Scalar.fromString(tx.toAx, 16),
+            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.toEthAddr, 16),
         ];
     }
 
     _array2Tx(arr) {
         const tx = {};
         const d0 = Scalar.e(arr[0]);
-        tx.fromIdx = utils.extract(d0, 0, 64);
-        tx.toIdx = utils.extract(d0, 64, 64);
-        tx.amount = utils.float2fix(utils.extract(d0, 128, 16));
-        tx.coin = utils.extract(d0, 144, 16);
-        tx.nonce = utils.extract(d0, 176, 16);
-        tx.userFee = utils.float2fix(utils.extract(d0, 224, 16));
-        tx.rqOffset = utils.extract(d0, 240, 3);
-        tx.onChain = utils.extract(d0, 243, 1);
-        tx.newAccount = utils.extract(d0, 244, 1);
+        tx.fromIdx = Scalar.toNumber(utils.extract(d0, 0, 64));
+        tx.toIdx = Scalar.toNumber(utils.extract(d0, 64, 64));
+        tx.amount = utils.float2fix(Scalar.toNumber(utils.extract(d0, 128, 16)));
+        tx.coin = Scalar.toNumber(utils.extract(d0, 144, 16));
+        tx.nonce = Scalar.toNumber(utils.extract(d0, 176, 16));
+        tx.userFee = utils.float2fix(Scalar.toNumber(utils.extract(d0, 224, 16)));
+        tx.rqOffset = Scalar.toNumber(utils.extract(d0, 240, 3));
+        tx.onChain = Scalar.toNumber(utils.extract(d0, 243, 1));
+        tx.newAccount = Scalar.toNumber(utils.extract(d0, 244, 1));
 
         tx.rqTxData = Scalar.e(arr[1]);
 
         const d2 = Scalar.e(arr[2]);
-        tx.slot = utils.extract(d2, 0, 32);
-        tx.timestamp = utils.extract(d2, 32, 64);
+        tx.slot = Scalar.toNumber(utils.extract(d2, 0, 32));
+        tx.timestamp = Scalar.toNumber((utils.extract(d2, 32, 64)));
 
         tx.fromAx = Scalar.e(arr[3]).toString(16);
         tx.fromAy = Scalar.e(arr[4]).toString(16);
+
+        tx.toAx = Scalar.e(arr[5]).toString(16);
+        tx.toAy = Scalar.e(arr[6]).toString(16);
+        tx.toEthAddr = "0x" + utils.padZeros(Scalar.e(arr[7]).toString(16), 40);
 
         return tx;
     }
@@ -129,16 +152,19 @@ class TXPool {
                     console.log("Deposits off-chain pool full");
                     return false;
                 }
-                const acceptDeposit = await this.checkIfDeposit(_tx);
-                if (!acceptDeposit){
-                    console.log("Not enough fee to cover deposit off-chain");
+                
+                const tx = Object.assign({ fromIdx: fromIdx }, _tx);
+                utils.txRoundValues(tx);
+                const res = await this.depositsStates.addTx(tx);
+                if (res == "NOT_ENOUGH_FEE"){
+                    console.log("Deposit off-chain discarded due to low fee");
                     return false;
                 } else {
-                    const tx = Object.assign({ fromIdx: fromIdx }, _tx);
-                    utils.txRoundValues(tx);
-                    await this.depositsStates.addTx(tx, this.rollupDB.db);
                     return true;
                 }
+            } else {
+                console.log("Deposit off-chain already exist");
+                return false;
             }
         }
 
@@ -181,26 +207,6 @@ class TXPool {
         ]);
         await this._updateSlots();
         return tx.slot;
-    }
-
-    async checkIfDeposit(tx){
-        if (this.feeDeposit === null) return false;
-
-        const feeTx = utils.float2fix(utils.fix2float(tx.userFee));
-        const convRate = this.conversion[tx.coin];
-
-        if (convRate) {
-            const num = Scalar.mul(feeTx, Math.floor(convRate.price * 2**64));
-            const den = Scalar.pow(10, convRate.decimals);
-
-            const normalizeFeeTx = Number(Scalar.div(num, den)) / 2**64;
-
-            if (normalizeFeeTx > this.feeDeposit){
-                tx.normalizedFee = normalizeFeeTx;
-                return true; 
-            }
-        }
-        return false;
     }
 
     _allocateFreeSlot() {
@@ -446,7 +452,6 @@ class TXPool {
         }
     }
 
-
     /* Example of conversion
     {
         0: {   // Coin 1
@@ -471,7 +476,7 @@ class TXPool {
 
         // Each deposit off-chain uses 2 tx in the circuit
         const numDepositsAdded = await this.depositsStates.fillBatch(bb, NSlots); 
-        NSlots = NSlots - 2*numDepositsAdded;
+        NSlots = NSlots - numDepositsAdded;
 
         // Order tx
         await this._classifyTxs();

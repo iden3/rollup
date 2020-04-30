@@ -4,7 +4,6 @@
 const fs = require('fs');
 const Web3 = require('web3');
 const ethers = require('ethers');
-const { error } = require('./src/list-errors');
 
 const configDefault = './config.json';
 
@@ -12,6 +11,7 @@ const {
     register, registerWithDifferentBeneficiary, registerRelay, unregister, withdraw, getEtherBalance,
 } = require('./src/utils');
 const { getSeedFromPrivKey, loadHashChain } = require('../rollup-utils/rollup-utils');
+const { error } = require('./src/list-errors');
 
 const version = '0.0.1';
 const { argv } = require('yargs') // eslint-disable-line
