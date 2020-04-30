@@ -564,8 +564,8 @@ class LoopManager{
             this._resetInfoBatch();
             return;
         }
-        this._updateTx(txSign.transactionHash);
         const txSign = await this.opManager.signTransaction(this.currentTx.tx);
+        this._updateTx(txSign.transactionHash);
         this._logResendTx();
         const self = this;
 
