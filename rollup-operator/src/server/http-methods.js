@@ -115,11 +115,14 @@ class HttpMethods {
      * Initilize http methods to get data regarding exits information
      */
     async initExitsApi(){
-        this.app.get("/exits/:id/:numbatch", async (req, res) => {
+        this.app.get("/exits/:ax/:ay/:coin/:numbatch", async (req, res) => {
             const numBatch = req.params.numbatch;
-            const id = req.params.id;
+            const ax = req.params.ax;
+            const ay = req.params.ay;
+            const coin = req.params.coin;
+
             try {
-                const resFind = await this.rollupSynch.getExitTreeInfo(numBatch, id);
+                const resFind = await this.rollupSynch.getExitTreeInfo(numBatch, coin, ax, ay);
                 if (resFind === null)
                     res.status(404).send("No information was found");    
                 else 
@@ -132,10 +135,13 @@ class HttpMethods {
             }
         });
 
-        this.app.get("/exits/:id", async (req, res) => {
-            const id = req.params.id;
+        this.app.get("/exits/:ax/:ay/:coin", async (req, res) => {
+            const ax = req.params.ax;
+            const ay = req.params.ay;
+            const coin = req.params.coin;
+
             try {
-                const resFind = await this.rollupSynch.getExitsBatchById(id);
+                const resFind = await this.rollupSynch.getExitsBatchById(coin, ax, ay);
                 if (resFind.length > 0)
                     res.status(200).json(stringifyBigInts(resFind));
                 else
@@ -152,10 +158,12 @@ class HttpMethods {
      * Initilize http methods to get data regarding rollup accounts
      */
     async initAccountsApi(){
-        this.app.get("/accounts/:id", async (req, res) => {
-            const id = req.params.id;
+        this.app.get("/accounts/:ax/:ay/:coin", async (req, res) => {
+            const ax = req.params.ax;
+            const ay = req.params.ay;
+            const coin = req.params.coin;
             try {
-                const info = await this.rollupSynch.getStateById(id);
+                const info = await this.rollupSynch.getStateByAccount(coin, ax, ay);
                 if (info === null)
                     res.status(404).send("Account not found");
                 else   

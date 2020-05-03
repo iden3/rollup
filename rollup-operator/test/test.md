@@ -17,14 +17,8 @@ Test PoS synchronizer:
 Test pool synchronizer:
   - `truffle test ./rollup-operator/test/synch-pool.test.js`
 
-Test Rollup synchronizer on `light` mode:
-  - `truffle test ./rollup-operator/test/synch-light.test.js`
-
-Test Rollup synchronizer on `full` mode:
-  - `truffle test ./rollup-operator/test/synch-full.test.js`
-
-Test Rollup synchronizer on `archive` mode:
-  - `truffle test ./rollup-operator/test/synch-archive.test.js`
+Test Rollup synchronizer:
+  - `truffle test ./rollup-operator/test/synch.test.js`
 
 Test operator manager:
   - `truffle test ./rollup-operator/test/op-manager.test.js`
@@ -36,7 +30,7 @@ Open new terminal and run server-proof service:
   - `npm run server-proof`
 
 Test `server-proof`:
-  - `truffle test ./rollup-operator/test/server-proof.test.js` 
+  - `mocha ./rollup-operator/test/server-proof.test.js` 
 
 ## Test loop-manager
 

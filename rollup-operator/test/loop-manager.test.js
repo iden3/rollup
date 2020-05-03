@@ -20,7 +20,6 @@ const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontr
 const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const utils = require("../../rollup-utils/rollup-utils");
-const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const RollupAccount = require("../../js/rollupaccount");
 
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
@@ -34,10 +33,10 @@ const OperatorManager = require("../src/operator-manager");
 const Pool = require("../../js/txpool");
 const CliServerProof = require("../src/cli-proof-server");
 const LoopManager = require("../src/loop-manager");
+const { exitAx, exitEthAddr, exitAy } = require("../../js/constants");
 
 // timeouts test
 const timeoutSynch = 20000;
-const timeoutFinal = 40000;
 const timeoutLoop = 10000;
 
 function to18(e) {
@@ -50,7 +49,9 @@ contract("Loop Manager", async (accounts) => {
         0: id0,
         1: id1,
         2: id2,
+        // eslint-disable-next-line no-unused-vars
         3: id3,
+        // eslint-disable-next-line no-unused-vars
         4: id4,
         5: rollupSynchAddress,
         6: posSynchAddress,
@@ -128,6 +129,7 @@ contract("Loop Manager", async (accounts) => {
 
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoS.address, { from: owner });
+        
         // Add token to rollup token list
         await insRollup.addToken(insTokenRollup.address,
             { from: tokenList, value: web3.utils.toWei("1", "ether") });
@@ -239,6 +241,7 @@ contract("Loop Manager", async (accounts) => {
         };
 
         poolTx = await Pool(synchRollupDb, conversion);
+        poolTx.setEthPrice(210);
 
         // Init client to interact with server proof
         const port = 10001;
@@ -297,7 +300,7 @@ contract("Loop Manager", async (accounts) => {
     it("Should add one deposit", async () => {
         const loadAmount = to18(10);
         await insRollup.deposit(loadAmount.toString(), tokenId, rollupAccounts[0].ethAddr,
-            [rollupAccounts[0].Ax, rollupAccounts[0].Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
+            [rollupAccounts[0].Ax, rollupAccounts[0].Ay], { from: id0, value: web3.utils.toWei("1", "ether") });
     });
 
     it("Should wait until operator turn", async () => {
@@ -333,7 +336,7 @@ contract("Loop Manager", async (accounts) => {
         await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(10), to18(10), to18(10), null, null]);
     });
 
-    it("Should add two off-chain transactions, forge them and check states", async () => {
+    it("Should add off-chain transaction, forge it and check states", async () => {
         // Account |  0  |  1  |  2  |  3  |  4  |
         // Amount  |  5  |  14 |  10 | Nan | Nan |
 
@@ -361,14 +364,14 @@ contract("Loop Manager", async (accounts) => {
 
     it("Should add deposit off-chain, forge it and check states", async () => {
         // Account |  0  |  1  |  2  |  3  |  4  |
-        // Amount  |  5  |  14 |  10 |  0  | Nan |
+        // Amount  |  5  |  14 |  5  |  4  | Nan |
 
         const lastBatch = await rollupSynch.getLastBatch();
 
         const tx = {
-            toAx: rollupAccounts[2].AxHex,
-            toAy: rollupAccounts[2].AyHex,
-            toEthAddr: rollupAccounts[2].ethAddr,
+            toAx: rollupAccounts[3].AxHex,
+            toAy: rollupAccounts[3].AyHex,
+            toEthAddr: rollupAccounts[3].ethAddr,
             coin: 0,
             amount: to18(4),
             nonce: 0,
@@ -380,8 +383,34 @@ contract("Loop Manager", async (accounts) => {
         await poolTx.addTx(tx);
         
         // Check forge batch
-        // await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
-        // // Check balances
-        // await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(5), to18(14), to18(10), null, null]);
+        await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
+        // Check balances
+        await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(5), to18(14), to18(5), to18(4), null]);
+    });
+
+    it("Should add withdraw off-chain transaction, forge it and check states", async () => {
+        // Account |  0  |  1  |  2  |  3  |  4  |
+        // Amount  |  5  |  14 |  10 |  2  | Nan |
+
+        const lastBatch = await rollupSynch.getLastBatch();
+
+        const tx = {
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
+            coin: 0,
+            amount: to18(1),
+            nonce: 0,
+            userFee: to18(1),
+        };
+        await rollupAccounts[3].wallet.signTx(tx);
+        tx.fromEthAddr = rollupAccounts[3].ethAddr;
+
+        await poolTx.addTx(tx);
+        
+        // Check forge batch
+        await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
+        // Check balances
+        await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(5), to18(14), to18(5), to18(2), null]);
     });
 });

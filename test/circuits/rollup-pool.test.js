@@ -94,6 +94,8 @@ describe("txPool test", function () {
 
     this.timeout(150000);
 
+    let circuit;
+
     before( async() => {
         circuit = await tester(path.join(__dirname, "circuits-test", "rollup_pool_test.circom"), {reduceConstraints:false});
 
@@ -149,6 +151,6 @@ describe("txPool test", function () {
 
         await txPool.purge();
 
-        assert(txPool.txs.length, 1);
+        assert.equal(txPool.txs.length, 1);
     });
 });

@@ -995,6 +995,16 @@ class Synchronizer {
         return await this.rollupContract.methods.miningOnChainTxsHash()
             .call({from: this.ethAddress});
     }
+
+    /**
+     * Get minimum fee required to do a deposit off-chain
+     * @returns {Scalar} - Fee deposit off-cahin in weis
+     */
+    async getFeeDepOffChain() {
+        if (this.slotDeadline) return this.slotDeadline;
+        return Scalar.e(await this.rollupContract.methods.FEE_OFFCHAIN_DEPOSIT()
+            .call({from: this.ethAddress}));
+    }
 }
 
 module.exports = Synchronizer;

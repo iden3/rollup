@@ -7,6 +7,7 @@ function string2Int(str) {
 }
 
 const hash = poseidon.createHash(1, 8, 57);
+const hash6 = poseidon.createHash(6, 8, 57);
 
 module.exports.DB_Master = hash([string2Int("Rollup_DB_Master")]);
 module.exports.DB_Batch = hash([string2Int("Rollup_DB_Batch")]);
@@ -21,10 +22,8 @@ module.exports.DB_NumBatch_AxAy = hash([string2Int("Rollup_DB_NumBatch_AxAy")]);
 module.exports.DB_NumBatch_EthAddr = hash([string2Int("Rollup_DB_NumBatch_EthAddr")]);
 module.exports.DB_InitialIdx = hash([string2Int("Rollup_DB_Initial_Idx")]);
 
-// module.exports.exitAx = Scalar.fromString("0000000000000000000000000000000000000000000000000000000000000000", 16).toString(16);
-// module.exports.exitAy = Scalar.fromString("0000000000000000000000000000000000000000000000000000000000000000", 16).toString(16);
-// module.exports.exitEthAddr = Scalar.fromString("0x0000000000000000000000000000000000000000", 16).toString(16);
-
-module.exports.exitAx = "0000000000000000000000000000000000000000000000000000000000000000";
-module.exports.exitAy = "0000000000000000000000000000000000000000000000000000000000000000";
+module.exports.exitAx = "0x0000000000000000000000000000000000000000000000000000000000000000";
+module.exports.exitAy = "0x0000000000000000000000000000000000000000000000000000000000000000";
 module.exports.exitEthAddr = "0x0000000000000000000000000000000000000000";
+module.exports.exitAccount = hash6([Scalar.fromString(this.exitAx, 16), Scalar.fromString(this.exitAy, 16)]);
+

@@ -16,7 +16,6 @@ Next test should have running dummy `operator` server in `http://127.0.0.1:9000`
 - `send.test.js`
 - `setup-cli.test.js`
 - `cli.test.js`
-- `bot.test.js`
 
 This server can be found in `rollup-cli/test/helpers/api-client.js`
 

@@ -14,11 +14,16 @@ class DepositsState {
         this.txOffChainToForge = [];
         this.lenArrayTx = 8;
         this.feeDeposit = feeDeposit || null;
+        this.ethPrice = null;
         this.conversion = conversion;
     }
 
     setFee(feeDeposit){
-        this.feeDeposit = feeDeposit;
+        this.feeDeposit = feeDeposit  || null;
+    }
+
+    setEthPrice(ethPrice){
+        this.ethPrice = ethPrice || null;
     }
 
     setConversion(conversion){
@@ -60,12 +65,13 @@ class DepositsState {
             coin: tx.coin,
             nonce: 0,
             amount: tx.amount,
-        }
+        };
         await this._saveTxToDb(tx);
     }
 
     _checkFees(tx){
-        if (this.feeDeposit === null) return false;
+        if (this.feeDeposit === null || this.ethPrice === null) 
+            return false;
 
         const feeTx = utils.float2fix(utils.fix2float(tx.userFee));
         const convRate = this.conversion[tx.coin];
@@ -76,7 +82,7 @@ class DepositsState {
 
             const normalizeFeeTx = Number(Scalar.div(num, den)) / 2**64;
 
-            if (normalizeFeeTx > this.feeDeposit){
+            if (normalizeFeeTx > (this.feeDeposit * this.ethPrice)){
                 return true; 
             }
         }
@@ -104,7 +110,7 @@ class DepositsState {
 
         let valTxs = [];
         if (!lastTxs) valTxs = [];
-            else valTxs = [...lastTxs];
+        else valTxs = [...lastTxs];
 
         const arrayTx = this._tx2Array(tx);
         valTxs = [...valTxs, ...arrayTx];
@@ -145,24 +151,26 @@ class DepositsState {
     async purge(){
         // remove all transactions that already exist on rollup db
         // meaning that the tx is no longer an off-chain deposit
-        for (let i = 0; i < this.txs; i++) {
-                const toId = await this.rollupDb.getIdx(tx.coin, tx.toAx, tx.toAy);
-                if (toId !== null)
-                    this.txs.splice(i, 1);
+        for (let i = 0; i < this.txs.length; i++) {
+            const tx = this.txs[i];
+            const toId = await this.rollupDb.getIdx(tx.coin, tx.toAx, tx.toAy);
+            if (toId !== null)
+                this.txs.splice(i, 1);
         }
         await this.saveAllToDb();
     }
 
 
-    async fillBatch(bb, nFreeTx){
+    async setCandidates(nFreeTx){
         this.candidateOnChainTxs = [];
         this.candidateOffChainTxs = [];
-        this.txToForge = [];
+        this.candidateTxs = [];
         
         const maxDepositsToAdd = Math.floor(nFreeTx/2);
 
         if (!maxDepositsToAdd) return 0;
 
+        await this.purge();
         this._setNormalizedFees();
 
         // Sort deposits by normalized fee
@@ -174,31 +182,27 @@ class DepositsState {
         let depositsAdded = 0;
         for (let i = 0; i < maxDepositsToAdd; i++){
             if (this.txs.length){
+                // remove array element
+                const tx = this.txs.shift();
+                tx.candidateId = depositsAdded;
+                this.candidateTxs.push(tx);
                 // get on-chain tx
-                const onChainTx = this._getOnChainTx(this.txs[i]);
+                const onChainTx = this._getOnChainTx(tx);
                 this.candidateOnChainTxs.push(onChainTx);
-                bb.addTx(onChainTx);
-                bb.addDepositOffChain(onChainTx);
+                // bb.addTx(onChainTx);
+                // bb.addDepositOffChain(onChainTx);
 
                 // get off-chain tx
-                const offChainTx = this._getOffChainTx(this.txs[i]);
+                const offChainTx = this._getOffChainTx(tx);
                 this.candidateOffChainTxs.push(offChainTx);
-                this.txToForge.push(offChainTx);
                 // bb.addTx(offChainTx);
-
-                // remove array element
-                this.txs.shift();
                 
                 // update deposits added
                 depositsAdded += 1; 
             } else break;
         }
-        await this.saveAllToDb();
-        return depositsAdded;
-    }
-
-    getTxToForge(){
-        return this.txToForge;
+        // await this.saveAllToDb();
+        // return depositsAdded;
     }
 
     getTxOffChainCandidates(){
@@ -208,6 +212,23 @@ class DepositsState {
     getTxOnChainCandidates(){
         return this.candidateOnChainTxs;
     }
+
+    async recoverNonUsedTx(forgedTxs){
+        const toDelete = [];
+        for (let txForged of forgedTxs){
+            if (txForged.isDeposit){
+                toDelete.push(txForged.candidateId);
+            }
+        }
+
+        for (let tx of this.candidateTxs){
+            if (!toDelete.includes(tx.candidateId)){
+                this.txs.push(tx);
+            }
+        }
+        await this.saveAllToDb();
+    }
+
 
     _getOnChainTx(tx){
         return {
@@ -219,8 +240,9 @@ class DepositsState {
             toAx: Constants.exitAx,
             toAy: Constants.exitAy,
             toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        }
+            onChain: true,
+            candidateId: tx.candidateId,
+        };
     }
 
     _getOffChainTx(tx){
@@ -237,7 +259,8 @@ class DepositsState {
             userFee: tx.userFee,
             normalizedFee: tx.normalizedFee,
             isDeposit: tx.isDeposit,
-        }
+            candidateId: tx.candidateId,
+        };
     }
 
     reset() {

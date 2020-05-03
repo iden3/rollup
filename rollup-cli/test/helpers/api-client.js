@@ -27,15 +27,15 @@ app.get('/accounts', async (req, res) => {
     const sibilings = [];
     if (ax !== undefined && ay !== undefined) {
         res.send([{
-            tokenId: 0, balance: 10, Ax: ax, Ay: ay, ethAddress: '5', nonce: 0, id: 1, numExitRoot: 6, sibilings,
+            coin: 0, balance: 10, Ax: ax, Ay: ay, ethAddress: '5', nonce: 0, id: 1, numExitRoot: 6, sibilings,
         }, {
-            tokenId: 1, balance: 10, Ax: ax, Ay: ay, ethAddress: '5', nonce: 0, id: 2, numExitRoot: 6, sibilings,
+            coin: 1, balance: 10, Ax: ax, Ay: ay, ethAddress: '5', nonce: 0, id: 2, numExitRoot: 6, sibilings,
         }]);
     } else if (ethAddr !== undefined) {
         res.send([{
-            tokenId: 0, balance: 10, Ax: '3', Ay: '4', ethAddress: ethAddr, nonce: 0, id: 1, numExitRoot: 6, sibilings,
+            coin: 0, balance: 10, Ax: '3', Ay: '4', ethAddress: ethAddr, nonce: 0, id: 1, numExitRoot: 6, sibilings,
         }, {
-            tokenId: 1, balance: 10, Ax: '3', Ay: '4', ethAddress: ethAddr, nonce: 0, id: 2, numExitRoot: 6, sibilings,
+            coin: 1, balance: 10, Ax: '3', Ay: '4', ethAddress: ethAddr, nonce: 0, id: 2, numExitRoot: 6, sibilings,
         }]);
     } else {
         res.sendStatus(404);
@@ -47,7 +47,7 @@ app.get('/accounts/:id', async (req, res) => {
     if (req.params.id !== undefined) {
         const sibilings = [];
         res.send({
-            tokenId: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings,
+            coin: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings,
         });
     } else {
         res.sendStatus(404);

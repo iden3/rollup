@@ -135,7 +135,14 @@ class LoopManager{
      * Get public contract variables
      */
     async _init(){
+        // get slot deadline
         this.slotDeadline = await this.posSynch.getSlotDeadline();
+        
+        // get fee for deposits off-chain
+        const feeWei = await this.rollupSynch.getFeeDepOffChain();
+        const feeEth = this.web3.utils.fromWei(feeWei.toString() , "ether");
+        this.feeDepOffChain = Number(feeEth);
+        this.poolTx.setFeeDeposit(this.feeDepOffChain);
     }
 
     /**
@@ -380,6 +387,8 @@ class LoopManager{
 
         if(!this.infoCurrentBatch.builded) { // If batch has been already built
             const bb = await this.rollupSynch.getBatchBuilder();
+
+            this.infoCurrentBatch.tmpOnChainHash = bb.getTmpOnChainHash();
             await this.poolTx.fillBatch(bb);
             this.infoCurrentBatch.batchData = bb;
             this.infoCurrentBatch.builded = true;
@@ -418,8 +427,8 @@ class LoopManager{
             const proofServer = generateCall(res.data.proof);
             const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
             const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
-            const feeDepOffChain = Scalar.mul(this.infoCurrentBatch.batchData.depOffChainTxs.length, this.rollupSynch.feeDepOffChain);
-
+            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.feeDepOffChain;
+            
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
             if (!proofServer.publicInputs){ // get inputs from batchBuilder
@@ -445,7 +454,7 @@ class LoopManager{
 
             const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
                 commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs,
-                depOffChainData, Scalar.toNumber(this.web3.utils.fromWei(feeDepOffChain.toString(), "ether"))); 
+                depOffChainData, feeDepOffChain); 
 
             this._setInfoTx(tx, txSign.transactionHash, indexHash);
 
@@ -683,7 +692,7 @@ class LoopManager{
         const currentOnchainHash = await this.rollupSynch.getMiningOnchainHash();
         
         if (Scalar.eq(currentStateRoot, this.infoCurrentBatch.batchData.getOldStateRoot()) &&
-            Scalar.eq(currentOnchainHash, this.infoCurrentBatch.batchData.getOnChainHash())) {
+            Scalar.eq(currentOnchainHash, this.infoCurrentBatch.tmpOnChainHash)) {
             return true;
         } else { 
             let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;

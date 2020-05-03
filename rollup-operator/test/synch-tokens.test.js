@@ -13,7 +13,7 @@ const MemDb = require("../../rollup-utils/mem-db");
 const { timeout } = require("../src/utils");
 const SynchTokens = require("../src/synch-tokens");
 
-contract("Synnchronizer Pool", (accounts) => {
+contract("Synnchronizer Tokens", (accounts) => {
     const {
         0: owner,
         1: tokenAddress,

@@ -163,11 +163,12 @@ function verifyTxSig(tx) {
 
         const h = hash([
             data,
-            tx.rqTxData || 0,
+            Scalar.e(tx.rqTxData || 0),
             Scalar.fromString(tx.toAx, 16),
             Scalar.fromString(tx.toAy, 16),
             Scalar.fromString(tx.toEthAddr, 16),
         ]);
+
         const signature = {
             R8: [Scalar.e(tx.r8x), Scalar.e(tx.r8y)],
             S: Scalar.e(tx.s)
@@ -216,7 +217,7 @@ function decodeDepositOffChain(depositsOffchain) {
         
         const ax = depositsOffchain.slice(0 + i*depositBytes, 32 + depositBytes * i);
         const ay = depositsOffchain.slice(32 + i*depositBytes, 64 + depositBytes * i);
-        const ethAddress = depositsOffchain.slice(64 + i*depositBytes,84 + depositBytes * i);
+        const ethAddress = depositsOffchain.slice(64 + i*depositBytes, 84 + depositBytes * i);
         const token = depositsOffchain.slice(84 + i*depositBytes, 88 + depositBytes * i);
 
         const tx = {

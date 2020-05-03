@@ -10,11 +10,17 @@ const CliExternalOperator = require('../../rollup-operator/src/cli-external-oper
 const { Wallet } = require('./wallet');
 const { approve } = require('./actions/onchain/approve.js');
 const { hexToPoint } = require('../helpers/utils');
+const { exitAx, exitAy } = require('../../js/constants');
 
-async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject) {
+async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject, ethAddress) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     const babyjubTo = hexToPoint(babyjubCompressed);
-    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject);
+    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject, ethAddress);
+}
+
+async function withdrawOffChainTx(urlOperator, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return send(urlOperator, [exitAx, exitAy], amount, walletRollup, tokenId, userFee, nonce, nonceObject);
 }
 
 async function depositTx(nodeEth, addressSC, loadAmount, tokenId, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
@@ -85,4 +91,5 @@ module.exports = {
     depositAndTransferTx,
     showExitsBatch,
     approveTx,
+    withdrawOffChainTx,
 };

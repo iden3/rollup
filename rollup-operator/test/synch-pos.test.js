@@ -12,7 +12,7 @@ const { timeout } = require("../src/utils");
 const testUtils = require("./helpers/utils-test");
 
 // timeouts test
-const timeoutDelay = 10000;
+const timeoutDelay = 15000;
 let timeoutSynch;
 let timeoutCheck;
 

@@ -37,7 +37,7 @@ const timeoutAddBlocks = 2000;
 const timeoutDelay = 7500;
 let timeoutSynch;
 
-contract("Synchronizer - light mode", (accounts) => {
+contract("Synchronizer", (accounts) => {
     
     async function forgeBlock(events = undefined, params = undefined) {
         const batch = await opRollupDb.buildBatch(maxTx, nLevels);

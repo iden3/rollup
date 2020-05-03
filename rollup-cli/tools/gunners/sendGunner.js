@@ -43,7 +43,7 @@ async function send() {
             onChain: 0,
             newAccount: 0,
         };
-        walletRollup.signRollupTx(tx); // sign included in transaction
+        await walletRollup.signRollupTx(tx); // sign included in transaction
         const parseTx = stringifyBigInts(tx);// convert bigint to Strings
 
         apiOperator.sendTx(parseTx).then((resTx) => {

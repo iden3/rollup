@@ -2,6 +2,7 @@
 const { stringifyBigInts } = require('ffjavascript').utils;
 
 const CliExternalOperator = require('../../../../rollup-operator/src/cli-external-operator');
+const { exitAx, exitAy, exitEthAddr } = require('../../../../js/constants');
 
 // check the nonce from the operator and Nonce object and decide wich one use
 async function _checkNonce(responseLeaf, currentBatch, nonceObject) {
@@ -43,40 +44,45 @@ function _addNonce(nonceObject, currentBatch, nonce, tokenId) {
  * @param {Number} idFrom - self balance tree identifier
  * @param {String} nonce - hardcoded from user
  * @param {Object} nonceObject - stored object wich keep tracking of the last transaction nonce sent by the client
- * @returns {Object} - return a object with the response status, current batch, current nonce, and nonceObject
+ * @param {String} ethAddress - Ethereum address enconded as hexadecimal string to be used in deposit off-chains
+ * @returns {Object} - return a object with the response status, current batch, current nonce and nonceObject
 */
-async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject) {
+async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject, ethAddress) {
     const walletBaby = walletRollup.babyjubWallet;
-    const [fromAx, fromAy] = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
-
-    const fromEthAddr = await walletRollup.ethWallet.wallet.getAddress();
+    const [fromAx, fromAy] = [walletBaby.publicKey[0].toString(16), walletBaby.publicKey[1].toString(16)];
 
     const apiOperator = new CliExternalOperator(urlOperator);
     const generalInfo = await apiOperator.getState();
     const currentBatch = generalInfo.data.rollupSynch.lastBatchSynched;
 
-    const receiverAccounts = await apiOperator.getAccounts({ ax: babyjubTo[0], ay: babyjubTo[1] });
+    let toEthAddr;
+    if (babyjubTo[0] === exitAx && babyjubTo[1] === exitAy) {
+        toEthAddr = exitEthAddr;
+    } else {
+        try {
+            const receiverAccounts = await apiOperator.getAccounts({ ax: babyjubTo[0], ay: babyjubTo[1] });
+            const receiverLeaf = receiverAccounts.data.find((x) => x.coin === tokenId);
+            toEthAddr = receiverLeaf.ethAddress;
+        } catch (err) {
+            toEthAddr = ethAddress;
+        }
+    }
 
-    const receiverLeaf = receiverAccounts.data.find((x) => x.tokenId === tokenId);
     let nonceToSend;
     if (nonce !== undefined) nonceToSend = nonce;
     else {
         const senderAccounts = await apiOperator.getAccounts({ ax: fromAx, ay: fromAy });
-        const senderLeaf = senderAccounts.data.find((x) => x.tokenId === tokenId);
+        const senderLeaf = senderAccounts.data.find((x) => x.coin === tokenId);
         if (nonceObject !== undefined) {
             const res = await _checkNonce(senderLeaf, currentBatch, nonceObject);
             nonceToSend = res.nonce;
         } else nonceToSend = senderLeaf.nonce;
     }
 
-
     const tx = {
-        fromAx,
-        fromAy,
-        fromEthAddr,
         toAx: babyjubTo[0],
         toAy: babyjubTo[1],
-        toEthAddr: receiverLeaf.ethAddress,
+        toEthAddr,
         coin: tokenId,
         amount,
         nonce: nonceToSend,
@@ -85,7 +91,8 @@ async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userF
         onChain: 0,
         newAccount: 0,
     };
-    walletRollup.signRollupTx(tx); // sign included in transaction
+
+    await walletRollup.signRollupTx(tx); // sign included in transaction
     const parseTx = stringifyBigInts(tx);
     const resTx = await apiOperator.sendTx(parseTx);
 

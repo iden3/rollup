@@ -1,4 +1,3 @@
-
 const { babyJub } = require('circomlib');
 const { Scalar } = require('ffjavascript');
 
@@ -29,7 +28,6 @@ function hexToPoint(compress) {
 
     return pointHex;
 }
-
 
 module.exports = {
     pointHexToCompress,

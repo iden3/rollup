@@ -2,7 +2,6 @@ const { assert, expect } = require("chai");
 const Scalar = require("ffjavascript").Scalar;
 
 const utils = require("../../js/utils");
-const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 describe("Utils", function () {
 

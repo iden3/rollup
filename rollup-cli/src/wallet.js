@@ -78,11 +78,12 @@ class Wallet {
    * To sign transaction with babyjub keys
    * @param {Object} tx -transaction
    */
-    signRollupTx(tx) {
+    async signRollupTx(tx) {
         const data = utils.buildTxData(tx);
+
         const h = hash([
             data,
-            tx.rqTxData || 0,
+            Scalar.e(tx.rqTxData || 0),
             Scalar.fromString(tx.toAx, 16),
             Scalar.fromString(tx.toAy, 16),
             Scalar.fromString(tx.toEthAddr, 16),
@@ -92,8 +93,9 @@ class Wallet {
         tx.r8x = signature.R8[0];
         tx.r8y = signature.R8[1];
         tx.s = signature.S;
-        tx.ax = this.babyjubWallet.publicKey[0].toString(16);
-        tx.ay = this.babyjubWallet.publicKey[1].toString(16);
+        tx.fromAx = this.babyjubWallet.publicKey[0].toString(16);
+        tx.fromAy = this.babyjubWallet.publicKey[1].toString(16);
+        tx.fromEthAddr = await this.ethWallet.wallet.getAddress();
     }
 }
 
