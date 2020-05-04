@@ -14,16 +14,25 @@ contract RollupPoB is RollupPoBHelpers{
     uint public MAX_TX;
 
     // Input snark definition
-    uint256 constant offChainHashInput = 3;
+    uint256 constant offChainHashInput = 4;
 
     // Defines slot/era block duration
     uint constant public DELAY_GENESIS = 1000;
     uint32 constant public BLOCKS_PER_SLOT = 100;
-    uint32 constant public SLOTS_PER_ERA = 20;
     uint constant public SLOT_DEADLINE = 20;
+
+    // Burn Address
+    address payable burn;
 
     // Minimum bid to enter the auction
     uint public constant MIN_BID = 1 ether;
+
+    // Minimum next Bid
+    uint constant minNumSlots = 2;
+
+    // % of bid
+    uint constant percentBonus = 10;
+    uint constant percentNextBid = 30;
 
     // Defines operator structure
     struct Operator {
@@ -39,26 +48,27 @@ contract RollupPoB is RollupPoBHelpers{
         bool initialized;
     }
 
-    // Information regarding data committed
-    struct commitData {
-        bytes32 previousHash;
-        bool committed;
-        uint256 offChainHash;
+    // Defines information of slot
+    struct InfoSlot {
+        // Indicates if at least one batch has been forged on an slot
+        bool fullFilled;
+        // current price of slot
+        uint slotPrice;
+        // accumulated bonus
+        uint accumulatedBonus;
     }
 
     // Mappings
     // mapping to control bonus amount by address
-    mapping(address => uint) public bidBalance;
+    mapping(address => uint) public bonusBalance;
     // mapping to control withdraw bid by address
     mapping(address => uint) public withdrawBid;
     // mapping to control winner by slot
     mapping(uint => Operator) public slotWinner;
     // mapping to control bid by slot
-    mapping(uint => Bid) slotBid;
-    // mapping to control data committed by slot
-    mapping (uint => commitData) commitSlot;
-    // Indicates if at least one batch has been forged on an slot
-    mapping (uint32 =>  bool) fullFilled;
+    mapping(uint => Bid) public slotBid;
+    // mapping to control information of slot
+    mapping(uint => InfoSlot) public infoSlot;
 
     /**
      * @dev Event called when an operator commits data before forging it
@@ -68,22 +78,220 @@ contract RollupPoB is RollupPoBHelpers{
     /**
      * @dev Event called when an operator beat the bestBid of the ongoing auction
      */
-    event newBestBid(uint32 slot, uint256 amount, address operator);
+    event newBestBid(uint32 slot, uint256 amount, uint256 price, address operator);
 
     /**
      * @dev RollupPoB constructor
-     * Set first block where the era will begin
+     * Set first block where the first slot begin
      * @param _rollup rollup main smart contract address
      * @param _maxTx maximum transactions
      */
-    constructor(address _rollup, uint256 _maxTx) public {
+    constructor(address _rollup, uint256 _maxTx, address payable burnAddress) public {
         require(_rollup != address(0), 'Address 0 inserted');
         rollupInterface = RollupInterface(_rollup);
         genesisBlock = getBlockNumber() + DELAY_GENESIS;
         MAX_TX = _maxTx;
+        burn = burnAddress;
     }
 
     /**
+     * @dev save the winning operator and return the amount to the previous winner
+     * @param slot block number
+     * @param forgerAddress address to forge
+     * @param beneficiaryAddress address to receive fees
+     * @param withdrawAddress address to withdraw amount
+     * @param bonusAddress address to receive bonus in SC
+     * @param useBonus to use the saved bonus
+     */
+    function doBid(
+        uint32 slot,
+        address payable beneficiaryAddress,
+        address forgerAddress,
+        address withdrawAddress,
+        address bonusAddress,
+        bool useBonus
+    ) internal {
+        uint256 amount = msg.value;
+        if (useBonus) {
+            require(msg.sender == bonusAddress, "To use bonus it is necessary that sender is the bonusAddress");
+            amount += bonusBalance[bonusAddress];
+            bonusBalance[bonusAddress] = 0;
+        }
+        if(slotBid[slot].initialized) {
+            uint minNextBid = slotBid[slot].amount + (slotBid[slot].amount * percentNextBid)/100;
+            require(amount >= minNextBid, 'Ether send not enough to outbid current bid');
+            uint bonus = (slotBid[slot].amount * percentBonus)/100;
+            _returnBid(slotBid[slot].amount, bonus, slotWinner[slot]);
+            infoSlot[slot].accumulatedBonus += bonus;
+            burn.transfer(amount - slotBid[slot].amount - bonus);
+        } else {
+            require(amount >= MIN_BID, 'Ether send not enough to enter auction');
+            burn.transfer(amount);
+            slotBid[slot].initialized = true;
+        }
+        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress);
+        slotWinner[slot] = op;
+        slotBid[slot].amount = amount;
+        infoSlot[slot].slotPrice = amount - infoSlot[slot].accumulatedBonus;
+        emit newBestBid(slot, slotBid[slot].amount, infoSlot[slot].slotPrice, forgerAddress);
+    }
+
+    /**
+     * @dev Receive a bid from an operator
+     * Beneficiary address, forger address, withdraw address and bonus address are the same address ( msg.sender )
+     * @param slot slot for which the operator is offering
+     */
+    function bid(uint32 slot) external payable {
+        require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
+        doBid(slot, msg.sender, msg.sender, msg.sender, msg.sender, true);
+    }
+
+    /**
+     * @dev Receive a bid from an operator
+     * Forger address, withdraw address and bonus address are the same address ( msg.sender )
+     * Specify address ( beneficiary address ) to receive operator earnings
+     * @param slot slot for which the operator is offering
+     * @param beneficiaryAddress beneficiary address
+     */
+    function bidWithDifferentBeneficiary(uint32 slot, address payable beneficiaryAddress) external payable {
+        require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
+        doBid(slot, beneficiaryAddress, msg.sender, msg.sender, msg.sender, true);
+    }
+
+    /**
+     * @dev Receive a bid from an operator
+     * Withdraw address and bonus address are the same address ( msg.sender )
+     * Forger address and beneficiary address are submitted as parameters
+     * @param slot slot for which the operator is offering
+     * @param forgerAddress controller address
+     * @param beneficiaryAddress beneficiary address
+     */
+    function bidRelay(uint32 slot, address payable beneficiaryAddress, address forgerAddress) external payable {
+        require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
+        doBid(slot, beneficiaryAddress, forgerAddress, msg.sender, msg.sender, true);
+    }
+
+    /**
+     * @dev Receive a bid from an operator
+     * msg.sender is the bonus address
+     * Forger address, beneficiary address and withdraw address are submitted as parameters
+     * @param slot slot for which the operator is offering
+     * @param forgerAddress controller address
+     * @param beneficiaryAddress beneficiary address
+     * @param withdrawAddress withdraw address
+     */
+    function bidRelayAndWithdrawAddress(
+        uint32 slot,
+        address payable beneficiaryAddress,
+        address forgerAddress,
+        address withdrawAddress
+    ) external payable {
+        require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
+        doBid(slot, beneficiaryAddress, forgerAddress, withdrawAddress, msg.sender, true);
+    }
+
+    /**
+     * @dev Receive a bid from an operator
+     * Forger address, beneficiary address, withdraw address and bonus address are submitted as parameters
+     * @param slot slot for which the operator is offering
+     * @param forgerAddress controller address
+     * @param beneficiaryAddress beneficiary address
+     * @param withdrawAddress withdraw address
+     * @param bonusAddress withdraw address
+     * @param useBonus decide whether to use the bonus saved in the smart contract
+     */
+    function bidWithDifferentAddresses(
+        uint32 slot,
+        address payable beneficiaryAddress,
+        address forgerAddress,
+        address withdrawAddress,
+        address bonusAddress,
+        bool useBonus
+    ) external payable {
+        require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
+        doBid(slot, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus);
+    }
+
+    /**
+     * @dev distribution of the amount
+     * @param amount amount to distribute
+     * @param op operator who will receive the amount
+     */
+    function _returnBid(uint amount, uint bonus, Operator storage op) private {
+        withdrawBid[op.withdrawAddress] += amount;
+        bonusBalance[op.bonusAddress] += bonus;
+    }
+    /**
+     * @dev function to withdraw bid
+     */
+    function withdraw() external {
+        require(withdrawBid[msg.sender] > 0, 'You cannot withdraw the amount');
+        uint auxAmount = withdrawBid[msg.sender];
+        withdrawBid[msg.sender] = 0;
+        msg.sender.transfer(auxAmount);
+    }
+
+    /**
+     * @dev operator commits data and forge a batch
+     * @param compressedTx data committed by the operator. Represents off-chain transactions
+     * @param proofA zk-snark input
+     * @param proofB zk-snark input
+     * @param proofC zk-snark input
+     * @param input public zk-snark inputs
+     */
+    function commitAndForge(
+        bytes calldata compressedTx,
+        uint[2] calldata proofA,
+        uint[2][2] calldata proofB,
+        uint[2] calldata proofC,
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
+    ) external payable virtual {
+        uint32 slot = currentSlot();
+        Operator storage op = slotWinner[slot];
+        // message sender must be the controller address
+        require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
+        uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
+        // Check input off-chain hash matches hash commited
+        require(offChainHash == input[offChainHashInput],
+            'hash off chain input does not match hash commited');
+        rollupInterface.forgeBatch.value(msg.value)(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
+        // one block has been forged in this slot
+        infoSlot[slot].fullFilled = true;
+        emit dataCommitted(offChainHash);
+    }
+
+     /**
+     * @dev commitAndForge after deadline
+     * @param compressedTx data committed by the operator. Represents off-chain transactions
+     * @param proofA zk-snark input
+     * @param proofB zk-snark input
+     * @param proofC zk-snark input
+     * @param input public zk-snark inputs
+     */
+    function commitAndForgeDeadline(
+        bytes calldata compressedTx,
+        uint[2] calldata proofA,
+        uint[2][2] calldata proofB,
+        uint[2] calldata proofC,
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
+    ) external payable virtual {
+        uint32 slot = currentSlot();
+        // Check if deadline has been achieved to forge data
+        uint blockDeadline = getBlockBySlot(slot + 1) - SLOT_DEADLINE;
+        require(getBlockNumber() >= blockDeadline, 'not possible to forge data before deadline');
+        // Check there is no data to be forged
+        require(!infoSlot[slot].fullFilled, 'another operator has already forged data');
+        uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
+        // Check input off-chain hash matches hash commited
+        require(offChainHash == input[offChainHashInput],
+            'hash off chain input does not match hash commited');
+        rollupInterface.forgeBatch.value(msg.value)(msg.sender, proofA, proofB, proofC, input, compressedOnChainTx);
+        emit dataCommitted(offChainHash);
+    }
+
+     /**
      * @dev Retrieve block number
      * @return current block number
      */
@@ -116,241 +324,5 @@ contract RollupPoB is RollupPoBHelpers{
      */
     function getBlockBySlot(uint32 slot) public view returns (uint) {
         return (genesisBlock + slot*BLOCKS_PER_SLOT);
-    }
-
-    /**
-     * @dev save the winning operator and return the amount to the previous winner
-     * @param slot block number
-     * @param forgerAddress address to forge
-     * @param beneficiaryAddress address to receive fees
-     * @param withdrawAddress address to withdraw amount
-     * @param bonusAddress address to receive bonus in SC
-     * @param useBonus to use the saved bonus
-     * @param value bid amount
-     */
-    function doBid(
-        uint32 slot,
-        address payable beneficiaryAddress,
-        address forgerAddress,
-        address withdrawAddress,
-        address bonusAddress,
-        bool useBonus,
-        uint128 value
-    ) public {
-        uint256 amount;
-        if (useBonus) {
-            amount = value + bidBalance[bonusAddress];
-            bidBalance[bonusAddress] = 0;
-        } else {
-            amount = value;
-        }
-        if(slotBid[slot].initialized) {
-            require(amount >= (slotBid[slot].amount * 13)/10, 'Ether send not enough to outbid current bid');
-            _returnBid(slotBid[slot].amount, slotWinner[slot]);
-        } else {
-            require(amount >= MIN_BID, 'Ether send not enough to enter auction');
-        }
-        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress);
-        slotWinner[slot] = op;
-        slotBid[slot].initialized = true;
-        slotBid[slot].amount = amount;
-        emit newBestBid(slot, slotBid[slot].amount, forgerAddress);
-    }
-
-    /**
-     * @dev Receive a bid from an operator
-     * Beneficiary address, forger address, withdraw address and bonus address are the same address ( msg.sender )
-     * @param slot slot for which the operator is offering
-     */
-    function bid(uint32 slot) external payable {
-        require(slot >= currentSlot() + 2, 'This auction is already closed');
-        doBid(slot, msg.sender, msg.sender, msg.sender, msg.sender, true, uint128(msg.value));
-    }
-
-    /**
-     * @dev Receive a bid from an operator
-     * Forger address, withdraw address and bonus address are the same address ( msg.sender )
-     * Specify address ( beneficiary address ) to receive operator earnings
-     * @param slot slot for which the operator is offering
-     * @param beneficiaryAddress beneficiary address
-     */
-    function bidWithDifferentBeneficiary(uint32 slot, address payable beneficiaryAddress) external payable {
-        require(slot >= currentSlot() + 2, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, msg.sender, msg.sender, msg.sender, true, uint128(msg.value));
-    }
-
-    /**
-     * @dev Receive a bid from an operator
-     * Withdraw address and bonus address are the same address ( msg.sender )
-     * Forger address and beneficiary address are submitted as parameters
-     * @param slot slot for which the operator is offering
-     * @param forgerAddress controller address
-     * @param beneficiaryAddress beneficiary address
-     */
-    function bidRelay(uint32 slot, address payable beneficiaryAddress, address forgerAddress) external payable {
-        require(slot >= currentSlot() + 2, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, forgerAddress, msg.sender, msg.sender, true, uint128(msg.value));
-    }
-
-    /**
-     * @dev Receive a bid from an operator
-     * msg.sender is the bonus address
-     * Forger address, beneficiary address and withdraw address are submitted as parameters
-     * @param slot slot for which the operator is offering
-     * @param forgerAddress controller address
-     * @param beneficiaryAddress beneficiary address
-     * @param withdrawAddress withdraw address
-     */
-    function bidRelayAndWithdrawAddress(
-        uint32 slot,
-        address payable beneficiaryAddress,
-        address forgerAddress,
-        address withdrawAddress
-    ) external payable {
-        require(slot >= currentSlot() + 2, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, forgerAddress, withdrawAddress, msg.sender, true, uint128(msg.value));
-    }
-
-    /**
-     * @dev Receive a bid from an operator
-     * Forger address, beneficiary address, withdraw address and bonus address are submitted as parameters
-     * @param slot slot for which the operator is offering
-     * @param forgerAddress controller address
-     * @param beneficiaryAddress beneficiary address
-     * @param withdrawAddress withdraw address
-     * @param bonusAddress withdraw address
-     * @param useBonus decide whether to use the bonus saved in the smart contract
-     */
-    function bidWithDifferentAddresses(
-        uint32 slot,
-        address payable beneficiaryAddress,
-        address forgerAddress,
-        address withdrawAddress,
-        address bonusAddress,
-        bool useBonus
-    ) external payable {
-        require(slot >= currentSlot() + 2, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus, uint128(msg.value));
-    }
-
-    /**
-     * @dev distribution of the amount
-     * @param amount amount to distribute
-     * @param op operator who will receive the amount
-     */
-    function _returnBid(uint amount, Operator storage op) private {
-        if(withdrawBid[op.withdrawAddress] == 0) {
-            withdrawBid[op.withdrawAddress] = amount;
-        } else {
-            withdrawBid[op.withdrawAddress] = withdrawBid[op.withdrawAddress] + amount;
-        }
-        if(bidBalance[op.bonusAddress] == 0) {
-            bidBalance[op.bonusAddress] = (amount * 1)/10;
-        } else {
-            bidBalance[op.bonusAddress] = bidBalance[op.bonusAddress] + (amount * 1)/10;
-        }
-    }
-    /**
-     * @dev function to withdraw bid
-     */
-    function withdraw() external {
-        require(withdrawBid[msg.sender] > 0, 'You cannot withdraw the amount');
-        msg.sender.transfer(withdrawBid[msg.sender]);
-        withdrawBid[msg.sender] = 0;
-    }
-
-    /**
-     * @dev operator commits data that must be forged afterwards
-     * @param compressedTx data committed by the operator. Represents off-chain transactions
-     */
-    function commitBatch(
-        bytes memory compressedTx
-    ) public {
-        uint32 slot = currentSlot();
-        Operator storage op = slotWinner[slot];
-        // message sender must be the controller address
-        require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
-        // Check if deadline has been achieved to not commit any more data
-        uint blockDeadline = getBlockBySlot(slot + 1) - SLOT_DEADLINE;
-        require(getBlockNumber() < blockDeadline, 'not possible to commit data after deadline');
-        // Check there is no data to be forged
-        require(commitSlot[slot].committed == false, 'there is data which is not forged');
-        // Store data committed
-        commitSlot[slot].committed = true;
-        commitSlot[slot].offChainHash = hashOffChainTx(compressedTx, MAX_TX);
-        emit dataCommitted(commitSlot[slot].offChainHash);
-    }
-
-    /**
-     * @dev forge a batch given the current committed data
-     * it forwards the batch directly to rollup main contract
-     * @param proofA zk-snark input
-     * @param proofB zk-snark input
-     * @param proofC zk-snark input
-     * @param input public zk-snark inputs
-     */
-    function forgeCommittedBatch(
-        uint[2] memory proofA,
-        uint[2][2] memory proofB,
-        uint[2] memory proofC,
-        uint[8] memory input
-     ) public virtual {
-        uint32 slot = currentSlot();
-        Operator storage op = slotWinner[slot];
-        // message sender must be the controller address
-        require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
-        // Check input off-chain hash matches hash commited
-        require(commitSlot[slot].offChainHash == input[offChainHashInput],
-            'hash off chain input does not match hash commited');
-        // Check that operator has committed data
-        require(commitSlot[slot].committed == true, 'There is no committed data');
-        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input);
-        // clear committed data
-        commitSlot[slot].committed = false;
-        // one block has been forged in this slot
-        fullFilled[slot] = true;
-    }
-
-    function commitAndForge(
-        bytes calldata compressedTx,
-        uint[2] calldata proofA,
-        uint[2][2] calldata proofB,
-        uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external {
-        commitBatch(compressedTx);
-        forgeCommittedBatch(proofA, proofB, proofC, input);
-    }
-
-     /**
-     * @dev commitAndForge after deadline
-     * @param compressedTx data committed by the operator. Represents off-chain transactions
-     * @param proofA zk-snark input
-     * @param proofB zk-snark input
-     * @param proofC zk-snark input
-     * @param input public zk-snark inputs
-     */
-    function commitAndForgeDeadline(
-        bytes calldata compressedTx,
-        uint[2] calldata proofA,
-        uint[2][2] calldata proofB,
-        uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external virtual {
-        uint32 slot = currentSlot();
-        // Check if deadline has been achieved to not commit any more data
-        uint blockDeadline = getBlockBySlot(slot + 1) - SLOT_DEADLINE;
-        require(getBlockNumber() >= blockDeadline, 'not possible to commit data before deadline');
-        // Check there is no data to be forged
-        require(!fullFilled[slot], 'another operator has already forged data');
-        require(!commitSlot[slot].committed, 'another operator has already submitted data');
-        uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
-        emit dataCommitted(offChainHash);
-        // Check input off-chain hash matches hash commited
-        require(offChainHash == input[offChainHashInput],
-            'hash off chain input does not match hash commited');
-        rollupInterface.forgeBatch(msg.sender, proofA, proofB, proofC, input);
-        // one block has been forged in this slot
-        fullFilled[slot] = true;
     }
 }

@@ -4,7 +4,7 @@ import "../RollupPoB.sol";
 
 contract RollupPoBTest is RollupPoB {
 
-    constructor(address _rollup, uint256 _maxTx) RollupPoB(_rollup, _maxTx) public {}
+    constructor(address _rollup, uint256 _maxTx, address payable burnAddress) RollupPoB(_rollup, _maxTx, burnAddress) public {}
 
     uint public blockNumber;
 
@@ -16,25 +16,25 @@ contract RollupPoBTest is RollupPoB {
         blockNumber = bn;
     }
 
-    function forgeCommittedBatch(
-        uint[2] memory proofA,
-        uint[2][2] memory proofB,
-        uint[2] memory proofC,
-        uint[8] memory input
-     ) public override {
+    function commitAndForge(
+        bytes calldata compressedTx,
+        uint[2] calldata proofA,
+        uint[2][2] calldata proofB,
+        uint[2] calldata proofC,
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
+    ) external payable override {
         uint32 slot = currentSlot();
         Operator storage op = slotWinner[slot];
         // message sender must be the controller address
         require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
+        uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
         // Check input off-chain hash matches hash commited
-        require(commitSlot[slot].offChainHash == input[offChainHashInput],
+        require(offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
-        // Check that operator has committed data
-        require(commitSlot[slot].committed == true, 'There is no committed data');
-        // clear committed data
-        commitSlot[slot].committed = false;
         // one block has been forged in this slot
-        fullFilled[slot] = true;
+        infoSlot[slot].fullFilled = true;
+        emit dataCommitted(offChainHash);
     }
 
     function commitAndForgeDeadline(
@@ -42,22 +42,22 @@ contract RollupPoBTest is RollupPoB {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external override {
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
+    ) external payable override {
         uint32 slot = currentSlot();
         // Check if deadline has been achieved to not commit any more data
         uint blockDeadline = getBlockBySlot(slot + 1) - SLOT_DEADLINE;
-        require(getBlockNumber() >= blockDeadline, 'not possible to commit data before deadline');
+        require(getBlockNumber() >= blockDeadline, 'not possible to forge data before deadline');
         // Check there is no data to be forged
-        require(!fullFilled[slot], 'another operator has already forged data');
-        require(!commitSlot[slot].committed, 'another operator has already submitted data');
+        require(!infoSlot[slot].fullFilled, 'another operator has already forged data');
         uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
-        emit dataCommitted(offChainHash);
         // Check input off-chain hash matches hash commited
         require(offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
         // one block has been forged in this slot
-        fullFilled[slot] = true;
+        infoSlot[slot].fullFilled = true;
+        emit dataCommitted(offChainHash);
     }
 
 }
