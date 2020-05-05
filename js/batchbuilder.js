@@ -3,7 +3,6 @@ const crypto = require("crypto");
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const SMT = require("circomlib").SMT;
-const { beInt2Buff } = require("ffjavascript").utils;
 
 const SMTTmpDb = require("./smttmpdb");
 const utils = require("./utils");

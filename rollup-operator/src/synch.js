@@ -7,15 +7,15 @@ const Scalar = require("ffjavascript").Scalar;
 
 const { float2fix, decodeTxData, extract, decodeDepositOffChain } = require("../../js/utils");
 const { timeout, purgeArray } = require("../src/utils");
-const Constants = require("./constants");
+// const Constants = require("./constants");
 const GlobalConst = require("../../js/constants");
 
 // offChainTx --> From | To | Amount |
 //            -->   3  | 3  |    2   | bytes 
 const bytesOffChainTx = 3*2 + 2;
 
-const initialIdxInput = 6;
-const finalIdxInput = 0;
+// const initialIdxInput = 6;
+// const finalIdxInput = 0;
 const offChainHashInput = 4;
 const feePlanCoinsInput = 8;
 const feePlanFeesInput = 9;

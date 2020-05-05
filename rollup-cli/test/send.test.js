@@ -17,7 +17,6 @@ describe('Send', async function () {
     const password = 'foo';
     const tokenId = 0;
     const userFee = 10;
-    const idFrom = 1;
 
     before(async () => {
         await createWallet();
@@ -26,9 +25,10 @@ describe('Send', async function () {
 
     it('Should call send', async () => {
         const walletRollup = await Wallet.fromEncryptedJson(wallet, password);
-        const res = await send(UrlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, idFrom);
+        const res = await send(UrlOperator, babyjubTo, amount, walletRollup, tokenId, userFee);
         expect(res.status).to.be.equal(200);
     });
+
     after(async () => {
         await deleteResources();
     });

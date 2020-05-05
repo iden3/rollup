@@ -6,7 +6,7 @@ class MemorydB {
    * @param {Bool} prefix - Database prefix 'i3db-' added to key values
    */
     constructor() {
-        this.prefix = "db-";
+        this.prefix = 'db-';
         this.db = new Map();
     }
 
@@ -18,7 +18,7 @@ class MemorydB {
     static newFromObj(dbObj) {
         const db = new MemorydB();
         Object.keys(dbObj).forEach((key) => {
-            db.insert(key.replace(db.prefix, ""), dbObj[key]);
+            db.insert(key.replace(db.prefix, ''), dbObj[key]);
         });
         return db;
     }
@@ -52,7 +52,7 @@ class MemorydB {
         const keyList = [];
         this.db.forEach((value, key) => {
             if (key.indexOf(this.prefix + prefix) !== -1) {
-                keyList.push(key.replace(this.prefix, ""));
+                keyList.push(key.replace(this.prefix, ''));
             }
         });
         return keyList;

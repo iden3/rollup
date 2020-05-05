@@ -64,14 +64,14 @@ async function showAccounts(urlOperator, filters) {
     return apiOperator.getAccounts(filters);
 }
 
-async function showAccountsByIdx(urlOperator, idx) {
+async function showStateAccount(urlOperator, coin, ax, ay) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    return apiOperator.getAccountByIdx(idx);
+    return apiOperator.getStateAccount(coin, ax, ay);
 }
 
-async function showExitsBatch(urlOperator, id) {
+async function showExitsBatch(urlOperator, coin, ax, ay) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    return apiOperator.getExits(id);
+    return apiOperator.getExits(coin, ax, ay);
 }
 
 async function approveTx(nodeEth, addressTokens, amount, spender, walletJson, passphrase, abi, gasLimit, gasMultiplier) {
@@ -86,7 +86,7 @@ module.exports = {
     withdrawTx,
     forceWithdrawTx,
     showAccounts,
-    showAccountsByIdx,
+    showStateAccount,
     transferTx,
     depositAndTransferTx,
     showExitsBatch,

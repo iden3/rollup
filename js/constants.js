@@ -26,4 +26,3 @@ module.exports.exitAx = "0x00000000000000000000000000000000000000000000000000000
 module.exports.exitAy = "0x0000000000000000000000000000000000000000000000000000000000000000";
 module.exports.exitEthAddr = "0x0000000000000000000000000000000000000000";
 module.exports.exitAccount = hash6([Scalar.fromString(this.exitAx, 16), Scalar.fromString(this.exitAy, 16)]);
-

@@ -268,6 +268,7 @@ class TXPool {
 
     _genPurge()  {
         let pCurrent = null;
+        // eslint-disable-next-line no-unused-vars
         let nPurge = 0;
 
         const doPurge = async () => {

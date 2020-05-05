@@ -320,6 +320,7 @@ contract RollupHelpers {
     bytes32 s;
     uint8   v;
 
+    // solium-disable security/no-inline-assembly
     assembly {
         r := mload(add(rsv, 32))
         s := mload(add(rsv, 64))

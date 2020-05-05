@@ -41,7 +41,6 @@ function _addNonce(nonceObject, currentBatch, nonce, tokenId) {
  * @param {Object} walletRollup - ethAddress and babyPubKey together
  * @param {Number} tokenId - token type identifier, the sender and the receive must use the same token
  * @param {String} userFee - amount of fee that the user is willing to pay
- * @param {Number} idFrom - self balance tree identifier
  * @param {String} nonce - hardcoded from user
  * @param {Object} nonceObject - stored object wich keep tracking of the last transaction nonce sent by the client
  * @param {String} ethAddress - Ethereum address enconded as hexadecimal string to be used in deposit off-chains
@@ -60,9 +59,9 @@ async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userF
         toEthAddr = exitEthAddr;
     } else {
         try {
-            const receiverAccounts = await apiOperator.getAccounts({ ax: babyjubTo[0], ay: babyjubTo[1] });
-            const receiverLeaf = receiverAccounts.data.find((x) => x.coin === tokenId);
-            toEthAddr = receiverLeaf.ethAddress;
+            const res = await apiOperator.getStateAccount(tokenId, babyjubTo[0], babyjubTo[1]);
+            const senderLeaf = res.data;
+            toEthAddr = senderLeaf.ethAddress;
         } catch (err) {
             toEthAddr = ethAddress;
         }
@@ -71,8 +70,8 @@ async function send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userF
     let nonceToSend;
     if (nonce !== undefined) nonceToSend = nonce;
     else {
-        const senderAccounts = await apiOperator.getAccounts({ ax: fromAx, ay: fromAy });
-        const senderLeaf = senderAccounts.data.find((x) => x.coin === tokenId);
+        const resOp = await apiOperator.getStateAccount(tokenId, fromAx, fromAy);
+        const senderLeaf = resOp.data;
         if (nonceObject !== undefined) {
             const res = await _checkNonce(senderLeaf, currentBatch, nonceObject);
             nonceToSend = res.nonce;

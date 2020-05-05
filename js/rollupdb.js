@@ -302,8 +302,8 @@ module.exports = async function(db) {
     if (!master) {
         return new RollupDB(db, 0, Scalar.e(0), 0);
     }
-    const roots = await db.get(Constants.DB_Batch.add(Scalar.e(master)));
-    const initialIdx = await db.get(Constants.DB_InitialIdx.add(Scalar.e(master)));
+    const roots = await db.get(Scalar.add(Constants.DB_Batch, Scalar.e(master)));
+    const initialIdx = await db.get(Scalar.add(Constants.DB_InitialIdx, Scalar.e(master)));
     if (!roots) {
         throw new Error("Database corrupted");
     }

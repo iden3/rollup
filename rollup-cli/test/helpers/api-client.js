@@ -43,20 +43,27 @@ app.get('/accounts', async (req, res) => {
 });
 
 
-app.get('/accounts/:id', async (req, res) => {
-    if (req.params.id !== undefined) {
+app.get('/accounts/:ax/:ay/:coin', async (req, res) => {
+    const { ax } = req.params;
+    const { ay } = req.params;
+    const { coin } = req.params;
+
+    if (ax !== undefined && ay !== undefined && coin !== undefined) {
         const sibilings = [];
         res.send({
-            coin: 0, balance: 10, Ax: 3, Ay: 4, ethaddress: 5, nonce: 0, idx: req.params.id, numExitRoot: 6, sibilings,
+            coin: 0, balance: 10, Ax: 3, Ay: 4, ethAddress: '0x05', nonce: 0, idx: 2, numExitRoot: 6, sibilings,
         });
     } else {
         res.sendStatus(404);
     }
 });
 
-app.get('/exits/:id', (req, res) => {
-    const idBalanceTree = req.params.id;
-    if (idBalanceTree !== undefined) {
+app.get('/exits/:ax/:ay:/coin', (req, res) => {
+    const { ax } = req.params;
+    const { ay } = req.params;
+    const { coin } = req.params;
+
+    if (ax !== undefined && ay !== undefined && coin !== undefined) {
         const exitBatches = [6, 21, 23];
         res.send(exitBatches);
     } else {
@@ -70,10 +77,13 @@ app.get('/state', (_, res) => {
     res.send({ rollupSynch });
 });
 
-app.get('/exits/:id/:numbatch', (req, res) => {
+app.get('/exits/:ax/:ay/:coin/:numbatch', (req, res) => {
     const numExitTree = req.params.numbatch;
-    const idBalanceTree = req.params.id;
-    if (numExitTree !== undefined && idBalanceTree !== undefined) {
+    const { ax } = req.params;
+    const { ay } = req.params;
+    const { coin } = req.params;
+
+    if (numExitTree !== undefined && ax !== undefined && ay !== undefined && coin !== undefined) {
         const leafInfo = {
             found: true,
             siblings: [],
@@ -87,7 +97,6 @@ app.get('/exits/:id/:numbatch', (req, res) => {
                     ax: 'b13a882e6fc993b918fa2ac8a3342cdea1ad81dc1c7152df1addbe02abfef74',
                     ay: '20c7b37d9e1b15f26ce938425230e00cf5e9a7ebb42213b521371956b43bf861',
                     ethAddress: '0x2bde4955c58cb1df48fc93d640c8aa5c3d64018b',
-                    idx: idBalanceTree,
                 },
         };
         res.send(leafInfo);
