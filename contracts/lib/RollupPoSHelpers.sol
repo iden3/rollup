@@ -9,7 +9,7 @@ contract RollupPoSHelpers {
 
   using Memory for *;
 
-  uint constant bitsTx = 24+24+16+4;
+  uint constant bitsTx = 24 + 24 + 16 + 4;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
   uint constant FOURTH_ROOT_FINNEY = 5623; // 4th root of finney in weis
 

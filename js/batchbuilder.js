@@ -25,8 +25,8 @@ module.exports = class BatchBuilder {
         this.stateTree = new SMT(this.dbState, root);
         this.dbExit = new SMTTmpDb(rollupDB.db);
         this.exitTree = new SMT(this.dbExit, Scalar.e(0));
-        this.feePlanCoins = Array(16).fill(Scalar.e(0));
-        this.feeTotals = Array(16).fill(Scalar.e(0));
+        this.feePlanCoins = Array(16).fill(0);
+        this.feeTotals = Array(16).fill(0);
         this.nCoins = 0;
         this.newBatchNumberDb = Scalar.e(batchNumber);
     }
@@ -52,7 +52,6 @@ module.exports = class BatchBuilder {
         this.input.s[i] = 0;
         this.input.r8x[i] = 0;
         this.input.r8y[i] = 0;
-        this.input.step[i] = 0;
         // on-chain
         this.input.fromEthAddr[i] = 0;
         this.input.fromAx[i] = 0;
@@ -90,7 +89,6 @@ module.exports = class BatchBuilder {
         if (i<this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
             this.input.imExitRoot[i] = this.exitTree.root;
-            this.input.imFeeTotal[i] = this._getFeeTotal();
             const lastHash = i == 0 ? 0: this.input.imOnChainHash[i-1];
             this.input.imOnChainHash[i] = lastHash;
             this.input.imOnChain[i] = 0;
@@ -220,8 +218,6 @@ module.exports = class BatchBuilder {
         this.input.fromEthAddr[i]= Scalar.fromString(oldState1.ethAddress, 16);
         this.input.fromAx[i]= Scalar.fromString(oldState1.ax, 16);
         this.input.fromAy[i]= Scalar.fromString(oldState1.ay, 16);
-
-        this.input.step[i] = ((!tx.onChain) && tx.step) ? 1 : 0;
 
         const newState1 = Object.assign({}, oldState1);
         newState1.amount = Scalar.sub(Scalar.sub(Scalar.add(oldState1.amount, loadAmount), effectiveAmount), fee2Charge);
@@ -514,7 +510,6 @@ module.exports = class BatchBuilder {
         if (i<this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
             this.input.imExitRoot[i] = this.exitTree.root;
-            this.input.imFeeTotal[i] = this._getFeeTotal();
             const lastHash = i == 0 ? 0: this.input.imOnChainHash[i-1];
             if (tx.onChain) {
                 const hash = poseidon.createHash(6, 8, 57);
@@ -617,14 +612,9 @@ module.exports = class BatchBuilder {
     _accumulateFees(coin, fee2Charge){
         // find coin index
         const indexCoin = this.feePlanCoins.indexOf(coin);
-        // coin not found
-        if (indexCoin === -1) return;
         
-        // Check overflow
-        // if (Scalar.gt(Scalar.add(this.feeTotals[indexCoin], fee2Charge), Scalar.shl(1, 128))) {
-        //     throw new Error("Maximum value to charge fees");
-        // }
-        this.feeTotals[indexCoin] += fee2Charge;
+        if (indexCoin === -1) return;
+        this.feeTotals[indexCoin] = Scalar.add(this.feeTotals[indexCoin], fee2Charge);
     }
 
     _getFeeTotal() {
@@ -644,16 +634,15 @@ module.exports = class BatchBuilder {
     }
 
     async build() {
-        const feePlanCoins = this._buildFeePlanCoins();
 
         this.input = {
             initialIdx: this.finalIdx,
             oldStRoot: this.stateTree.root,
-            feePlanCoins: feePlanCoins,
+            feePlanCoins: this._buildFeePlanCoins(),
+            feeTotals: Scalar.e(0),
 
             imStateRoot: [],
             imExitRoot: [],
-            imFeeTotal: [],
             imOnChainHash: [],
             imOnChain: [],
 
@@ -667,7 +656,6 @@ module.exports = class BatchBuilder {
             s: [],
             r8x: [],
             r8y: [],
-            step: [],
 
             // on-chain
             loadAmount: [],
@@ -713,7 +701,9 @@ module.exports = class BatchBuilder {
             await this._addTx(this.offChainTxs[i]);
         }
 
-        this.builded=true;
+        this.input.feeTotals = this._getFeeTotal();
+        
+        this.builded = true;
     }
 
     getInput() {
@@ -828,18 +818,18 @@ module.exports = class BatchBuilder {
             res = Scalar.add(res, Scalar.shl(tx.toIdx, amountBits + feeBits));
             res = Scalar.add(res, Scalar.shl(tx.fromIdx, indexBits + amountBits + feeBits));
 
-            finalStr = utils.padZeros(res.toString("16"), (indexBits * 2 + amountBits + feeBits) / 4) + finalStr;
+            finalStr = finalStr + utils.padZeros(res.toString("16"), (indexBits * 2 + amountBits + feeBits) / 4);
         }
 
         return  finalStr;
     }
 
     getDataAvailableSM() {
-        // Buffer must have an integer number of bytes, if not add the remaining half byte, padding a 0 at the start, wich means 4 bits in hex 
+        // Buffer must have an integer number of bytes
+        // padding 4 bits at the beginning if odd number of Txs off-chain 
         if (this.offChainTxs.length % 2 == 0) { 
             return `0x${this.getDataAvailable()}`;
-        }
-        else{
+        } else {
             return `0x0${this.getDataAvailable()}`;
         }
     }
@@ -847,21 +837,22 @@ module.exports = class BatchBuilder {
     getOffChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
-        const txSizeBits = (this.nLevels/8)*2*8 + 2*8 + 4;  // 24*2 + 16 + 4 = 6 bytes + 2 bytes + half byte
+        const txSizeBits = (this.nLevels/8)*2*8 + 2*8 + 4;
         
         const dataOffChainTx = this.getDataAvailable();
         const dataNopTx = utils.padZeros("", (this.maxNTx - this.offChainTxs.length) * (txSizeBits / 4));
 
         let b  = dataNopTx.concat(dataOffChainTx);
 
-        // Buffer must have an integer number of bytes, if not add the remaining half byte, padding a 0 at the start, wich means 4 bits in hex  
+        // Buffer must have an integer number of bytes
+        // padding 4 bits at the beginning if odd number of maxTxs    
         if (this.maxNTx % 2 != 0) {
             b = "0".concat(b);
         }
 
         const r = Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617");
         const hash = crypto.createHash("sha256")
-            .update(b, "hex") //default string, not what we want, aslso must be padding 4 0 at start
+            .update(b, "hex")
             .digest("hex");
         const h = Scalar.mod(Scalar.fromString(hash, 16), r);
         return h;

@@ -1,8 +1,11 @@
 const { assert } = require("chai");
 const path = require("path");
 const tester = require("circom").tester;
+const Scalar = require("ffjavascript").Scalar;
 
-describe("Balance updater test", function () {
+const Constants = require("../../js/constants");
+
+describe("Balance updater circuit", function () {
     let circuit;
 
     before( async() => {
@@ -17,17 +20,22 @@ describe("Balance updater test", function () {
             oldStAmountReceiver: 20,
             amount: 5,
             loadAmount: 0,
-            userFee: 2,
-            operatorFee: 2,
+            fee: Constants.fee["20%"],
             onChain: 0,
             nop: 0,
-            countersIn: 0,
-            countersBase: 0
         };
 
         const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        await circuit.assertOut(w, {newStAmountSender: 3, newStAmountReceiver: 25});
+        const feeApplied = Scalar.div(input.amount, Constants.tableFeeInv[input.fee]);
+
+        const output = {
+            newStAmountSender: Scalar.sub(Scalar.sub(input.oldStAmountSender, input.amount), feeApplied ),
+            newStAmountReceiver: Scalar.add(input.oldStAmountReceiver, input.amount),
+            fee2Charge: feeApplied
+        };
+
+        await circuit.assertOut(w, output);
     });
 
     it("Should check a normal onChain transaction", async () => {
@@ -36,17 +44,22 @@ describe("Balance updater test", function () {
             oldStAmountReceiver: 20,
             amount: 0,
             loadAmount: 5,
-            userFee: 2,
-            operatorFee: 2,
+            fee: Constants.fee["20%"],
             onChain: 1,
             nop: 0,
-            countersIn: 0,
-            countersBase: 0
         };
 
         const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        await circuit.assertOut(w, {newStAmountSender: 15, newStAmountReceiver: 20});
+        const feeApplied = Scalar.e(0);
+
+        const output = {
+            newStAmountSender: Scalar.add(input.oldStAmountSender, input.loadAmount), 
+            newStAmountReceiver: Scalar.e(input.oldStAmountReceiver),
+            fee2Charge: feeApplied,
+        };
+
+        await circuit.assertOut(w, output);
     });
 
     it("Should check underflow onChain", async () => {
@@ -55,17 +68,22 @@ describe("Balance updater test", function () {
             oldStAmountReceiver: 20,
             amount: 11,
             loadAmount: 0,
-            userFee: 0,
-            operatorFee: 0,
+            fee: Constants.fee["10%"],
             onChain: 1,
             nop: 0,
-            countersIn: 0,
-            countersBase: 0
         };
 
         const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        await circuit.assertOut(w, {newStAmountSender: 10, newStAmountReceiver: 20});
+        const feeApplied = Scalar.e(0);
+
+        const output = {
+            newStAmountSender: Scalar.e(input.oldStAmountSender), 
+            newStAmountReceiver: Scalar.e(input.oldStAmountReceiver),
+            fee2Charge: feeApplied,
+        };
+
+        await circuit.assertOut(w, output);
     });
 
     it("Should check underflow offChain", async () => {
@@ -74,18 +92,18 @@ describe("Balance updater test", function () {
             oldStAmountReceiver: 20,
             amount: 9,
             loadAmount: 0,
-            userFee: 2,
-            operatorFee: 2,
+            fee: Constants.fee["50%"],
             onChain: 0,
             nop: 0,
-            countersIn: 0,
-            countersBase: 0
+            feeTotalIn: 0,
+            feeTotalBase: 0,
         };
 
         try {
             await circuit.calculateWitness(input, {logOutput: false});
             assert(false, "Constraint matches");
         } catch (err) {
+            console.log(err.message);
             assert.equal(err.message.includes("Constraint doesn't match"), true);
             assert.equal(err.message.includes("1 != 0"), true);
         }
@@ -100,18 +118,15 @@ describe("Balance updater test", function () {
         // - We assume overflow is not feasible
     });
 
-    it("Should check fee operator > fee user ", async () => {
+    it("Should check enough amount for fee selected", async () => {
         const input = {
             oldStAmountSender: 10,
             oldStAmountReceiver: 20,
-            amount: 1,
+            amount: 2,
             loadAmount: 0,
-            userFee: 2,
-            operatorFee: 4,
+            fee: Constants.fee["1%"],
             onChain: 0,
             nop: 0,
-            countersIn: 0,
-            countersBase: 0
         };
 
         try {
@@ -121,43 +136,19 @@ describe("Balance updater test", function () {
             assert.equal(err.message.includes("Constraint doesn't match"), true);
             assert.equal(err.message.includes("1 != 0"), true);
         }
-    });
 
-    it("Should check increment counters offChain", async () => {
-        const input = {
-            oldStAmountSender: 10,
-            oldStAmountReceiver: 10,
-            amount: 1,
-            loadAmount: 0,
-            userFee: 2,
-            operatorFee: 2,
-            onChain: 0,
-            nop: 0,
-            countersIn: 1,
-            countersBase: 1
+        input.fee = Constants.fee["50%"];
+
+        const feeApplied = Scalar.div(input.amount, Constants.tableFeeInv[input.fee]);
+
+        const output = {
+            newStAmountSender: Scalar.sub(Scalar.sub(input.oldStAmountSender, input.amount), feeApplied),
+            newStAmountReceiver: Scalar.add(input.oldStAmountReceiver, input.amount),
+            fee2Charge: feeApplied,
         };
 
         const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        await circuit.assertOut(w, {countersOut: 2});
-    });
-
-    it("Should check increment counters onChain", async () => {
-        const input = {
-            oldStAmountSender: 10,
-            oldStAmountReceiver: 10,
-            amount: 0,
-            loadAmount: 3,
-            userFee: 2,
-            operatorFee: 2,
-            onChain: 1,
-            nop: 0,
-            countersIn: 1,
-            countersBase: 1
-        };
-
-        const w = await circuit.calculateWitness(input, {logOutput: false});
-
-        await circuit.assertOut(w, {countersOut: 1});
+        await circuit.assertOut(w, output);
     });
 });

@@ -1,14 +1,16 @@
 const path = require("path");
 const tester = require("circom").tester;
 
-describe("Compile all circuits {24 Levels}", function () {
+describe("Compile all circuits for 24 Levels", function () {
     this.timeout(200000);
 
     let circuitBalanceUpdater;
     let circuitDecodeFloat;
     let circuitDecodeTx;
     let circuitFeePlanDecoder;
-    let circuitFeeSelector;
+    let circuitFeeTableSelector;
+    let circuitFeeUpdater;
+    let circuitCheckFees;
     let circuitRequiredTxVerifier;
     let circuitRollupTx;
     let circuitRollupTxStates;
@@ -34,9 +36,19 @@ describe("Compile all circuits {24 Levels}", function () {
         await circuitFeePlanDecoder.loadConstraints();
     });
 
-    it("Fee selector", async () => {
-        circuitFeeSelector = await tester(path.join(__dirname, "circuits-test", "feeselector_test.circom"));
-        await circuitFeeSelector.loadConstraints();
+    it("Fee table selector", async () => {
+        circuitFeeTableSelector = await tester(path.join(__dirname, "circuits-test", "feetableselector_test.circom"));
+        await circuitFeeTableSelector.loadConstraints();
+    });
+
+    it("Fee updater", async () => {
+        circuitFeeUpdater = await tester(path.join(__dirname, "circuits-test", "feeupdater_test.circom"));
+        await circuitFeeUpdater.loadConstraints();
+    });
+
+    it("Check fees", async () => {
+        circuitCheckFees = await tester(path.join(__dirname, "circuits-test", "checkfees_test.circom"));
+        await circuitCheckFees.loadConstraints();
     });
 
     it("Required transaction verifier", async () => {
@@ -64,11 +76,12 @@ describe("Compile all circuits {24 Levels}", function () {
         console.log("decodefloat.circom: " + circuitDecodeFloat.constraints.length);
         console.log("decodetx.circom: " + circuitDecodeTx.constraints.length);
         console.log("feeplandecoder.circom: " + circuitFeePlanDecoder.constraints.length);
-        console.log("feeselector.circom: " + circuitFeeSelector.constraints.length);
+        console.log("feetableselector.circom: " + circuitFeeTableSelector.constraints.length);
+        console.log("feeupdater.circom: " + circuitFeeUpdater.constraints.length);
+        console.log("checkfees.circom: " + circuitCheckFees.constraints.length);
         console.log("requiredtxverifier.circom: " + circuitRequiredTxVerifier.constraints.length);
         console.log("rolluptx.circom: " + circuitRollupTx.constraints.length);
         console.log("rolluptxstates.circom: " + circuitRollupTxStates.constraints.length);
         console.log("statepacker.circom: " + circuitStatePacker.constraints.length);
-        
     });
 });

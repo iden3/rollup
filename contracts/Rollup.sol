@@ -27,6 +27,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint32 relativeIndex;
         address ethAddress;
     }
+
     // Store accounts information, treeInfo[hash(Ax, Ay, tokenId)] = leafInfo
     mapping(uint256 => leafInfo) treeInfo;
 
@@ -82,6 +83,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;
+
     // maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
 
@@ -276,14 +278,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         msg.sender.transfer(msg.value - totalFee);
     }
 
-   /**
+    /**
      * @dev Deposit off-chain transaction
      * add new leaf to balance tree and initializes it with a load amount
      * @param tokenId token id
      * @param ethAddress allowed address to control new balance tree leaf
      * @param babyPubKey public key babyjubjub represented as point (Ax, Ay)
      * @param relativeIndex relative index of this leaf
-    */
+     */
     function depositOffChain(
         uint32 tokenId,
         address ethAddress,
@@ -318,7 +320,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param babyPubKey public key babyjubjub represented as point (Ax, Ay)
      * @param loadAmount amount to be added into leaf specified by idBalanceTree
      * @param tokenId token identifier
-    */
+     */
     function depositOnTop(
         uint256[2] memory babyPubKey,
         uint128 loadAmount,
@@ -349,7 +351,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param toBabyPubKey account receiver
      * @param amountF amount to send encoded as half precision float
      * @param tokenId token identifier
-    */
+     */
     function transfer(
         uint256[2] memory fromBabyPubKey,
         uint256[2] memory toBabyPubKey,
@@ -384,7 +386,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param fromBabyPubKey public key babyjubjub of the sender represented as point (Ax, Ay)
      * @param toBabyPubKey account receiver
      * @param amountF amount to send encoded as half precision float
-    */
+     */
     function depositAndTransfer(
         uint128 loadAmount,
         uint32 tokenId,
@@ -517,7 +519,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param proofC zk-snark input
      * @param input public zk-snark inputs
      * @param compressedOnChainTx compresssed deposit offchain
-    */
+     */
     function forgeBatch(
         address payable beneficiaryAddress,
         uint[2] calldata proofA,
@@ -651,7 +653,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @dev Retrieve exit root given its batch depth
      * @param numBatch batch depth
      * @return exit root
-    */
+     */
     function getExitRoot(uint numBatch) public view returns (bytes32) {
         require(numBatch <= exitRoots.length - 1, 'Batch number does not exist');
         return exitRoots[numBatch];
@@ -661,7 +663,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @dev Retrieve token address from its index
      * @param tokenId token id for rollup smart contract
      * @return token address
-    */
+     */
     function getTokenAddress(uint tokenId) public view returns (address) {
         require(tokens.length > 0, 'There are no tokens listed');
         require(tokenId <= (tokens.length - 1), 'Token id does not exist');
@@ -680,7 +682,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         return (leaf.forgedBatch, leaf.relativeIndex, leaf.ethAddress);
     }
 
-     /**
+    /**
      * @dev Retrieve leaf index from Babyjub address and tokenID
      * @param fromBabyPubKey public key babyjubjub
      * @param tokenId token ID
@@ -698,13 +700,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         }
     }
 
-     /**
+    /**
      * @dev cCalculates current deposit fee
      * @return current deposit fee
      */
     function getCurrentDepositFee() public view returns (uint256) {
         return (depositFeeMul / 1 ether) * feeOnchainTx;
     }
+    
     ///////////
     // helpers ERC20 functions
     ///////////

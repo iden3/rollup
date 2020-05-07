@@ -29,7 +29,7 @@ async function depositTx(bb, account, loadamount) {
 
 async function initBlock2deposits(rollupDB) {
 
-    const bb = await rollupDB.buildBatch(4, 8);
+    const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
     const account1 = new RollupAccount(1);
     const account2 = new RollupAccount(2);
@@ -54,8 +54,8 @@ describe("Rollup Basic circuit TXs", function () {
         console.log("Constraints `rollup.circom` circuit: " + circuit.constraints.length + "\n");
 
         // const testerAux = require("circom").testerAux;
-        // const pathTmp = "/tmp/circom_7246GZagaw7daot1";
-        // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_test.circom"), {reduceConstraints:false});
+        // const pathTmp = "/tmp/circom_20572IXT6cYJnHkBr";
+        // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_test.circom"));
     });
 
     it("Should create empty txs", async () => {
@@ -67,7 +67,7 @@ describe("Rollup Basic circuit TXs", function () {
         await bb.build();
         const input = bb.getInput();
 
-        const w = await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+        const w = await circuit.calculateWitness(input, {logTrigger: true, logOutput: true, logSet: true});
 
         await checkBatch(circuit, w, bb);
     });
@@ -276,7 +276,7 @@ describe("Rollup Basic circuit TXs", function () {
         
         const [account1, account2] = await initBlock2deposits(rollupDB);
 
-        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx = {
             toAx: account2.ax,
@@ -285,21 +285,21 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 200
+            fee: Constants.fee["10%"]
         };
         account1.signTx(tx);
-        bb2.addTx(tx);
-        bb2.addCoin(0, 100);
+        bb.addTx(tx);
+        bb.addCoin(0);
        
-        await bb2.build();
-        await rollupDB.consolidate(bb2);
-        const input2 = bb2.getInput();
+        await bb.build();
+        await rollupDB.consolidate(bb);
+        const input = bb.getInput();
 
-        const w2 = await circuit.calculateWitness(input2, {logTrigger: false, logOutput: false, logSet: false});
-        await checkBatch(circuit, w2, bb2);
+        const w = await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+        await checkBatch(circuit, w, bb);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 400);
+        assert.equal(state1.amount.toString(), 450);
 
         const state2 = await rollupDB.getStateByIdx(2);
         assert.equal(state2.amount.toString(), 2500);
@@ -327,21 +327,21 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 200
+            fee: Constants.fee["1%"]
         };
         account1.signTx(tx);
         bb2.addTx(tx);
-        bb2.addCoin(0, 100);
+        bb2.addCoin(0);
        
         await bb2.build();
         await rollupDB.consolidate(bb2);
-        const input2 = bb2.getInput();
+        const input = bb2.getInput();
 
-        const w2 = await circuit.calculateWitness(input2, {logTrigger: false, logOutput: false, logSet: false});
-        await checkBatch(circuit, w2, bb2);
+        const w = await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+        await checkBatch(circuit, w, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 900);
+        assert.equal(state1.amount.toString(), 995);
     });
 
     it("Should create 2 deposits on-chain and then 3 off-chain transfers", async () => {
@@ -351,7 +351,7 @@ describe("Rollup Basic circuit TXs", function () {
         
         const [account1, account2] = await initBlock2deposits(rollupDB);
 
-        const bb2 = await rollupDB.buildBatch(NTX, NLEVELS);
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
 
         const tx1 = {
             toAx: account2.ax,
@@ -360,7 +360,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
 
         const tx2 = {
@@ -370,7 +370,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 1000,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["10%"]
         };
 
         const tx3 = {
@@ -380,23 +380,23 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 1,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
 
         account1.signTx(tx1);
         account2.signTx(tx2);
         account1.signTx(tx3);
-        bb2.addTx(tx1);
-        bb2.addTx(tx2);
-        bb2.addTx(tx3);
-        bb2.addCoin(0, 100);
+        bb.addTx(tx1);
+        bb.addTx(tx2);
+        bb.addTx(tx3);
+        bb.addCoin(0);
        
-        await bb2.build();
-        await rollupDB.consolidate(bb2);
-        const input2 = bb2.getInput();
-
-        const w2 = await circuit.calculateWitness(input2, {logTrigger: false, logOutput: false, logSet: false});
-        await checkBatch(circuit, w2, bb2);
+        await bb.build();
+        await rollupDB.consolidate(bb);
+        const input = bb.getInput();
+        
+        const w = await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+        await checkBatch(circuit, w, bb);
 
         const state1 = await rollupDB.getStateByIdx(1);
         assert.equal(state1.amount.toString(), 800);
@@ -435,7 +435,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
 
         const tx2 = {
@@ -445,9 +445,9 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
-
+        
         const tx3 = {
             toAx: account4.ax,
             toAy: account4.ay,
@@ -455,7 +455,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
 
         const tx4 = {
@@ -465,7 +465,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
 
         const tx5 = {
@@ -475,7 +475,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
 
         account1.signTx(tx1);
@@ -488,13 +488,14 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx3);
         bb2.addTx(tx4);
         bb2.addTx(tx5);
-        bb2.addCoin(0, 100);
+        bb2.addCoin(0);
        
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input2 = bb2.getInput();
 
         const w2 = await circuit.calculateWitness(input2, {logTrigger: false, logOutput: false, logSet: false});
+
         await checkBatch(circuit, w2, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
@@ -557,11 +558,11 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["20%"]
         };
         account1.signTx(tx);
         bb2.addTx(tx);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
        
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -571,7 +572,7 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w2, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 945);
+        assert.equal(state1.amount.toString(), 940);
     });
 
     it("Should create 2 deposits on-chain and then 4 off-chain transfer, 3 of them are exits", async () => {
@@ -590,7 +591,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["20%"]
         };
         account1.signTx(tx);
 
@@ -601,7 +602,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 10,
             nonce: 1,
-            userFee: 10
+            fee: Constants.fee["50%"]
         };
         account1.signTx(tx2);
 
@@ -612,7 +613,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 200,
             nonce: 2,
-            userFee: 10
+            fee: Constants.fee["5%"]
         };
         account1.signTx(tx3);
 
@@ -623,7 +624,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 100,
             nonce: 3,
-            userFee: 10
+            fee: Constants.fee["10%"]
         };
         account1.signTx(tx4);
         
@@ -631,7 +632,7 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx2);
         bb2.addTx(tx3);
         bb2.addTx(tx4);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
        
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -641,7 +642,7 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w2, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 620);
+        assert.equal(state1.amount.toString(), 605);
 
         const state2 = await rollupDB.getStateByIdx(2);
         assert.equal(state2.amount.toString(), 2050);
@@ -667,9 +668,9 @@ describe("Rollup Basic circuit TXs", function () {
             toAy: Constants.exitAy,
             toEthAddr: Constants.exitEthAddr,
             coin: 0,
-            amount: 30,
+            amount: 20,
             nonce: 0,
-            userFee: 5
+            fee: Constants.fee["50%"]
         };
         account1.signTx(tx1);
 
@@ -678,15 +679,15 @@ describe("Rollup Basic circuit TXs", function () {
             toAy: Constants.exitAy,
             toEthAddr: Constants.exitEthAddr,
             coin: 0,
-            amount: 30,
+            amount: 20,
             nonce: 1,
-            userFee: 5
+            fee: Constants.fee["50%"]
         };
         account1.signTx(tx2);
 
         const tx3 = {
             coin: 0,
-            amount: 30,
+            amount: 40,
             fromAx: account1.ax,
             fromAy: account1.ay,
             fromEthAddr: account1.ethAddress,
@@ -699,7 +700,7 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx1);
         bb2.addTx(tx2);
         bb2.addTx(tx3);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
        
         await bb2.build();
         const input2 = bb2.getInput();
@@ -829,15 +830,20 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 0
+            fee: Constants.fee["5%"]
         };
 
         account1.signTx(tx);
         bb2.addTx(tx);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
 
         await bb2.build();
         const input2 = bb2.getInput();
+
+        // manipulate input to set invalid fee
+        tx.fee = Constants.fee["0.02%"];
+        const txData = utils.buildTxData(Object.assign({newAccount: false}, tx));
+        input2.txData[4] = txData;
 
         try {
             await circuit.calculateWitness(input2, {logTrigger: false, logOutput: false, logSet: false});
@@ -864,7 +870,7 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["20%"]
         };
         const tx2 = {
             toAx: account2.ax,
@@ -873,14 +879,14 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["20%"]
         };
 
         account1.signTx(tx);
         account1.signTx(tx2);
         bb2.addTx(tx);
         bb2.addTx(tx2);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -910,12 +916,12 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["20%"]
         };
 
         account2.signTx(tx);
         bb2.addTx(tx);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -950,12 +956,12 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["20%"]
         };
 
         account1.signTx(tx);
         bb2.addTx(tx);
-        bb2.addCoin(0, 5);
+        bb2.addCoin(0);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -1467,12 +1473,12 @@ describe("Rollup Basic circuit TXs", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["20%"]
         };
         account1.signTx(tx);
         bb2.addTx(tx);
 
-        bb2.addCoin(0, 100);
+        bb2.addCoin(0);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -1603,6 +1609,71 @@ describe("Rollup Basic circuit TXs", function () {
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match");
             assert.include(error.message, "1 != 0");
+        }
+    });
+
+    it("Should check error fees totals greater than accumulated", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        
+        const [account1, account2] = await initBlock2deposits(rollupDB);
+
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const tx1 = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 0,
+            fee: Constants.fee["20%"]
+        };
+
+        const tx2 = {
+            toAx: account1.ax,
+            toAy: account1.ay,
+            toEthAddr: account1.ethAddress,
+            coin: 0,
+            amount: 1000,
+            nonce: 0,
+            fee: Constants.fee["10%"]
+        };
+
+        const tx3 = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 1,
+            fee: Constants.fee["20%"]
+        };
+
+        account1.signTx(tx1);
+        account2.signTx(tx2);
+        account1.signTx(tx3);
+        bb.addTx(tx1);
+        bb.addTx(tx2);
+        bb.addTx(tx3);
+        bb.addCoin(0);
+       
+        await bb.build();
+        await rollupDB.consolidate(bb);
+        const input = bb.getInput();
+        
+        // Manipulate fee totals input
+        bb.feeTotals[0] = Scalar.add(bb.feeTotals[0], 1);
+
+        input.feeTotals = bb._getFeeTotal();
+        
+        try {
+            await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "Constraint doesn't match");
+            assert.include(error.message, "0 != 1");
         }
     });
 });
