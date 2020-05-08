@@ -172,9 +172,7 @@ class Synchronizer {
             .call({from: this.ethAddress}));
         this.nLevels = Number(await this.rollupContract.methods.NLevels()
             .call({from: this.ethAddress}));
-        this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.FEE_OFFCHAIN_DEPOSIT()
-            .call({from: this.ethAddress}));
-
+      
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -201,6 +199,10 @@ class Synchronizer {
         // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
+                // update deposit fee
+                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
+                    .call({from: this.ethAddress}));
+                
                 // get last block synched, current block, last batch synched
                 let totalSynch = 0;
                 let lastBatchSaved = await this.getLastBatch();
@@ -1001,8 +1003,8 @@ class Synchronizer {
      * @returns {Scalar} - Fee deposit off-cahin in weis
      */
     async getFeeDepOffChain() {
-        if (this.slotDeadline) return this.slotDeadline;
-        return Scalar.e(await this.rollupContract.methods.FEE_OFFCHAIN_DEPOSIT()
+        if (this.feeDepOffChain) return this.feeDepOffChain;
+        return Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
             .call({from: this.ethAddress}));
     }
 }

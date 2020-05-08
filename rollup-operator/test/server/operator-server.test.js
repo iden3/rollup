@@ -522,8 +522,7 @@ contract("Operator", (accounts) => {
         }
 
         // Check tx1 and tx2 have been found
-        expect(foundTx.length).to.be.equal(2);
-        
+        expect(foundTx.length).to.be.equal(3);
         const resTx1 = foundTx[0];
         const resTx2 = foundTx[1];
 

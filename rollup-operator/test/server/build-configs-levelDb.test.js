@@ -151,7 +151,7 @@ contract("Operator Server", (accounts) => {
         // Write custom table
         const tableConversion = {};
         tableConversion[insTokenRollup.address] = {
-            price: 1,
+            price: 300,
             decimals: 18,
         };
         fs.writeFileSync(pathCustomTokens, JSON.stringify(tableConversion));

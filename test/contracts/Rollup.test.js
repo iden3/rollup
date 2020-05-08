@@ -10,7 +10,6 @@ const Scalar = require("ffjavascript").Scalar;
 const { stringifyBigInts } = require("ffjavascript").utils;
 
 const { buildFullInputSm, ForgerTest, decodeMethod, signRollupTx, getEtherBalance } = require("./helpers/helpers");
-const { encodeDepositOffchain } = require("../../js/utils");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");

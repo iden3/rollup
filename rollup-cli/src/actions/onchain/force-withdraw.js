@@ -25,7 +25,7 @@ async function forceWithdraw(nodeEth, addressSC, tokenId, amount, walletRollup, 
     walletEth = walletEth.connect(provider);
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
 
-    const feeOnchainTx = await contractWithSigner.FEE_ONCHAIN_TX();
+    const feeOnchainTx = await contractWithSigner.feeOnchainTx();
     const overrides = {
         gasLimit,
         gasPrice: await getGasPrice(gasMultiplier, provider),

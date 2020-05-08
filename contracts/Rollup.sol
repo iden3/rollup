@@ -539,7 +539,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
         uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
-        // deposit off-chain fee * depositOffchainLength
+        // Deposit off-chain fee * depositOffchainLength
         uint256 totalFee = depositFeeMul / 1 ether * feeOnchainTx * depositOffChainLength;
         // Operator must pay for every off-chain deposit
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
@@ -698,6 +698,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(leaf.forgedBatch-1 <= getStateDepth(), 'batch must be forged');
         return (batchToInfo[leaf.forgedBatch-1].lastLeafIndex + leaf.relativeIndex);
         }
+    }
+
+     /**
+     * @dev cCalculates current deposit fee
+     * @return current deposit fee
+     */
+    function getCurrentDepositFee() public view returns (uint256) {
+        return depositFeeMul / 1 ether * feeOnchainTx;
     }
     ///////////
     // helpers ERC20 functions
