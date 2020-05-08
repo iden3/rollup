@@ -5,7 +5,7 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ master, feature/add-CI]
+    branches: [ master, feature/add-CI ]
   pull_request:
     branches: [ master, feature/add-CI ]
 
@@ -29,7 +29,5 @@ jobs:
         npm run test:circuits
         npm run test:utils
         npm run test:js
-        npm run test:contracts
-        npm run test:coverage
 
 
