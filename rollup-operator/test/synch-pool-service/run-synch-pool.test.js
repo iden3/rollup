@@ -57,7 +57,10 @@ contract("Run Synchronizer Pool", (accounts) => {
 
         // check conversion table
         const tableJson = JSON.parse(fs.readFileSync(pathConversionTable));
-        const infoToken = tableJson[tokenId];
+        const infoToken = tableJson.conversion[tokenId];
+        const ethPrice = tableJson.ethPrice;
+
+        expect(ethPrice).to.be.not.equal(undefined);
         expect(infoToken.tokenSymbol).to.be.equal("NOT_FOUND");
         expect(infoToken.decimals).to.be.equal(18);
         expect(infoToken.tokenAddress).to.be.equal(insTokenTest.address);
@@ -87,7 +90,10 @@ contract("Run Synchronizer Pool", (accounts) => {
 
         // check conversion table
         const tableJson = JSON.parse(fs.readFileSync(pathConversionTable));
-        const infoToken = tableJson[tokenId];
+        const infoToken = tableJson.conversion[tokenId];
+        const ethPrice = tableJson.ethPrice;
+
+        expect(ethPrice).to.be.not.equal(undefined);
         expect(infoToken.tokenSymbol).to.be.equal("TEST0");
         expect(infoToken.decimals).to.be.equal(15);
         expect(infoToken.tokenAddress).to.be.equal(insTokenTest.address);
@@ -109,7 +115,10 @@ contract("Run Synchronizer Pool", (accounts) => {
 
         // check conversion table
         const tableJson = JSON.parse(fs.readFileSync(pathConversionTable));
-        const infoToken = tableJson[tokenId];
+        const infoToken = tableJson.conversion[tokenId];
+        const ethPrice = tableJson.ethPrice;
+
+        expect(ethPrice).to.be.not.equal(undefined);
         expect(infoToken.tokenSymbol).to.be.equal("ANT");
         expect(infoToken.decimals).to.be.equal(18);
         expect(infoToken.tokenAddress).to.be.equal(insTokenTest.address);

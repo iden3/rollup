@@ -1,5 +1,5 @@
-/*global BigInt*/
 const Web3 = require("web3");
+const Scalar = require("ffjavascript").Scalar;
 
 /**
  * Interface to interact with rollup PoS contract
@@ -20,7 +20,7 @@ class OperatorManager {
         this.posAddress = contractAddress;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.rollupPoS = new this.web3.eth.Contract(abi, this.posAddress);
-        this.gasMul = BigInt(gasMul);
+        this.gasMul = Scalar.e(gasMul);
         // Default is described in:
         // https://iden3.io/post/istanbul-zkrollup-ethereum-throughput-limits-analysis
         this.gasLimit = (gasLimit === "default") ? (2 * 616240): gasLimit;
@@ -32,8 +32,8 @@ class OperatorManager {
      */
     async _getGasPrice(){
         const strAvgGas = await this.web3.eth.getGasPrice();
-        const avgGas = BigInt(strAvgGas);
-        return (avgGas * this.gasMul).toString();
+        const avgGas = Scalar.e(strAvgGas);
+        return Scalar.mul(avgGas, this.gasMul).toString();
     }
 
     /**
@@ -91,15 +91,16 @@ class OperatorManager {
      * Commit batch data
      * @param {String} prevHash - hash to reveal
      * @param {String} compressedTx - off-chain data transactions
+     * @param {String} compressedOnChainTx - deposit off-chain deposits compressed data
      * @returns {Object} - signed transaction 
      */
-    async getTxCommit(prevHash, compressedTx) {
+    async getTxCommit(prevHash, compressedTx, compressedOnChainTx) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
-            data: this.rollupPoS.methods.commitBatch(prevHash, compressedTx).encodeABI()
+            data: this.rollupPoS.methods.commitBatch(prevHash, compressedTx, compressedOnChainTx).encodeABI()
         };
         return await this.signTransaction(tx);
     }
@@ -110,15 +111,19 @@ class OperatorManager {
      * @param {Array} proofB - zkSnark proof
      * @param {Array} proofC - zkSnark proof
      * @param {Array} input - zkSnark public inputs
+     * @param {String} compressedOnChainTx - deposit off-chain deposits compressed data
+     * @param {Number} value - value payed on transaction
      * @returns {Object} - signed transaction
      */
-    async getTxForge(proofA, proofB, proofC, input) {
+    async getTxForge(proofA, proofB, proofC, input, compressedOnChainTx, value) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
-            data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input).encodeABI()
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
+            data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input,
+                compressedOnChainTx).encodeABI()
         };
         return await this.signTransaction(tx);
     }
@@ -131,16 +136,20 @@ class OperatorManager {
      * @param {Array} proofB - zkSnark proof
      * @param {Array} proofC - zkSnark proof
      * @param {Array} input - zkSnark public inputs
-     * @returns {Object} - signed transaction
+     * @param {String} compressedOnChainTx - deposit off-chain deposits compressed data
+     * @param {Number} value - value payed on transaction in ether
+     * @returns {Object} - signed transactiontthis.gasMulhis.gasMul
      */
-    async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input) {
+    async getTxCommitAndForge(prevHash, compressedTx, proofA, proofB, proofC, input,
+        compressedOnChainTx, value) {
         const tx = {
             from:  this.wallet.address,
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
             data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
-                proofA, proofB, proofC, input).encodeABI()
+                proofA, proofB, proofC, input, compressedOnChainTx).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
         return [txSign, tx];

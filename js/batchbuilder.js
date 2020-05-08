@@ -20,6 +20,7 @@ module.exports = class BatchBuilder {
         this.nLevels = nLevels;
         this.offChainTxs = [];
         this.onChainTxs = [];
+        this.depOffChainTxs = [];
         this.dbState = new SMTTmpDb(rollupDB.db);
         this.stateTree = new SMT(this.dbState, root);
         this.dbExit = new SMTTmpDb(rollupDB.db);
@@ -119,7 +120,9 @@ module.exports = class BatchBuilder {
         let fromIdx = await this.dbState.get(hashFromIdx);
 
         let toIdx;
-        if (tx.toAx == 0 && tx.toAy == 0) toIdx = 0;
+        
+        // if (tx.toAx == Constants.exitAx && tx.toAy == Constants.exitAy) toIdx = 0;
+        if (Scalar.eq(poseidonHash([Scalar.fromString(tx.toAx, 16), Scalar.fromString(tx.toAy, 16)]), Constants.exitAccount)) toIdx = 0;
         else {
             const hashToIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy); 
             toIdx = await this.dbState.get(hashToIdx);
@@ -810,6 +813,29 @@ module.exports = class BatchBuilder {
         return res;
     }
     
+    getTmpOnChainHash(){
+        let onChainHash = Scalar.e(0);
+
+        for (let tx of this.onChainTxs){
+            const dataOnChain = poseidonHash([
+                Scalar.fromString(tx.fromAx, 16),
+                Scalar.fromString(tx.fromAy, 16),
+                Scalar.fromString(tx.toEthAddr, 16),
+                Scalar.fromString(tx.toAx, 16),
+                Scalar.fromString(tx.toAy, 16)
+            ]);
+        
+            onChainHash = poseidonHash([
+                onChainHash,
+                utils.buildTxData(tx),
+                Scalar.e(tx.loadAmount),
+                dataOnChain,
+                Scalar.fromString(tx.fromEthAddr, 16),
+            ]);
+        }
+        return onChainHash;
+    }
+
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
@@ -876,6 +902,16 @@ module.exports = class BatchBuilder {
         } else {
             this.offChainTxs.push(tx);
         }
+    }
+
+    addDepositOffChain(tx) {
+        if (this.builded) throw new Error("Batch already builded");
+        this.depOffChainTxs.push(tx);
+    }
+
+    getDepOffChainData(){
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return utils.encodeDepositOffchain(this.depOffChainTxs);
     }
 
     addCoin(coin, fee) {

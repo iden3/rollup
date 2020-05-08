@@ -9,7 +9,7 @@ const { Wallet } = require('./src/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
     showAccounts, transferTx, depositAndTransferTx, showExitsBatch, approveTx,
-    showAccountsByIdx,
+    showStateAccount, withdrawOffChainTx,
 } = require('./src/cli-utils');
 const { error } = require('./helpers/list-errors');
 
@@ -61,14 +61,15 @@ setparam command
 offchainTx command
 =============
     rollup-cli offchaintx <options>
-    -t or --type [send | withdrawOffChain]
+    -t or --type [send | withdrawOffChain | depositOffChain]
         Defines which transaction should be done
     -a or --amount <amount>
         Amount to send
     --tk or --tokenid <token ID>
     -r or --recipient <recipient babyJub compressed publick key>
-    -s or --sender <sender ID>
     -e or --fee <user fee>
+    --ethaddr or --ethereumaddress <ethereum address>
+        only used in deposit offchain transaction
     --no or --nonce <nonce TX> (optional)
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
@@ -86,8 +87,6 @@ onchainTx command
     --tk or --tokenid <token ID>
     -n or --numexitbatch <num exit batch>
     -r or --recipient <recipient babyJub Compressed publick key>
-    -s or --sender <sender ID>
-    --id <ID>
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
         Default: config.json
@@ -102,9 +101,10 @@ info command
     -t or --type [accounts | exits]
         get accounts information
         get batches where an account has been done an exit transaction 
-    -f or --filter [babyjubjub | ethereum | id]
+    -f or --filter [babyjubjub | ethereum | tokenid]
         only used on account information
-    --id <rollup id>
+    --tk or --tokenid <token ID>
+        only used to get exit ainformation
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
         Default: config.json
@@ -120,12 +120,12 @@ info command
     .alias('v', 'value')
     .alias('t', 'type')
     .alias('r', 'recipient')
-    .alias('s', 'sender')
     .alias('e', 'fee')
     .alias('f', 'filter')
     .alias('a', 'amount')
     .alias('l', 'loadamount')
     .alias('tk', 'tokenid')
+    .alias('ethaddr', 'ethereumaddress')
     .alias('n', 'numexitbatch')
     .alias('no', 'nonce')
     .alias('gl', 'gaslimit')
@@ -142,11 +142,10 @@ const configPath = (argv.configpath) ? argv.configpath : configPathDefault;
 
 const type = (argv.type) ? argv.type : 'notype';
 const recipient = (argv.recipient) ? argv.recipient : 'norecipient';
-const sender = (argv.sender || argv.sender === 0) ? argv.sender : 'nosender';
-const id = (argv.id || argv.id === 0) ? argv.id : 'noid';
 const amount = (argv.amount) ? argv.amount.toString() : -1;
 const loadamount = (argv.loadamount) ? argv.loadamount.toString() : -1;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
+const ethAddr = (argv.ethereumaddress || argv.ethereumaddress === 0) ? argv.ethereumaddress : 'noethaddr';
 const userFee = argv.fee ? argv.fee.toString() : 'nouserfee';
 const numExitBatch = argv.numexitbatch ? argv.numexitbatch.toString() : 'nonumexitbatch';
 const filter = argv.filter ? argv.filter : 'nofilter';
@@ -284,8 +283,16 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
                     }
                 } else if (type.toUpperCase() === 'WITHDRAWOFFCHAIN') {
-                    const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee,
+                    const res = await withdrawOffChainTx(urlOperator, amount, wallet, passphrase, tokenId, userFee,
                         nonce, actualNonce);
+                    console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
+                    if (res.status.toString() === '200') {
+                        fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
+                    }
+                } else if (type.toUpperCase() === 'DEPOSITOFFCHAIN') {
+                    checkparam(ethAddr, 'noethaddr', 'Ethereum address');
+                    const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, userFee,
+                        nonce, actualNonce, ethAddr);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
@@ -377,15 +384,20 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         }
                         const res = await showAccounts(actualConfig.urlOperator, filters);
                         console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
-                    } else if (filter.toUpperCase() === 'ID') {
-                        checkparam(id, 'noid', 'your id');
-                        const res = await showAccountsByIdx(actualConfig.urlOperator, id);
+                    } else if (filter.toUpperCase() === 'TOKENID') {
+                        checkparam(tokenId, 'notokenid', 'token ID');
+                        const { ax } = wallet.babyjubWallet.public;
+                        const { ay } = wallet.babyjubWallet.public;
+                        const res = await showStateAccount(actualConfig.urlOperator, tokenId, ax, ay);
                         console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
                     } else {
                         throw new Error(error.INVALID_FILTER);
                     }
                 } else if (type.toUpperCase() === 'EXITS') {
-                    const res = await showExitsBatch(actualConfig.urlOperator, id);
+                    const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+                    const { ax } = wallet.babyjubWallet.public;
+                    const { ay } = wallet.babyjubWallet.public;
+                    const res = await showExitsBatch(actualConfig.urlOperator, tokenId, ax, ay);
                     console.log(`Number exits batch found: \n ${res.data}`);
                 }
             }
@@ -483,7 +495,14 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(userFee, 'nouserfee', 'fee');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(sender, 'nosender', 'sender');
+        break;
+    case 'DEPOSITOFFCHAIN':
+        checkparam(amount, -1, 'amount');
+        checkparam(tokenId, 'notokenid', 'token ID');
+        checkparam(userFee, 'nouserfee', 'fee');
+        checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
+        checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
+        checkparam(ethAddr, 'noethaddr', 'Ethereum address');
         break;
     default:
         throw new Error(error.INVALID_TYPE);
@@ -493,13 +512,13 @@ function checkparamsOffchain(type, actualConfig) {
 function checkParamsInfo(type, actualConfig) {
     switch (type.toUpperCase()) {
     case 'ACCOUNTS':
-        checkparam(filter, 'nofilter', 'babyjubjub or ethereum or id');
+        checkparam(filter, 'nofilter', 'babyjubjub or ethereum or tokenid');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         break;
     case 'EXITS':
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(id, 'noid', 'your id');
+        checkparam(tokenId, 'notokenid', 'token ID');
         break;
     default:
         throw new Error(error.INVALID_TYPE);

@@ -616,7 +616,7 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2] memory proofC,
         uint[10] memory input,
         bytes memory compressedOnChainTx
-     ) public virtual {
+     ) public payable virtual {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
@@ -634,7 +634,7 @@ contract RollupPoS is RollupPoSHelpers{
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
 
-        rollupInterface.forgeBatch(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
+        rollupInterface.forgeBatch.value(msg.value)(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
 
         uint32 updateEra = currentEra() + 2;
         _updateRaffles();
@@ -657,7 +657,7 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2] calldata proofC,
         uint[10] calldata input,
         bytes calldata compressedOnChainTx
-    ) external {
+    ) external payable {
         commitBatch(previousRndHash, compressedTx, compressedOnChainTx);
         forgeCommittedBatch(proofA, proofB, proofC, input, compressedOnChainTx);
     }

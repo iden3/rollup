@@ -2,14 +2,14 @@ const fs = require("fs");
 const path = require("path");
 const { expect } = require("chai");
 const _ = require("lodash");
+const SMTMemDB = require("circomlib/src/smt_memdb");
 
 const Pool = require("../../js/txpool");
 const SynchPool = require("../src/synch-pool");
 const RollupDB = require("../../js/rollupdb");
-const SMTMemDB = require("circomlib/src/smt_memdb");
 const { timeout } = require("../src/utils");
 
-describe("Synchronizer test", function () {
+describe("Synchronizer pool", function () {
     this.timeout(0);
 
     const timeoutDelay = 2500;
@@ -40,7 +40,9 @@ describe("Synchronizer test", function () {
     });
 
     it("Should write table conversion", async () => {
-        const tableConversion = {
+        const tableConversion = {};
+        
+        tableConversion.conversion = {
             0: {
                 symbol: "ETH",
                 price: 210.21,
@@ -52,6 +54,9 @@ describe("Synchronizer test", function () {
                 decimals: 18
             }
         };
+
+        tableConversion.ethPrice = 210.21;
+
         fs.writeFileSync(pathConversionTable, JSON.stringify(tableConversion));
     });
 
@@ -69,15 +74,23 @@ describe("Synchronizer test", function () {
         // time to synchronize '.json' file
         await timeout(timeoutUpdate);
 
-        // Check pool conversion table and conversion table on file
-        const poolTable = pool.conversion;
         const jsonTable = JSON.parse(fs.readFileSync(pathConversionTable));
 
-        expect(_.isEqual(poolTable, jsonTable)).to.be.equal(true);
+        // Check pool conversion table and conversion table on file
+        const poolTable = pool.conversion;
+        const conversionJson = jsonTable.conversion;
+
+        expect(_.isEqual(poolTable, conversionJson)).to.be.equal(true);
+
+        // Check Ethereum price
+        const poolEthPrice = pool.depositsStates.ethPrice;
+        const ethPriceJson = jsonTable.ethPrice;
+        expect(poolEthPrice).to.be.equal(ethPriceJson);
     });
 
     it("Should load again table conversion", async () => {
-        const tableConversion = {
+        const tableConversion = {};
+        const conversion = {
             0: {
                 symbol: "TEST",
                 price: 3.14,
@@ -89,17 +102,28 @@ describe("Synchronizer test", function () {
                 decimals: 17
             }
         };
+        
+        tableConversion.converison = conversion;
+        tableConversion.ethPrice = null;
+
         fs.writeFileSync(pathConversionTable, JSON.stringify(tableConversion));
     });
 
     it("Should load table conversion into the pool", async () => {
-        // timeto synchronize '.json' file
+        // time to synchronize '.json' file
         await timeout(timeoutUpdate);
+
+        const jsonTable = JSON.parse(fs.readFileSync(pathConversionTable));
 
         // Check pool conversion table and conversion table on file
         const poolTable = pool.conversion;
-        const jsonTable = JSON.parse(fs.readFileSync(pathConversionTable));
+        const conversionJson = jsonTable.conversion;
 
-        expect(_.isEqual(poolTable, jsonTable)).to.be.equal(true);
+        expect(_.isEqual(poolTable, conversionJson)).to.be.equal(true);
+
+        // Check Ethereum price
+        const poolEthPrice = pool.depositsStates.ethPrice;
+        const ethPriceJson = jsonTable.ethPrice;
+        expect(poolEthPrice).to.be.equal(ethPriceJson);
     });
 });

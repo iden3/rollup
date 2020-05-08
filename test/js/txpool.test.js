@@ -91,7 +91,7 @@ describe("Rollup circuit - tx pool integration", function () {
 
     this.timeout(150000);
 
-    it("Should extract 4 tx from pool and process it on rollup circuit", async () => {
+    it("Should extract 4 tx from pool and process them", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -133,7 +133,171 @@ describe("Rollup circuit - tx pool integration", function () {
 
         await txPool.purge();
 
-        assert(txPool.txs.length, 1);
+        assert.equal(txPool.txs.length, 1);
+    });
+
+    it("Should load tx from Db and extract 4 tx from pool and process them", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1, account2] = await initBlock(rollupDB);
+
+        const txPool = await TxPool(rollupDB, conversion);
+
+        const txs = [];
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+
+        account1.signTx(txs[0]);
+        account2.signTx(txs[1]);
+        account1.signTx(txs[2]);
+        account1.signTx(txs[3]);
+        account2.signTx(txs[4]);
+        account2.signTx(txs[5]);
+
+        for (let i=0; i<txs.length; i++) {
+            await txPool.addTx(txs[i]);
+        }
+
+        // Instantiate pool with database
+        const newPool = await TxPool(rollupDB, conversion);
+
+        const bb = await rollupDB.buildBatch(4, 8);
+
+        await newPool.fillBatch(bb);
+
+        const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
+        const expectedSlots = [2,5,0,1];
+
+        assert.deepEqual(calcSlots, expectedSlots);
+
+        await rollupDB.consolidate(bb);
+
+        await newPool.purge();
+
+        assert.equal(newPool.txs.length, 1);
+    });
+
+    it("Should check one deposit off-chain transaction", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1] = await initBlock(rollupDB);
+
+        const account3 = new RollupAccount(3);
+        
+        const txPool = await TxPool(rollupDB, conversion);
+        // Set deposit off-chain price to 0.2*Eth
+        txPool.setFeeDeposit(0.2);
+        txPool.setEthPrice(conversion[0].price);
+
+        // Transaction to a non-existent leaf with insufficient funds
+        let tx = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(10) };
+
+        account1.signTx(tx);
+
+        let resPool = await txPool.addTx(tx);
+        assert.equal(resPool, false);
+
+        // Transaction to a non-existent leaf with enough funds
+        tx = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: eth(1) };
+
+        account1.signTx(tx);
+
+        resPool = await txPool.addTx(tx);
+
+        assert.equal(resPool, true);
+
+        const bb = await rollupDB.buildBatch(4, 8);
+        await txPool.fillBatch(bb);
+
+        assert.equal(bb.offChainTxs.length, 1);
+        assert.equal(bb.onChainTxs.length, 1);
+
+        await rollupDB.consolidate(bb);
+        
+        // Check balances
+        const state3 = await rollupDB.getStateByAccount(0, account3.ax, account3.ay);
+        assert.equal(Scalar.eq(state3.coin, 0), true);
+        assert.equal(Scalar.eq(state3.nonce, 0), true);
+        assert.equal(Scalar.eq(state3.amount, eth(2)), true);
+        assert.equal(state3.ax, account3.ax);
+        assert.equal(state3.ay, account3.ay);
+        assert.equal(state3.ethAddress, account3.ethAddress);
+
+        const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
+        // finalAmount = initialDeposit - transfer - fee = 10 - 2 - 1 eth
+        assert.equal(Scalar.eq(state1.amount, eth(7)), true);  
+    });
+
+    it("Should save/load deposits off-chain from Db", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1] = await initBlock(rollupDB);
+
+        const account3 = new RollupAccount(3);
+        const account4 = new RollupAccount(4);
+        const account5 = new RollupAccount(5);
+        
+        const txPool = await TxPool(rollupDB, conversion);
+        txPool.setFeeDeposit(0.2);
+        txPool.setEthPrice(conversion[0].price);
+
+        // Transaction to a non-existent leaf with enough funds
+        const tx0 = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: eth(3) };
+        const tx1 = { toAx: account4.ax, toAy: account4.ay, toEthAddr: account4.ethAddress, coin: 0, amount: eth(1), nonce: 0, userFee: eth(1) };
+        const tx2 = { toAx: account5.ax, toAy: account5.ay, toEthAddr: account5.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: eth(2) };
+
+        account1.signTx(tx0);
+        account1.signTx(tx1);
+        account1.signTx(tx2);
+
+        const resTx0 = await txPool.addTx(tx0);
+        const resTx1 = await txPool.addTx(tx1);
+        const resTx2 = await txPool.addTx(tx2);
+
+        assert.equal(resTx0, true);
+        assert.equal(resTx1, true);
+        assert.equal(resTx2, true);
+        
+        // newPool
+        const newTxPool = await TxPool(rollupDB, conversion);
+        newTxPool.setFeeDeposit(0.2);
+        newTxPool.setEthPrice(conversion[0].price);
+
+        const bb = await rollupDB.buildBatch(4, 8);
+        await newTxPool.fillBatch(bb);
+
+        // 2 deposits off-chain added
+        assert.equal(bb.offChainTxs.length, 2);
+        assert.equal(bb.onChainTxs.length, 2);
+
+        // 1 deposit off-chain remain
+        assert.equal(newTxPool.depositsStates.txs.length, 1);
+
+        await rollupDB.consolidate(bb);
+        
+        // Check balances
+        const state3 = await rollupDB.getStateByAccount(0, account3.ax, account3.ay);
+        assert.equal(Scalar.eq(state3.amount, eth(3)), true);
+
+        const state4 = await rollupDB.getStateByAccount(0, account4.ax, account4.ay);
+        assert.equal(state4, null);
+
+        const state5 = await rollupDB.getStateByAccount(0, account5.ax, account5.ay);
+        assert.equal(Scalar.eq(state5.amount, eth(2)), true);
+
+        const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
+        // finalAmount = initialDeposit - 2*transfer - 2*fee = 10 - 2 - 3 - 2*2 eth
+        assert.equal(Scalar.eq(state1.amount, eth(1)), true);
     });
 
     it("Should check purge functionality", async () => {

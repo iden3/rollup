@@ -1,9 +1,7 @@
 const Scalar = require("ffjavascript").Scalar;
 
 /*
-
     This creates an in memory cached version of a tree
-
  */
 
 class SMTTmpDb {

@@ -10,11 +10,17 @@ const CliExternalOperator = require('../../rollup-operator/src/cli-external-oper
 const { Wallet } = require('./wallet');
 const { approve } = require('./actions/onchain/approve.js');
 const { hexToPoint } = require('../helpers/utils');
+const { exitAx, exitAy } = require('../../js/constants');
 
-async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject) {
+async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject, ethAddress) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     const babyjubTo = hexToPoint(babyjubCompressed);
-    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject);
+    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject, ethAddress);
+}
+
+async function withdrawOffChainTx(urlOperator, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject) {
+    const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
+    return send(urlOperator, [exitAx, exitAy], amount, walletRollup, tokenId, userFee, nonce, nonceObject);
 }
 
 async function depositTx(nodeEth, addressSC, loadAmount, tokenId, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {
@@ -58,14 +64,14 @@ async function showAccounts(urlOperator, filters) {
     return apiOperator.getAccounts(filters);
 }
 
-async function showAccountsByIdx(urlOperator, idx) {
+async function showStateAccount(urlOperator, coin, ax, ay) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    return apiOperator.getAccountByIdx(idx);
+    return apiOperator.getStateAccount(coin, ax, ay);
 }
 
-async function showExitsBatch(urlOperator, id) {
+async function showExitsBatch(urlOperator, coin, ax, ay) {
     const apiOperator = new CliExternalOperator(urlOperator);
-    return apiOperator.getExits(id);
+    return apiOperator.getExits(coin, ax, ay);
 }
 
 async function approveTx(nodeEth, addressTokens, amount, spender, walletJson, passphrase, abi, gasLimit, gasMultiplier) {
@@ -80,9 +86,10 @@ module.exports = {
     withdrawTx,
     forceWithdrawTx,
     showAccounts,
-    showAccountsByIdx,
+    showStateAccount,
     transferTx,
     depositAndTransferTx,
     showExitsBatch,
     approveTx,
+    withdrawOffChainTx,
 };

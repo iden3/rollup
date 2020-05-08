@@ -1,7 +1,8 @@
 const winston = require("winston");
 const fs = require("fs");
-const { timeout } = require("./utils");
 const chalk = require("chalk");
+
+const { timeout } = require("./utils");
 
 /**
  * Synchronize pool file
@@ -92,7 +93,8 @@ class SynchPool {
                     const tableConversion = JSON.parse(fs.readFileSync(this.pathConversionTable));
                 
                     // update conversion table
-                    this._setConversion(tableConversion);
+                    this._setConversion(tableConversion.conversion);
+                    this._setEthPrice(tableConversion.ethPrice);
 
                     flagRead = true;
                 }
@@ -127,6 +129,14 @@ class SynchPool {
      */
     _setConversion(conversion) {
         this.pool.setConversion(conversion);
+    }
+
+    /**
+     * Sets ether price to pool
+     * @param {Number} ethPrice - Ethereum price in Dollars
+     */
+    _setEthPrice(ethPrice) {
+        this.pool.setEthPrice(ethPrice);
     }
 }
 

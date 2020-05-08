@@ -265,7 +265,7 @@ template RollupTx(nLevels) {
 ///////////////
     component balancesUpdater = BalancesUpdater();
     balancesUpdater.oldStAmountSender <== s1Amount.out;
-    balancesUpdater.oldStAmountRecieiver <== amount2;
+    balancesUpdater.oldStAmountReceiver <== amount2;
     balancesUpdater.amount <== amount;
     balancesUpdater.userFee <== userFee;
     balancesUpdater.operatorFee <== feeSelector.operatorFee;

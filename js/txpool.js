@@ -4,6 +4,7 @@ const assert = require("assert");
 const utils = require("./utils");
 const Constants = require("./constants");
 const TmpState = require("./tmpstate");
+const DepositsState = require("./txpool-deposits");
 
 class TXPool {
 
@@ -13,9 +14,8 @@ class TXPool {
             executableSlots,        // Max num of Executable TX in the pool
             nonExecutableSlots      // Max num of Non Executable TX in the pool
             timeout                 // seconds to keep a tx
+            feeDeposit              // Fee deposit off-chain in Eth
         }
-
-
      */
 
     constructor(rollupDB, conversion, cfg) {
@@ -25,6 +25,8 @@ class TXPool {
         this.executableSlots = cfg.executableSlots || 16;
         this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
         this.timeout = cfg.timeout || 3*3600;
+        // If no fee is configured, do not accept deposits off-chain
+        this.depositsStates = new DepositsState(this.maxSlots, cfg.feeDeposit, conversion || {}, rollupDB);
 
         this.rollupDB = rollupDB;
         this.txs = [];
@@ -61,43 +63,79 @@ class TXPool {
         }
 
         await this.purge();
+
+        // load deposits off-chain transactions
+        await this.depositsStates.loadFromDb();
+        await this.depositsStates.purge();
     }
 
     setConversion(conversion) {
         this.conversion = conversion;
+        this.depositsStates.setConversion(this.conversion);
+    }
+
+    setFeeDeposit(feeDeposit) {
+        this.depositsStates.setFee(feeDeposit);
+    }
+
+    setEthPrice(ethPrice) {
+        this.depositsStates.setEthPrice(ethPrice);
+    }
+
+    _buildTxDataPool(tx){
+        let res = Scalar.e(0);
+
+        res = Scalar.add(res, tx.fromIdx);
+        res = Scalar.add(res, Scalar.shl(tx.toIdx, 64));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.amount), 128));
+        res = Scalar.add(res, Scalar.shl(tx.coin, 144));
+        res = Scalar.add(res, Scalar.shl(tx.nonce, 176));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.userFee), 224));
+        res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 240));
+        res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 243));
+        res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 244));
+
+        return res;
     }
 
     _tx2Array(tx) {
         return [
-            utils.buildTxData(tx),
+            this._buildTxDataPool(tx),
             Scalar.e(tx.rqTxData || 0),
             Scalar.add(Scalar.shl(tx.timestamp, 32), tx.slot),
             Scalar.fromString(tx.fromAx, 16),
             Scalar.fromString(tx.fromAy, 16),
+            Scalar.fromString(tx.toAx, 16),
+            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.toEthAddr, 16),
         ];
     }
 
     _array2Tx(arr) {
         const tx = {};
         const d0 = Scalar.e(arr[0]);
-        tx.fromIdx = utils.extract(d0, 0, 64);
-        tx.toIdx = utils.extract(d0, 64, 64);
-        tx.amount = utils.float2fix(utils.extract(d0, 128, 16));
-        tx.coin = utils.extract(d0, 144, 16);
-        tx.nonce = utils.extract(d0, 176, 16);
-        tx.userFee = utils.float2fix(utils.extract(d0, 224, 16));
-        tx.rqOffset = utils.extract(d0, 240, 3);
-        tx.onChain = utils.extract(d0, 243, 1);
-        tx.newAccount = utils.extract(d0, 244, 1);
+        tx.fromIdx = Scalar.toNumber(utils.extract(d0, 0, 64));
+        tx.toIdx = Scalar.toNumber(utils.extract(d0, 64, 64));
+        tx.amount = utils.float2fix(Scalar.toNumber(utils.extract(d0, 128, 16)));
+        tx.coin = Scalar.toNumber(utils.extract(d0, 144, 16));
+        tx.nonce = Scalar.toNumber(utils.extract(d0, 176, 16));
+        tx.userFee = utils.float2fix(Scalar.toNumber(utils.extract(d0, 224, 16)));
+        tx.rqOffset = Scalar.toNumber(utils.extract(d0, 240, 3));
+        tx.onChain = Scalar.toNumber(utils.extract(d0, 243, 1));
+        tx.newAccount = Scalar.toNumber(utils.extract(d0, 244, 1));
 
         tx.rqTxData = Scalar.e(arr[1]);
 
         const d2 = Scalar.e(arr[2]);
-        tx.slot = utils.extract(d2, 0, 32);
-        tx.timestamp = utils.extract(d2, 32, 64);
+        tx.slot = Scalar.toNumber(utils.extract(d2, 0, 32));
+        tx.timestamp = Scalar.toNumber((utils.extract(d2, 32, 64)));
 
         tx.fromAx = Scalar.e(arr[3]).toString(16);
         tx.fromAy = Scalar.e(arr[4]).toString(16);
+
+        tx.toAx = Scalar.e(arr[5]).toString(16);
+        tx.toAy = Scalar.e(arr[6]).toString(16);
+        tx.toEthAddr = "0x" + utils.padZeros(Scalar.e(arr[7]).toString(16), 40);
 
         return tx;
     }
@@ -111,12 +149,30 @@ class TXPool {
 
         const toIdx = await this.rollupDB.getIdx(_tx.coin, _tx.toAx, _tx.toAy);
         if (toIdx === null) {
-            console.log("Invalid Account Receiver");
-            return false;
+            const canBeAdded = this.depositsStates.exist(_tx);
+            if (canBeAdded){
+                const isFull = this.depositsStates.isFull(_tx);
+                if (isFull) {
+                    console.log("Deposits off-chain pool full");
+                    return false;
+                }
+                
+                const tx = Object.assign({ fromIdx: fromIdx }, _tx);
+                utils.txRoundValues(tx);
+                const res = await this.depositsStates.addTx(tx);
+                if (res == "NOT_ENOUGH_FEE"){
+                    console.log("Deposit off-chain discarded due to low fee");
+                    return false;
+                } else {
+                    return true;
+                }
+            } else {
+                console.log("Deposit off-chain already exist");
+                return false;
+            }
         }
 
         const tx = Object.assign({ fromIdx: fromIdx }, { toIdx: toIdx }, _tx);
-
         // Round amounts
         utils.txRoundValues(tx);
         tx.amount = utils.float2fix(utils.fix2float(tx.amount));
@@ -125,21 +181,23 @@ class TXPool {
 
         const tmpState = new TmpState(this.rollupDB);
 
-        const canProcessRes = await tmpState.canProcess(tx);
-        if (canProcessRes == "NO") {
-            console.log("Invalid TX");
-            return false;
+        if (!tx.isDeposit){
+            const canProcessRes = await tmpState.canProcess(tx);
+            if (canProcessRes == "NO") {
+                console.log("Invalid TX");
+                return false;
+            }
+        
+            if (!utils.verifyTxSig(tx)) {
+                console.log("Invalid Signature");
+                return false;
+            }
         }
         
-        if (!utils.verifyTxSig(tx)) {
-            console.log("Invalid Signature");
-            return false;
-        }
-        
-        tx.slot=this._allocateFreeSlot();
+        tx.slot = this._allocateFreeSlot();
         if (tx.slot == -1) {
             await this.purge();
-            tx.slot=this._allocateFreeSlot();
+            tx.slot = this._allocateFreeSlot();
             if (tx.slot == -1) {
                 console.log("TX Pool Full");
                 return false;  // If all slots are full, just ignore the TX.
@@ -186,7 +244,7 @@ class TXPool {
     }
 
     _genUpdateSlots()  {
-        let pCurrent = null, pNext =null;
+        let pCurrent = null, pNext = null;
 
         const doUpdateSlots = async () => {
             await this.rollupDB.db.multiIns([
@@ -210,6 +268,7 @@ class TXPool {
 
     _genPurge()  {
         let pCurrent = null;
+        // eslint-disable-next-line no-unused-vars
         let nPurge = 0;
 
         const doPurge = async () => {
@@ -397,7 +456,6 @@ class TXPool {
         }
     }
 
-
     /* Example of conversion
     {
         0: {   // Coin 1
@@ -418,8 +476,12 @@ class TXPool {
         const futureTxs = {};
         const txsByCoin = {};
 
-        const NSlots = bb.maxNTx - bb.onChainTxs.length;
+        let NSlots = bb.maxNTx - bb.onChainTxs.length;
 
+        // Set candidates
+        await this.depositsStates.setCandidates(NSlots);
+
+        // Order tx
         await this._classifyTxs();
 
         const availableTxs = [];
@@ -469,6 +531,13 @@ class TXPool {
             }
         }
 
+        // Add deposit off-chain transactions
+        const txDepositsOffChain = this.depositsStates.getTxOffChainCandidates();
+        for (let tx of txDepositsOffChain){
+            if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
+            txsByCoin[tx.coin].push(tx);
+        }
+
         const incTable = {};
         for (let coin in txsByCoin) {
             incTable[coin] = [];
@@ -508,7 +577,7 @@ class TXPool {
                 if (accValue > bestAccValue) {
                     incTable[coin].push({
                         nTx: nTx,
-                        incTx: nTx - bestNTx,
+                        incTx: tx.isDeposit ? (nTx + 1 - bestNTx) : (nTx - bestNTx),
                         accValue: accValue,
                         marginalFeeValue: (accValue - bestAccValue) / (nTx - bestNTx),
                         fee: fee,
@@ -522,7 +591,7 @@ class TXPool {
         let forgedTxs = [];
         const PTable = {};
 
-        fillTx(forgedTxs, NSlots, incTable, PTable);
+        fillTx(forgedTxs, NSlots, incTable, PTable, this.depositsStates.getTxOnChainCandidates());
 
         const usedCoins = Object.keys(PTable);
 
@@ -542,7 +611,7 @@ class TXPool {
 
         // removeNotAvailableTxs(forgedTxs);
 
-        fillTx(forgedTxs, NSlots-forgedTxs.length, incTable, PTable);
+        fillTx(forgedTxs, NSlots-forgedTxs.length, incTable, PTable, this.depositsStates.getTxOnChainCandidates());
 
         for (let c of usedCoins) {
             bb.addCoin(c, incTable[c][ PTable[c] ].fee);
@@ -550,13 +619,18 @@ class TXPool {
 
         for (let i=0; i<forgedTxs.length; i++) {
             bb.addTx(forgedTxs[i]);
+            if (forgedTxs[i].onChain){
+                bb.addDepositOffChain(forgedTxs[i]);
+            }
         }
+
+        await this.depositsStates.recoverNonUsedTx(forgedTxs);
 
         bb.optimizeSteps();
 
         await bb.build();
 
-        function fillTx(forgedTxs, n, incTable, PTable) {
+        function fillTx(forgedTxs, n, incTable, PTable, depositsOnChainTxs) {
 
             let totalTx =0;
             let end = false;
@@ -581,6 +655,9 @@ class TXPool {
                     totalTx += incTable[bestCoin][PTable[bestCoin]].incTx;
                     for (let i=firstT; i<lastT; i++) {
                         forgedTxs.push(txsByCoin[bestCoin][i]);
+                        if (txsByCoin[bestCoin][i].isDeposit){
+                            forgedTxs.push(depositsOnChainTxs[txsByCoin[bestCoin][i].candidateId]);
+                        }
                     }
                 } else {
                     end = true;

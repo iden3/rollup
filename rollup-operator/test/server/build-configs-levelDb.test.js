@@ -9,6 +9,7 @@ const Rollup = artifacts.require("../contracts/test/Rollup");
 const fs = require("fs");
 const path = require("path");
 const ethers = require("ethers");
+const Scalar = require("ffjavascript").Scalar;
 
 const configSynchPath = path.join(__dirname, "../config/synch-config-test.json");
 const configPoolPath = path.join(__dirname, "../config/pool-config-test.json");
@@ -20,6 +21,10 @@ const configSynchPoolPath = path.join(__dirname, "../synch-pool-service/config/c
 const pathConversionTable = path.join(__dirname,"../config/table-conversion-test.json");
 const pathCustomTokens = path.join(__dirname,"../config/custom-test.json");
 
+function to18(e) {
+    return Scalar.mul(e, Scalar.pow(10, 18));
+}
+
 contract("Operator Server", (accounts) => {
     const {
         0: owner,
@@ -30,7 +35,7 @@ contract("Operator Server", (accounts) => {
 
     const maxTx = 10;
     const maxOnChainTx = 5;
-    const tokenInitialAmount = 1000;
+    const tokenInitialAmount = to18(1000);
 
     let insPoseidonUnit;
     let insTokenRollup;
@@ -45,7 +50,7 @@ contract("Operator Server", (accounts) => {
             .send({ gas: 2500000, from: owner });
 
         // Deploy TokenRollup
-        insTokenRollup = await TokenRollup.new(tokenId, tokenInitialAmount);
+        insTokenRollup = await TokenRollup.new(tokenId, tokenInitialAmount.toString());
 
         // Deploy Verifier
         insVerifier = await Verifier.new();

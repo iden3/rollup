@@ -173,7 +173,7 @@ contract('Rollup', async (accounts) => {
 
     it('Deposit on top and forge it', async () => {
         const onTopAmount = 5;
-        const babyjubReciever = walletRollup.babyjubWallet.publicKeyCompressed.toString('hex');
+        const babyjubReceiver = walletRollup.babyjubWallet.publicKeyCompressed.toString('hex');
 
         const tx = {
             from: walletEth.address,
@@ -187,7 +187,7 @@ contract('Rollup', async (accounts) => {
         const signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
-        await depositOnTopTx(web3.currentProvider.host, addressSC, onTopAmount, tokenId, babyjubReciever,
+        await depositOnTopTx(web3.currentProvider.host, addressSC, onTopAmount, tokenId, babyjubReceiver,
             walletJson, password, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -289,10 +289,10 @@ contract('Rollup', async (accounts) => {
         // - Transaction onChain performing a "send" offchain Tx
 
         const amount = 10;
-        const babyjubReciever = wallets[0].walletBaby.publicKeyCompressed.toString('hex');
+        const babyjubReceiver = wallets[0].walletBaby.publicKeyCompressed.toString('hex');
 
         // from 1 to 2
-        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId, babyjubReciever,
+        await transferTx(web3.currentProvider.host, addressSC, amount, tokenId, babyjubReceiver,
             walletJson, password, abi, gasLimit, gasMultiplier);
 
         const event = await insRollupTest.getPastEvents('OnChainTx');
@@ -309,7 +309,7 @@ contract('Rollup', async (accounts) => {
 
         const depositAmount = 10;
         const amount = 5;
-        const babyjubReciever = wallets[0].walletBaby.publicKeyCompressed.toString('hex');
+        const babyjubReceiver = wallets[0].walletBaby.publicKeyCompressed.toString('hex');
 
         const tx = {
             from: wallets[1].walletEth.address,
@@ -323,7 +323,7 @@ contract('Rollup', async (accounts) => {
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
 
         await depositAndTransferTx(web3.currentProvider.host, addressSC, depositAmount,
-            amount, tokenId, babyjubReciever, wallets[1].walletJson, password, wallets[1].walletEth.address, abi, gasLimit, gasMultiplier);
+            amount, tokenId, babyjubReceiver, wallets[1].walletJson, password, wallets[1].walletEth.address, abi, gasLimit, gasMultiplier);
         const event = await insRollupTest.getPastEvents('OnChainTx');
 
         // Check token balances for walletEth and rollup smart contract

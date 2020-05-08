@@ -22,7 +22,8 @@ const { getGasPrice } = require('./utils');
 async function withdraw(nodeEth, addressSC, tokenId, walletRollup, abi, urlOperator,
     numExitRoot, gasLimit = 5000000, gasMultiplier = 1) {
     const walletBaby = walletRollup.babyjubWallet;
-    const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
+    const pubKeyBabyjub = [walletBaby.publicKey[0].toString(16), walletBaby.publicKey[1].toString(16)];
+    const pubKeyBabyjubEthCall = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
 
     let walletEth = walletRollup.ethWallet.wallet;
     const provider = new ethers.providers.JsonRpcProvider(nodeEth);
@@ -37,12 +38,11 @@ async function withdraw(nodeEth, addressSC, tokenId, walletRollup, abi, urlOpera
     };
 
     try {
-        const senderLeaf = await apiOperator.getAccounts({ ax: pubKeyBabyjub[0], ay: pubKeyBabyjub[1] });
-        const res = await apiOperator.getExitInfo(senderLeaf.id, numExitRoot);
+        const res = await apiOperator.getExitInfo(tokenId, pubKeyBabyjub[0], pubKeyBabyjub[1], numExitRoot);
         const infoExitTree = res.data;
         if (infoExitTree.found) {
             return await contractWithSigner.withdraw(infoExitTree.state.amount, numExitRoot,
-                infoExitTree.siblings, pubKeyBabyjub, tokenId, overrides);
+                infoExitTree.siblings, pubKeyBabyjubEthCall, tokenId, overrides);
         }
         throw new Error(`No exit tree leaf was found in batch: ${numExitRoot} with babyjub: ${pubKeyBabyjub}`);
     } catch (error) {

@@ -9,7 +9,7 @@ const { getGasPrice } = require('./utils');
  * @param {String} addressSC - rollup address
  * @param {String} loadAmount - initial balance on balance tree
  * @param {Number} tokenId - token type identifier
- * @param {String[2]} babyjubTo - babyjub public key reciever
+ * @param {String[2]} babyjubTo - babyjub public key receiver
  * @param {Object} walletRollup - ethAddress and babyPubKey together
  * @param {String} abi - abi of rollup contract
  * @param {Number} gasLimit - transaction gas limit

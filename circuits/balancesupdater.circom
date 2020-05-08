@@ -16,7 +16,7 @@ include "../node_modules/circomlib/circuits/comparators.circom";
 
 template BalancesUpdater() {
     signal input oldStAmountSender;
-    signal input oldStAmountRecieiver;
+    signal input oldStAmountReceiver;
     signal input amount;
     signal input loadAmount;
     signal input userFee;
@@ -74,7 +74,7 @@ template BalancesUpdater() {
 
     // if !txOk then return 0;
     newStAmountSender <== oldStAmountSender + effectiveLoadAmount - effectiveAmount2 - appliedFee;
-    newStAmountReceiver <== oldStAmountRecieiver + effectiveAmount2
+    newStAmountReceiver <== oldStAmountReceiver + effectiveAmount2
 
     // Counters
     countersOut <== countersIn + countersBase*feeApplies;

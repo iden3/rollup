@@ -60,7 +60,7 @@ module.exports = class RollupAccount {
 
         const h = hash([
             txData,
-            tx.rqTxData || 0,
+            Scalar.e(tx.rqTxData || 0),
             Scalar.fromString(tx.toAx, 16),
             Scalar.fromString(tx.toAy, 16),
             Scalar.fromString(tx.toEthAddr, 16),

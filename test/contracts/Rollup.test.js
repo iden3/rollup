@@ -10,7 +10,6 @@ const Scalar = require("ffjavascript").Scalar;
 const { stringifyBigInts } = require("ffjavascript").utils;
 
 const { buildFullInputSm, ForgerTest, decodeMethod, signRollupTx } = require("./helpers/helpers");
-const { encodeDepositOffchain } = require("../../js/utils");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
@@ -270,13 +269,13 @@ contract("Rollup", (accounts) => {
 
         // last batch forged
         const lastBatch = await insRollupTest.getStateDepth();
-        const id = 1;
+        const tokenId = 0;
+        const ax = wallets[1].publicKey[0].toString(16);
+        const ay = wallets[1].publicKey[1].toString(16);
 
-        const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
+        const infoId = await rollupDB.getExitTreeInfo(lastBatch, tokenId, ax, ay);
         const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
-        const tokenId = 0;
-
         // Should trigger error since we are try get withdraw from different sender
         try {
             await insRollupTest.withdraw(leafId.amount.toString(),
@@ -456,10 +455,11 @@ contract("Rollup", (accounts) => {
         
         // last batch forged
         const lastBatch = await insRollupTest.getStateDepth();
-        const id = 2;
         const tokenId = 0;
+        const ax = wallets[2].publicKey[0].toString(16);
+        const ay = wallets[2].publicKey[1].toString(16);
 
-        const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
+        const infoId = await rollupDB.getExitTreeInfo(lastBatch, tokenId, ax, ay);
         const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
 
@@ -471,7 +471,6 @@ contract("Rollup", (accounts) => {
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         expect(resRollup.toString()).to.be.equal("13");
     });
-    
     
     it("Should forge withdraw off-chain transaction with fee", async () => {
         // Steps:
@@ -562,9 +561,10 @@ contract("Rollup", (accounts) => {
 
         // last batch forged
         const lastBatch = await insRollupTest.getStateDepth();
-        const id = 3;
+        const ax = wallets[3].publicKey[0].toString(16);
+        const ay = wallets[3].publicKey[1].toString(16);
         const tokenId = 0;
-        const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
+        const infoId = await rollupDB.getExitTreeInfo(lastBatch, tokenId, ax, ay);
         const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
 
@@ -627,10 +627,11 @@ contract("Rollup", (accounts) => {
 
         // last batch forged
         const lastBatch = await insRollupTest.getStateDepth();
-        const id = 5;
         const tokenId = 0;
+        const ax = wallets[5].publicKey[0].toString(16);
+        const ay = wallets[5].publicKey[1].toString(16);
 
-        const infoId = await rollupDB.getExitTreeInfo(lastBatch, id);
+        const infoId = await rollupDB.getExitTreeInfo(lastBatch, tokenId, ax, ay);
         const siblingsId = stringifyBigInts(infoId.siblings);
         const leafId = infoId.state;
 
@@ -752,11 +753,11 @@ contract("Rollup", (accounts) => {
             onChain: true
         };
         batch.addTx(txOnchain);
+        batch.addDepositOffChain(txOnchain);
 
         // Encode depositOffchain
-        const encodedDeposits = encodeDepositOffchain([txOnchain]);
-
         await batch.build();
+        const encodedDeposits = batch.getDepOffChainData();
         const inputSm = buildFullInputSm(batch, beneficiary);
 
         // Add the offchainDeposit data

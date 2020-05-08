@@ -1,8 +1,7 @@
 const process = require('child_process');
-const chai = require('chai');
-const { error } = require('../src/list-errors');
+const { expect } = require('chai');
 
-const { expect } = chai;
+const { error } = require('../src/list-errors');
 
 const walletTest = 'wallet-test.json';
 const pass = 'foo';

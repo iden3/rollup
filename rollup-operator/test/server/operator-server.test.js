@@ -2,29 +2,37 @@
 /* global contract */
 /* global web3 */
 
-const chai = require("chai");
-const { expect } = chai;
-const { addBlocks } = require("../../../test/contracts/helpers/timeTravel");
+const { expect } = require("chai");
 const ethers = require("ethers");
-const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
-const Rollup = artifacts.require("../contracts/test/Rollup");
-const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const fs = require("fs");
 const process = require("child_process");
 const path = require("path");
-const { timeout } = require("../../src/utils");
-const configTestPath = path.join(__dirname, "../config/test.json");
-const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rollup-utils");
+const Scalar = require("ffjavascript").Scalar;
 
+const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
+const Rollup = artifacts.require("../contracts/test/Rollup");
+const RollupPoS = artifacts.require("../contracts/RollupPoS");
+
+const { addBlocks } = require("../../../test/contracts/helpers/timeTravel");
 const CliExternalOp = require("../../src/cli-external-operator");
 const { Wallet } = require("../../../rollup-cli/src/wallet");
-const cliPoS = require("../../../cli-pos/src/utils");
-const { depositTx, sendTx } = require("../../../rollup-cli/src/cli-utils");
 
+const cliPoS = require("../../../cli-pos/src/utils");
+const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rollup-utils");
+const { depositTx, sendTx, withdrawOffChainTx } = require("../../../rollup-cli/src/cli-utils");
+const { timeout } = require("../../src/utils");
+const testUtils = require("./helpers/utils-test");
+const { exitAx, exitEthAddr, exitAy } = require("../../../js/constants");
+
+const configTestPath = path.join(__dirname, "../config/test.json");
 // test timeouts
 const timeoutSynch = 20000;
 const timeoutBlocks = 10000;
-const timeoutLoop = 10000;
+const timeoutLoop = 5000;
+
+function to18(e) {
+    return Scalar.mul(e, Scalar.pow(10, 18));
+}
 
 // This test assumes 'server-proof' is running locally on port 10001
 // This test assumes 'operator' api-external is running locally on port 9000
@@ -38,7 +46,7 @@ contract("Operator", (accounts) => {
     }
 
     async function initRollupWallet(rollupWallet) {
-        const fillTokens = 25;
+        const fillTokens = to18(25);
         const fillEth = 100;
 
         const walletEth = rollupWallet.ethWallet.wallet;
@@ -52,14 +60,14 @@ contract("Operator", (accounts) => {
         expect(bal).to.be.equal(fillEth);
 
         // transfer tokens to rollup user
-        await insTokenRollup.transfer(walletEth.address, fillTokens, { from: tokenId });
+        await insTokenRollup.transfer(walletEth.address, fillTokens.toString(), { from: tokenId });
         // Send approve tx from rollup user
         const tx = {
             from:  walletEth.address, 
             gasLimit: web3.utils.toHex(800000),
             gasPrice: web3.utils.toHex(web3.utils.toWei("10", "gwei")),
             to: insTokenRollup.address, 
-            data: insTokenRollup.contract.methods.approve(insRollup.address, fillTokens).encodeABI()
+            data: insTokenRollup.contract.methods.approve(insRollup.address, fillTokens.toString()).encodeABI()
         };
         let signPromise = await web3.eth.accounts.signTransaction(tx, walletEth.privateKey);
         await web3.eth.sendSignedTransaction(signPromise.rawTransaction);
@@ -99,10 +107,6 @@ contract("Operator", (accounts) => {
     let insRollup;
     let insRollupPoS;
 
-    // Off-chain tx
-    let tx1;
-    let tx2;
-
     before(async () => {
         // Load test configuration
         const configTest = JSON.parse(fs.readFileSync(configTestPath));
@@ -115,6 +119,10 @@ contract("Operator", (accounts) => {
 
         // Load clients
         cliExternalOp = new CliExternalOp(urlExternalOp);
+    });
+
+    after(async () => {
+        process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
     });
 
     it("manage rollup token and fill funds to rollup user", async () => { 
@@ -176,15 +184,15 @@ contract("Operator", (accounts) => {
 
     it("Should add two deposits", async () => {
         const token = 0;
-        const amountDeposit = 10;
+        const amountDeposit = to18(10);
         const ethAddress = undefined;
 
         // account idx = 1
-        let resDeposit = await depositTx(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+        let resDeposit = await depositTx(web3.currentProvider.host, insRollup.address, amountDeposit.toString(), token, 
             rollupEncWallets[0], pass, ethAddress, Rollup.abi);
         await resDeposit.wait();
         // account idx = 2
-        resDeposit = await depositTx(web3.currentProvider.host, insRollup.address, amountDeposit, token, 
+        resDeposit = await depositTx(web3.currentProvider.host, insRollup.address, amountDeposit.toString(), token, 
             rollupEncWallets[1], pass, ethAddress, Rollup.abi);
         await resDeposit.wait();
     });
@@ -220,19 +228,14 @@ contract("Operator", (accounts) => {
     });
 
     it("Should forge genesis and on-chain transaction", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getState();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 1) {
-                batchForged = true;
-                break;
-            } 
-            await timeout(timeoutLoop);
-            counter += 1;
-        }
-        expect(batchForged).to.be.equal(true);
+        // Account |  0  |  1  |  2  |
+        // Amount  |  10 |  10 | Nan |
+
+        // Check forge batch
+        await testUtils.assertForgeBatch(cliExternalOp, 1, timeoutLoop);
+
+        // Check Balances
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(10), to18(10), null]);
     });
 
     it("Should add off-chain transaction to the pool", async () => {
@@ -240,34 +243,35 @@ contract("Operator", (accounts) => {
         const res = await cliExternalOp.getOperators();
         const listOperators = res.data;
         const urlOp = listOperators[0].url;
+        
         // config transaction
-        tx1 = {
-            from: 1,
-            to: 2,
-            token: 0,
-            amount: 3,
-            userFee: 2, 
+        const tx = {
+            toAx: rollupWallets[1].babyjubWallet.publicKey[0].toString(16),
+            toAy: rollupWallets[1].babyjubWallet.publicKey[0].toString(16),
+            toEthAddr: rollupWallets[1].ethWallet.wallet.address.toString(),
+            coin: 0,
+            amount: to18(3),
+            nonce: 0,
+            userFee: to18(2),
         };
 
         // send transaction with client
-        await sendTx(urlOp, tx1.to, tx1.amount, rollupEncWallets[0],
-            pass, tx1.token, tx1.userFee, tx1.from);
+        await sendTx(urlOp, rollupEncWallets[1].babyjubWallet.publicCompressed, tx.amount, rollupEncWallets[0],
+            pass, tx.coin, tx.userFee);
     });
 
     it("Should forge off-chain transaction", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getState();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 4) {
-                batchForged = true;
-                break;
-            } 
-            await timeout(timeoutLoop);
-            counter += 1;
-        }
-        expect(batchForged).to.be.equal(true);
+        // Account |  0  |  1  |  2  |
+        // Amount  |  5  |  13 | Nan |
+
+        const res = await cliExternalOp.getState();
+        const lastBatch = res.data.rollupSynch.lastBatchSynched; 
+
+        // Check forge batch
+        await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
+
+        // Check Balances
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(5), to18(13), null]);
     });
 
     it("Should add withdraw off-chain transaction to the pool", async () => {
@@ -275,108 +279,113 @@ contract("Operator", (accounts) => {
         const res = await cliExternalOp.getOperators();
         const listOperators = res.data;
         const urlOp = listOperators[0].url;
+        
         // config transaction
-        tx2 = {
-            from: 2,
-            to: 0,
-            token: 0,
-            amount: 3,
+        const tx = {
+            coin: 0,
+            amount: to18(3),
             nonce: 0,
-            userFee: 1, 
+            userFee: to18(1),
         };
+
         // send transaction with client
-        await sendTx(urlOp, tx2.to, tx2.amount, rollupEncWallets[1],
-            pass, tx2.token, tx2.userFee, tx2.from);
+        await withdrawOffChainTx(urlOp, tx.amount, rollupEncWallets[1],
+            pass, tx.coin, tx.userFee);
     });
     
     it("Should forge withdraw off-chain transaction", async () => {
-        let batchForged = false;
-        let counter = 0;
-        while(!batchForged && counter < 10) {
-            const res = await cliExternalOp.getState();
-            const info = res.data;
-            if (info.rollupSynch.lastBatchSynched > 7) {
-                batchForged = true;
-                break;
-            } 
-            await timeout(timeoutLoop);
-            counter += 1;
-        }
-        expect(batchForged).to.be.equal(true);
+        // Account |  0  |  1  |  2  |
+        // Amount  |  5  |  9  | Nan |
+
+        const res = await cliExternalOp.getState();
+        const lastBatch = res.data.rollupSynch.lastBatchSynched; 
+
+        // Check forge batch
+        await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
+
+        // Check Balances
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(5), to18(9), null]);
+    });
+
+    it("Should add deposit off-chain transaction to the pool", async () => {
+        // Retrieve operator url
+        const res = await cliExternalOp.getOperators();
+        const listOperators = res.data;
+        const urlOp = listOperators[0].url;
+        
+        // config transaction
+        const tx = {
+            coin: 0,
+            amount: to18(3),
+            nonce: 0,
+            userFee: to18(2),
+        };
+
+        // send transaction with client
+        await sendTx(urlOp, rollupEncWallets[2].babyjubWallet.publicCompressed, tx.amount, rollupEncWallets[1],
+            pass, tx.coin, tx.userFee, undefined, undefined, rollupWallets[2].ethWallet.wallet.address.toString());
+    });
+
+    it("Should forge deposit off-chain transaction", async () => {
+        // Account |  0  |  1  |  2  |
+        // Amount  |  5  |  3  |  3  |
+
+        const res = await cliExternalOp.getState();
+        const lastBatch = res.data.rollupSynch.lastBatchSynched; 
+
+        // Check forge batch
+        await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
+
+        // Check Balances
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(5), to18(4), to18(3)]);
     });
 
     it("Should check exit batches and get its information", async () => {
-        const id = 2;
+        const coin = 0;
+        const ax = rollupWallets[1].babyjubWallet.publicKey[0].toString(16);
+        const ay = rollupWallets[1].babyjubWallet.publicKey[1].toString(16);
         
-        const res = await cliExternalOp.getExits(id);
+        const res = await cliExternalOp.getExits(coin, ax, ay);
         expect(res.status).to.be.equal(200);
         const exitsNumBatches = res.data;
         expect(exitsNumBatches.length).to.not.be.equal(0);
 
         for (const numBatch of exitsNumBatches){
-            const res = await cliExternalOp.getExitInfo(id, numBatch);
+            const res = await cliExternalOp.getExitInfo(coin, ax, ay, numBatch);
             const infoExit = res.data;
-            expect(infoExit.state.idx).to.be.equal(id);
+            expect(infoExit.found).to.be.equal(true);
+            expect(infoExit.state.ax).to.be.equal(ax);
+            expect(infoExit.state.ay).to.be.equal(ay);
+            expect(infoExit.state.coin).to.be.equal(coin);
         }
     });
 
-    it("Should check account balances", async () => {
-        // Theoretical balances overview:
-        // deposits: id1 --> 10, id2 --> 10
-        // off-chain tx: id1 --> 5, id2 --> 13 (from: id1, to: id2, amount:3, fee: 2)
-        // off-chain tx: id1 --> 5, ide2 --> 9 (from: id2, to: 0, amount:3, fee: 1)
+    it("Should check fee and tokens added", async () => {
+        const tokenId = 0;
+        const resTokensList = await cliExternalOp.getTokensList();
+        const resFeeTokens = await cliExternalOp.getFeeTokens();
+        const smFeeTokens = await insRollup.feeAddToken(); 
 
-        const id1 = 1;
-        const id2 = 2;
-        const amountId1 = 5;
-        const amountId2 = 9;
-
-        const resId1 = await cliExternalOp.getAccountByIdx(id1);
-        const resId2 = await cliExternalOp.getAccountByIdx(id2);
-
-        expect(resId1.data.amount).to.be.equal(amountId1.toString());
-        expect(resId2.data.amount).to.be.equal(amountId2.toString());
+        expect(insTokenRollup.address).to.be.equal(resTokensList.data[tokenId]);
+        expect(smFeeTokens.toString()).to.be.equal(resFeeTokens.data);
     });
 
     it("Should retrieve account information", async () => {
-        
-        const id0 = 1;
+
         const walletEth0 = rollupWallets[0].ethWallet.wallet;
         const walletEthAddress0 = walletEth0.address.toString();
         const walletAx0 = rollupWallets[0].babyjubWallet.publicKey[0].toString(16);
         const walletAy0 = rollupWallets[0].babyjubWallet.publicKey[1].toString(16);
 
-        const id1 = 2;
         const walletEth1 = rollupWallets[1].ethWallet.wallet;
         const walletEthAddress1 = walletEth1.address.toString();
         const walletAx1 = rollupWallets[1].babyjubWallet.publicKey[0].toString(16);
         const walletAy1 = rollupWallets[1].babyjubWallet.publicKey[1].toString(16);
 
-        // Account non existing on rollup
-        const id2 = 3;
         const walletEth2 = rollupWallets[2].ethWallet.wallet;
         const walletEthAddress2 = walletEth2.address.toString();
         const walletAx2 = rollupWallets[2].babyjubWallet.publicKey[0].toString(16);
         const walletAy2 = rollupWallets[2].babyjubWallet.publicKey[1].toString(16);
-
-        // By Id
-        const resId0 = await cliExternalOp.getAccountByIdx(id0);
-        expect(resId0.data.ax).to.be.equal(walletAx0);
-        expect(resId0.data.ay).to.be.equal(walletAy0);
-        expect(resId0.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress0.toLowerCase());
-
-        const resId1 = await cliExternalOp.getAccountByIdx(id1);
-        expect(resId1.data.ax).to.be.equal(walletAx1);
-        expect(resId1.data.ay).to.be.equal(walletAy1);
-        expect(resId1.data.ethAddress.toLowerCase()).to.be.equal(walletEthAddress1.toLowerCase());
-
-        try {
-            await cliExternalOp.getAccountByIdx(id2);
-            expect(true).to.be.equal(false);
-        } catch (error) {
-            expect(error.response.status).to.be.equal(404);
-            expect(error.response.data).to.be.equal("Account not found");
-        }
 
         // By Public key Babyjubjub
         let filters;
@@ -415,13 +424,14 @@ contract("Operator", (accounts) => {
             ay: walletAy2,
         };
 
-        try {
-            await cliExternalOp.getAccounts(filters);
-            expect(true).to.be.equal(false);
-        } catch (error) {
-            expect(error.response.status).to.be.equal(404);
-            expect(error.response.data).to.be.equal("Accounts not found");
-        }
+        const resAxAy2 = await cliExternalOp.getAccounts(filters);
+        let listAccounts2 = resAxAy2.data;
+        expect(listAccounts2.length).to.be.equal(1);
+
+        account = listAccounts2[0];
+        expect(account.ax).to.be.equal(walletAx2);
+        expect(account.ay).to.be.equal(walletAy2);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress2.toLowerCase());
 
         // By Ethereum Address
         filters = {
@@ -454,13 +464,14 @@ contract("Operator", (accounts) => {
             ethAddr: walletEthAddress2,
         };
 
-        try {
-            await cliExternalOp.getAccounts(filters);
-            expect(true).to.be.equal(false);
-        } catch (error) {
-            expect(error.response.status).to.be.equal(404);
-            expect(error.response.data).to.be.equal("Accounts not found");
-        }
+        const resEth2 = await cliExternalOp.getAccounts(filters);
+        listAccounts2 = resEth2.data;
+        expect(listAccounts2.length).to.be.equal(1);
+
+        account = listAccounts2[0];
+        expect(account.ax).to.be.equal(walletAx2);
+        expect(account.ay).to.be.equal(walletAy2);
+        expect(account.ethAddress.toLowerCase()).to.be.equal(walletEthAddress2.toLowerCase());
 
         // By both Public key Babyjubjub and Ethereum Address
         filters = {
@@ -493,16 +504,6 @@ contract("Operator", (accounts) => {
         }
     });
 
-    it("Should check fee and tokens added", async () => {
-        const tokenId = 0;
-        const resTokensList = await cliExternalOp.getTokensList();
-        const resFeeTokens = await cliExternalOp.getFeeTokens();
-        const smFeeTokens = await insRollup.feeAddToken(); 
-
-        expect(insTokenRollup.address).to.be.equal(resTokensList.data[tokenId]);
-        expect(smFeeTokens.toString()).to.be.equal(resFeeTokens.data);
-    });
-
     it("Should check batch transactions", async () => {
         // find transactions on batches
         const res = await cliExternalOp.getState();
@@ -521,21 +522,21 @@ contract("Operator", (accounts) => {
         }
 
         // Check tx1 and tx2 have been found
+        expect(foundTx.length).to.be.equal(2);
+        
         const resTx1 = foundTx[0];
         const resTx2 = foundTx[1];
-        
-        expect(resTx1.fromIdx).to.be.equal(tx1.from);
-        expect(resTx1.toIdx).to.be.equal(tx1.to);
-        expect(resTx1.amount).to.be.equal(tx1.amount.toString());
-        expect(resTx1.coin).to.be.equal(tx1.token);
 
-        expect(resTx2.fromIdx).to.be.equal(tx2.from);
-        expect(resTx2.toIdx).to.be.equal(tx2.to);
-        expect(resTx2.amount).to.be.equal(tx2.amount.toString());
-        expect(resTx2.coin).to.be.equal(tx2.token);
-    });
+        expect(resTx1.fromAx).to.be.equal(rollupWallets[0].babyjubWallet.publicKey[0].toString(16));
+        expect(resTx1.fromAy).to.be.equal(rollupWallets[0].babyjubWallet.publicKey[1].toString(16));
+        expect(resTx1.toAx).to.be.equal(rollupWallets[1].babyjubWallet.publicKey[0].toString(16));
+        expect(resTx1.toAy).to.be.equal(rollupWallets[1].babyjubWallet.publicKey[1].toString(16));
+        expect(resTx1.amount).to.be.equal(to18(3).toString());
 
-    after(async () => {
-        process.exec("find . -depth -type d -name 'tmp-*' -prune -exec rm -rf {} +");
+        expect(resTx2.fromAx).to.be.equal(rollupWallets[1].babyjubWallet.publicKey[0].toString(16));
+        expect(resTx2.fromAy).to.be.equal(rollupWallets[1].babyjubWallet.publicKey[1].toString(16));
+        expect(resTx2.toAx).to.be.equal(exitAx);
+        expect(resTx2.toAy).to.be.equal(exitAy);
+        expect(resTx2.amount).to.be.equal(to18(3).toString());
     });
 });

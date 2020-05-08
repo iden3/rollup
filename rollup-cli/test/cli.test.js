@@ -487,6 +487,41 @@ describe('OFFCHAINTX', async function () {
         });
     });
 
+    it('offchaintx withdraw', (done) => {
+        const command = spawn(`cd ..; node cli.js offchaintx --type withdrawOffChain --amount 2 --tokenid 0 --fee 1 -c ${configTest}`, {
+            shell: true,
+        });
+        command.stdout.on('data', (data) => {
+            if ((data.toString()).includes('Password:')) {
+                command.stdin.write(`${pass}\n`);
+            }
+            if (data.toString().includes('Status: 200, Nonce: ')) {
+                done();
+            }
+        });
+        command.on('exit', (code) => {
+            expect(code).to.be.equal(0);
+        });
+    });
+
+    it('offchaintx deposit', (done) => {
+        const ethAddr = '0x123456789ABCDEF123456789ABCDEF123456789A';
+        const command = spawn(`cd ..; node cli.js offchaintx --type depositOffChain --amount 2 -r ${recipient} --tokenid 0 --fee 1 -c ${configTest} --ethaddr ${ethAddr}`, {
+            shell: true,
+        });
+        command.stdout.on('data', (data) => {
+            if ((data.toString()).includes('Password:')) {
+                command.stdin.write(`${pass}\n`);
+            }
+            if (data.toString().includes('Status: 200, Nonce: ')) {
+                done();
+            }
+        });
+        command.on('exit', (code) => {
+            expect(code).to.be.equal(0);
+        });
+    });
+
     it('offchaintx send error pass', (done) => {
         const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2  -r ${recipient} --tokenid 0 --fee 1 -c ${configTest}`, {
             shell: true,
@@ -563,6 +598,21 @@ describe('OFFCHAINTX', async function () {
             done();
         });
     });
+
+    it('offchaintx send deposit ether address', (done) => {
+        const command = spawn(`cd ..; node cli.js offchaintx --type depositOffChain --amount 2 --tokenid 0 -r ${recipient} --fee 1 -c ${configTest}`, {
+            shell: true,
+        });
+        command.stdout.on('data', (data) => {
+            if ((data.toString()).includes('Password:')) {
+                command.stdin.write(`${pass}\n`);
+            }
+        });
+        command.on('exit', (code) => {
+            expect(code).to.be.equal(error.NO_PARAM);
+            done();
+        });
+    });
 });
 
 describe('INFO', async function () {
@@ -590,10 +640,21 @@ describe('INFO', async function () {
         });
     });
 
-    it('exits', (done) => {
-        const out = process.exec('cd ..; node cli.js info --type exits --id 1');
+    it('accounts tokenId', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type accounts --filter tokenId --tk 1');
         out.stdout.on('data', (data) => {
-            // Returns array containing all batches where the id account has en exit leaf
+            // Returns single state account in string format on the stdout
+            expect(data).to.be.a('string');
+        });
+        out.on('exit', () => {
+            done();
+        });
+    });
+
+    it('exits', (done) => {
+        const out = process.exec('cd ..; node cli.js info --type exits --tk 1');
+        out.stdout.on('data', (data) => {
+            // Returns array containing all batches where the rollup account has en exit leaf
             expect(data).to.be.a('string');
         });
         out.on('exit', () => {

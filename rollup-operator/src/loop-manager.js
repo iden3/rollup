@@ -1,10 +1,11 @@
-/*global BigInt*/
 const { performance } = require("perf_hooks");
 const Web3 = require("web3");
 const winston = require("winston");
 const chalk = require("chalk");
+const { stringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
+
 const { timeout, buildPublicInputsSm, generateCall } = require("../src/utils"); 
-const { stringifyBigInts } = require("snarkjs");
 const { loadHashChain } = require("../../rollup-utils/rollup-utils");
 
 // Logging state information
@@ -134,7 +135,14 @@ class LoopManager{
      * Get public contract variables
      */
     async _init(){
+        // get slot deadline
         this.slotDeadline = await this.posSynch.getSlotDeadline();
+        
+        // get fee for deposits off-chain
+        const feeWei = await this.rollupSynch.getFeeDepOffChain();
+        const feeEth = this.web3.utils.fromWei(feeWei.toString() , "ether");
+        this.feeDepOffChain = Number(feeEth);
+        this.poolTx.setFeeDeposit(this.feeDepOffChain);
     }
 
     /**
@@ -379,6 +387,8 @@ class LoopManager{
 
         if(!this.infoCurrentBatch.builded) { // If batch has been already built
             const bb = await this.rollupSynch.getBatchBuilder();
+
+            this.infoCurrentBatch.tmpOnChainHash = bb.getTmpOnChainHash();
             await this.poolTx.fillBatch(bb);
             this.infoCurrentBatch.batchData = bb;
             this.infoCurrentBatch.builded = true;
@@ -416,6 +426,8 @@ class LoopManager{
             // get proof, commit data and forge block
             const proofServer = generateCall(res.data.proof);
             const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
+            const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
+            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.feeDepOffChain;
             
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
@@ -441,7 +453,8 @@ class LoopManager{
             const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
 
             const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
-                commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs); 
+                commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs,
+                depOffChainData, feeDepOffChain); 
 
             this._setInfoTx(tx, txSign.transactionHash, indexHash);
 
@@ -663,7 +676,7 @@ class LoopManager{
      */
     _updateTx(transactionHash){
         // set double gas price 
-        this.currentTx.tx.gasPrice = (BigInt(this.currentTx.tx.gasPrice) * BigInt(2)).toString(); 
+        this.currentTx.tx.gasPrice = Scalar.mul(this.currentTx.tx.gasPrice, 2).toString(); 
         this.currentTx.startTx = performance.now();
         this.currentTx.attempts += 1;
         this.currentTx.txHash = transactionHash;
@@ -678,8 +691,8 @@ class LoopManager{
         const currentStateRoot = await this.rollupSynch.getCurrentStateRoot();
         const currentOnchainHash = await this.rollupSynch.getMiningOnchainHash();
         
-        if (BigInt(currentStateRoot) === this.infoCurrentBatch.batchData.getOldStateRoot() &&
-        BigInt(currentOnchainHash) === this.infoCurrentBatch.batchData.getOnChainHash()) {
+        if (Scalar.eq(currentStateRoot, this.infoCurrentBatch.batchData.getOldStateRoot()) &&
+            Scalar.eq(currentOnchainHash, this.infoCurrentBatch.tmpOnChainHash)) {
             return true;
         } else { 
             let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
