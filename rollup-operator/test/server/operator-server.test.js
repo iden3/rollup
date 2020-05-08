@@ -46,7 +46,7 @@ contract("Operator", (accounts) => {
     }
 
     async function initRollupWallet(rollupWallet) {
-        const fillTokens = to18(25);
+        const fillTokens = to18(800);
         const fillEth = 100;
 
         const walletEth = rollupWallet.ethWallet.wallet;
@@ -184,7 +184,7 @@ contract("Operator", (accounts) => {
 
     it("Should add two deposits", async () => {
         const token = 0;
-        const amountDeposit = to18(10);
+        const amountDeposit = to18(350);
         const ethAddress = undefined;
 
         // account idx = 1
@@ -229,13 +229,13 @@ contract("Operator", (accounts) => {
 
     it("Should forge genesis and on-chain transaction", async () => {
         // Account |  0  |  1  |  2  |
-        // Amount  |  10 |  10 | Nan |
+        // Amount  | 350 | 350 | Nan |
 
         // Check forge batch
         await testUtils.assertForgeBatch(cliExternalOp, 1, timeoutLoop);
 
         // Check Balances
-        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(10), to18(10), null]);
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(350), to18(350), null]);
     });
 
     it("Should add off-chain transaction to the pool", async () => {
@@ -246,9 +246,6 @@ contract("Operator", (accounts) => {
         
         // config transaction
         const tx = {
-            toAx: rollupWallets[1].babyjubWallet.publicKey[0].toString(16),
-            toAy: rollupWallets[1].babyjubWallet.publicKey[0].toString(16),
-            toEthAddr: rollupWallets[1].ethWallet.wallet.address.toString(),
             coin: 0,
             amount: to18(3),
             nonce: 0,
@@ -262,7 +259,7 @@ contract("Operator", (accounts) => {
 
     it("Should forge off-chain transaction", async () => {
         // Account |  0  |  1  |  2  |
-        // Amount  |  5  |  13 | Nan |
+        // Amount  | 345 | 353 | Nan |
 
         const res = await cliExternalOp.getState();
         const lastBatch = res.data.rollupSynch.lastBatchSynched; 
@@ -271,7 +268,7 @@ contract("Operator", (accounts) => {
         await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
 
         // Check Balances
-        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(5), to18(13), null]);
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(345), to18(353), null]);
     });
 
     it("Should add withdraw off-chain transaction to the pool", async () => {
@@ -295,7 +292,7 @@ contract("Operator", (accounts) => {
     
     it("Should forge withdraw off-chain transaction", async () => {
         // Account |  0  |  1  |  2  |
-        // Amount  |  5  |  9  | Nan |
+        // Amount  | 345 | 349 | Nan |
 
         const res = await cliExternalOp.getState();
         const lastBatch = res.data.rollupSynch.lastBatchSynched; 
@@ -304,7 +301,7 @@ contract("Operator", (accounts) => {
         await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
 
         // Check Balances
-        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(5), to18(9), null]);
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(345), to18(349), null]);
     });
 
     it("Should add deposit off-chain transaction to the pool", async () => {
@@ -318,7 +315,7 @@ contract("Operator", (accounts) => {
             coin: 0,
             amount: to18(3),
             nonce: 0,
-            userFee: to18(2),
+            userFee: to18(300),
         };
 
         // send transaction with client
@@ -328,7 +325,7 @@ contract("Operator", (accounts) => {
 
     it("Should forge deposit off-chain transaction", async () => {
         // Account |  0  |  1  |  2  |
-        // Amount  |  5  |  3  |  3  |
+        // Amount  | 345 |  46 |  3  |
 
         const res = await cliExternalOp.getState();
         const lastBatch = res.data.rollupSynch.lastBatchSynched; 
@@ -337,7 +334,7 @@ contract("Operator", (accounts) => {
         await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
 
         // Check Balances
-        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(5), to18(4), to18(3)]);
+        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(345), to18(46), to18(3)]);
     });
 
     it("Should check exit batches and get its information", async () => {
@@ -522,7 +519,7 @@ contract("Operator", (accounts) => {
         }
 
         // Check tx1 and tx2 have been found
-        expect(foundTx.length).to.be.equal(3);
+        expect(foundTx.length).to.be.equal(2);
         const resTx1 = foundTx[0];
         const resTx2 = foundTx[1];
 

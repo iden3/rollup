@@ -35,7 +35,7 @@ contract("Operator Server", (accounts) => {
 
     const maxTx = 10;
     const maxOnChainTx = 5;
-    const tokenInitialAmount = to18(1000);
+    const tokenInitialAmount = to18(100000);
 
     let insPoseidonUnit;
     let insTokenRollup;
@@ -151,7 +151,7 @@ contract("Operator Server", (accounts) => {
         // Write custom table
         const tableConversion = {};
         tableConversion[insTokenRollup.address] = {
-            price: 300,
+            price: 1,
             decimals: 18,
         };
         fs.writeFileSync(pathCustomTokens, JSON.stringify(tableConversion));

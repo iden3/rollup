@@ -7,7 +7,6 @@
 const { expect } = require("chai");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 
-const { encodeDepositOffchain } = require("../../js/utils");
 const timeTravel = require("./helpers/timeTravel.js");
 const { decodeMethod, getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
 const { buildPublicInputsSm, manageEvent } = require("../../rollup-operator/src/utils");
@@ -200,8 +199,6 @@ contract("Rollup - RollupPoS", (accounts) => {
     });
 
     it("Forge off-chain deposit", async () => {
-        const offChainHashInput = 4;
-
         const proofA = ["0", "0"];
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
@@ -211,10 +208,10 @@ contract("Rollup - RollupPoS", (accounts) => {
         const Ax2 = wallet2.publicKey[0].toString(16);
         const Ay2 = wallet2.publicKey[1].toString(16);
 
-         // Create the off-chain deposit and add it to the Batchbuilder
-         const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        // Create the off-chain deposit and add it to the Batchbuilder
+        const batch = await rollupDB.buildBatch(maxTx, nLevels);
 
-         const txOnchain = {
+        const txOnchain = {
             fromAx: Ax2,
             fromAy:  Ay2,
             fromEthAddr: id1,
@@ -225,12 +222,14 @@ contract("Rollup - RollupPoS", (accounts) => {
             onChain: true
         };
         batch.addTx(txOnchain);
+        batch.addDepositOffChain(txOnchain);
+
+        await batch.build();
 
         // Encode depositOffchain
-        const encodedDeposits = encodeDepositOffchain([txOnchain]);
+        const encodedDeposits =  batch.getDepOffChainData();
 
         // Build inputs
-        await batch.build();
         const inputs = buildPublicInputsSm(batch);
 
         // Forge batch by operator 1

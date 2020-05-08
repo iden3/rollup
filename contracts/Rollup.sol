@@ -243,7 +243,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         address ethAddress,
         uint256[2] memory babyPubKey
     ) public payable {
-        // Onchain fe + deposit Fee
+        // Onchain fee + deposit fee
         uint256 totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
@@ -395,7 +395,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint16 amountF
     ) public payable{
         // Onchain fe + deposit Fee
-        uint256 totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;        
+        uint256 totalFee = feeOnchainTx + (depositFeeMul / 1 ether) * feeOnchainTx;        
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
@@ -421,7 +421,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         batchToInfo[currentFillingBatch + 2].depositOnChainCount++;
 
         // Insert tree informations
-        fromLeaf.forgedBatch = uint64(currentFillingBatch + 2); //batch it will be forged
+        fromLeaf.forgedBatch = uint64(currentFillingBatch + 2); // batch wich will be forged
         fromLeaf.relativeIndex = batchToInfo[currentFillingBatch + 2].depositOnChainCount;
         fromLeaf.ethAddress = fromEthAddress;
         
@@ -540,7 +540,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
         // Deposit off-chain fee * depositOffchainLength
-        uint256 totalFee = depositFeeMul / 1 ether * feeOnchainTx * depositOffChainLength;
+        uint256 totalFee = (depositFeeMul / 1 ether) * feeOnchainTx * depositOffChainLength;
         // Operator must pay for every off-chain deposit
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
 
@@ -603,7 +603,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         beneficiaryAddress.transfer(payOnChainFees);
 
         // Return remaining ether to the msg.sender    
-        beneficiaryAddress.transfer(msg.value - totalFee); //peta
+        beneficiaryAddress.transfer(msg.value - totalFee);
 
         // Event with all compressed transactions given its batch number
         emit ForgeBatch(getStateDepth(), block.number);
@@ -705,7 +705,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @return current deposit fee
      */
     function getCurrentDepositFee() public view returns (uint256) {
-        return depositFeeMul / 1 ether * feeOnchainTx;
+        return (depositFeeMul / 1 ether) * feeOnchainTx;
     }
     ///////////
     // helpers ERC20 functions

@@ -524,7 +524,7 @@ contract("RollupHelpers functions", (accounts) => {
         });
 
         it("Should update onchain fees properly", async () => {
-            const currentOnchainFee = web3.utils.toWei("1", "ether")
+            const currentOnchainFee = web3.utils.toWei("1", "ether");
             const moreFeeJs = Scalar.div( Scalar.mul( Scalar.fromString(currentOnchainFee), 101), 100);
             const lessFeeJs = Scalar.div( Scalar.mul( Scalar.fromString(currentOnchainFee), 99), 100);
 
@@ -539,7 +539,7 @@ contract("RollupHelpers functions", (accounts) => {
 
         it("Should update deposit fees properly", async () => {
 
-            const currentDepositMul = web3.utils.toWei("1", "ether")
+            const currentDepositMul = web3.utils.toWei("1", "ether");
             const leafs = 1 << 22;
 
             const sameFee = await insHelpers.udateDepositFeeTest(1, 10, currentDepositMul);
@@ -561,9 +561,9 @@ contract("RollupHelpers functions", (accounts) => {
                 Scalar.pow(10**7, deposits)
             ); 
 
-            // gas Consumption 3523422 OMG 1/3 block NO escalable, should beter hardcodevalues
+            // gas consumption 131171
             console.log("gas consumed by update fees of 1000 tx", 
-            (await insHelpers.udateDepositFeeTest.estimateGas(leafs, deposits, currentDepositMul)).toString());
+                (await insHelpers.udateDepositFeeTest.estimateGas(leafs, deposits, currentDepositMul)).toString());
             const Fee1000Deposits = await insHelpers.udateDepositFeeTest(leafs, deposits, currentDepositMul);
     
             // ethereum loses precision, thats why we don't count the last 4 decimals

@@ -199,10 +199,6 @@ class Synchronizer {
         // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
-                // update deposit fee
-                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
-                    .call({from: this.ethAddress}));
-                
                 // get last block synched, current block, last batch synched
                 let totalSynch = 0;
                 let lastBatchSaved = await this.getLastBatch();
@@ -252,6 +248,10 @@ class Synchronizer {
                     continue;
                 }
 
+                // update deposit fee
+                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
+                    .call({from: this.ethAddress}));
+                  
                 if (currentBatchDepth > lastBatchSaved) {
                     const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber, currentBlock);
                     // If no event is found, tree is not updated

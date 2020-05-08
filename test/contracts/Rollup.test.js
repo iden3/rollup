@@ -156,7 +156,7 @@ contract("Rollup", (accounts) => {
                 Scalar.div(feeDeposit, 10**18),
                 Scalar.e(feeOnChain)
             )
-        )
+        );
     
         const resApprove = await insTokenRollup.approve(insRollupTest.address, loadAmount, { from: id1 });
         expect(resApprove.logs[0].event).to.be.equal("Approval");
@@ -208,7 +208,7 @@ contract("Rollup", (accounts) => {
                 Scalar.div(feeDeposit, 10**18),
                 Scalar.e(feeOnChain)
             )
-        )
+        );
 
         const loadAmount = 5;
         const tokenId = 0;
@@ -802,7 +802,7 @@ contract("Rollup", (accounts) => {
                 Scalar.div(feeDeposit, 10**18),
                 Scalar.e(feeOnChain)
             )
-        )
+        );
         
         // Add the offchainDeposit data
         await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
@@ -839,7 +839,7 @@ contract("Rollup", (accounts) => {
             walletsDeposit.push(BabyJubWallet.createRandom());
         }
 
-        let logs = []
+        let logs = [];
 
         const feeOnChain = await insRollupTest.feeOnchainTx();
         const feeDeposit = await insRollupTest.depositFeeMul();
@@ -852,13 +852,13 @@ contract("Rollup", (accounts) => {
                 Scalar.div(feeDeposit, 10**18),
                 Scalar.e(feeOnChain)
             )
-        )
+        );
 
         for (let i = 0; i<maxOnChainTx*2; i++) {
             const response = await insRollupTest.deposit(loadAmount, tokenId, id1,
                 [walletsDeposit[i].publicKey[0].toString(), walletsDeposit[i].publicKey[1].toString()], 
                 { from: id1, value: feeRequired.toString() });
-            logs[i] = response.logs[0]
+            logs[i] = response.logs[0];
         }
 
         // Check token balances for id1 and rollup smart contract

@@ -329,7 +329,7 @@ contract RollupHelpers {
     return ecrecover(msgHash, v, r, s);
   }
 
-  /**
+    /**
     * @dev update on-chain fees
     * it updates every batch if is full or is build
     * @param onChainTxCount number of on-chain transactions in the same batch
@@ -338,17 +338,16 @@ contract RollupHelpers {
     */
   function updateOnchainFee(uint256 onChainTxCount, uint256 currentFee) internal pure returns (uint256 newFee) {
       if (10 < onChainTxCount)
-          newFee = currentFee*101/100;
+          newFee = (currentFee*101)/100;
       else if (10 > onChainTxCount)
-          newFee = currentFee*99/100;
+          newFee = (currentFee*99)/100;
       else
           newFee = currentFee;
   }
 
     /**
     * @dev update deposit fee
-    * it updates every batch, therefore client can know how much cost a deposit, 1000 deposit ( teorically max Tx onchain
-    * is a very small compared to a 2^24 leafs.
+    * It updates every batch
     * @param lastLeafIndex last leaf added
     * @param depositCount number of deposits in the same batch
     * @param oldFee current deposit fee
