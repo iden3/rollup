@@ -35,7 +35,7 @@ contract("Operator Server", (accounts) => {
 
     const maxTx = 10;
     const maxOnChainTx = 5;
-    const tokenInitialAmount = to18(1000);
+    const tokenInitialAmount = to18(100000);
 
     let insPoseidonUnit;
     let insTokenRollup;

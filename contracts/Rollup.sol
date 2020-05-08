@@ -44,7 +44,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     // List of valid ERC20 tokens that can be deposit in 'balance tree'
     address[] public tokens;
-    mapping(uint => address) tokenList;
+    mapping(uint => address) public tokenList;
     uint constant MAX_TOKENS = 0xFFFFFFFF;
     uint public feeAddToken = 0.01 ether;
 
@@ -55,25 +55,35 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     // Forces 'operator' to add all on chain transactions
     uint256 public miningOnChainTxsHash;
 
-    // Hash of all on chain transactions ( will be forged in two batches )
-    // Forces 'operator' to add all on chain transactions
-    uint256 fillingOnChainTxsHash = 0;
+    /**
+     * @dev Struct that contains all the information to forge future OnchainTx
+     * @param fillingOnChainTxsHash  hash of all on chain transactions ( will be forged in two batches )
+     * @param totalFillingOnChainFee poseidon hash function address
+     * @param currentOnChainTx fees of all on-chain transactions that will be on minninf the next batch
+     */
+    struct fillingInfo {
+        uint256 fillingOnChainTxsHash;
+        uint256 totalFillingOnChainFee;
+        uint256 currentOnChainTx;
+    }
+
+    // batchNum --> filling information
+    mapping(uint256 => fillingInfo) public fillingMap;
+
+    uint256 public currentFillingBatch;
 
     // Fees of all on-chain transactions which goes to the operator that will forge the batch
-    uint256 totalMinningOnChainFee;
-    // Fees of all on-chain transactions that will be on minninf the next batch
-    uint256 totalFillingOnChainFee;
+    uint256 public totalMinningOnChainFee;
 
     // Fees recollected for every on-chain transaction
-    uint constant public FEE_ONCHAIN_TX = 0.1 ether;
-    uint constant public FEE_OFFCHAIN_DEPOSIT = 0.001 ether;
+
+    uint256 public feeOnchainTx = 0.1 ether;
+    uint256 public depositFeeMul = 1 ether; // 18 decimals
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;
     // maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
-    // current on chain transactions
-    uint public currentOnChainTx = 0;
 
     // Flag to determine if the mechanism to forge batch has been initialized
     bool initialized = false;
@@ -177,7 +187,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param fromBabyPubKey public key babyjubjub represented as point (Ax, Ay)
      * @param toEthAddress ethereum Address
      * @param toBabyPubKey public key babyjubjub represented as point (Ax, Ay)
-     * @param onChainFee fee payed for the on-chain transaction sender
      */
     function _updateOnChainHash(
         uint256 txData,
@@ -185,30 +194,39 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         address fromEthAddress,
         uint256[2] memory fromBabyPubKey,
         address toEthAddress,
-        uint256[2] memory toBabyPubKey,
-        uint256 onChainFee
+        uint256[2] memory toBabyPubKey
     ) private {
+
+        // Retrieve current fillingOnchainHash
+        fillingInfo storage currentFilling = fillingMap[currentFillingBatch];
+
         // Calculate onChain Hash
         Entry memory onChainData = buildOnChainData(fromBabyPubKey[0], fromBabyPubKey[1],
         toEthAddress, toBabyPubKey[0], toBabyPubKey[1]);
         uint256 hashOnChainData = hashEntry(onChainData);
-        Entry memory onChainHash = buildOnChainHash(fillingOnChainTxsHash, txData, loadAmount,
+        Entry memory onChainHash = buildOnChainHash(currentFilling.fillingOnChainTxsHash, txData, loadAmount,
             hashOnChainData, fromEthAddress);
-        fillingOnChainTxsHash = hashEntry(onChainHash);
+        currentFilling.fillingOnChainTxsHash = hashEntry(onChainHash);
 
         // Update number of on-chain transactions
-        currentOnChainTx++;
+        currentFilling.currentOnChainTx++;
 
         // The burned fee depends on how many on-chain transactions have been taken place the last batch
-        // It grows linearly to a maximum of 33% of the onChainFee
-        uint256 burnedFee = (onChainFee * currentOnChainTx) / (MAX_ONCHAIN_TX * 3);
+        // It grows linearly to a maximum of 33% of the feeOnchainTx
+        uint256 burnedFee = (feeOnchainTx * currentFilling.currentOnChainTx) / (MAX_ONCHAIN_TX * 3);
         address(0).transfer(burnedFee);
         // Update total on-chain fees
-        totalFillingOnChainFee += onChainFee - burnedFee;
-
+        currentFilling.totalFillingOnChainFee += feeOnchainTx - burnedFee;
+        
         // trigger on chain tx event event
-        emit OnChainTx(getStateDepth(), bytes32(txData), loadAmount, fromEthAddress, fromBabyPubKey[0], fromBabyPubKey[1],
+        emit OnChainTx(currentFillingBatch, bytes32(txData), loadAmount, fromEthAddress, fromBabyPubKey[0], fromBabyPubKey[1],
         toEthAddress, toBabyPubKey[0], toBabyPubKey[1]);
+
+         // if the currentFilling slot have all the OnChainTx possible, add a new element to the array
+        if (currentFilling.currentOnChainTx >= MAX_ONCHAIN_TX) {
+            feeOnchainTx = updateOnchainFee(currentFilling.currentOnChainTx, feeOnchainTx);
+            currentFillingBatch++;
+        }
     }
 
     /**
@@ -225,30 +243,38 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         address ethAddress,
         uint256[2] memory babyPubKey
     ) public payable {
-        require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
+        // Onchain fee + deposit fee
+        uint256 totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
+        require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
         require(ethAddress != address(0), 'Must specify withdraw address');
         require(tokenList[tokenId] != address(0), 'token has not been registered');
-        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
 
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
         require(leaf.ethAddress == address(0), 'leaf already exist');
-
+        
         // Get token deposit on rollup smart contract
         require(depositToken(tokenId, loadAmount), 'Fail deposit ERC20 transaction');
 
         // Build txData for deposit
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
-        _updateOnChainHash(uint256(txDataDeposit), loadAmount, ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
 
         // Increment deposit count in the batch that will be forged
-        batchToInfo[getStateDepth()+2].depositOnChainCount++;
+        batchToInfo[currentFillingBatch+2].depositOnChainCount++;
 
         // Insert leaf informations
-        leaf.forgedBatch = uint64(getStateDepth()+2);
-        leaf.relativeIndex = batchToInfo[getStateDepth()+2].depositOnChainCount;
+        leaf.forgedBatch = uint64(currentFillingBatch+2);
+        leaf.relativeIndex = batchToInfo[currentFillingBatch+2].depositOnChainCount;
         leaf.ethAddress = ethAddress;
+
+        // Burn deposit fee
+        address(0).transfer(totalFee - feeOnchainTx);
+        
+        _updateOnChainHash(uint256(txDataDeposit), loadAmount, ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)]);
+
+        // Return remaining ether to the msg.sender    
+        msg.sender.transfer(msg.value - totalFee);
     }
 
    /**
@@ -270,9 +296,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         leafInfo storage leaf = treeInfo[uint256(keccak256(abi.encodePacked(babyPubKey,tokenId)))];
         require(leaf.ethAddress == address(0), 'leaf already exist');
-
-        // Burn fee
-        address(0).transfer(FEE_OFFCHAIN_DEPOSIT);
 
         // Build txData for deposit off-chain
         bytes32 txDataDeposit = buildTxData(0, tokenId, 0, 0, 0, true, true);
@@ -302,8 +325,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint128 loadAmount,
         uint32 tokenId
     ) public payable{
-        require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
-        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        uint256 totalFee = feeOnchainTx;
+        require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
 
@@ -315,7 +338,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         // Build txData for deposit on top
         bytes32 txDataDepositOnTop = buildTxData(0, tokenId, 0, 0, 0, true, false);
-        _updateOnChainHash(uint256(txDataDepositOnTop), loadAmount, leaf.ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
+        _updateOnChainHash(uint256(txDataDepositOnTop), loadAmount, leaf.ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)]);
+
+        // Return remaining ether to the msg.sender    
+        msg.sender.transfer(msg.value - totalFee);
     }
 
     /**
@@ -331,8 +357,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint16 amountF,
         uint32 tokenId
     ) public payable{
-        require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
-        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        uint256 totalFee = feeOnchainTx;
+        require(msg.value >= totalFee, 'Amount deposited less than fee required');
 
         leafInfo storage fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
         require(fromLeaf.ethAddress == msg.sender, 'Sender does not match identifier balance tree');
@@ -343,7 +369,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Build txData for transfer
         bytes32 txDataTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
         _updateOnChainHash(uint256(txDataTransfer), 0, fromLeaf.ethAddress, fromBabyPubKey,
-         toLeaf.ethAddress, toBabyPubKey, msg.value);
+         toLeaf.ethAddress, toBabyPubKey);
+
+        // Return remaining ether to the msg.sender    
+        msg.sender.transfer(msg.value - totalFee);
     }
 
 
@@ -365,8 +394,9 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint256[2] memory toBabyPubKey,
         uint16 amountF
     ) public payable{
-        require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
-        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        // Onchain fe + deposit Fee
+        uint256 totalFee = feeOnchainTx + (depositFeeMul / 1 ether) * feeOnchainTx;        
+        require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
         require(fromEthAddress != address(0), 'Must specify withdraw address');
@@ -386,16 +416,23 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         // Build txData for DepositAndtransfer
         bytes32 txDataDepositAndTransfer = buildTxData(amountF, tokenId, 0, 0, 0, true, true);
-        _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, fromEthAddress, fromBabyPubKey,
-        toLeaf.ethAddress, toBabyPubKey, msg.value);
 
         // Increment index leaf balance tree
-        batchToInfo[getStateDepth()+2].depositOnChainCount++;
+        batchToInfo[currentFillingBatch + 2].depositOnChainCount++;
 
         // Insert tree informations
-        fromLeaf.forgedBatch = uint64(getStateDepth()+2); //batch it will be forged
-        fromLeaf.relativeIndex = batchToInfo[getStateDepth()+2].depositOnChainCount;
+        fromLeaf.forgedBatch = uint64(currentFillingBatch + 2); // batch wich will be forged
+        fromLeaf.relativeIndex = batchToInfo[currentFillingBatch + 2].depositOnChainCount;
         fromLeaf.ethAddress = fromEthAddress;
+        
+        // Burn deposit fee
+        address(0).transfer(totalFee - feeOnchainTx);
+
+        _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, fromEthAddress, fromBabyPubKey,
+        toLeaf.ethAddress, toBabyPubKey);
+
+        // Return remaining ether to the msg.sender    
+        msg.sender.transfer(msg.value - totalFee);
     }
 
 
@@ -411,15 +448,18 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint32 tokenId,
         uint16 amountF
     ) public payable{
-        require(msg.value >= FEE_ONCHAIN_TX, 'Amount deposited less than fee required');
-        require(currentOnChainTx < MAX_ONCHAIN_TX, 'Reached maximum number of on-chain transactions');
+        uint256 totalFee = feeOnchainTx;
+        require(msg.value >= totalFee, 'Amount deposited less than fee required');
 
         leafInfo memory fromLeaf = treeInfo[uint256(keccak256(abi.encodePacked(fromBabyPubKey,tokenId)))];
         require(fromLeaf.ethAddress == msg.sender, 'Sender does not match identifier balance tree');
 
         // Build txData for withdraw
         bytes32 txDataWithdraw = buildTxData(amountF, tokenId, 0, 0, 0, true, false);
-        _updateOnChainHash(uint256(txDataWithdraw), 0, msg.sender, fromBabyPubKey, address(0), [uint256(0),uint256(0)], msg.value);
+        _updateOnChainHash(uint256(txDataWithdraw), 0, msg.sender, fromBabyPubKey, address(0), [uint256(0),uint256(0)]);
+
+        // Return remaining ether to the msg.sender    
+        msg.sender.transfer(msg.value - totalFee);
     }
 
     /**
@@ -499,9 +539,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
         uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
+        // Deposit off-chain fee * depositOffchainLength
+        uint256 totalFee = (depositFeeMul / 1 ether) * feeOnchainTx * depositOffChainLength;
         // Operator must pay for every off-chain deposit
-        require(msg.value >= FEE_OFFCHAIN_DEPOSIT*depositOffChainLength, 'Amount deposited less than fee required');
-    
+        require(msg.value >= totalFee, 'Amount deposited less than fee required');
+
+        // Burn deposit off-chain fee
+        address(0).transfer(totalFee);
+
         // Add deposits off-chain
         for (uint32 i = 0; i < depositOffChainLength; i++) {  
             uint32 initialByte = DEPOSIT_BYTES*i;
@@ -525,22 +570,30 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
             'zk-snark proof is not valid');
 
+        fillingInfo storage currentFilling = fillingMap[getStateDepth()]; // curren batch filling Info
+
+        // Clean fillingOnChainTxsHash an its fees
+        uint payOnChainFees = totalMinningOnChainFee;
+
+        miningOnChainTxsHash = currentFilling.fillingOnChainTxsHash;
+        totalMinningOnChainFee = currentFilling.totalFillingOnChainFee;
+
+        // If the current state does not match currentFillingBatch means that
+        // currentFillingBatch > getStateDepth(), and that batch fees were already updated
+        if (getStateDepth() == currentFillingBatch) { 
+            feeOnchainTx = updateOnchainFee(currentFilling.currentOnChainTx, feeOnchainTx);
+            currentFillingBatch++;
+        }
+        delete fillingMap[getStateDepth()];
+
+        // Update deposit fee
+        depositFeeMul = updateDepositFee(input[finalIdx], depositCount, depositFeeMul);
+
         // Update state roots
         stateRoots.push(bytes32(input[newStateRootInput]));
 
         // Update exit roots
         exitRoots.push(bytes32(input[newExitRootInput]));
-
-        // Clean fillingOnChainTxsHash an its fees
-        uint payOnChainFees = totalMinningOnChainFee;
-
-        miningOnChainTxsHash = fillingOnChainTxsHash;
-        fillingOnChainTxsHash = 0;
-        totalMinningOnChainFee = totalFillingOnChainFee;
-        totalFillingOnChainFee = 0;
-
-        // Update number of on-chain transactions
-        currentOnChainTx = 0;
 
         // Calculate fees and pay them
         withdrawTokens([bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])],
@@ -549,7 +602,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         // Pay onChain transactions fees
         beneficiaryAddress.transfer(payOnChainFees);
 
-        // event with all compressed transactions given its batch number
+        // Return remaining ether to the msg.sender    
+        beneficiaryAddress.transfer(msg.value - totalFee);
+
+        // Event with all compressed transactions given its batch number
         emit ForgeBatch(getStateDepth(), block.number);
     }
 
@@ -642,6 +698,14 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(leaf.forgedBatch-1 <= getStateDepth(), 'batch must be forged');
         return (batchToInfo[leaf.forgedBatch-1].lastLeafIndex + leaf.relativeIndex);
         }
+    }
+
+     /**
+     * @dev cCalculates current deposit fee
+     * @return current deposit fee
+     */
+    function getCurrentDepositFee() public view returns (uint256) {
+        return (depositFeeMul / 1 ether) * feeOnchainTx;
     }
     ///////////
     // helpers ERC20 functions

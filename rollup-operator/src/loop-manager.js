@@ -79,6 +79,7 @@ class LoopManager{
         this.poolTx = poolTx;
         this.opManager = opManager;
         this.cliServerProof = cliServerProof;
+        this.mulDepositFee = 1.01;
 
         this.registerId = [];
         this.state = state.SYNCHRONIZING;
@@ -138,11 +139,8 @@ class LoopManager{
         // get slot deadline
         this.slotDeadline = await this.posSynch.getSlotDeadline();
         
-        // get fee for deposits off-chain
-        const feeWei = await this.rollupSynch.getFeeDepOffChain();
-        const feeEth = this.web3.utils.fromWei(feeWei.toString() , "ether");
-        this.feeDepOffChain = Number(feeEth);
-        this.poolTx.setFeeDeposit(this.feeDepOffChain);
+        // get deposit fees
+        this._getDepositFee();
     }
 
     /**
@@ -382,6 +380,10 @@ class LoopManager{
      * Send zkSnark input to sever-proof
      */
     async _buildBatch() {
+
+        // Update deposit fees 
+        this._getDepositFee();
+        
         // Check if batch has been built
         if (this.infoCurrentBatch.waiting) this.infoCurrentBatch.waiting = false;
 
@@ -392,6 +394,7 @@ class LoopManager{
             await this.poolTx.fillBatch(bb);
             this.infoCurrentBatch.batchData = bb;
             this.infoCurrentBatch.builded = true;
+            this.infoCurrentBatch.depositFee = this.feeDepOffChain;
         }
 
         // Check server proof is available
@@ -427,7 +430,9 @@ class LoopManager{
             const proofServer = generateCall(res.data.proof);
             const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
             const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
-            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.feeDepOffChain;
+
+            // + 1% in case some batch is fullfilled and the fee increases, the remaining fee is transfer back to the operator
+            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.infoCurrentBatch.depositFee * this.mulDepositFee;
             
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
@@ -607,7 +612,13 @@ class LoopManager{
                 }
             });
     }
-
+    async _getDepositFee(){
+        // get fee for deposits off-chain
+        const feeWei = await this.rollupSynch.getFeeDepOffChain();
+        const feeEth = this.web3.utils.fromWei(feeWei.toString() , "ether");
+        this.feeDepOffChain = Number(feeEth);
+        this.poolTx.setFeeDeposit(this.feeDepOffChain);
+    }
     /**
      * Checks and log if slot deadline has been reached
      * @param {Number} currentBlock

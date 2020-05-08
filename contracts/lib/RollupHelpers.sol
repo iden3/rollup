@@ -328,4 +328,37 @@ contract RollupHelpers {
     }
     return ecrecover(msgHash, v, r, s);
   }
+
+    /**
+    * @dev update on-chain fees
+    * it updates every batch if is full or is build
+    * @param onChainTxCount number of on-chain transactions in the same batch
+    * @param currentFee current on-chain fee
+    * @return newFee
+    */
+  function updateOnchainFee(uint256 onChainTxCount, uint256 currentFee) internal pure returns (uint256 newFee) {
+      if (10 < onChainTxCount)
+          newFee = (currentFee*101)/100;
+      else if (10 > onChainTxCount)
+          newFee = (currentFee*99)/100;
+      else
+          newFee = currentFee;
+  }
+
+    /**
+    * @dev update deposit fee
+    * It updates every batch
+    * @param lastLeafIndex last leaf added
+    * @param depositCount number of deposits in the same batch
+    * @param oldFee current deposit fee
+    * @return newFee
+    */
+  function updateDepositFee(uint256 lastLeafIndex, uint32 depositCount, uint256 oldFee) internal pure returns (uint256 newFee) {
+      newFee = oldFee;
+      if ((lastLeafIndex >> 22) > 0) {
+          for (uint32 i = 0; i < depositCount; i++) {
+              newFee = newFee * 10000005 / 10000000;
+          }
+      }
+  }
 }

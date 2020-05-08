@@ -58,7 +58,7 @@ contract("Synchronizer", (accounts) => {
             if (params.depositOffChainData){
                 compressedOnChain = `0x${(params.depositOffChainData).toString("hex")}`;
                 const numDep = params.depositOffChainData.length / 88;
-                const feeDep = Scalar.e(await insRollupTest.FEE_OFFCHAIN_DEPOSIT());
+                const feeDep = Scalar.e(await insRollupTest.getCurrentDepositFee());
                 const amountToPay = Scalar.mul(feeDep, numDep);
                 config.value = amountToPay.toString();                
             }

@@ -17,6 +17,7 @@ const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 const Rollup = artifacts.require("../contracts/Rollup");
 const RollupDB = require("../../js/rollupdb");
+const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 
 contract("Rollup - RollupPoS", (accounts) => {
@@ -138,7 +139,10 @@ contract("Rollup - RollupPoS", (accounts) => {
         const balOpBeforeForge = await getEtherBalance(operator1);
         // Forge genesis batch by operator 1
         await insRollupPoS.commitBatch(hashChain.pop(), `0x${block.getDataAvailable().toString("hex")}`, [], {from: operator1});
-        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, [], {from: operator1});
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
+        // Consolidate Batch
+        await rollupDB.consolidate(block);
+
         // Build inputs
         const block1 = await rollupDB.buildBatch(maxTx, nLevels);
         const tx = manageEvent(eventTmp.logs[0]);
@@ -148,10 +152,14 @@ contract("Rollup - RollupPoS", (accounts) => {
 
         // Forge batch by operator 1
         await insRollupPoS.commitBatch(hashChain.pop(), `0x${block1.getDataAvailable().toString("hex")}`, [], {from: operator1});
-        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, [], {from: operator1});
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
+        // Consolidate Batch
+        await rollupDB.consolidate(block1);
+
         // Check balances
         const balOpAfterForge = await getEtherBalance(operator1);
-        expect(Math.ceil(balOpBeforeForge) + 1).to.be.equal(Math.ceil(balOpAfterForge));
+
+        expect(balOpBeforeForge).to.be.lessThan(balOpAfterForge);
 
         // Retrieve off-chain data forged
         // Step1: Get block number from 'ForgeBatch' event triggered by Rollup.sol
@@ -187,5 +195,46 @@ contract("Rollup - RollupPoS", (accounts) => {
         const decodedData2 = decodeMethod(resTx.input);
         expect(decodedData2.params[1].value).to.be.
             equal(`0x${block1.getDataAvailable().toString("hex")}`);
+
+    });
+
+    it("Forge off-chain deposit", async () => {
+        const proofA = ["0", "0"];
+        const proofB = [["0", "0"], ["0", "0"]];
+        const proofC = ["0", "0"];
+
+        // Babyjub random wallet
+        const wallet2 = BabyJubWallet.createRandom();
+        const Ax2 = wallet2.publicKey[0].toString(16);
+        const Ay2 = wallet2.publicKey[1].toString(16);
+
+        // Create the off-chain deposit and add it to the Batchbuilder
+        const batch = await rollupDB.buildBatch(maxTx, nLevels);
+
+        const txOnchain = {
+            fromAx: Ax2,
+            fromAy:  Ay2,
+            fromEthAddr: id1,
+            toAx: exitAx,
+            toAy: exitAy,
+            toEthAddr: exitEthAddr,
+            coin: tokenId,
+            onChain: true
+        };
+        batch.addTx(txOnchain);
+        batch.addDepositOffChain(txOnchain);
+
+        await batch.build();
+
+        // Encode depositOffchain
+        const encodedDeposits =  batch.getDepOffChainData();
+
+        // Build inputs
+        const inputs = buildPublicInputsSm(batch);
+
+        // Forge batch by operator 1
+        await insRollupPoS.commitBatch(hashChain.pop(), `0x${batch.getDataAvailable().toString("hex")}`, encodedDeposits, {from: operator1});
+        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, encodedDeposits, {from: operator1, value: web3.utils.toWei("1", "ether")});
+        await rollupDB.consolidate(batch);
     });
 });

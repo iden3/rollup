@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-syntax */
 const ethers = require('ethers');
+const { Scalar } = require('ffjavascript');
 
 const { fix2float } = require('../../../../js/utils');
 const { getGasPrice } = require('./utils');
@@ -33,11 +34,13 @@ async function depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenI
     const address = ethAddress || await walletEth.getAddress();
     const amountF = fix2float(amount);
 
-    const feeOnchainTx = await contractWithSigner.FEE_ONCHAIN_TX();
+    const feeOnchainTx = await contractWithSigner.feeOnchainTx();
+    const feeDeposit = await contractWithSigner.getCurrentDepositFee();
+
     const overrides = {
         gasLimit,
         gasPrice: await getGasPrice(gasMultiplier, provider),
-        value: feeOnchainTx,
+        value: `0x${(Scalar.add(feeOnchainTx, feeDeposit)).toString(16)}`,
     };
 
     try {

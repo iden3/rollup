@@ -40,7 +40,7 @@ async function gunOnChainTx() {
     walletEth = walletEth.connect(provider);
 
     const contractWithSigner = new ethers.Contract(actualConfig.rollupAddress, abiRollup, walletEth);
-    const feeOnchainTx = await contractWithSigner.FEE_ONCHAIN_TX();
+    const feeOnchainTx = await contractWithSigner.feeOnchainTx();
     const overrides = {
         gasLimit: 5000000,
         gasPrice: await getGasPrice(gasMul, provider),

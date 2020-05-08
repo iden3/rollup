@@ -172,9 +172,7 @@ class Synchronizer {
             .call({from: this.ethAddress}));
         this.nLevels = Number(await this.rollupContract.methods.NLevels()
             .call({from: this.ethAddress}));
-        this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.FEE_OFFCHAIN_DEPOSIT()
-            .call({from: this.ethAddress}));
-
+      
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -250,6 +248,10 @@ class Synchronizer {
                     continue;
                 }
 
+                // update deposit fee
+                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
+                    .call({from: this.ethAddress}));
+                  
                 if (currentBatchDepth > lastBatchSaved) {
                     const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber, currentBlock);
                     // If no event is found, tree is not updated
@@ -1001,8 +1003,8 @@ class Synchronizer {
      * @returns {Scalar} - Fee deposit off-cahin in weis
      */
     async getFeeDepOffChain() {
-        if (this.slotDeadline) return this.slotDeadline;
-        return Scalar.e(await this.rollupContract.methods.FEE_OFFCHAIN_DEPOSIT()
+        if (this.feeDepOffChain) return this.feeDepOffChain;
+        return Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
             .call({from: this.ethAddress}));
     }
 }
