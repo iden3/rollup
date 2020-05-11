@@ -10,7 +10,7 @@ const SMTMemDB = require("circomlib/src/smt_memdb");
 
 const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 const { BabyJubWallet } = require("../../rollup-utils/babyjub-wallet");
-const { getEtherBalance, getPublicPoBVariables} = require("./helpers/helpers");
+const { getEtherBalance, getPublicPoBVariables, toFixedDown} = require("./helpers/helpers");
 
 const abiDecoder = require("abi-decoder");
 abiDecoder.addABI(RollupPoB.abi);
@@ -32,6 +32,7 @@ contract("RollupPoB", (accounts) => {
     const maxTx = 10;
     const addressRollupTest = "0x0000000000000000000000000000000000000001";
     const burnAddress = "0x0000000000000000000000000000000000000000";
+    const url = "localhost";
     const operators = [];
     const slotBlock = [];
     let blocksPerSlot;
@@ -108,28 +109,28 @@ contract("RollupPoB", (accounts) => {
 
             // operator makes a bid
             let initBalOp0 = await getEtherBalance(operators[0].address);
-            const resBid = await insRollupPoB.bid(slot, {
+            const resBid = await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             let balOp0 = await getEtherBalance(operators[0].address);
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp0, -2)).to.be.equal(Math.round(initBalOp0 - amountMinBidEther, -2));
+            expect(toFixedDown(balOp0, 1)).to.be.equal(toFixedDown((initBalOp0 - amountMinBidEther), 1));
 
             // operator overbid
             let initBalOp1 = await getEtherBalance(operators[1].address);
-            const resBid2 = await insRollupPoB.bid(slot, {
+            const resBid2 = await insRollupPoB.bid(slot, url, {
                 from: operators[1].address, value: amountWei
             });
             let balOp1 = await getEtherBalance(operators[1].address);
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp1, -2)).to.be.equal(Math.round(initBalOp1 - amount, -2));
+            expect(toFixedDown(balOp1, 1)).to.be.equal(toFixedDown((initBalOp1 - amount), 1));
             
             // first operator withdraws his amount
             let withdrawBid = await insRollupPoB.withdrawBid(operators[0].address);
             await insRollupPoB.withdraw({from: operators[0].address});
             let balOp0_2 = await getEtherBalance(operators[0].address);
             expect(withdrawBid.toString()).to.be.equal(amountMinBid.toString());
-            expect(Math.round(balOp0_2, -2)).to.be.equal(Math.round(balOp0 + amountMinBidEther, -2));
+            expect(toFixedDown(balOp0_2, 1)).to.be.equal(toFixedDown((balOp0 + amountMinBidEther), 1));
 
             //check SC balance
             let balContract = await getEtherBalance(rollupPoBAddress);
@@ -149,21 +150,21 @@ contract("RollupPoB", (accounts) => {
             let initBalOp0 = await getEtherBalance(operators[0].address);
             let bonusBalance0 = Number(await insRollupPoB.bonusBalance(operators[0].address));
             let bonusBalance0Ether = Number(web3.utils.fromWei(bonusBalance0.toString(), "ether"));
-            const resBid = await insRollupPoB.bid(slot, {
+            const resBid = await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             let balOp0 = await getEtherBalance(operators[0].address);
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp0, -2)).to.be.equal(Math.round(initBalOp0 - amountMinBidEther, -2));
+            expect(toFixedDown(balOp0, 1)).to.be.equal(toFixedDown((initBalOp0 - amountMinBidEther), 1));
 
             // operator overbid
             let initBalOp1 = await getEtherBalance(operators[1].address);
-            const resBid2 = await insRollupPoB.bid(slot, {
+            const resBid2 = await insRollupPoB.bid(slot, url, {
                 from: operators[1].address, value: amountWei
             });
             let balOp1 = await getEtherBalance(operators[1].address);
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp1, -2)).to.be.equal(Math.round(initBalOp1 - amount, -2));
+            expect(toFixedDown(balOp1, 1)).to.be.equal(toFixedDown((initBalOp1 - amount), 1));
             
             // first operator withdraws his amount
             let withdrawBid = await insRollupPoB.withdrawBid(operators[0].address);
@@ -171,7 +172,7 @@ contract("RollupPoB", (accounts) => {
             expect(withdrawBid.toString()).to.be.equal(amountTotalBid.toString());
             await insRollupPoB.withdraw({from: operators[0].address});
             let balOp0_2 = await getEtherBalance(operators[0].address);
-            expect(Math.round(balOp0_2, -2)).to.be.equal(Math.round(balOp0 + amountMinBidEther + bonusBalance0Ether, -2));
+            expect(toFixedDown(balOp0_2, 1)).to.be.equal(toFixedDown((balOp0 + amountMinBidEther + bonusBalance0Ether), 1));
 
             // check winner
             let winner = await insRollupPoB.slotWinner(slot);
@@ -190,21 +191,21 @@ contract("RollupPoB", (accounts) => {
             let initBalOp0 = await getEtherBalance(operators[0].address);
             let bonusBalance0 = Number(await insRollupPoB.bonusBalance(operators[0].address));
             let bonusBalance0Ether = Number(web3.utils.fromWei(bonusBalance0.toString(), "ether"));
-            const resBid = await insRollupPoB.bid(slot, {
+            const resBid = await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             let balOp = await getEtherBalance(operators[0].address);
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp, -2)).to.be.equal(Math.round(initBalOp0 - amountMinBidEther, -2));
+            expect(toFixedDown(balOp, 1)).to.be.equal(toFixedDown((initBalOp0 - amountMinBidEther), 1));
 
             // operator overbid
             let initBalOp1 = await getEtherBalance(operators[1].address);
-            const resBid2 = await insRollupPoB.bidWithDifferentBeneficiary(slot, beneficiaryAddress, {
+            const resBid2 = await insRollupPoB.bidWithDifferentBeneficiary(slot, url, beneficiaryAddress, {
                 from: operators[1].address, value: amountWei
             });
             let balOp1 = await getEtherBalance(operators[1].address);
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp1, -2)).to.be.equal(Math.round(initBalOp1 - amount, -2));
+            expect(toFixedDown(balOp1, 1)).to.be.equal(toFixedDown((initBalOp1 - amount), 1));
 
             // first operator withdraws his amount
             let withdrawBid = await insRollupPoB.withdrawBid(operators[0].address);
@@ -212,7 +213,7 @@ contract("RollupPoB", (accounts) => {
             await insRollupPoB.withdraw({from: operators[0].address});
             let balOp0_2 = await getEtherBalance(operators[0].address);
             expect(withdrawBid.toString()).to.be.equal(amountTotalBid.toString());
-            expect(Math.round(balOp0_2, -2)).to.be.equal(Math.round(balOp + amountMinBidEther + bonusBalance0Ether, -2));
+            expect(toFixedDown(balOp0_2, 1)).to.be.equal(toFixedDown((balOp + amountMinBidEther + bonusBalance0Ether), 1));
 
             // check winner
             let winner = await insRollupPoB.slotWinner(slot);
@@ -231,21 +232,21 @@ contract("RollupPoB", (accounts) => {
             let initBalOp0 = await getEtherBalance(operators[0].address);
             let bonusBalance0 = Number(await insRollupPoB.bonusBalance(operators[0].address));
             let bonusBalance0Ether = Number(web3.utils.fromWei(bonusBalance0.toString(), "ether"));
-            const resBid = await insRollupPoB.bid(slot, {
+            const resBid = await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             let balOp0 = await getEtherBalance(operators[0].address);
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp0, -2)).to.be.equal(Math.round(initBalOp0 - amountMinBidEther, -2));
+            expect(toFixedDown(balOp0, 1)).to.be.equal(toFixedDown((initBalOp0 - amountMinBidEther), 1));
 
             // operator overbid
             let initBalOp1 = await getEtherBalance(operators[1].address);
-            const resBid2 = await insRollupPoB.bidRelay(slot, beneficiaryAddress, forgerAddress, {
+            const resBid2 = await insRollupPoB.bidRelay(slot, url, beneficiaryAddress, forgerAddress, {
                 from: operators[1].address, value: amountWei
             });
             let balOp1 = await getEtherBalance(operators[1].address);
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp1, -2)).to.be.equal(Math.round(initBalOp1 - amount, -2));
+            expect(toFixedDown(balOp1, 1)).to.be.equal(toFixedDown((initBalOp1 - amount), 1));
 
             // first operator withdraws his amount
             let withdrawBid = await insRollupPoB.withdrawBid(operators[0].address);
@@ -253,7 +254,7 @@ contract("RollupPoB", (accounts) => {
             await insRollupPoB.withdraw({from: operators[0].address});
             let balOp0_2 = await getEtherBalance(operators[0].address);
             expect(withdrawBid.toString()).to.be.equal(amountTotalBid.toString());
-            expect(Math.round(balOp0_2, -2)).to.be.equal(Math.round(balOp0 + amountMinBidEther + bonusBalance0Ether, -2));
+            expect(toFixedDown(balOp0_2, 1)).to.be.equal(toFixedDown((balOp0 + amountMinBidEther + bonusBalance0Ether), 1));
 
             // check winner
             let winner = await insRollupPoB.slotWinner(slot);
@@ -310,11 +311,11 @@ contract("RollupPoB", (accounts) => {
             let initBalOp0 = await getEtherBalance(operators[0].address);
             let bonusBalance0 = Number(await insRollupPoB.bonusBalance(operators[0].address));
             let bonusBalance0Ether = Number(web3.utils.fromWei(bonusBalance0.toString(), "ether"));
-            const resBid = await insRollupPoB.bidRelayAndWithdrawAddress(slot, beneficiaryAddress, forgerAddress,
+            const resBid = await insRollupPoB.bidRelayAndWithdrawAddress(slot, url, beneficiaryAddress, forgerAddress,
                 withdrawAddress, { from: operators[0].address, value: amountMinBid });
             let balOp0 = await getEtherBalance(operators[0].address);
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp0, -2)).to.be.equal(Math.round(initBalOp0 - amountMinBidEther, -2));
+            expect(toFixedDown(balOp0, 1)).to.be.equal(toFixedDown((initBalOp0 - amountMinBidEther), 1));
 
             // check winner
             let winner = await insRollupPoB.slotWinner(slot);
@@ -325,12 +326,12 @@ contract("RollupPoB", (accounts) => {
 
             // operator overbid
             let initBalOp1 = await getEtherBalance(operators[1].address);
-            const resBid2 = await insRollupPoB.bid(slot,{
+            const resBid2 = await insRollupPoB.bid(slot, url, {
                 from: operators[1].address, value: amountWei
             });
             let balOp1 = await getEtherBalance(operators[1].address);
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp1, -2)).to.be.equal(Math.round(initBalOp1 - amount, -2));
+            expect(toFixedDown(balOp1, 1)).to.be.equal(toFixedDown((initBalOp1 - amount), 1));
 
             // first operator withdraws his amount
             let initBalWithdrawAddress = await getEtherBalance(withdrawAddress);
@@ -344,7 +345,7 @@ contract("RollupPoB", (accounts) => {
             await insRollupPoB.withdraw({from: withdrawAddress});
             let balWithdrawAddress = await getEtherBalance(withdrawAddress);
             expect(withdrawBid.toString()).to.be.equal(amountTotalBid.toString());
-            expect(Math.round(balWithdrawAddress, -2)).to.be.equal(Math.round(initBalWithdrawAddress + amountMinBidEther + bonusBalance0Ether, -2));
+            expect(toFixedDown(balWithdrawAddress, 1)).to.be.equal(toFixedDown((initBalWithdrawAddress + amountMinBidEther + bonusBalance0Ether), 1));
         });
 
         it("Add Winning Operator with different beneficiary, forger, withdraw address and bonus address", async () => {
@@ -356,11 +357,11 @@ contract("RollupPoB", (accounts) => {
             let initBalOp0 = await getEtherBalance(operators[0].address);
             let op0initBonusBalance = await insRollupPoB.bonusBalance(operators[0].address);
             let bonusInitBonusBalance = await insRollupPoB.bonusBalance(bonusAddress);
-            const resBid = await insRollupPoB.bidWithDifferentAddresses(slot, beneficiaryAddress, forgerAddress,
+            const resBid = await insRollupPoB.bidWithDifferentAddresses(slot, url, beneficiaryAddress, forgerAddress,
                 withdrawAddress, bonusAddress, false, { from: operators[0].address, value: amountMinBid });
             let balOp0 = await getEtherBalance(operators[0].address);
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp0, -2)).to.be.equal(Math.round(initBalOp0, -2) - amountMinBidEther);
+            expect(toFixedDown(balOp0, 1)).to.be.equal(toFixedDown((initBalOp0 - amountMinBidEther), 1));
 
             // check winner
             let winner = await insRollupPoB.slotWinner(slot);
@@ -371,12 +372,12 @@ contract("RollupPoB", (accounts) => {
 
             // operator overbid
             let initBalOp1 = await getEtherBalance(operators[1].address);
-            const resBid2 = await insRollupPoB.bid(slot, {
+            const resBid2 = await insRollupPoB.bid(slot, url, {
                 from: operators[1].address, value: amountWei
             });
             let balOp1 = await getEtherBalance(operators[1].address);
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(Math.round(balOp1, -2)).to.be.equal(Math.round(initBalOp1 - amount, -2));
+            expect(toFixedDown(balOp1, 1)).to.be.equal(toFixedDown((initBalOp1 - amount), 1));
 
             // check bonusBalance of bonusAddress
             let op0BonusBalance = await insRollupPoB.bonusBalance(operators[0].address);
@@ -387,7 +388,7 @@ contract("RollupPoB", (accounts) => {
             // operator overbid with bonusAddress without using bonusBalance
             let initBonusBalance_2 = await insRollupPoB.bonusBalance(bonusAddress);
             let amountWei10 = web3.utils.toWei("10", "ether");
-            const resBid3 = await insRollupPoB.bidWithDifferentAddresses(slot, beneficiaryAddress, forgerAddress,
+            const resBid3 = await insRollupPoB.bidWithDifferentAddresses(slot, url, beneficiaryAddress, forgerAddress,
                 withdrawAddress, bonusAddress, false, { from: operators[0].address, value: amountWei10 });
             expect(resBid3.logs[0].event).to.be.equal("newBestBid");
 
@@ -396,7 +397,7 @@ contract("RollupPoB", (accounts) => {
 
             // operator overbid
             let amountWei15 = web3.utils.toWei("15", "ether");
-            const resBid4 = await insRollupPoB.bid(slot,{
+            const resBid4 = await insRollupPoB.bid(slot, url, {
                 from: operators[1].address, value: amountWei15
             });
             expect(resBid4.logs[0].event).to.be.equal("newBestBid");
@@ -408,12 +409,12 @@ contract("RollupPoB", (accounts) => {
             // operator overbid with bonusAddress using bonusBalance
             let amountWei20 = web3.utils.toWei("20", "ether");
             try {
-                await insRollupPoB.bidWithDifferentAddresses(slot, beneficiaryAddress, forgerAddress, 
+                await insRollupPoB.bidWithDifferentAddresses(slot, url, beneficiaryAddress, forgerAddress, 
                     withdrawAddress, bonusAddress, true, { from: operators[0].address, value: amountWei20 });
             } catch (error) {
                 expect((error.message).includes("To use bonus it is necessary that sender is the bonusAddress")).to.be.equal(true);
             }
-            const resBid5 = await insRollupPoB.bidWithDifferentAddresses(slot, beneficiaryAddress, forgerAddress,
+            const resBid5 = await insRollupPoB.bidWithDifferentAddresses(slot, url, beneficiaryAddress, forgerAddress,
                 withdrawAddress, bonusAddress, true, { from: bonusAddress, value: amountWei20 });
             expect(resBid5.logs[0].event).to.be.equal("newBestBid");
 
@@ -452,7 +453,7 @@ contract("RollupPoB", (accounts) => {
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
             await insRollupPoB.setBlockNumber(slotBlock[0]);
             // operator makes a bid
-            await insRollupPoB.bid(slot, {
+            await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             // set the slot that the previous operator has won
@@ -494,7 +495,7 @@ contract("RollupPoB", (accounts) => {
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
             await insRollupPoB.setBlockNumber(slotBlock[0]);
             // operator makes a bid
-            await insRollupPoB.bid(slot, {
+            await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             // set the slot that the previous operator has won but after the deadline block
@@ -534,7 +535,7 @@ contract("RollupPoB", (accounts) => {
             // reset rollup PoB
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
             await insRollupPoB.setBlockNumber(slotBlock[0]);
-            await insRollupPoB.bid(slot, {
+            await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             // set the slot that the previous operator has won
@@ -581,7 +582,7 @@ contract("RollupPoB", (accounts) => {
             // reset rollup PoB
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
             await insRollupPoB.setBlockNumber(slotBlock[0]);
-            await insRollupPoB.bid(slot, {
+            await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             // set the slot that the previous operator has won
@@ -604,9 +605,9 @@ contract("RollupPoB", (accounts) => {
         it("More options in the auction", async () => {
             let slot = 14;
 
-            let amount05 = 0.5;
-            let amount5 = 5 ;
-            let amount10 = 10;
+            let amount05 = 0.05;
+            let amount5 = 0.5 ;
+            let amount10 = 1;
 
             let amountWei05 = web3.utils.toWei(amount05.toString(), "ether");
             let amountWei5 = web3.utils.toWei(amount5.toString(), "ether");
@@ -639,7 +640,7 @@ contract("RollupPoB", (accounts) => {
             // try to bid for a slot too close
             await insRollupPoB.setBlockNumber(slotBlock[slot-2]);
             try {
-                await insRollupPoB.bid(slot-2, {
+                await insRollupPoB.bid(slot-2, url, {
                     from: operators[0].address, value: amountWei05
                 });
             } catch (error) {
@@ -647,46 +648,46 @@ contract("RollupPoB", (accounts) => {
             }
             // try to bid for a slot with too small amount
             try {
-                await insRollupPoB.bid(slot, {
+                await insRollupPoB.bid(slot, url, {
                     from: operators[0].address, value: amountWei05
                 });
             } catch (error) {
                 expect((error.message).includes("Ether send not enough to enter auction")).to.be.equal(true);
             }
             // operator makes a valid bid
-            const resBid = await insRollupPoB.bid(slot, {
+            const resBid = await insRollupPoB.bid(slot, url, {
                 from: operators[0].address, value: amountMinBid
             });
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            expect(web3.utils.fromWei(resBid.logs[0].args.price, "ether")).to.be.equal("1");
+            expect(web3.utils.fromWei(resBid.logs[0].args.price, "ether")).to.be.equal(amountMinBidEther.toString());
 
             // try to bid that without exceeding 30% of the previous
             try {
-                await insRollupPoB.bid(slot, {
+                await insRollupPoB.bid(slot, url, {
                     from: operators[1].address, value: amountMinBid
                 });
             } catch (error) {
                 expect((error.message).includes("Ether send not enough to outbid current bid")).to.be.equal(true);
             }
             // operator makes a valid bid
-            const resBid2 = await insRollupPoB.bid(slot, {
+            const resBid2 = await insRollupPoB.bid(slot, url, {
                 from: operators[1].address, value: amountWei5 });
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
-            expect(web3.utils.fromWei(resBid2.logs[0].args.price, "ether")).to.be.equal("4.9");
+            expect(web3.utils.fromWei(resBid2.logs[0].args.price, "ether")).to.be.equal((amount5-amountMinBidEther*0.1).toString());
             
             // try to bid that without exceeding 30% of the previous
             try {
-                await insRollupPoB.bid(slot, {
+                await insRollupPoB.bid(slot, url, {
                     from: operators[2].address, value: amountWei5
                 });
             } catch (error) {
                 expect((error.message).includes("Ether send not enough to outbid current bid")).to.be.equal(true);
             }
             // operator makes a valid bid
-            const resBid3 = await insRollupPoB.bid(slot, {
+            const resBid3 = await insRollupPoB.bid(slot, url, {
                 from: operators[2].address, value: amountWei10 });
             expect(resBid3.logs[0].event).to.be.equal("newBestBid");
-            expect(web3.utils.fromWei(resBid3.logs[0].args.price, "ether")).to.be.equal("9.4");
+            expect(web3.utils.fromWei(resBid3.logs[0].args.price, "ether")).to.be.equal((amount10-amount5*0.1-amountMinBidEther*0.1).toString());
 
             await insRollupPoB.setBlockNumber(slotBlock[slot]);
             // try to commit data an operator that is not the winner
@@ -721,11 +722,11 @@ contract("RollupPoB", (accounts) => {
             let amountYY = 22;
             let amountWeiYY = web3.utils.toWei(amountYY.toString(), "ether");
 
-            const resBid = await insRollupPoB.bid(slot, {
+            const resBid = await insRollupPoB.bid(slot, url, {
                 from: operators[4].address, value: amountWei10
             });
             expect(resBid.logs[0].event).to.be.equal("newBestBid");
-            const resBid2 = await insRollupPoB.bid(slot, {
+            const resBid2 = await insRollupPoB.bid(slot, url, {
                 from: operators[5].address, value: amountWei13
             });
             expect(resBid2.logs[0].event).to.be.equal("newBestBid");
@@ -734,14 +735,14 @@ contract("RollupPoB", (accounts) => {
             // 1.3 * 13 = 16.9 --> minBid = 16.9 - bonusBalance[op4] = 15.9
             // try to bid with bid < 15.9
             try {
-                await insRollupPoB.bid(slot, {
+                await insRollupPoB.bid(slot, url, {
                     from: operators[4].address, value: amountWeiX
                 });
             } catch (error) {
                 expect((error.message).includes("Ether send not enough to outbid current bid")).to.be.equal(true);
             }
             // operator makes a bid with bid = 15.9
-            const resBid3 = await insRollupPoB.bid(slot, {
+            const resBid3 = await insRollupPoB.bid(slot, url, {
                 from: operators[4].address, value: amountWeiXX
             });
             expect(resBid3.logs[0].event).to.be.equal("newBestBid");
@@ -750,14 +751,14 @@ contract("RollupPoB", (accounts) => {
             // 1.3 * 16.9 = 22 --> minBid = 22 - bonusBalance[op4] = 22
             // try to bid with bid < 22
             try {
-                await insRollupPoB.bid(slot, {
+                await insRollupPoB.bid(slot, url, {
                     from: operators[4].address, value: amountWeiY
                 });
             } catch (error) {
                 expect((error.message).includes("Ether send not enough to outbid current bid")).to.be.equal(true);
             }
             // operator makes a bid with bid = 22
-            const resBid4 = await insRollupPoB.bid(slot, {
+            const resBid4 = await insRollupPoB.bid(slot, url, {
                 from: operators[4].address, value: amountWeiYY
             });
             expect(resBid4.logs[0].event).to.be.equal("newBestBid");

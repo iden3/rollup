@@ -2,5 +2,6 @@ getIden3.sh
 node_modules
 test/config/*-test.json
 test/config/test.json
+test/config/test-pob.json
 test/server/tmp-*
 test/synch-pool-service/config/*-test.json

@@ -99,9 +99,53 @@ async function getGeneralInfo(rollupSynch, posSynch) {
     return generalInfo;
 }
 
+/**
+ * Get general information regarding operator state
+ * @returns {Object} - operator general information
+ */
+async function getGeneralInfoPob(rollupSynch, pobSynch) {
+    const generalInfo = {};
+    generalInfo["pobSynch"] = {};
+    generalInfo["rollupSynch"] = {};
+
+    const staticDataPoB = await pobSynch.getStaticData();
+    const staticDataRollup = await rollupSynch.getStaticData();
+
+    generalInfo.currentBlock = await pobSynch.getCurrentBlock();
+
+    // PoB
+    generalInfo["pobSynch"].isSynched = await pobSynch.isSynched();
+    generalInfo["pobSynch"].synch = await pobSynch.getSynchPercentage();
+    generalInfo["pobSynch"].currentSlot = await pobSynch.getCurrentSlot();
+
+    // Static Data
+    generalInfo["pobSynch"].contractAddress = staticDataPoB.contractAddress;
+    generalInfo["pobSynch"].blocksPerSlot = staticDataPoB.blocksPerSlot;
+    generalInfo["pobSynch"].slotDeadline = staticDataPoB.slotDeadline;
+    generalInfo["pobSynch"].genesisBlock = staticDataPoB.genesisBlock;
+    generalInfo["pobSynch"].minBid = staticDataPoB.minBid.toString();
+
+    // Core
+    generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
+    generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
+    generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
+    generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+    generalInfo["rollupSynch"].feeDeposit = await rollupSynch.getFeeDepOffChain().toString();
+    generalInfo["rollupSynch"].feeOnChainTx = await rollupSynch.getFeeOnChainTx().toString();
+
+    // StaticData
+    generalInfo["rollupSynch"].contractAddress = staticDataRollup.contractAddress;
+    generalInfo["rollupSynch"].maxTx = staticDataRollup.maxTx;
+    generalInfo["rollupSynch"].maxOnChainTx = staticDataRollup.maxOnChainTx;
+    generalInfo["rollupSynch"].nLevels = staticDataRollup.nLevels;
+
+    return generalInfo;
+}
+
 module.exports = {
     checkEnvVariables,
     checkPassEnv,
     getPassword,
     getGeneralInfo,
+    getGeneralInfoPob
 };

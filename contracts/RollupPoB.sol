@@ -26,7 +26,7 @@ contract RollupPoB is RollupPoBHelpers{
     address payable burn;
 
     // Minimum bid to enter the auction
-    uint public constant MIN_BID = 1 ether;
+    uint public constant MIN_BID = 0.1 ether;
 
     // Minimum next Bid
     uint constant minNumSlots = 2;
@@ -41,6 +41,7 @@ contract RollupPoB is RollupPoBHelpers{
         address forgerAddress;
         address withdrawAddress;
         address bonusAddress;
+        string url;
     }
 
     // Defines bid structure
@@ -79,7 +80,7 @@ contract RollupPoB is RollupPoBHelpers{
     /**
      * @dev Event called when an operator beat the bestBid of the ongoing auction
      */
-    event newBestBid(uint32 slot, uint256 amount, uint256 price, address operator);
+    event newBestBid(uint32 slot, uint256 amount, uint256 price, address operator, string url);
 
     /**
      * @dev RollupPoB constructor
@@ -106,6 +107,7 @@ contract RollupPoB is RollupPoBHelpers{
      */
     function doBid(
         uint32 slot,
+        string memory url,
         address payable beneficiaryAddress,
         address forgerAddress,
         address withdrawAddress,
@@ -130,11 +132,11 @@ contract RollupPoB is RollupPoBHelpers{
             burn.transfer(amount);
             slotBid[slot].initialized = true;
         }
-        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress);
+        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, url);
         slotWinner[slot] = op;
         slotBid[slot].amount = amount;
         infoSlot[slot].slotPrice = amount - infoSlot[slot].accumulatedBonus;
-        emit newBestBid(slot, slotBid[slot].amount, infoSlot[slot].slotPrice, forgerAddress);
+        emit newBestBid(slot, slotBid[slot].amount, infoSlot[slot].slotPrice, forgerAddress, url);
     }
 
     /**
@@ -142,9 +144,9 @@ contract RollupPoB is RollupPoBHelpers{
      * Beneficiary address, forger address, withdraw address and bonus address are the same address ( msg.sender )
      * @param slot slot for which the operator is offering
      */
-    function bid(uint32 slot) external payable {
+    function bid(uint32 slot, string calldata url) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, msg.sender, msg.sender, msg.sender, msg.sender, true);
+        doBid(slot, url, msg.sender, msg.sender, msg.sender, msg.sender, true);
     }
 
     /**
@@ -154,9 +156,9 @@ contract RollupPoB is RollupPoBHelpers{
      * @param slot slot for which the operator is offering
      * @param beneficiaryAddress beneficiary address
      */
-    function bidWithDifferentBeneficiary(uint32 slot, address payable beneficiaryAddress) external payable {
+    function bidWithDifferentBeneficiary(uint32 slot, string calldata url, address payable beneficiaryAddress) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, msg.sender, msg.sender, msg.sender, true);
+        doBid(slot, url, beneficiaryAddress, msg.sender, msg.sender, msg.sender, true);
     }
 
     /**
@@ -167,9 +169,9 @@ contract RollupPoB is RollupPoBHelpers{
      * @param forgerAddress controller address
      * @param beneficiaryAddress beneficiary address
      */
-    function bidRelay(uint32 slot, address payable beneficiaryAddress, address forgerAddress) external payable {
+    function bidRelay(uint32 slot, string calldata url, address payable beneficiaryAddress, address forgerAddress) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, forgerAddress, msg.sender, msg.sender, true);
+        doBid(slot, url, beneficiaryAddress, forgerAddress, msg.sender, msg.sender, true);
     }
 
     /**
@@ -183,12 +185,13 @@ contract RollupPoB is RollupPoBHelpers{
      */
     function bidRelayAndWithdrawAddress(
         uint32 slot,
+        string calldata url,
         address payable beneficiaryAddress,
         address forgerAddress,
         address withdrawAddress
     ) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, forgerAddress, withdrawAddress, msg.sender, true);
+        doBid(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress, msg.sender, true);
     }
 
     /**
@@ -203,6 +206,7 @@ contract RollupPoB is RollupPoBHelpers{
      */
     function bidWithDifferentAddresses(
         uint32 slot,
+        string calldata url,
         address payable beneficiaryAddress,
         address forgerAddress,
         address withdrawAddress,
@@ -210,7 +214,7 @@ contract RollupPoB is RollupPoBHelpers{
         bool useBonus
     ) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus);
+        doBid(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus);
     }
 
     /**
@@ -306,6 +310,25 @@ contract RollupPoB is RollupPoBHelpers{
     }
 
     /**
+     * @dev Retrieve slot winner
+     * @return slot, forger, url, amount
+     */
+    function getWinner(uint slot) public view returns (uint, address, string memory, uint) {
+        uint256 amount = slotBid[slot].amount;
+        address forger = slotWinner[slot].forgerAddress;
+        string memory url = slotWinner[slot].url;
+        return (slot, forger, url, amount);
+    }
+
+     /**
+     * @dev Retrieve slot winner url
+     * @return url
+     */
+    function getWinnerUrl(uint slot) public view returns (string memory) {
+        return slotWinner[slot].url;
+    }
+
+     /**
      * @dev Retrieve block number
      * @return current block number
      */
@@ -338,5 +361,9 @@ contract RollupPoB is RollupPoBHelpers{
      */
     function getBlockBySlot(uint32 slot) public view returns (uint) {
         return (genesisBlock + slot*BLOCKS_PER_SLOT);
+    }
+
+    function fullFilledSlot(uint32 slot) public view returns (bool) {
+        return infoSlot[slot].fullFilled;
     }
 }

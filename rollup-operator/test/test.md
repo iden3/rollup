@@ -14,6 +14,9 @@ Test Token synchronizer:
 Test PoS synchronizer:
   - `npx truffle test ./rollup-operator/test/synch-pos.test.js`
 
+Test PoB synchronizer:
+  - `truffle test ./rollup-operator/test/pob/synch-pob.test.js`
+
 Test pool synchronizer:
   - `npx truffle test ./rollup-operator/test/synch-pool.test.js`
 
@@ -25,6 +28,9 @@ Test operator manager:
 
 All at once:
   - `npx truffle test ./rollup-operator/test/synch-tokens.test.js ; npx truffle test ./rollup-operator/test/synch-pos.test.js; npx truffle test ./rollup-operator/test/synch-pool.test.js; npx truffle test ./rollup-operator/test/synch.test.js; npx truffle test ./rollup-operator/test/op-manager.test.js`
+
+Test interface PoB:
+  - `truffle test ./rollup-operator/test/pob/interface-pob.test.js`
 
 ## Test server proof
 
@@ -46,3 +52,6 @@ Open new terminal and run server-proof service:
 
 Test loop-manager:
   - `npx truffle test ./rollup-operator/test/loop-manager.test.js`
+
+Test loop-manager PoB:
+  - `truffle test ./rollup-operator/test/pob/loop-manager-pob.test.js`
