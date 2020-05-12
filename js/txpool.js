@@ -4,7 +4,6 @@ const assert = require("assert");
 const utils = require("./utils");
 const Constants = require("./constants");
 const TmpState = require("./tmpstate");
-const DepositsState = require("./txpool-deposits");
 
 class TXPool {
 
@@ -25,8 +24,6 @@ class TXPool {
         this.executableSlots = cfg.executableSlots || 16;
         this.nonExecutableSlots = cfg.nonExecutableSlots || 16;
         this.timeout = cfg.timeout || 3*3600;
-        // If no fee is configured, do not accept deposits off-chain
-        this.depositsStates = new DepositsState(this.maxSlots, cfg.feeDeposit, conversion || {}, rollupDB);
 
         this.rollupDB = rollupDB;
         this.txs = [];
@@ -36,6 +33,9 @@ class TXPool {
 
         this._updateSlots = this._genUpdateSlots();
         this.purge = this._genPurge();
+
+        this.feeDeposit = cfg.feeDeposit  || null;
+        this.ethPrice = cfg.ethPrice || null;
     }
 
     async _load() {
@@ -63,26 +63,23 @@ class TXPool {
         }
 
         await this.purge();
-
-        // load deposits off-chain transactions
-        await this.depositsStates.loadFromDb();
-        await this.depositsStates.purge();
     }
 
     setConversion(conversion) {
         this.conversion = conversion;
-        this.depositsStates.setConversion(this.conversion);
     }
 
     setFeeDeposit(feeDeposit) {
-        this.depositsStates.setFee(feeDeposit);
+        this.feeDeposit = feeDeposit  || null;
     }
 
     setEthPrice(ethPrice) {
-        this.depositsStates.setEthPrice(ethPrice);
+        this.ethPrice = ethPrice || null;
     }
 
     _buildTxDataPool(tx){
+        // deposit Tx
+        tx.toIdx = tx.toIdx ? tx.toIdx : 0;
         let res = Scalar.e(0);
 
         res = Scalar.add(res, tx.fromIdx);
@@ -90,20 +87,19 @@ class TXPool {
         res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.amount), 128));
         res = Scalar.add(res, Scalar.shl(tx.coin, 144));
         res = Scalar.add(res, Scalar.shl(tx.nonce, 176));
-        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.userFee), 224));
-        res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 240));
-        res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 243));
-        res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 244));
-        res = Scalar.add(res, Scalar.shl(tx.fee, 245));
+        res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.fee), 224));
+        res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 228));
+        res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 231));
+        res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 232));
 
         return res;
     }
 
-    _tx2Array(tx) {
+    _tx2Array(tx) {   
         return [
             this._buildTxDataPool(tx),
             Scalar.e(tx.rqTxData || 0),
-            Scalar.add(Scalar.shl(tx.timestamp, 32), tx.slot),
+            Scalar.add(Scalar.shl(tx.timestamp, 33), Scalar.add(Scalar.shl(tx.slot, 1), tx.isDeposit ? 1 : 0)),
             Scalar.fromString(tx.fromAx, 16),
             Scalar.fromString(tx.fromAy, 16),
             Scalar.fromString(tx.toAx, 16),
@@ -120,18 +116,17 @@ class TXPool {
         tx.amount = utils.float2fix(Scalar.toNumber(utils.extract(d0, 128, 16)));
         tx.coin = Scalar.toNumber(utils.extract(d0, 144, 16));
         tx.nonce = Scalar.toNumber(utils.extract(d0, 176, 16));
-        tx.userFee = utils.float2fix(Scalar.toNumber(utils.extract(d0, 224, 16)));
-        tx.rqOffset = Scalar.toNumber(utils.extract(d0, 240, 3));
-        tx.onChain = Scalar.toNumber(utils.extract(d0, 243, 1));
-        tx.newAccount = Scalar.toNumber(utils.extract(d0, 244, 1));
-        tx.fee = Scalar.toNumber(utils.extract(d0, 245, 4));
+        tx.fee = utils.float2fix(Scalar.toNumber(utils.extract(d0, 224, 4)));
+        tx.rqOffset = Scalar.toNumber(utils.extract(d0, 228, 3));
+        tx.onChain = Scalar.toNumber(utils.extract(d0, 231, 1));
+        tx.newAccount = Scalar.toNumber(utils.extract(d0, 232, 1));
 
         tx.rqTxData = Scalar.e(arr[1]);
 
         const d2 = Scalar.e(arr[2]);
-        tx.slot = Scalar.toNumber(utils.extract(d2, 0, 32));
-        tx.timestamp = Scalar.toNumber((utils.extract(d2, 32, 64)));
-
+        tx.isDeposit = utils.extract(d2, 0, 1);
+        tx.slot = Scalar.toNumber(utils.extract(d2, 1, 32));
+        tx.timestamp = Scalar.toNumber((utils.extract(d2, 33, 64)));
         tx.fromAx = Scalar.e(arr[3]).toString(16);
         tx.fromAy = Scalar.e(arr[4]).toString(16);
 
@@ -142,6 +137,20 @@ class TXPool {
         return tx;
     }
 
+    _getOnChainTx(tx){
+        return {
+            loadAmount: 0,
+            coin: tx.coin,
+            fromAx: tx.toAx,
+            fromAy: tx.toAy,
+            fromEthAddr: tx.toEthAddr,
+            toAx: Constants.exitAx,
+            toAy: Constants.exitAy,
+            toEthAddr: Constants.exitEthAddr,
+            onChain: true,
+        };
+    }
+
     async addTx(_tx) {
         const fromIdx = await this.rollupDB.getIdx(_tx.coin, _tx.fromAx, _tx.fromAy);
         if (!fromIdx) {
@@ -149,61 +158,32 @@ class TXPool {
             return false;
         }
 
+        let tx;
         const toIdx = await this.rollupDB.getIdx(_tx.coin, _tx.toAx, _tx.toAy);
         if (toIdx === null) {
-            const canBeAdded = this.depositsStates.exist(_tx);
-            if (canBeAdded){
-                const isFull = this.depositsStates.isFull(_tx);
-                if (isFull) {
-                    console.log("Deposits off-chain pool full");
-                    return false;
-                }
-                
-                const tx = Object.assign({ fromIdx: fromIdx }, _tx);
-                utils.txRoundValues(tx);
-                // calculate user fee
-                const fee2Charge = Scalar.div(tx.amount, Constants.tableFeeInv[tx.fee]);
-                tx.userFee = utils.float2fix(utils.fix2float(fee2Charge));
-                
-                const res = await this.depositsStates.addTx(tx);
-
-                if (res == "NOT_ENOUGH_FEE"){
-                    console.log("Deposit off-chain discarded due to low fee");
-                    return false;
-                } else {
-                    return true;
-                }
-            } else {
-                console.log("Deposit off-chain already exist");
-                return false;
-            }
+            tx = Object.assign({ fromIdx: fromIdx, isDeposit: true}, _tx);
+        }
+        else{
+            tx = Object.assign({ fromIdx: fromIdx }, { toIdx: toIdx }, _tx);
         }
 
-        const tx = Object.assign({ fromIdx: fromIdx }, { toIdx: toIdx }, _tx);
         // Round amounts
         utils.txRoundValues(tx);
-        tx.amount = utils.float2fix(utils.fix2float(tx.amount));
-        
-        // calculate user fee
-        const fee2Charge = Scalar.div(tx.amount, Constants.tableFeeInv[tx.fee]);
-        tx.userFee = utils.float2fix(utils.fix2float(fee2Charge));
+
         tx.timestamp = (new Date()).getTime();
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
 
-        const tmpState = new TmpState(this.rollupDB);
-
-        if (!tx.isDeposit){
-            const canProcessRes = await tmpState.canProcess(tx);
-            if (canProcessRes == "NO") {
-                console.log("Invalid TX");
-                return false;
-            }
-        
-            if (!utils.verifyTxSig(tx)) {
-                console.log("Invalid Signature");
-                return false;
-            }
+        const canProcessRes = await tmpState.canProcess(tx);
+        if (canProcessRes == "NO") {
+            console.log("Invalid TX");
+            return false;
         }
-        
+
+        if (!utils.verifyTxSig(tx)) { 
+            console.log("Invalid Signature");
+            return false;
+        }
+
         tx.slot = this._allocateFreeSlot();
         if (tx.slot == -1) {
             await this.purge();
@@ -219,7 +199,7 @@ class TXPool {
             [Scalar.add(Constants.DB_TxPollTx, tx.slot), this._tx2Array(tx)]
         ]);
         await this._updateSlots();
-        return tx.slot;
+        return true;
     }
 
     _allocateFreeSlot() {
@@ -309,8 +289,7 @@ class TXPool {
 
         this._calculateNormalizedFees();
 
-        const tmpState = new TmpState(this.rollupDB);
-
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
         const now = (new Date()).getTime();
         // Arrange the TX by Index and by Nonce
         const byIdx = {};
@@ -365,7 +344,7 @@ class TXPool {
                     }
                     if (possibleTxs.length>0) {
                         possibleTxs.sort( (a,b) => (a.normalizedFee - b.normalizedFee));
-                        avTxs[i] = avTxs[i] || [];
+                        avTxs[i] = avTxs[i] || [];  
                         avTxs[i][n]=possibleTxs.pop();
                         avTxs[i][n].queue = "AV";
                         nAv++;
@@ -383,7 +362,7 @@ class TXPool {
                         await tmpState.process(avTxs[i][n]);
 
                         // Readjust the Fees for tx with lower nonce and low fee
-                        const af = avTxs[i][n].adjustedFee / (n - firstNonce +1);
+                        const af = avTxs[i][n].adjustedFee / (n - firstNonce +1); 
                         for (let n2 = firstNonce; n2<n; n2++) {
                             if (avTxs[i][n2].adjustedFee < af) {
                                 avTxs[i][n2].adjustedFee = af;
@@ -456,10 +435,18 @@ class TXPool {
             const convRate = this.conversion[tx.coin];
 
             if (convRate) {
-                const num = Scalar.mul(tx.userFee, Math.floor(convRate.price * 2**64));
+
+                const feeTx =  utils.calculateFee(tx);
+                const num = Scalar.mul(feeTx, Math.floor(convRate.price * 2**64));
                 const den = Scalar.pow(10, convRate.decimals);
 
                 tx.normalizedFee = Number(Scalar.div(num, den)) / 2**64;
+
+                // 2 transactions are added when forged offchain deposit, and also some fee is burned.
+                if (tx.isDeposit){
+                    tx.normalizedFee =  (tx.normalizedFee - this.feeDeposit * this.ethPrice) / 2;
+                }
+                
             } else {
                 tx.normalizedFee = 0;
             }
@@ -488,11 +475,8 @@ class TXPool {
 
         let NSlots = bb.maxNTx - bb.onChainTxs.length;
 
-        // Set candidates
-        await this.depositsStates.setCandidates(NSlots);
-
         // Order tx
-        await this._classifyTxs();
+        await this._classifyTxs(); 
 
         const availableTxs = [];
         for (let i=0; i<this.txs.length; i++) {
@@ -512,7 +496,7 @@ class TXPool {
         // Sort the TXs reverse normalized Fee (First is the most profitable)
         availableTxs.sort(fnSort);
 
-        const tmpState = new TmpState(this.rollupDB);
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
         while (availableTxs.length>0) {
             const tx = availableTxs.pop();
             const res = await tmpState.canProcess(tx);
@@ -524,7 +508,7 @@ class TXPool {
                 txsByCoin[tx.coin].push(tx);
                 const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
                 
-                if (tx.toIdx){
+                if (tx.toIdx){ 
                     const stTo = await tmpState.getState(tx.toIdx);
                 
                     const ftxTo = popFuture(tx.toIdx, stTo.nonce);
@@ -541,75 +525,72 @@ class TXPool {
             }
         }
 
-        // Add deposit off-chain transactions
-        const txDepositsOffChain = this.depositsStates.getTxOffChainCandidates();
-        for (let tx of txDepositsOffChain){
-            if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
-            txsByCoin[tx.coin].push(tx);
-        }
-
         const incTable = {};
         for (let coin in txsByCoin) {
             incTable[coin] = [];
 
             // Accumulated values
-            let nNonZero = 0;
-            let fee = undefined;
-            let normalizedFee = 10**30; // Infinity
             let accValue = 0;
             let nTx = 0;
 
             // Best values
             let bestAccValue = 0;
             let bestNTx = 0;
+            let depositCount = 0;
 
             for (let i=0; i<txsByCoin[coin].length; i++) {
                 const tx = txsByCoin[coin][i];
                 nTx++;
-                if ( tx.normalizedFee > 0 ) nNonZero++;
-                if (( tx.normalizedFee < normalizedFee )&&
-                    ( tx.normalizedFee > 0 ))
-                {
-                    fee = tx.userFee;
-                    normalizedFee = tx.normalizedFee;
+                accValue += tx.normalizedFee;
+
+                if (tx.isDeposit) {
+                    depositCount++;
                 }
-
-                accValue = nNonZero * normalizedFee;
-
-                // If the fee of this TX is greater that every think acumulated
-                // Just take this.
-                if (tx.normalizedFee > accValue) {
-                    normalizedFee = tx.normalizedFee;
-                    fee = tx.userFee;
-                    nNonZero = 1;
-                }
-
                 if (accValue > bestAccValue) {
                     incTable[coin].push({
                         nTx: nTx,
-                        incTx: tx.isDeposit ? (nTx + 1 - bestNTx) : (nTx - bestNTx),
+                        incTx: nTx - bestNTx + depositCount,
                         accValue: accValue,
-                        marginalFeeValue: (accValue - bestAccValue) / (nTx - bestNTx),
-                        fee: fee,
-                        normalizedFee: normalizedFee,
+                        marginalFeeValue: (accValue) / (nTx - bestNTx + depositCount),
                     });
                     bestAccValue = accValue;
-                    bestNTx = nTx;
+                    bestNTx = nTx; 
+                    accValue = 0;
+                    depositCount = 0;
+                }
+                else if (accValue == bestAccValue && bestAccValue != 0) {
+                    incTable[coin].push({
+                        nTx: nTx,
+                        incTx: nTx - bestNTx + depositCount,
+                        accValue: accValue,
+                        marginalFeeValue: (accValue) / (nTx - bestNTx + depositCount),
+                    });
+                    bestNTx = nTx; 
+                    accValue = 0;
+                    depositCount = 0;
+                }
+                else if (i + 1 == txsByCoin[coin].length) { // put the rest of the transactions
+                    incTable[coin].push({
+                        nTx: nTx,
+                        incTx: nTx - bestNTx + depositCount,
+                        accValue: accValue,
+                        marginalFeeValue: (accValue) / (nTx - bestNTx + depositCount),
+                    });
                 }
             }
         }
         let forgedTxs = [];
         const PTable = {};
 
-        fillTx(forgedTxs, NSlots, incTable, PTable, this.depositsStates.getTxOnChainCandidates());
+        fillTx(forgedTxs, NSlots, incTable, PTable, this._getOnChainTx);
 
+        // max coin should be 24 - 32 bits, max safe integer in js is 2^53, 
         const usedCoins = Object.keys(PTable).map(coinStr => Number(coinStr));
 
         usedCoins.sort((a,b) => {
             return incTable[b][ PTable[b] ].accValue -
                    incTable[a][ PTable[a] ].accValue;
         });
-
         const removedCoins = [];
         while (usedCoins.length>this.MaxCoins) {
             const coin = usedCoins.pop();
@@ -619,12 +600,9 @@ class TXPool {
 
         removeTxsOfCoins(forgedTxs, removedCoins);
 
-        // removeNotAvailableTxs(forgedTxs);
-
-        fillTx(forgedTxs, NSlots-forgedTxs.length, incTable, PTable, this.depositsStates.getTxOnChainCandidates());
+        fillTx(forgedTxs, NSlots-forgedTxs.length, incTable, PTable, this._getOnChainTx);
 
         for (let c of usedCoins) {
-            // bb.addCoin(c, incTable[c][ PTable[c] ].fee);
             bb.addCoin(c);
         }
 
@@ -635,13 +613,9 @@ class TXPool {
             }
         }
 
-        await this.depositsStates.recoverNonUsedTx(forgedTxs);
-
-        // bb.optimizeSteps();
-
         await bb.build();
 
-        function fillTx(forgedTxs, n, incTable, PTable, depositsOnChainTxs) {
+        function fillTx(forgedTxs, n, incTable, PTable, getOnChainTx) {
 
             let totalTx =0;
             let end = false;
@@ -658,7 +632,6 @@ class TXPool {
                         bestMarginalFeeValue = incTable[coin][p].marginalFeeValue;
                     }
                 }
-
                 if (bestCoin >= 0) {
                     const firstT = (typeof PTable[bestCoin] == "undefined") ? 0 : incTable[bestCoin][PTable[bestCoin]].nTx;
                     PTable[bestCoin] = (typeof PTable[bestCoin] == "undefined") ? 0 : PTable[bestCoin]+1;
@@ -667,7 +640,7 @@ class TXPool {
                     for (let i=firstT; i<lastT; i++) {
                         forgedTxs.push(txsByCoin[bestCoin][i]);
                         if (txsByCoin[bestCoin][i].isDeposit){
-                            forgedTxs.push(depositsOnChainTxs[txsByCoin[bestCoin][i].candidateId]);
+                            forgedTxs.push(getOnChainTx(txsByCoin[bestCoin][i])); 
                         }
                     }
                 } else {

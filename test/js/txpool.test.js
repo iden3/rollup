@@ -105,7 +105,7 @@ describe("Tx pool", function () {
         txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
         txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
         txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]}; // can't be mined
         txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
         account1.signTx(txs[0]);
@@ -124,7 +124,7 @@ describe("Tx pool", function () {
         await txPool.fillBatch(bb);
 
         const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
-        const expectedSlots = [2,5,0,1];
+        const expectedSlots = [ 2, 5, 3, 0 ];
 
         assert.deepEqual(calcSlots, expectedSlots);
 
@@ -171,7 +171,7 @@ describe("Tx pool", function () {
         await newPool.fillBatch(bb);
 
         const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
-        const expectedSlots = [2,5,0,1];
+        const expectedSlots = [ 2, 5, 3, 0 ];
 
         assert.deepEqual(calcSlots, expectedSlots);
 
@@ -182,7 +182,7 @@ describe("Tx pool", function () {
         assert.equal(newPool.txs.length, 1);
     });
 
-    it("Should check one deposit off-chain transaction", async () => {
+    it("Should check one deposits off-chain transaction", async () => {
         // Start a new state
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
@@ -268,19 +268,14 @@ describe("Tx pool", function () {
         assert.equal(resTx2, true);
         
         // newPool
-        const newTxPool = await TxPool(rollupDB, conversion);
-        newTxPool.setFeeDeposit(0.2);
-        newTxPool.setEthPrice(conversion[0].price);
+        const newTxPool = await TxPool(rollupDB, conversion, {feeDeposit: 0.2, ethPrice:conversion[0].price});
 
         const bb = await rollupDB.buildBatch(4, 8);
         await newTxPool.fillBatch(bb);
 
         // 2 deposits off-chain added
-        assert.equal(bb.offChainTxs.length, 2);
-        assert.equal(bb.onChainTxs.length, 2);
-
-        // 1 deposit off-chain remain
-        assert.equal(newTxPool.depositsStates.txs.length, 1);
+        assert.equal(bb.offChainTxs.length, 1);
+        assert.equal(bb.onChainTxs.length, 1);
 
         await rollupDB.consolidate(bb);
         
@@ -292,11 +287,11 @@ describe("Tx pool", function () {
         assert.equal(state4, null);
 
         const state5 = await rollupDB.getStateByAccount(0, account5.ax, account5.ay);
-        assert.equal(Scalar.eq(state5.amount, eth(4)), true);
+        assert.equal(state5, null);
 
         const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
-        // finalAmount = initialDeposit - 2*transfer - 2*fee = 100 - 6 - 4 - 3 - 2 eth
-        assert.equal(Scalar.eq(state1.amount, eth(85)), true);
+        // finalAmount = initialDeposit - transfer - fee = 100 - 6 - 3 eth
+        assert.equal(Scalar.eq(state1.amount, eth(91)), true);
     });
 
     it("Should check purge functionality", async () => {

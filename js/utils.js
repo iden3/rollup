@@ -255,7 +255,14 @@ function isStrHex(input) {
     return false;
 }
 
-function decodeDataAvailability(nLevels, dataSm){
+function calculateFee(tx) {
+    if (tx.fee !== Constants.fee["0%"]){
+        const feeInv = Constants.tableFeeInv[tx.fee];
+        return float2fix(fix2float(Scalar.div(tx.amount, feeInv)));
+    } else return 0;
+}
+
+function decodeDataAvailability(nLevels, dataSm) {
     const txs = [];
 
     const indexBits = nLevels;
@@ -297,4 +304,5 @@ module.exports.isStrHex = isStrHex;
 module.exports.extract = extract;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
 module.exports.decodeDepositOffChain = decodeDepositOffChain;
+module.exports.calculateFee = calculateFee;
 module.exports.decodeDataAvailability = decodeDataAvailability;
