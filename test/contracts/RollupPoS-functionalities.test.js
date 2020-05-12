@@ -277,18 +277,18 @@ contract("RollupPoS", (accounts) => {
                 toAy: wallets[2].publicKey[1].toString(16),
                 toEthAddr: id1,
                 amount: 50,
-                coin: 0
+                coin: 0,
+                fee: 0
             };
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable();
+            const compressedTxTest = await bb.getDataAvailable().buffer;
             const hashOffChain = await bb.getOffChainHash().toString();
-
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
             // reset rollup PoS
             insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);

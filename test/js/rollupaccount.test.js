@@ -2,6 +2,7 @@ const { expect } = require("chai");
 
 const Account = require("../../js/rollupaccount");
 const utils = require("../../js/utils");
+const Constants = require("../../js/constants");
 
 describe("Rollup account", () => {
     let account;
@@ -24,7 +25,7 @@ describe("Rollup account", () => {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100
+            fee: Constants.fee["1%"]
         };
 
         account.signTx(tx);

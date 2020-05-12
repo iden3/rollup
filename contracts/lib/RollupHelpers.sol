@@ -157,23 +157,20 @@ contract RollupHelpers {
 
   /**
    * @dev Calculate total fee amount for the beneficiary
-   * @param tokenIds contains all token id (feePlan[0])
-   * @param fees contains all fee plan data (feePlan[1])
-   * @param nTxToken number of transaction per token
+   * @param tokenIds contains all token id (feePlanCoinsInput)
+   * @param totalFees contains total fee for every token Id (feeTotal)
    * @param nToken token position on fee plan
    * @return total fee amount
    */
-  function calcTokenTotalFee(bytes32 tokenIds, bytes32 fees, bytes32 nTxToken, uint nToken)
-    internal pure returns (uint, uint) {
-    uint ptr = 256 - ((nToken+1)*16);
-    // get number of transaction depending on token
-    uint nTx = uint16(bytes2(nTxToken << ptr));
+  function calcTokenTotalFee(bytes32 tokenIds, bytes32 totalFees, uint nToken)
+    internal pure returns (uint32, uint256) {
+    uint256 ptr = 256 - ((nToken+1)*16);
     // get fee depending on token
-    uint fee = float2Fix(uint16(bytes2(fees << ptr)));
+    uint256 fee = float2Fix(uint16(bytes2(totalFees << ptr)));
     // get token id
-    uint tokenId = uint16(bytes2(tokenIds << ptr));
+    uint32 tokenId = uint16(bytes2(tokenIds << ptr));
 
-    return (tokenId, nTx * fee);
+    return (tokenId, fee);
   }
 
   /**
@@ -206,7 +203,7 @@ contract RollupHelpers {
    * @param amountF amount to send encoded as half precision float
    * @param token token identifier
    * @param nonce nonce parameter
-   * @param maxFeeF maximum fee
+   * @param fee fee sent by the user, it represents some % of the amount
    * @param rqOffset atomic swap paramater
    * @param onChain flag to indicate that transaction is an onChain one
    * @param newAccount flag to indicate if transaction is of deposit type
@@ -216,7 +213,7 @@ contract RollupHelpers {
     uint16 amountF,
     uint32 token,
     uint48 nonce,
-    uint16 maxFeeF,
+    uint8 fee,
     uint8 rqOffset,
     bool onChain,
     bool newAccount
@@ -226,13 +223,15 @@ contract RollupHelpers {
     element |= bytes32(bytes2(amountF)) >> (256 - 16 - 64);
     element |= bytes32(bytes4(token)) >> (256 - 32 - 16 - 64);
     element |= bytes32(bytes6(nonce)) >> (256 - 48 - 32 - 16 - 64);
-    element |= bytes32(bytes2(maxFeeF)) >> (256 - 16 - 48 - 32 - 16 - 64);
 
-    bytes1 last = bytes1(rqOffset) & 0x07;
-    last = onChain ? (last | 0x08): last;
-    last = newAccount ? (last | 0x10): last;
+    bytes1 nextByte = bytes1(fee) & 0x0f;
+    nextByte = nextByte | (bytes1(rqOffset << 4) & 0x70);
+    nextByte = onChain ? (nextByte | 0x80): nextByte;
+    element |= bytes32(nextByte) >> (256 - 8 - 48 - 32 - 16 - 64);
 
-    element |= bytes32(last) >> (256 - 8 - 16 - 48 - 32 - 16 - 64);
+    bytes1 last = newAccount ? bytes1(0x01) : bytes1(0x00);
+
+    element |= bytes32(last) >> (256 - 8 - 8 - 48 - 32 - 16 - 64);
   }
 
   /**
