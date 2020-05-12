@@ -99,11 +99,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 constant newExitRootInput = 2;
     uint256 constant onChainHashInput = 3;
     uint256 constant offChainHashInput = 4;
-    uint256 constant nTxperTokenInput = 5;
-    uint256 constant initialIdx = 6;
-    uint256 constant oldStateRootInput = 7;
-    uint256 constant feePlanCoinsInput = 8;
-    uint256 constant feePlanFeesInput = 9;
+    uint256 constant initialIdx = 5;
+    uint256 constant oldStateRootInput = 6;
+    uint256 constant feePlanCoinsInput = 7;
+    uint256 constant feeTotals = 8;
 
     /**
      * @dev Event called when any on-chain transaction has benn done
@@ -524,7 +523,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[10] calldata input,
+        uint[9] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable override virtual isForgeBatch {
 
@@ -596,8 +595,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         exitRoots.push(bytes32(input[newExitRootInput]));
 
         // Calculate fees and pay them
-        withdrawTokens([bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])],
-        bytes32(input[nTxperTokenInput]), beneficiaryAddress);
+        withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotals]),
+        beneficiaryAddress);
 
         // Pay onChain transactions fees
         beneficiaryAddress.transfer(payOnChainFees);
@@ -611,17 +610,16 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
     /**
      * @dev withdraw all token fees to the beneficiary Address
-     * @param feePlan fee of every token
-     * @param nTxPerToken transactions per token
+     * @param coins encoded all the coins that are used in the batch
+     * @param totalFees total fee wasted of every coin
      * @param beneficiaryAddress address wich will receive the tokens
      */
-    function withdrawTokens(bytes32[2] memory feePlan, bytes32 nTxPerToken, address payable beneficiaryAddress) internal {
+    function withdrawTokens(bytes32 coins, bytes32 totalFees, address payable beneficiaryAddress) internal {
         for (uint i = 0; i < 16; i++) {
-            (uint tokenId, uint totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
-             bytes32(nTxPerToken), i);
+            (uint32 tokenId, uint256 totalTokenFee) = calcTokenTotalFee(coins, totalFees, i);
 
             if (totalTokenFee != 0) {
-                require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee),
+                require(withdrawToken(tokenId, beneficiaryAddress, totalTokenFee),
                     'Fail ERC20 withdraw');
             }
         }

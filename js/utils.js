@@ -94,10 +94,10 @@ function buildTxData(tx) {
     res = Scalar.add(res, Scalar.shl(fix2float(tx.amount || 0), 64));
     res = Scalar.add(res, Scalar.shl(tx.coin || 0, 80));
     res = Scalar.add(res, Scalar.shl(tx.nonce || 0, 112));
-    res = Scalar.add(res, Scalar.shl(fix2float(tx.userFee || 0), 160));
-    res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 176));
-    res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 179));
-    res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 180));
+    res = Scalar.add(res, Scalar.shl(tx.fee || 0, 160));
+    res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 164));
+    res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 167));
+    res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 168));
 
     return res;
 }
@@ -109,10 +109,10 @@ function decodeTxData(txDataEncoded) {
     txData.amount = float2fix(Scalar.toNumber(extract(txDataBi, 64, 16)));
     txData.coin = extract(txDataBi, 80, 32);
     txData.nonce = extract(txDataBi, 112, 48);
-    txData.userFee = float2fix(Scalar.toNumber(extract(txDataBi, 160, 16)));
-    txData.rqOffset = extract(txDataBi, 176, 3);
-    txData.onChain = Scalar.isZero(extract(txDataBi, 179, 1)) ? false : true;
-    txData.newAccount = Scalar.isZero(extract(txDataBi, 180, 1)) ? false : true;
+    txData.fee = Scalar.toNumber(extract(txDataBi, 160, 4));
+    txData.rqOffset = extract(txDataBi, 164, 3);
+    txData.onChain = Scalar.isZero(extract(txDataBi, 167, 1)) ? false : true;
+    txData.newAccount = Scalar.isZero(extract(txDataBi, 168, 1)) ? false : true;
 
     return txData;
 }
@@ -120,8 +120,6 @@ function decodeTxData(txDataEncoded) {
 function txRoundValues(tx) {
     tx.amountF = fix2float(tx.amount);
     tx.amount = float2fix(tx.amountF);
-    tx.userFeeF = fix2float(tx.userFee);
-    tx.userFee = float2fix(tx.userFeeF);
 }
 
 function state2array(st) {

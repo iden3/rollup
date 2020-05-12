@@ -12,7 +12,7 @@ contract RollupTest is Rollup {
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[10] calldata input,
+        uint[9] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable override {
 
@@ -80,8 +80,8 @@ contract RollupTest is Rollup {
       exitRoots.push(bytes32(input[newExitRootInput]));
 
       // Calculate fees and pay them
-      withdrawTokens([bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])],
-      bytes32(input[nTxperTokenInput]), beneficiaryAddress);
+      withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotals]),
+       beneficiaryAddress);
 
 
       // Pay onChain transactions fees

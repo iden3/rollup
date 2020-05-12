@@ -291,7 +291,7 @@ contract("RollupHelpers functions", (accounts) => {
 
     it("Calculate total fee per token", async () => {
         const totalTokens = 16;
-        const arrayFee = [];
+        const arrayTotalFee = [];
         const arrayTokenIds = [];
         let tokenIdsBuff = Buffer.alloc(0);
         for (let i = 0; i < totalTokens; i++) {
@@ -303,33 +303,21 @@ contract("RollupHelpers functions", (accounts) => {
         }
         const tokenIdsBytes = `0x${tokenIdsBuff.toString("hex")}`;
 
-        let feeBuff = Buffer.alloc(0);
+        let totalFeeBuff = Buffer.alloc(0);
         for (let i = 0; i < totalTokens; i++) {
             const fee = 2 * (i + 1);
-            arrayFee.push(fee);
+            arrayTotalFee.push(fee);
             const feeHex = padZeroes(fee.toString("16"), 4);
             const tmpBuff = Buffer.from(feeHex, "hex");
-            feeBuff = Buffer.concat([tmpBuff, feeBuff]);
+            totalFeeBuff = Buffer.concat([tmpBuff, totalFeeBuff]);
         }
-        const feeBytes = `0x${feeBuff.toString("hex")}`;
-        // Build number of transactions buffer
-        const arrayTx = [];
-        let nTxBuff = Buffer.alloc(0);
-        for (let i = 0; i < totalTokens; i++) {
-            const rand = Math.floor((Math.random() * 10) + 1);
-            arrayTx.push(rand);
-            const nTxHex = padZeroes(rand.toString("16"), 4);
-            const tmpBuff = Buffer.from(nTxHex, "hex");
-            nTxBuff = Buffer.concat([tmpBuff, nTxBuff]);
-        }
-        const nTxBytes = `0x${nTxBuff.toString("hex")}`;
+        const feeBytes = `0x${totalFeeBuff.toString("hex")}`;
 
         for (let i = 0; i < totalTokens; i++) {
-            const resJs = arrayFee[i] * arrayTx[i];
             // eslint-disable-next-line no-await-in-loop
-            const resSm = await insHelpers.calcTokenTotalFeeTest(tokenIdsBytes, feeBytes, nTxBytes, i);
+            const resSm = await insHelpers.calcTokenTotalFeeTest(tokenIdsBytes, feeBytes, i);
             expect(resSm["0"].toString()).to.be.equal(arrayTokenIds[i].toString());
-            expect(resSm["1"].toString()).to.be.equal(resJs.toString());
+            expect(resSm["1"].toString()).to.be.equal(arrayTotalFee[i].toString());
         }
     });
 
@@ -383,7 +371,7 @@ contract("RollupHelpers functions", (accounts) => {
         const amount = 3;
         const coin = 4;
         const nonce = 5;
-        const userFee = 6;
+        const fee = 6;
         const rqOffset = 4;
         const onChain = true;
         const newAccount = true;
@@ -408,9 +396,9 @@ contract("RollupHelpers functions", (accounts) => {
 
         it("Build tx data", async () => {            
             txData = utils.buildTxData({amount, coin,
-                nonce, userFee, rqOffset, onChain, newAccount});
+                nonce, fee, rqOffset, onChain, newAccount});
             const res = await insHelpers.buildTxDataTest(amount, coin,
-                nonce, userFee, rqOffset, onChain, newAccount);
+                nonce, fee, rqOffset, onChain, newAccount);
             expect(res).to.be.equal(`0x${padZeroes(txData.toString(16), 64)}`);
 
         });
@@ -468,7 +456,7 @@ contract("RollupHelpers functions", (accounts) => {
             let amount = 0; 
             let oldOnChainHash = 0;
             let nonce = 0;
-            let userFee = 0;
+            let fee = 0;
             let rqOffset = 0;
             const tx = {
                 IDEN3_ROLLUP_TX,
@@ -492,7 +480,7 @@ contract("RollupHelpers functions", (accounts) => {
             let hashBatchbuilder = batch.getOnChainHash();
 
             const txData = await insHelpers.buildTxDataTest(amount, coin,
-                nonce, userFee, rqOffset, onChain, newAccount);
+                nonce, fee, rqOffset, onChain, newAccount);
                 
             const hashSC = await insHelpers.buildAndHashOnChain(fromEthAddr,
                 fromAx.toString(), fromAy.toString(), exitEthAddr, exitAx, exitAy, 

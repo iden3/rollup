@@ -25,8 +25,8 @@ module.exports = class BatchBuilder {
         this.stateTree = new SMT(this.dbState, root);
         this.dbExit = new SMTTmpDb(rollupDB.db);
         this.exitTree = new SMT(this.dbExit, Scalar.e(0));
-        this.feePlan = Array(16).fill([0, Scalar.e(0)]);
-        this.counters = Array(16).fill(0);
+        this.feePlanCoins = Array(16).fill(Scalar.e(0));
+        this.feeTotals = Array(16).fill(Scalar.e(0));
         this.nCoins = 0;
         this.newBatchNumberDb = Scalar.e(batchNumber);
     }
@@ -90,25 +90,11 @@ module.exports = class BatchBuilder {
         if (i<this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
             this.input.imExitRoot[i] = this.exitTree.root;
-            this.input.imCounters[i] = this._getCounters();
+            this.input.imFeeTotal[i] = this._getFeeTotal();
             const lastHash = i == 0 ? 0: this.input.imOnChainHash[i-1];
             this.input.imOnChainHash[i] = lastHash;
             this.input.imOnChain[i] = 0;
         }
-    }
-
-    getOperatorFee(coin, step) {
-        let s = step || 0;
-        for (let i=0; i<this.feePlan.length; i++) {
-            if (this.feePlan[i][0] == coin) {
-                if (s==0) {
-                    return this.feePlan[i][1];
-                } else {
-                    s--;
-                }
-            }
-        }
-        return Scalar.e(0);
     }
 
     async _addTx(tx) {
@@ -198,16 +184,16 @@ module.exports = class BatchBuilder {
             isExit = true;
         }
 
-        let operatorFee;
-        if (tx.onChain) {
-            operatorFee = Scalar.e(0);
+        let fee2Charge;
+        if (tx.onChain){
+            fee2Charge = Scalar.e(0);
         } else {
-            operatorFee = this.getOperatorFee(tx.coin, tx.step);
-        }
+            fee2Charge = this._calculateFee(tx);
+        }      
 
         let effectiveAmount = amount; 
 
-        const underFlowOk = Scalar.geq(Scalar.sub( Scalar.sub( Scalar.add(oldState1.amount, loadAmount), amount), operatorFee), 0);
+        const underFlowOk = Scalar.geq(Scalar.sub( Scalar.sub( Scalar.add(oldState1.amount, loadAmount), amount), fee2Charge), 0);
         if (!underFlowOk) {
             if (tx.onChain) {
                 effectiveAmount = Scalar.e(0);
@@ -238,10 +224,10 @@ module.exports = class BatchBuilder {
         this.input.step[i] = ((!tx.onChain) && tx.step) ? 1 : 0;
 
         const newState1 = Object.assign({}, oldState1);
-        newState1.amount = Scalar.sub(Scalar.sub(Scalar.add(oldState1.amount, loadAmount), effectiveAmount), operatorFee);
+        newState1.amount = Scalar.sub(Scalar.sub(Scalar.add(oldState1.amount, loadAmount), effectiveAmount), fee2Charge);
         if (!tx.onChain) {
             newState1.nonce++;
-            this._incCounter(tx.coin, this.input.step[i]);
+            this._accumulateFees(tx.coin, fee2Charge);
         }
 
         if (tx.fromIdx === tx.toIdx)
@@ -528,7 +514,7 @@ module.exports = class BatchBuilder {
         if (i<this.maxNTx-1) {
             this.input.imStateRoot[i] = this.stateTree.root;
             this.input.imExitRoot[i] = this.exitTree.root;
-            this.input.imCounters[i] = this._getCounters();
+            this.input.imFeeTotal[i] = this._getFeeTotal();
             const lastHash = i == 0 ? 0: this.input.imOnChainHash[i-1];
             if (tx.onChain) {
                 const hash = poseidon.createHash(6, 8, 57);
@@ -620,65 +606,54 @@ module.exports = class BatchBuilder {
         return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
     }
 
-    _incCounter(coin, step) {
-        const getIdx = (coin, step) => {
-            let s = step;
-            for (let i=0; i<this.feePlan.length; i++) {
-                if (this.feePlan[i][0] == coin) {
-                    if (s==0) {
-                        return i;
-                    } else {
-                        s--;
-                    }
-                }
-            }
-            return -1;
-        };
-        const idx = getIdx(coin, step);
-        if (idx <0) return;
-        if (this.counters[idx]+1 >= ( (idx < 15) ? (1<<13) : (1<<16) ) ) {
-            throw new Error("Maximum TXs per coin in a batch reached");
-        }
-        this.counters[idx]++;
+    _calculateFee(tx){
+        if (tx.fee !== Constants.fee["0%"]){
+            const feeInv = Constants.tableFeeInv[tx.fee];
+            assert(Scalar.geq(tx.amount, feeInv), "Amount less than fee requested");
+            return Scalar.div(tx.amount, feeInv);
+        } else return 0;
     }
 
-    _buildFeePlan() {
-        const res = {
-            feePlanCoins: Scalar.e(0),
-            feePlanFees: Scalar.e(0)
-        };
-        for (let i=0; i<this.feePlan.length; i++) {
-            const feeF = utils.fix2float(this.feePlan[i][1]);
-            res.feePlanCoins = Scalar.add(res.feePlanCoins, Scalar.shl(Scalar.e(this.feePlan[i][0]), 16*i));
-            res.feePlanFees = Scalar.add(res.feePlanFees, Scalar.shl(Scalar.e(feeF), 16*i));
+    _accumulateFees(coin, fee2Charge){
+        // find coin index
+        const indexCoin = this.feePlanCoins.indexOf(coin);
+        // coin not found
+        if (indexCoin === -1) return;
+        
+        // Check overflow
+        // if (Scalar.gt(Scalar.add(this.feeTotals[indexCoin], fee2Charge), Scalar.shl(1, 128))) {
+        //     throw new Error("Maximum value to charge fees");
+        // }
+        this.feeTotals[indexCoin] += fee2Charge;
+    }
+
+    _getFeeTotal() {
+        let res = Scalar.e(0);
+        for (let i = 0; i < this.feeTotals.length; i++) {
+            res = Scalar.add(res, Scalar.shl(Scalar.e(utils.fix2float(this.feeTotals[i])), 16*i));
         }
         return res;
     }
 
-    optimizeSteps() {
-        for (let i=0; i<this.offChainTxs.length; i++) {
-            const tx = this.offChainTxs[i];
-            tx.step=0;
-            while (Scalar.gt(this.getOperatorFee(tx.coin, tx.step), tx.userFee)) tx.step++;
+    _buildFeePlanCoins() {
+        let res = Scalar.e(0);
+        for (let i = 0; i < this.feePlanCoins.length; i++) {
+            res = Scalar.add(res, Scalar.shl(Scalar.e(this.feePlanCoins[i]), 16*i));
         }
-        for (let i=0; i<this.onChainTxs.length; i++) {
-            const tx = this.onChainTxs[i];
-            tx.step=0;
-        }
+        return res;
     }
 
     async build() {
-        const {feePlanCoins, feePlanFees} = this._buildFeePlan();
+        const feePlanCoins = this._buildFeePlanCoins();
 
         this.input = {
             initialIdx: this.finalIdx,
             oldStRoot: this.stateTree.root,
             feePlanCoins: feePlanCoins,
-            feePlanFees: feePlanFees,
 
             imStateRoot: [],
             imExitRoot: [],
-            imCounters: [],
+            imFeeTotal: [],
             imOnChainHash: [],
             imOnChain: [],
 
@@ -766,9 +741,9 @@ module.exports = class BatchBuilder {
         return this.input.feePlanCoins;
     }
         
-    getFeePlanFees() {
+    getFeeTotal() {
         if (!this.builded) throw new Error("Batch must first be builded");
-        return this.input.feePlanFees;
+        return this._getFeeTotal();
     }
 
     getNewStateRoot() {
@@ -839,57 +814,57 @@ module.exports = class BatchBuilder {
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
-        // Fill with initial steps padded to the byte with zeros
-        const bytes = Array( Math.ceil(this.maxNTx/8) ).fill(0);
-        const initIndex = this.maxNTx - this.offChainTxs.length;
+        const indexBits = (this.nLevels/8) * 8;
+        const amountBits = 16;
+        const feeBits = 4;
 
-        for (let i=0; i<this.offChainTxs.length; i++) {
+        let finalStr = "";
+
+        for (let i = 0; i < this.offChainTxs.length; i++){
             const tx = this.offChainTxs[i];
-            if (tx.step) bytes[ Math.floor((i+initIndex)/8)] |= (0x80 >> ((i+initIndex)%8));
-            pushInt(tx.fromIdx, this.nLevels/8);
-            pushInt(tx.toIdx, this.nLevels/8);
-            pushInt(utils.fix2float(tx.amount), 2);
-        }
-        return Buffer.from(bytes);
+            let res = Scalar.e(0);
+            res = Scalar.add(res, tx.fee);
+            res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.amount), feeBits));
+            res = Scalar.add(res, Scalar.shl(tx.toIdx, amountBits + feeBits));
+            res = Scalar.add(res, Scalar.shl(tx.fromIdx, indexBits + amountBits + feeBits));
 
-        function pushInt(n, size) {
-            for (let i=0; i<size; i++) {
-                bytes.push((n >> ((size-1-i)*8))&0xFF);
-            }
+            finalStr = utils.padZeros(res.toString("16"), (indexBits * 2 + amountBits + feeBits) / 4) + finalStr;
+        }
+
+        return  finalStr;
+    }
+
+    getDataAvailableSM() {
+        // Buffer must have an integer number of bytes, if not add the remaining half byte, padding a 0 at the start, wich means 4 bits in hex 
+        if (this.offChainTxs.length % 2 == 0) { 
+            return `0x${this.getDataAvailable()}`;
+        }
+        else{
+            return `0x0${this.getDataAvailable()}`;
         }
     }
 
     getOffChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
-        
-        const headerSize = Math.ceil(this.maxNTx/8);
-        const txSize = (this.nLevels/8)*2+2;
-        const data = this.getDataAvailable();
-        const dataHeader = data.slice(0, headerSize);
-        const dataOffChainTx = data.slice(headerSize, data.length);
 
-        const post = Buffer.alloc((this.maxNTx - (this.offChainTxs.length))*txSize);
-        const b  = Buffer.concat([dataHeader, post, dataOffChainTx]);
+        const txSizeBits = (this.nLevels/8)*2*8 + 2*8 + 4;  // 24*2 + 16 + 4 = 6 bytes + 2 bytes + half byte
+        
+        const dataOffChainTx = this.getDataAvailable();
+        const dataNopTx = utils.padZeros("", (this.maxNTx - this.offChainTxs.length) * (txSizeBits / 4));
+
+        let b  = dataNopTx.concat(dataOffChainTx);
+
+        // Buffer must have an integer number of bytes, if not add the remaining half byte, padding a 0 at the start, wich means 4 bits in hex  
+        if (this.maxNTx % 2 != 0) {
+            b = "0".concat(b);
+        }
 
         const r = Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617");
         const hash = crypto.createHash("sha256")
-            .update(b)
+            .update(b, "hex") //default string, not what we want, aslso must be padding 4 0 at start
             .digest("hex");
         const h = Scalar.mod(Scalar.fromString(hash, 16), r);
         return h;
-    }
-
-    _getCounters() {
-        let res = Scalar.e(0);
-        for (let i=0; i<this.counters.length; i++) {
-            res = Scalar.add(res, Scalar.shl(Scalar.e(this.counters[i]), 16*i));
-        }
-        return res;
-    }
-
-    getCountersOut() {
-        if (!this.builded) throw new Error("Batch must first be builded");
-        return this._getCounters();
     }
 
     addTx(tx) {
@@ -914,17 +889,14 @@ module.exports = class BatchBuilder {
         return utils.encodeDepositOffchain(this.depOffChainTxs);
     }
 
-    addCoin(coin, fee) {
-        const roundedFee = utils.float2fix(utils.fix2float(fee));
-        if (Scalar.isZero(roundedFee)) return;
-
+    addCoin(coin) {
         if (this.nCoins >= 16) {
             throw new Error("Maximum 16 coins per batch");
         }
         if ((this.nCoins == 15)&&(coin >= 1<<13)) {
             throw new Error("Coin 16 must be less than 2^13");
         }
-        this.feePlan[this.nCoins] = [coin, roundedFee];
+        this.feePlanCoins[this.nCoins] = coin;
         this.nCoins = this.nCoins + 1;
     }
 };

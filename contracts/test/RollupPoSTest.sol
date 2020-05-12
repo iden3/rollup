@@ -117,7 +117,7 @@ contract RollupPoSTest is RollupPoS {
         uint[2] memory proofA,
         uint[2][2] memory proofB,
         uint[2] memory proofC,
-        uint[10] memory input,
+        uint[9] memory input,
         bytes memory compressedOnChainTx
     ) public payable override {
         uint32 slot = currentSlot();
