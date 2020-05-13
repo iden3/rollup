@@ -819,7 +819,6 @@ module.exports = class BatchBuilder {
         const feeBits = 4;
 
         let finalStr = "";
-        let buffer;
 
         for (let i = 0; i < this.offChainTxs.length; i++){
             const tx = this.offChainTxs[i];
@@ -831,25 +830,26 @@ module.exports = class BatchBuilder {
 
             finalStr = utils.padZeros(res.toString("16"), (indexBits * 2 + amountBits + feeBits) / 4) + finalStr;
         }
+
+        return  finalStr;
+    }
+
+    getDataAvailableSM() {
         // Buffer must have an integer number of bytes, if not add the remaining half byte, padding a 0 at the start, wich means 4 bits in hex 
         if (this.offChainTxs.length % 2 == 0) { 
-            buffer = Buffer.from(finalStr, "hex");
+            return `0x${this.getDataAvailable()}`;
         }
         else{
-            buffer = Buffer.from(`0${finalStr}`, "hex");
+            return `0x0${this.getDataAvailable()}`;
         }
-        return {
-            finalStr,
-            buffer,
-        };
     }
 
     getOffChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
-        const txSizeBits = (this.nLevels/8)*2*8 + 2*8 + 4;  //24*2 + 16 + 4    = 6 bytes + 2 bytes + medio bytes
+        const txSizeBits = (this.nLevels/8)*2*8 + 2*8 + 4;  // 24*2 + 16 + 4 = 6 bytes + 2 bytes + half byte
         
-        const dataOffChainTx = this.getDataAvailable().finalStr;
+        const dataOffChainTx = this.getDataAvailable();
         const dataNopTx = utils.padZeros("", (this.maxNTx - this.offChainTxs.length) * (txSizeBits / 4));
 
         let b  = dataNopTx.concat(dataOffChainTx);

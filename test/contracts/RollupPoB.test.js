@@ -280,7 +280,7 @@ contract("RollupPoB", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
 
             const proofA = ["0", "0"];
@@ -440,7 +440,7 @@ contract("RollupPoB", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
 
             const proofA = ["0", "0"];
@@ -482,7 +482,7 @@ contract("RollupPoB", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
 
             const proofA = ["0", "0"];
@@ -523,7 +523,7 @@ contract("RollupPoB", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
 
             const proofA = ["0", "0"];
@@ -570,7 +570,7 @@ contract("RollupPoB", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
 
             const proofA = ["0", "0"];
@@ -628,7 +628,7 @@ contract("RollupPoB", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
 
             const proofA = ["0", "0"];

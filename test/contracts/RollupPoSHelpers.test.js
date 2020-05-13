@@ -13,7 +13,7 @@ const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 async function checkHashOffChain(bb, insPoS, maxTx) {
     await bb.build();
-    const data = await bb.getDataAvailable().buffer;
+    const data = await bb.getDataAvailableSM();
     const hashOffChain = await bb.getOffChainHash();
     const res = await insPoS.hashOffChainTxTest(data, maxTx);
     expect(hashOffChain.toString()).to.be.equal(res.toString());

@@ -283,7 +283,7 @@ contract("RollupPoS", (accounts) => {
             const bb = await rollupDB.buildBatch(maxTx, nLevels);
             await bb.addTx(tx);
             await bb.build();
-            const compressedTxTest = await bb.getDataAvailable().buffer;
+            const compressedTxTest = await bb.getDataAvailableSM();
             const hashOffChain = await bb.getOffChainHash().toString();
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
@@ -329,7 +329,7 @@ contract("RollupPoS", (accounts) => {
                     inputRetrieved = elem.value;
                 }
             });
-            expect(`0x${compressedTxTest.toString("hex")}`).to.be.equal(inputRetrieved);
+            expect(compressedTxTest).to.be.equal(inputRetrieved);
             // try to update data committed before without forging
             try {
                 await insRollupPoS.commitBatch(hashChain[index - 1], compressedTxTest, [], {from: operators[0].address});
