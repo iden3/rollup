@@ -209,11 +209,14 @@ class Synchronizer {
                 // check last batch number matches. Last state saved should match state in contract
                 const stateDepth = parseInt(await this.rollupContract.methods.getStateDepth()
                     .call({from: this.ethAddress}, stateSaved.blockNumber));
-
-                console.log("current block: ", lastBatchSaved);
+                console.log();
+                console.log("<========= START LOG <=========>");
+                console.log("current block: ", currentBlock);
                 console.log("last batch saved: ", lastBatchSaved);
                 console.log("last state saved: ", stateSaved);
+                console.log("current batch depth: ", currentBatchDepth);
 
+                console.log("check Depth: ", `${stateDepth} - ${lastBatchSaved}`);
                 if (lastBatchSaved > 0 && stateDepth !== lastBatchSaved){
                     // clear database
                     await this._clearRollback(lastBatchSaved);
@@ -228,6 +231,7 @@ class Synchronizer {
                     
                 const stateRootHex = `0x${bigInt(stateRoot).toString(16)}`;
 
+                console.log("check Root: ", `${stateRootHex} - ${stateSaved.root}`);
                 if (lastBatchSaved > 0 && (stateRootHex !== stateSaved.root)) {
                     // clear database
                     await this._clearRollback(lastBatchSaved);
@@ -241,6 +245,8 @@ class Synchronizer {
                     .call({ from: this.ethAddress }, stateSaved.blockNumber));
 
                 const stateMiningOnChainHashHex = `0x${bigInt(stateMiningOnChainHash).toString(16)}`;
+
+                console.log("check minning on-chain hash: ", `${stateMiningOnChainHashHex} - ${stateSaved.miningOnChainHash}`);
                 if (lastBatchSaved > 0 && (stateMiningOnChainHashHex !== stateSaved.miningOnChainHash)) {
                     // clear database
                     await this._clearRollback(lastBatchSaved);
@@ -250,8 +256,10 @@ class Synchronizer {
                 }
 
                 if (currentBatchDepth > lastBatchSaved) {
+                    console.log(`Update batch number ${lastBatchSaved + 1}`);
                     const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber, currentBlock);
                     // If no event is found, tree is not updated
+                    console.log(`Target block number found: ${targetBlockNumber}`);
                     if (!targetBlockNumber) continue;
                     // get all logs from last batch
                     const logsForge = await this.rollupContract.getPastEvents("ForgeBatch", {
@@ -264,10 +272,11 @@ class Synchronizer {
                     });
                     // update events
                     const updateFlag = await this._updateEvents([...logsForge,...logsOnChain], lastBatchSaved + 1, targetBlockNumber);
+                    console.log(`Update flag: ${updateFlag}`);
                     if (!updateFlag) continue;
                     lastBatchSaved = await this.getLastBatch();
                 }
-
+                console.log();
                 totalSynch = (currentBatchDepth == 0) ? 100 : ((lastBatchSaved / currentBatchDepth) * 100);
                 this.totalSynch = totalSynch.toFixed(2);
 
