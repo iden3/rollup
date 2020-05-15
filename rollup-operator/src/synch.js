@@ -5,7 +5,8 @@ const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 
-const { float2fix, decodeTxData, extract, decodeDepositOffChain } = require("../../js/utils");
+const { float2fix, decodeTxData, extract, decodeDepositOffChain,
+    decodeDataAvailability } = require("../../js/utils");
 const { timeout, purgeArray } = require("../src/utils");
 // const Constants = require("./constants");
 const GlobalConst = require("../../js/constants");
@@ -17,8 +18,7 @@ const bytesOffChainTx = 3*2 + 2;
 // const initialIdxInput = 6;
 // const finalIdxInput = 0;
 const offChainHashInput = 4;
-const feePlanCoinsInput = 8;
-const feePlanFeesInput = 9;
+const feePlanCoinsInput = 7;
 
 // db keys
 const batchStateKey = "batch-state";
@@ -629,7 +629,7 @@ class Synchronizer {
         // Data availability off-chain tx 
         for (const event of offChain) {
             const offChainTxs = await this._getTxOffChain(event, tmpNewAccounts);
-            await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
+            await this._addFeePlanCoins(batch, offChainTxs.inputFeePlanCoin);
             for (const tx of offChainTxs.txs) {
                 batch.addTx(tx);
                 // if (this.mode !== Constants.mode.light){
@@ -736,9 +736,9 @@ class Synchronizer {
                 inputRetrieved = elem.value;
             }
         });
+
         const inputOffChainHash = inputRetrieved[offChainHashInput];
         const inputFeePlanCoin = inputRetrieved[feePlanCoinsInput];
-        const inputFeePlanFee = inputRetrieved[feePlanFeesInput];
 
         const fromBlock = txForge.blockNumber - this.blocksPerSlot;
         const toBlock = txForge.blockNumber;
@@ -756,40 +756,36 @@ class Synchronizer {
         const txDataCommitted = await this.web3.eth.getTransaction(txHash);
         const decodedData2 = abiDecoder.decodeMethod(txDataCommitted.input);
         let compressedTx;
+
         decodedData2.params.forEach(elem => {
             if (elem.name == "compressedTx") {
                 compressedTx = elem.value;
             }
         });
-        const headerBytes = Math.ceil(this.maxTx/8);
+        
         const txs = [];
-        const buffCompressedTxs = Buffer.from(compressedTx.slice(2), "hex");
-        const headerBuff = buffCompressedTxs.slice(0, headerBytes);
-        const txsBuff = buffCompressedTxs.slice(headerBytes, buffCompressedTxs.length);
-        const nTx = txsBuff.length / bytesOffChainTx;
-        for (let i = 0; i < nTx; i++) {
-            const step = (headerBuff[Math.floor(i/8)] & 0x80 >> (i%8)) ? 1 : 0;
-
-            const fromIdx = txsBuff.readUIntBE(8*i, 3);
-            const toIdx = txsBuff.readUIntBE(8*i + 3, 3);
+        const decodeTxs = decodeDataAvailability(this.nLevels, compressedTx);
+        
+        for (let i = 0; i < decodeTxs.length; i++) {
+            const decodeTx = decodeTxs[i];
 
             // get fromIdx info
             let fromState;
-            const tmpFromState = await this.treeDb.getStateByIdx(fromIdx);
+            const tmpFromState = await this.treeDb.getStateByIdx(decodeTx.fromIdx);
             if (tmpFromState){
                 fromState = tmpFromState;
             } else {
-                fromState = tmpNewAccounts[fromIdx];
+                fromState = tmpNewAccounts[decodeTx.fromIdx];
             }
 
             // get toIdx info
             let toState;
-            if (Scalar.neq(toIdx, 0)){
-                const tmpToState = await this.treeDb.getStateByIdx(toIdx);
+            if (Scalar.neq(decodeTx.toIdx, 0)){
+                const tmpToState = await this.treeDb.getStateByIdx(decodeTx.toIdx);
                 if (tmpToState){
                     toState = tmpToState;
                 } else {
-                    toState = tmpNewAccounts[toIdx];
+                    toState = tmpNewAccounts[decodeTx.toIdx];
                 }
             } else {
                 toState = {};
@@ -806,38 +802,24 @@ class Synchronizer {
                 toAy: toState.ay,
                 toEthAddr: toState.ethAddress,
                 coin: fromState.coin,
-                amount: float2fix(txsBuff.readUIntBE(8*i + 6, 2)),
-                step,
+                amount: decodeTx.amount,
+                fee: decodeTx.fee,
             };
             txs.push(tx);
         }
-        return {txs, inputFeePlanCoin, inputFeePlanFee};
+        return {txs, inputFeePlanCoin};
     }
 
     /**
      * Add fee plan to batch builder
      * @param {Object} bb - batch builder
-     * @param {String} feePlanCoins - fee plan coin encoded as hex string
-     * @param {String} feePlanFee - fee plan fee encoded as hex string  
+     * @param {String} feePlanCoins - fee plan coin encoded as hex string  
      */
-    async _addFeePlan(bb, feePlanCoins, feePlanFee) {
+    async _addFeePlanCoins(bb, feePlanCoins) {
         const tmpCoins = Scalar.e(feePlanCoins);
-        const tmpFeeF = Scalar.e(feePlanFee);
         for (let i = 0; i < 16; i++){
             const coin = extract(tmpCoins, 16*i, 16);
-            const fee = float2fix( Scalar.toNumber(extract(tmpFeeF, 16*i, 16)));
-            await bb.addCoin(coin, fee);
-        }
-    }
-
-    /**
-     * Add coin to transactions from rollup database
-     * @param {Array} txs - list of rollup transactions  
-     */
-    async _setUserFee(txs){
-        for (const tx of txs) {
-            const stateId = await this.getStateById(tx.fromIdx);
-            tx.coin = Number(stateId.coin);
+            await bb.addCoin(coin);
         }
     }
 
@@ -938,7 +920,7 @@ class Synchronizer {
 
         for (const hashTx of eventForge) {
             const offChainTxs = await this._getTxOffChain(hashTx);
-            await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
+            await this._addFeePlanCoins(bb, offChainTxs.inputFeePlanCoin);
             for (const tx of offChainTxs.txs) res.push(tx);
         }
         // }

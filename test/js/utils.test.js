@@ -214,6 +214,10 @@ describe("Utils", function () {
         const testVectors = [
             {
                 txs:[],
+                data: null
+            },
+            {
+                txs:[],
                 data: "0x"
             },
             {

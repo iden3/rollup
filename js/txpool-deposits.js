@@ -257,6 +257,7 @@ class DepositsState {
             amount: tx.amount,
             nonce: 0,
             userFee: tx.userFee,
+            fee: tx.fee,
             normalizedFee: tx.normalizedFee,
             isDeposit: tx.isDeposit,
             candidateId: tx.candidateId,
@@ -293,6 +294,7 @@ class DepositsState {
         res = Scalar.add(res, Scalar.shl(tx.nonce, 176));
         res = Scalar.add(res, Scalar.shl(utils.fix2float(tx.userFee), 224));
         res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 240));
+        res = Scalar.add(res, Scalar.shl(tx.fee, 243));
 
         return res;
     }
@@ -307,6 +309,7 @@ class DepositsState {
         tx.nonce = utils.extract(d0, 176, 16);
         tx.userFee = utils.float2fix(Scalar.toNumber(utils.extract(d0, 224, 16)));
         tx.rqOffset = utils.extract(d0, 240, 3);
+        tx.fee = utils.extract(d0, 243, 4);
 
         tx.rqTxData = Scalar.e(arr[1]);
 

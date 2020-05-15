@@ -94,6 +94,7 @@ class TXPool {
         res = Scalar.add(res, Scalar.shl(tx.rqOffset || 0, 240));
         res = Scalar.add(res, Scalar.shl(tx.onChain ? 1 : 0, 243));
         res = Scalar.add(res, Scalar.shl(tx.newAccount ? 1 : 0, 244));
+        res = Scalar.add(res, Scalar.shl(tx.fee, 245));
 
         return res;
     }
@@ -123,6 +124,7 @@ class TXPool {
         tx.rqOffset = Scalar.toNumber(utils.extract(d0, 240, 3));
         tx.onChain = Scalar.toNumber(utils.extract(d0, 243, 1));
         tx.newAccount = Scalar.toNumber(utils.extract(d0, 244, 1));
+        tx.fee = Scalar.toNumber(utils.extract(d0, 245, 4));
 
         tx.rqTxData = Scalar.e(arr[1]);
 
@@ -159,7 +161,12 @@ class TXPool {
                 
                 const tx = Object.assign({ fromIdx: fromIdx }, _tx);
                 utils.txRoundValues(tx);
+                // calculate user fee
+                const fee2Charge = Scalar.div(tx.amount, Constants.tableFeeInv[tx.fee]);
+                tx.userFee = utils.float2fix(utils.fix2float(fee2Charge));
+                
                 const res = await this.depositsStates.addTx(tx);
+
                 if (res == "NOT_ENOUGH_FEE"){
                     console.log("Deposit off-chain discarded due to low fee");
                     return false;
@@ -176,7 +183,10 @@ class TXPool {
         // Round amounts
         utils.txRoundValues(tx);
         tx.amount = utils.float2fix(utils.fix2float(tx.amount));
-        tx.userFee = utils.float2fix(utils.fix2float(tx.userFee));
+        
+        // calculate user fee
+        const fee2Charge = Scalar.div(tx.amount, Constants.tableFeeInv[tx.fee]);
+        tx.userFee = utils.float2fix(utils.fix2float(fee2Charge));
         tx.timestamp = (new Date()).getTime();
 
         const tmpState = new TmpState(this.rollupDB);
@@ -593,7 +603,7 @@ class TXPool {
 
         fillTx(forgedTxs, NSlots, incTable, PTable, this.depositsStates.getTxOnChainCandidates());
 
-        const usedCoins = Object.keys(PTable);
+        const usedCoins = Object.keys(PTable).map(coinStr => Number(coinStr));
 
         usedCoins.sort((a,b) => {
             return incTable[b][ PTable[b] ].accValue -
@@ -614,7 +624,8 @@ class TXPool {
         fillTx(forgedTxs, NSlots-forgedTxs.length, incTable, PTable, this.depositsStates.getTxOnChainCandidates());
 
         for (let c of usedCoins) {
-            bb.addCoin(c, incTable[c][ PTable[c] ].fee);
+            // bb.addCoin(c, incTable[c][ PTable[c] ].fee);
+            bb.addCoin(c);
         }
 
         for (let i=0; i<forgedTxs.length; i++) {
@@ -626,7 +637,7 @@ class TXPool {
 
         await this.depositsStates.recoverNonUsedTx(forgedTxs);
 
-        bb.optimizeSteps();
+        // bb.optimizeSteps();
 
         await bb.build();
 

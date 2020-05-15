@@ -19,15 +19,18 @@ jobs:
         node-version: [10.15.3]
 
     steps:
-    - uses: actions/checkout@v2
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
     - run: npm ci
-    - run: |
-        npm run test:circuits
-        npm run test:utils
-        npm run test:js
+    - name: Test circuits
+      run: npm run test:circuits
+    - name: Test utils
+      run: npm run test:utils
+    - name: Test js
+      run: npm run test:js
 
 

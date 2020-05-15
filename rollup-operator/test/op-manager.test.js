@@ -161,7 +161,7 @@ contract("Operator Manager", async (accounts) => {
         await insRollupPoS.setBlockNumber(eraBlock[2]); // era 2 smart contract test
         const depOffChainData = encodeDepositOffchain([]);
 
-        txSign = await opManager.getTxCommit(hashChain[8], `0x${batch.getDataAvailable().toString("hex")}`,
+        txSign = await opManager.getTxCommit(hashChain[8], batch.getDataAvailableSM(),
             `0x${(depOffChainData).toString("hex")}`);
         const resCommit = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
         expect(resCommit.status).to.be.equal(true);
@@ -191,7 +191,7 @@ contract("Operator Manager", async (accounts) => {
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
         await batch.build();
         const input = await buildPublicInputsSm(batch);
-        const commitData = `0x${batch.getDataAvailable().toString("hex")}`;
+        const commitData = batch.getDataAvailableSM();
         const depOffChainData = encodeDepositOffchain([]);
 
         await timeTravel.addBlocks(blockPerEra); // era 2

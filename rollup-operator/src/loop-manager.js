@@ -428,7 +428,7 @@ class LoopManager{
         if (statusServer == stateServer.FINISHED) {
             // get proof, commit data and forge block
             const proofServer = generateCall(res.data.proof);
-            const commitData = `0x${this.infoCurrentBatch.batchData.getDataAvailable().toString("hex")}`;
+            const commitData = this.infoCurrentBatch.batchData.getDataAvailableSM();
             const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
 
             // + 1% in case some batch is fullfilled and the fee increases, the remaining fee is transfer back to the operator

@@ -243,16 +243,17 @@ function isStrHex(input) {
     return false;
 }
 
-function decodeDataAvailability(nLevels, dataStr){
+function decodeDataAvailability(nLevels, dataSm){
     const txs = [];
 
     const indexBits = nLevels;
     const amountBits = 16;
     const feeBits = 4;
 
-    if (!dataStr.slice(2).length) return txs;
+    if (!dataSm) return txs;
+    if (!dataSm.slice(2).length) return txs;
 
-    let txsData = Scalar.fromString(dataStr, 16);
+    let txsData = Scalar.fromString(dataSm, 16);
 
     while(!Scalar.isZero(txsData)){
         const tx = {};
@@ -267,7 +268,6 @@ function decodeDataAvailability(nLevels, dataStr){
 
     return txs.reverse();
 }
-
 
 module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
