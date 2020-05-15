@@ -138,7 +138,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         // Check balances
         const balOpBeforeForge = await getEtherBalance(operator1);
         // Forge genesis batch by operator 1
-        await insRollupPoS.commitBatch(hashChain.pop(), `0x${block.getDataAvailable().toString("hex")}`, [], {from: operator1});
+        await insRollupPoS.commitBatch(hashChain.pop(), block.getDataAvailableSM(), [], {from: operator1});
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
         // Consolidate Batch
         await rollupDB.consolidate(block);
@@ -151,7 +151,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         const inputs1 = buildPublicInputsSm(block1);
 
         // Forge batch by operator 1
-        await insRollupPoS.commitBatch(hashChain.pop(), `0x${block1.getDataAvailable().toString("hex")}`, [], {from: operator1});
+        await insRollupPoS.commitBatch(hashChain.pop(), block.getDataAvailableSM(), [], {from: operator1});
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
         // Consolidate Batch
         await rollupDB.consolidate(block1);
@@ -193,8 +193,12 @@ contract("Rollup - RollupPoS", (accounts) => {
         });
         const resTx = await web3.eth.getTransaction(txHash);
         const decodedData2 = decodeMethod(resTx.input);
-        expect(decodedData2.params[1].value).to.be.
-            equal(`0x${block1.getDataAvailable().toString("hex")}`);
+        if(block1.getDataAvailableSM() === "0x"){
+            expect(decodedData2.params[1].value).to.be.equal(null);
+        } else {
+            expect(decodedData2.params[1].value).to.equal(block1.getDataAvailableSM());
+        }
+        
 
     });
 
@@ -233,7 +237,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         const inputs = buildPublicInputsSm(batch);
 
         // Forge batch by operator 1
-        await insRollupPoS.commitBatch(hashChain.pop(), `0x${batch.getDataAvailable().toString("hex")}`, encodedDeposits, {from: operator1});
+        await insRollupPoS.commitBatch(hashChain.pop(), batch.getDataAvailableSM(), encodedDeposits, {from: operator1});
         await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, encodedDeposits, {from: operator1, value: web3.utils.toWei("1", "ether")});
         await rollupDB.consolidate(batch);
     });

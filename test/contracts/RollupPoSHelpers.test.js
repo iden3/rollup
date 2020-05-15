@@ -13,7 +13,7 @@ const { exitAx, exitAy, exitEthAddr} = require("../../js/constants");
 
 async function checkHashOffChain(bb, insPoS, maxTx) {
     await bb.build();
-    const data = await bb.getDataAvailable();
+    const data = await bb.getDataAvailableSM();
     const hashOffChain = await bb.getOffChainHash();
     const res = await insPoS.hashOffChainTxTest(data, maxTx);
     expect(hashOffChain.toString()).to.be.equal(res.toString());
@@ -89,6 +89,7 @@ contract("RollupPoSHelpers functions", (accounts) => {
             toEthAddr: id1,
             amount: 50,
             coin: 0,
+            fee: 15,
         };
         maxTx = 8;
         const bb2 = await rollupDB.buildBatch(maxTx, nLevels);
@@ -105,6 +106,7 @@ contract("RollupPoSHelpers functions", (accounts) => {
             toEthAddr: id1,
             amount: 50,
             coin: 0,
+            fee: 15,
         };
         maxTx = 34;
         const bb3 = await rollupDB.buildBatch(maxTx, nLevels);

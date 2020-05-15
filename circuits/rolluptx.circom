@@ -2,7 +2,7 @@ include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
 include "../node_modules/circomlib/circuits/eddsaposeidon.circom";
 include "../node_modules/circomlib/circuits/gates.circom";
 include "../node_modules/circomlib/circuits/mux1.circom";
-include "feeselector.circom";
+include "feeupdater.circom";
 include "balancesupdater.circom";
 include "rolluptxstates.circom";
 include "statepacker.circom";
@@ -11,9 +11,7 @@ include "statepacker.circom";
 
 template RollupTx(nLevels) {
 
-    // Fee Plan
     signal input feePlanCoin[16];
-    signal input feePlanFee[16];
 
     // Past and future TxDatas
     signal input pastTxData[4];
@@ -28,7 +26,7 @@ template RollupTx(nLevels) {
     signal input amount;
     signal input coin;
     signal input nonce;
-    signal input userFee;
+    signal input fee;
     signal input rqOffset;
     signal input onChain;
     signal input newAccount;
@@ -45,8 +43,6 @@ template RollupTx(nLevels) {
     signal input fromEthAddr;
     signal input fromAx;
     signal input fromAy;
-
-    signal input step;
 
     // State 1
     signal input ax1;
@@ -79,20 +75,11 @@ template RollupTx(nLevels) {
     signal input oldExitRoot;
     signal output newExitRoot;
 
-    signal input countersIn;
-    signal output countersOut;
+    // Accumulated fees
+    signal input accFeeIn[16];
+    signal output accFeeOut[16];
 
     var i;
-
-// feeSelector
-///////////////
-    component feeSelector = FeeSelector();
-    for (i=0; i<16; i++) {
-        feeSelector.feePlanCoin[i] <== feePlanCoin[i];
-        feeSelector.feePlanFee[i] <== feePlanFee[i];
-    }
-    feeSelector.coin <== coin;
-    feeSelector.step <== step;
 
 //  states
 ///////////
@@ -267,15 +254,25 @@ template RollupTx(nLevels) {
     balancesUpdater.oldStAmountSender <== s1Amount.out;
     balancesUpdater.oldStAmountReceiver <== amount2;
     balancesUpdater.amount <== amount;
-    balancesUpdater.userFee <== userFee;
-    balancesUpdater.operatorFee <== feeSelector.operatorFee;
+    balancesUpdater.fee <== fee;
     balancesUpdater.onChain <== onChain;
-    balancesUpdater.countersIn <== countersIn;
-    balancesUpdater.countersBase <== feeSelector.countersBase;
     balancesUpdater.loadAmount <== loadAmount;
     balancesUpdater.nop <== states.nop;
 
-    balancesUpdater.countersOut ==> countersOut;
+// feeUpdater
+///////////
+    component feeUpdater = FeeUpdater();
+    feeUpdater.coin <== coin;
+    feeUpdater.fee2Charge <== balancesUpdater.fee2Charge;
+    
+    for (i = 0; i < 16; i++){
+        feeUpdater.feePlanCoin[i] <== feePlanCoin[i];
+        feeUpdater.accFeeIn[i] <== accFeeIn[i];
+    }
+
+    for (i = 0; i < 16; i++){
+        feeUpdater.accFeeOut[i] ==> accFeeOut[i];
+    }
 
 // newState1 Packer
 /////////////////

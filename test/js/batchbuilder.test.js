@@ -6,6 +6,7 @@ const SMTMemDB = require("circomlib").SMTMemDB;
 const RollupAccount = require("../../js/rollupaccount");
 const RollupDB = require("../../js/rollupdb");
 const Constants = require("../../js/constants");
+const { depositTx } = require("./helpers/utils-test");
 
 describe("Rollup Db - batchbuilder", async function(){
 
@@ -18,45 +19,13 @@ describe("Rollup Db - batchbuilder", async function(){
         const account1 = new RollupAccount(1);
         const account2 = new RollupAccount(2);
 
-        bb.addTx({
-            loadAmount: 1000,
-            coin: 1,
-            fromAx: account1.ax,
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
-    
-        bb.addTx({
-            loadAmount: 2000,
-            coin: 1,
-            fromAx: account2.ax,
-            fromAy: account2.ay,
-            fromEthAddr: account2.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
-    
-        bb.addTx({
-            loadAmount: 3000,
-            coin: 2,
-            fromAx: account1.ax,
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
+        depositTx(bb, account1, 1, 1000);
+        depositTx(bb, account2, 1, 2000);
+        depositTx(bb, account1, 2, 3000);
     
         await bb.build();
         bb.getInput();
-    
+
         await rollupDB.consolidate(bb);
     
         const s1 = await rollupDB.getStateByIdx(1);
@@ -84,17 +53,15 @@ describe("Rollup Db - batchbuilder", async function(){
             coin: 1,
             amount: Scalar.e("50"),
             nonce: 0,
-            userFee: Scalar.e("6")
+            fee: Constants.fee["10%"],
         };
 
         account1.signTx(tx);
         bb2.addTx(tx);
     
-        bb2.addCoin(1, 5);
-    
         await bb2.build();
         bb2.getInput();
-    
+
         await rollupDB.consolidate(bb2);
     
         const s2_1 = await rollupDB.getStateByIdx(1);
@@ -133,6 +100,67 @@ describe("Rollup Db - batchbuilder", async function(){
         assert.deepEqual(s5[0], s2_2);
     });
 
+    it("Should check fee total accumulated", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(4, 8);
+        
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+        
+        depositTx(bb, account1, 1, 1000);
+        depositTx(bb, account2, 1, 1000);
+        depositTx(bb, account1, 2, 1000);
+        depositTx(bb, account2, 2, 1000);
+        
+        await bb.build();
+        await rollupDB.consolidate(bb);
+
+        const bb2 = await rollupDB.buildBatch(4, 8);
+        
+        const tx = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 2,
+            amount: 50,
+            nonce: 0,
+            fee: Constants.fee["10%"],
+        };
+        const feeTx1 = tx.amount / Constants.tableFeeInv[tx.fee];
+
+        account1.signTx(tx);
+        bb2.addTx(tx);
+
+        const tx2 = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 2,
+            amount: 50,
+            nonce: 0,
+            fee: Constants.fee["50%"],
+        };
+        const feeTx2 = tx2.amount / Constants.tableFeeInv[tx2.fee];
+        account1.signTx(tx2);
+        bb2.addTx(tx2);
+
+        bb2.addCoin(1);
+        bb2.addCoin(2);
+
+        await bb2.build();
+
+        // Total fees accumulated
+        const feePlanCoins = bb2.feePlanCoins;
+        const feeTotals = bb2.feeTotals;
+
+        const indexCoin = feePlanCoins.indexOf(tx.coin);
+        const feeAcc = feeTotals[indexCoin];
+        
+        expect(Scalar.eq(feeAcc, feeTx1 + feeTx2)).to.be.equal(true);
+    });
+
     it("Should check error offchain with loadAmount", async () => {
         // Start a new state
         const db = new SMTMemDB();
@@ -142,29 +170,8 @@ describe("Rollup Db - batchbuilder", async function(){
         const account1 = new RollupAccount(1);
         const account2 = new RollupAccount(2);
         
-        bb.addTx({
-            loadAmount: 1000,
-            coin: 0,
-            fromAx: account1.ax,
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
-        
-        bb.addTx({
-            loadAmount: 2000,
-            coin: 0,
-            fromAx: account2.ax,
-            fromAy: account2.ay,
-            fromEthAddr: account2.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
+        depositTx(bb, account1, 0, 1000);
+        depositTx(bb, account2, 0, 2000);
         
         await bb.build();
         await rollupDB.consolidate(bb);
@@ -179,12 +186,11 @@ describe("Rollup Db - batchbuilder", async function(){
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["10%"],
         };
 
         account1.signTx(tx);
         bb2.addTx(tx);
-        bb2.addCoin(0, 5);
 
         try {
             await bb2.build();
@@ -204,29 +210,8 @@ describe("Rollup Db - batchbuilder", async function(){
         const account2 = new RollupAccount(2);
         const account3 = new RollupAccount(3);
         
-        bb.addTx({
-            loadAmount: 1000,
-            coin: 0,
-            fromAx: account1.ax,
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
-        
-        bb.addTx({
-            loadAmount: 2000,
-            coin: 1,
-            fromAx: account2.ax,
-            fromAy:account2.ay,
-            fromEthAddr: account2.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
+        depositTx(bb, account1, 0, 1000);
+        depositTx(bb, account2, 1, 2000);
         
         await bb.build();
         await rollupDB.consolidate(bb);
@@ -240,12 +225,11 @@ describe("Rollup Db - batchbuilder", async function(){
             coin: 0,
             amount: 50,
             nonce: 0,
-            userFee: 10
+            fee: Constants.fee["10%"],
         };
         account1.signTx(tx);
         bb2.addTx(tx);
-        
-        bb2.addCoin(0, 5);
+
         try { 
             await bb2.build();
             assert(false);
@@ -264,29 +248,8 @@ describe("Rollup Db - batchbuilder", async function(){
         const account2 = new RollupAccount(2);
         const account3 = new RollupAccount(3);
         
-        bb.addTx({
-            loadAmount: 1000,
-            coin: 0,
-            fromAx: account1.ax,
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
-        
-        bb.addTx({
-            loadAmount: 2000,
-            coin: 1,
-            fromAx: account2.ax,
-            fromAy: account2.ay,
-            fromEthAddr: account2.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr,
-            onChain: true
-        });
+        depositTx(bb, account1, 0, 1000);
+        depositTx(bb, account2, 1, 2000);
         
         await bb.build();
         await rollupDB.consolidate(bb);
@@ -312,6 +275,44 @@ describe("Rollup Db - batchbuilder", async function(){
             assert.include(error.message, "Load amount must be 0 for offChainTxs");
         }
     });
+
+    it("Should check error minimum fee", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(4, 8);
+        
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+        
+        depositTx(bb, account1, 0, 1000);
+        depositTx(bb, account2, 0, 2000);
+        
+        await bb.build();
+        await rollupDB.consolidate(bb);
+        
+        const bb2 = await rollupDB.buildBatch(4, 8);
+        
+        const tx = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 50,
+            nonce: 0,
+            fee: Constants.fee["0.01%"],
+        };
+        account1.signTx(tx);
+        bb2.addTx(tx);
+        
+        try {
+            await bb2.build();   
+            await rollupDB.consolidate(bb2);
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "Amount less than fee requested");
+        }
+    });
 });
 
 describe("RollupDb - rollback functionality", async function () {
@@ -330,17 +331,7 @@ describe("RollupDb - rollback functionality", async function () {
     it("should add one deposit", async () => {
         const bb = await rollupDb.buildBatch(4, 8);
     
-        bb.addTx({  
-            loadAmount: 10, 
-            coin: 0, 
-            fromAx: account1.ax, 
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr, 
-            onChain: true 
-        });
+        depositTx(bb, account1, 0, 10);
 
         await bb.build();
         await rollupDb.consolidate(bb);
@@ -426,6 +417,7 @@ describe("RollupDb - rollback functionality", async function () {
             toAy: account2.ay,
             toEthAddr: account1.ethAddress,
             amount: 3,
+            fee: Constants.fee["0%"],
             coin: 0,
         };
 
@@ -568,6 +560,7 @@ describe("RollupDb - rollback functionality", async function () {
             toAy: account2.ay,
             toEthAddr: account1.ethAddress,
             amount: 3,
+            fee: Constants.fee["0%"],
             coin: 0,
         };
         const bb2 = await rollupDb.buildBatch(4, 8);
@@ -647,41 +640,9 @@ describe("RollupDb - rollback functionality", async function () {
     it("should add three deposits", async () => {
         const bb = await rollupDb.buildBatch(4, 8);
 
-        bb.addTx({ 
-            loadAmount: 10, 
-            coin: 0, 
-            fromAx: account1.ax, 
-            fromAy: account1.ay,
-            fromEthAddr: account1.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr, 
-            onChain: true 
-        });
-
-        bb.addTx({ 
-            loadAmount: 10, 
-            coin: 0, 
-            fromAx: account2.ax, 
-            fromAy: account2.ay,
-            fromEthAddr: account2.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr, 
-            onChain: true 
-        });
-
-        bb.addTx({ 
-            loadAmount: 10, 
-            coin: 0, 
-            fromAx: account3.ax, 
-            fromAy: account3.ay,
-            fromEthAddr: account3.ethAddress,
-            toAx: Constants.exitAx,
-            toAy: Constants.exitAy,
-            toEthAddr: Constants.exitEthAddr, 
-            onChain: true 
-        }); 
+        depositTx(bb, account1, 0, 10);
+        depositTx(bb, account2, 0, 10);
+        depositTx(bb, account3, 0, 10); 
 
         await bb.build();
         await rollupDb.consolidate(bb);
@@ -706,6 +667,7 @@ describe("RollupDb - rollback functionality", async function () {
             toAy: Constants.exitAy,
             toEthAddr: Constants.exitEthAddr,
             amount: 5,
+            fee: Constants.fee["0%"],
             coin: 0,
         };
 
@@ -742,6 +704,7 @@ describe("RollupDb - rollback functionality", async function () {
             toAy: Constants.exitAy,
             toEthAddr: Constants.exitEthAddr,
             amount: amountToWithdraw,
+            fee: Constants.fee["0%"],
             coin: 0,
         };
 

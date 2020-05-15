@@ -38,12 +38,12 @@ template DecodeTx(nLevels) {
     signal output amount;        // 16      64..79
     signal output coin;          // 32      80..111
     signal output nonce;         // 48      112..159
-    signal output userFee;       // 16      160..175
-    signal output rqOffset;      // 3       176..178
-    signal output onChain        // 1       179
-    signal output newAccount     // 1       180
+    signal output fee;           // 16      160..163
+    signal output rqOffset;      // 3       164..166
+    signal output onChain        // 1       167
+    signal output newAccount     // 1       168
 
-    signal output dataAvailabilityBits[nLevels*2+16];
+    signal output dataAvailabilityBits[nLevels*2 + 16 + 4];
     signal output sigOffChainHash;  // For the signature
     signal output newOnChainHash;   // For the chained on-chain
 
@@ -76,29 +76,29 @@ template DecodeTx(nLevels) {
     }
     b2nNonce.out ==> nonce;
 
-// userFee
+// fee
 ////////
-    component dfUserFee = DecodeFloatBin();
-    for (i=0; i<16; i++) {
-        dfUserFee.in[i] <== n2bData.out[160 + i];
+    component b2nFee = Bits2Num(4);
+    for (i=0; i<4; i++) {
+        b2nFee.in[i] <== n2bData.out[160 + i];
     }
-    dfUserFee.out ==> userFee;
+    b2nFee.out ==> fee;
 
 // rqOffset
 ////////
     component b2nRqOffset = Bits2Num(3);
     for (i=0; i<3; i++) {
-        b2nRqOffset.in[i] <== n2bData.out[176 + i];
+        b2nRqOffset.in[i] <== n2bData.out[164 + i];
     }
     b2nRqOffset.out ==> rqOffset;
 
 // onChain
 ////////
-    onChain <== n2bData.out[179];
+    onChain <== n2bData.out[167];
 
 // newAccount
 ////////
-    newAccount <== n2bData.out[180];
+    newAccount <== n2bData.out[168];
 
 //  Data Availability bits
 ////////
@@ -126,11 +126,15 @@ template DecodeTx(nLevels) {
     }
     // Add toIdx
     for (i=0; i<nLevels; i++) {
-        dataAvailabilityBits[nLevels + nLevels - 1 - i] <== n2bToIdx.out[i]*(1-onChain);
+        dataAvailabilityBits[nLevels*2 - 1 - i] <== n2bToIdx.out[i]*(1-onChain);
     }
     // Add amountF
     for (i=0; i<16; i++) {
-        dataAvailabilityBits[nLevels*2 + 16 -1 - i] <== n2bData.out[64 + i]*(1-onChain);
+        dataAvailabilityBits[nLevels*2 + 16 - 1 - i] <== n2bData.out[64 + i]*(1-onChain);
+    }
+    // Add fee
+    for (i=0; i<4; i++) {
+        dataAvailabilityBits[nLevels*2 + 16 + 4 - 1 - i] <== n2bData.out[160 + i]*(1-onChain);
     }
 
 // sigOffChainHash

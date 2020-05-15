@@ -9,7 +9,7 @@ contract RollupPoSHelpers {
 
   using Memory for *;
 
-  uint constant bytesOffChainTx = 3*2 + 2;
+  uint constant bitsTx = 24 + 24 + 16 + 4;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
   uint constant FOURTH_ROOT_FINNEY = 5623; // 4th root of finney in weis
 
@@ -27,30 +27,25 @@ contract RollupPoSHelpers {
   /**
    * @dev hash all off-chain transactions
    * @param offChainTx off-chain transaction compressed format
+   * @param maxTx Maxtransactions that fits in one batch
    * @return hash of all off-chain transactions
    */
   function hashOffChainTx(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
-    uint headerLength = (maxTx >> 3);
-    if((maxTx % 8) != 0) headerLength = headerLength + 1;
-    uint totalLength = maxTx*bytesOffChainTx + headerLength;
+    uint256 totalLength = maxTx*bitsTx;
 
-    bytes memory hashOffTx = new bytes(totalLength);
+    if (maxTx % 2 != 0) {
+        totalLength += 4;
+    }
+
+    bytes memory hashOffTx = new bytes(totalLength/8);
     Memory.Cursor memory c = Memory.read(offChainTx);
-    uint ptrHeader = 0;
-    uint ptr = totalLength - offChainTx.length + headerLength;
+    uint256 ptr = totalLength/8 - offChainTx.length;
 
     while (!c.eof()) {
-      if (ptrHeader < headerLength) {
-        // add header at the start
-         bytes1 iHeader = c.readBytes1();
-         hashOffTx[ptrHeader] = iHeader;
-         ptrHeader++;
-      } else {
-        // add off-chain transactions at the end
-        bytes1 iTx = c.readBytes1();
-        hashOffTx[ptr] = iTx;
-        ptr++;
-      }
+      // add off-chain transactions at the end
+      bytes1 iTx = c.readBytes1();
+      hashOffTx[ptr] = iTx;
+      ptr++;
     }
     return uint256(sha256(hashOffTx)) % rField;
   }

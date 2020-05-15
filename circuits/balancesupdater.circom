@@ -13,29 +13,27 @@
 
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
+include "./feetableselector.circom";
 
 template BalancesUpdater() {
     signal input oldStAmountSender;
     signal input oldStAmountReceiver;
     signal input amount;
     signal input loadAmount;
-    signal input userFee;
-    signal input operatorFee;
+    signal input fee;
     signal input onChain;
     signal input nop;
-    signal input countersIn;
-    signal input countersBase;
 
     signal output newStAmountSender;
     signal output newStAmountReceiver;
-    signal output countersOut;
     signal output update2;
+    signal output fee2Charge; // amount of fee that needs to be discounted
 
-    signal feeApplies;      // 1 If fee applies (offChain), 0 if not applies (onChain)
-    signal appliedFee;      // amount of fee that needs to be discounted
+    signal feeApplies;        // 1 If fee applies (offChain), 0 if not applies (onChain)      
+    signal tmpFee2Charge;
 
     signal limitsOk;        // 1 if from is >0
-    signal feeOk;           // If userFee > operatorFee
+    signal feeOk;           // If fee > minimum required fee
     signal txOk;            // If both are ok.
 
     signal effectiveAmount1;
@@ -43,22 +41,30 @@ template BalancesUpdater() {
     signal effectiveLoadAmount;
 
     component n2bSender = Num2Bits(193);
-    component feeGE = GreaterEqThan(128);
+    component feeGE = GreaterEqThan(193);
     component effectiveAmountIsZero = IsZero();
 
     feeApplies <== (1-onChain)*(1-nop);  // Fee applies only on offChainTx and is not a NOP
+ 
+    component feeTableSelector = FeeTableSelector();
+    feeTableSelector.feeSel <== fee*feeApplies;
 
-    appliedFee <== operatorFee*feeApplies;
+    if (feeTableSelector.feeOut > 0){
+        tmpFee2Charge <-- amount \ feeTableSelector.feeOut;
+    } else {
+        tmpFee2Charge <-- 0;
+    }
 
+    fee2Charge <== tmpFee2Charge;
     effectiveLoadAmount <== loadAmount*onChain;
     effectiveAmount1 <== amount*(1-nop);
 
     // Check limits and fees on limits
-    n2bSender.in <== (1<<192) + oldStAmountSender + effectiveLoadAmount - effectiveAmount1 - appliedFee;
+    n2bSender.in <== (1<<192) + oldStAmountSender + effectiveLoadAmount - effectiveAmount1 - fee2Charge;
 
-    // Fee offered by the user must be greater that the operators demanded
-    feeGE.in[0] <== userFee;
-    feeGE.in[1] <== operatorFee;
+    // Fee demanded by the user must be greater than the minium value
+    feeGE.in[0] <== amount;
+    feeGE.in[1] <== feeTableSelector.feeOut;
 
     feeOk <== feeGE.out + (1-feeApplies) - feeGE.out*(1-feeApplies);     // Is greater or does not apply
     limitsOk <== n2bSender.out[192];
@@ -73,10 +79,8 @@ template BalancesUpdater() {
     effectiveAmountIsZero.in <== effectiveAmount2;
 
     // if !txOk then return 0;
-    newStAmountSender <== oldStAmountSender + effectiveLoadAmount - effectiveAmount2 - appliedFee;
+    newStAmountSender <== oldStAmountSender + effectiveLoadAmount - effectiveAmount2 - fee2Charge;
     newStAmountReceiver <== oldStAmountReceiver + effectiveAmount2
 
-    // Counters
-    countersOut <== countersIn + countersBase*feeApplies;
     update2 <== 1-effectiveAmountIsZero.out;
 }

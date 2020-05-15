@@ -13,7 +13,7 @@ class RollupTx {
         this.amount = Scalar.e(tx.amount || 0);
         this.coin = Scalar.e(tx.coin || 0);
         this.nonce = Scalar.e(tx.nonce || 0);
-        this.userFee = Scalar.e(tx.userFee || 0);
+        this.fee = Scalar.e(tx.fee || 0);
         this.rqOffset = Scalar.e(tx.rqOffset || 0);
         this.onChain = Scalar.e(tx.onChain ? 1 : 0);
         this.newAccount = Scalar.e(tx.newAccount ? 1 : 0);
@@ -47,11 +47,8 @@ class RollupTx {
     _roundValues(){
         const amountF = utils.fix2float(this.amount);
         this.amount = utils.float2fix(amountF);
-        const userFeeF = utils.fix2float(this.userFee);
-        this.userFee = utils.float2fix(userFeeF);
 
         this.amountF = Scalar.e(amountF);
-        this.userFeeF = Scalar.e(userFeeF);
     }
 
     getTxData() {
@@ -62,10 +59,10 @@ class RollupTx {
         res = Scalar.add(res, Scalar.shl(this.amountF, 64));
         res = Scalar.add(res, Scalar.shl(this.coin, 80));
         res = Scalar.add(res, Scalar.shl(this.nonce, 112));
-        res = Scalar.add(res, Scalar.shl(this.userFeeF, 160));
-        res = Scalar.add(res, Scalar.shl(this.rqOffset, 176));
-        res = Scalar.add(res, Scalar.shl(this.onChain, 179));
-        res = Scalar.add(res, Scalar.shl(this.newAccount, 180));
+        res = Scalar.add(res, Scalar.shl(this.fee, 160));
+        res = Scalar.add(res, Scalar.shl(this.rqOffset, 164));
+        res = Scalar.add(res, Scalar.shl(this.onChain, 167));
+        res = Scalar.add(res, Scalar.shl(this.newAccount, 168));
     
         return res;
     }

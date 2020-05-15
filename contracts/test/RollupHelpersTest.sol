@@ -40,9 +40,9 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function calcTokenTotalFeeTest(bytes32 tokenIds, bytes32 fee, bytes32 nTxToken, uint nToken)
-    public pure returns (uint, uint) {
-    return calcTokenTotalFee(tokenIds, fee, nTxToken, nToken);
+  function calcTokenTotalFeeTest(bytes32 tokenIds, bytes32 feeTotal, uint nToken)
+    public pure returns (uint32, uint256) {
+    return calcTokenTotalFee(tokenIds, feeTotal, nToken);
   }
 
   function buildTreeStateTest(uint256 amount, uint16 token, uint256 Ax, uint256 Ay,
@@ -65,12 +65,12 @@ contract RollupHelpersTest is RollupHelpers{
     uint16 amountF,
     uint16 token,
     uint32 nonce,
-    uint16 maxFee,
+    uint8 fee,
     uint8 rqOffset,
     bool onChain,
     bool newAccount
   ) public pure returns (bytes32){
-    return buildTxData(amountF, token, nonce, maxFee, rqOffset, onChain, newAccount);
+    return buildTxData(amountF, token, nonce, fee, rqOffset, onChain, newAccount);
   }
 
   function buildOnChainHashTest(

@@ -5,7 +5,6 @@ async function checkBatch(circuit, w, bb) {
         newExitRoot: bb.getNewExitRoot(),
         onChainHash: bb.getOnChainHash(),
         offChainHash: bb.getOffChainHash(),
-        countersOut: bb.getCountersOut(),
         finalIdx: bb.getFinalIdx(),
     };
 

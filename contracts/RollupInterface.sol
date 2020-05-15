@@ -9,7 +9,7 @@ interface RollupInterface {
     uint[2] calldata proofA,
     uint[2][2] calldata proofB,
     uint[2] calldata proofC,
-    uint[10] calldata input,
+    uint[9] calldata input,
     bytes calldata compressedOnChainTx
   ) external payable;
 }

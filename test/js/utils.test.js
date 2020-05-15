@@ -36,7 +36,7 @@ describe("Utils", function () {
             amount: 24,
             coin: 4,
             nonce: 24,
-            userFee: 12,
+            fee: 2,
             rqOffset: 3,
             onChain: true,
             newAccount: true,
@@ -48,7 +48,7 @@ describe("Utils", function () {
         expect(Scalar.eq(tx.amount, txDataDecoded.amount)).to.be.equal(true);
         expect(Scalar.eq(tx.coin, txDataDecoded.coin)).to.be.equal(true);
         expect(Scalar.eq(tx.nonce, txDataDecoded.nonce)).to.be.equal(true);
-        expect(Scalar.eq(tx.userFee, txDataDecoded.userFee)).to.be.equal(true);
+        expect(Scalar.eq(tx.fee, txDataDecoded.fee)).to.be.equal(true);
         expect(Scalar.eq(tx.rqOffset, txDataDecoded.rqOffset)).to.be.equal(true);
         expect(Scalar.eq(tx.onChain, txDataDecoded.onChain)).to.be.equal(true);
         expect(Scalar.eq(tx.newAccount, txDataDecoded.newAccount)).to.be.equal(true);
@@ -57,21 +57,16 @@ describe("Utils", function () {
     it("Transaction round values", async () => {
         const testVector = [
             [0x307B, "123000000"],
-            [0x1DC6, "454500"],
         ];
         
         const tx = {
             amount: testVector[0][1],
-            userFee: testVector[1][1],
         };
 
         utils.txRoundValues(tx);
 
         expect(Scalar.eq(testVector[0][0], tx.amountF)).to.be.equal(true);
-        expect(Scalar.eq(testVector[1][0], tx.userFeeF)).to.be.equal(true);
-
         expect(Scalar.eq(testVector[0][1], tx.amount)).to.be.equal(true);
-        expect(Scalar.eq(testVector[1][1], tx.userFee)).to.be.equal(true);
     });
 
     it("Leaf state from / to array", async () => {
@@ -121,10 +116,10 @@ describe("Utils", function () {
             coin: 0,
             amount: 500,
             nonce: 0,
-            userFee: 100,
-            r8x: "770591572776893072560329255187340888258936546349417314856384396374667363890",
-            r8y: "962686632833179341069561379306513064401103432079312175650332281958115485290",
-            s: "356195177343820326086198566657583616848421081213756974140987858209661398985",
+            fee: 8,
+            r8x: "14249628178193921968052075824427973879041165504798930571118394126803297737140",
+            r8y: "11396494273403695736175326645477283963162576957994786575723116890527943119537",
+            s: "2683750428557681416738177479124652233073327883450793607092072663389997444813",
             fromAx: "144e7e10fd47e0c67a733643b760e80ed399f70e78ae97620dbb719579cd645d",
             fromAy: "1676a120dec6e3d678a947bc34003456ed46077efe7314d38a7db9b5c03a9446",
             fromEthAddr: "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf" 

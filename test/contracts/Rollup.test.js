@@ -337,7 +337,7 @@ contract("Rollup", (accounts) => {
         // - forge batches to include deposit on top
 
         const fromAxAy = [wallets[3].publicKey[0].toString(), wallets[3].publicKey[1].toString()];
-        const onTopAmount = 3;
+        const onTopAmount = 13;
         const tokenId = 0;
 
         let initialBalanceId3 = await rollupDB.getStateByIdx(3);
@@ -355,13 +355,13 @@ contract("Rollup", (accounts) => {
         const balanceAfter= await getEtherBalance(id1);
 
         // return the remaining ether after paying the fees.
-        expect(Math.floor(balanceBefore)).to.be.equal(Math.floor(balanceAfter));
+        expect(Math.floor(balanceBefore) - Math.floor(balanceAfter)).to.be.lessThan(1.1);
 
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId1 = await insTokenRollup.balanceOf(id1);
-        expect(resRollup.toString()).to.be.equal("15");
-        expect(resId1.toString()).to.be.equal("45");
+        expect(resRollup.toString()).to.be.equal("25");
+        expect(resId1.toString()).to.be.equal("35");
 
         // forge empty batch
         await forgerTest.forgeBatch();
@@ -370,7 +370,7 @@ contract("Rollup", (accounts) => {
 
         forgerTest.checkBatchNumber([resDepositOnTop.logs[0]]);
 
-        let finalBalanceId3 = await rollupDB.getStateByIdx(3);//new leaf
+        let finalBalanceId3 = await rollupDB.getStateByIdx(3);
         expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())+onTopAmount).toString());
     });
 
@@ -380,8 +380,8 @@ contract("Rollup", (accounts) => {
         // - Get event data
         // - Update rollupTree
         // - forge batches to include transaction
-        // Current leaf 2: 5, tokens leaf 3: 8 tokens
-        // After leaf 2: 4, tokens leaf 3: 9 tokens
+        // Current leaf 2: 5, tokens leaf 3: 18 tokens
+        // After leaf 2: 4, tokens leaf 3: 19 tokens
 
         const fromAxAy = [wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()];
         const toAxAy = [wallets[3].publicKey[0].toString(), wallets[3].publicKey[1].toString()];
@@ -392,7 +392,7 @@ contract("Rollup", (accounts) => {
         let initialBalanceId3 = await rollupDB.getStateByIdx(3);
 
         expect(initialBalanceId2.amount.toString()).to.be.equal("5");
-        expect(initialBalanceId3.amount.toString()).to.be.equal("8");
+        expect(initialBalanceId3.amount.toString()).to.be.equal("18");
 
         const resTransfer = await insRollupTest.transfer(fromAxAy, toAxAy, amount, tokenId,
             { from: id2, value: web3.utils.toWei("1", "ether") });
@@ -412,8 +412,8 @@ contract("Rollup", (accounts) => {
     });
 
     it("Should add deposit and transfer", async () => {
-        // Current Tokens: id1: 45, rollupSc: 15, leaf 2 : 4 leaf 4: null
-        // After this test: id1: 33, rollupSc 27, leaf 2 : 14 leaf 4: 2
+        // Current Tokens: id1: 35, rollupSc: 15, leaf 2 : 4 leaf 4: null
+        // After this test: id1: 23, rollupSc 27, leaf 2 : 14 leaf 4: 2
 
         const fromAxAy = [wallets[4].publicKey[0].toString(), wallets[4].publicKey[1].toString()];
         const toAxAy = [wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()];
@@ -434,8 +434,8 @@ contract("Rollup", (accounts) => {
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId1 = await insTokenRollup.balanceOf(id1);
-        expect(resRollup.toString()).to.be.equal("27");
-        expect(resId1.toString()).to.be.equal("33");
+        expect(resRollup.toString()).to.be.equal("37");
+        expect(resId1.toString()).to.be.equal("23");
 
         // forge genesis batch
         await forgerTest.forgeBatch();
@@ -445,7 +445,7 @@ contract("Rollup", (accounts) => {
         forgerTest.checkBatchNumber([resDepositAndTransfer.logs[0]]);
 
         let finalBalanceId2 = await rollupDB.getStateByIdx(2);
-        let finalBalanceId4 = await rollupDB.getStateByIdx(4);//new leaf
+        let finalBalanceId4 = await rollupDB.getStateByIdx(4); 
 
         expect(finalBalanceId2.amount.toString()).to.be.equal((parseInt(initialBalanceId2.amount.toString())+amount).toString());
         expect(finalBalanceId4.amount.toString()).to.be.equal((loadAmount-amount).toString());
@@ -498,9 +498,9 @@ contract("Rollup", (accounts) => {
             Scalar.e(lastBatch).toString(), siblingsId, [wallets[2].publicKey[0].toString(), wallets[2].publicKey[1].toString()], 
             tokenId, { from: id2 });
 
-        // Check token balances for id1 and rollup smart contract
+        // Check token balances for id2 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
-        expect(resRollup.toString()).to.be.equal("13");
+        expect(resRollup.toString()).to.be.equal("23");
     });
     
     it("Should forge withdraw off-chain transaction with fee", async () => {
@@ -510,11 +510,11 @@ contract("Rollup", (accounts) => {
         // - forge batch to include transaction
         // - Check block number information, balance of beneficiary and batch number
         // - Test double withdraw in the same batch
-        // Current Tokens: leaf 3: 9 tokens
-        // After this test: leaf 3: 5 tokens
+        // Current Tokens: leaf 3: 19 tokens
+        // After this test: leaf 3: 13 tokens
 
         let initialBalanceId3 = await rollupDB.getStateByIdx(3);
-        expect(initialBalanceId3.amount.toString()).to.be.equal("9");
+        expect(initialBalanceId3.amount.toString()).to.be.equal("19");
 
 
         const tx = {
@@ -525,9 +525,9 @@ contract("Rollup", (accounts) => {
             toAy: exitAy,
             toEthAddr: exitEthAddr,
             coin: 0,
-            amount: 1,
+            amount: 2,
             nonce: 0,
-            userFee: 1
+            fee: 15
         };
         const tx2 = {
             fromAx: wallets[3].publicKey[0].toString(16),
@@ -537,9 +537,9 @@ contract("Rollup", (accounts) => {
             toAy: exitAy,
             toEthAddr: exitEthAddr,
             coin: 0,
-            amount: 1,
+            amount: 2,
             nonce: 1,
-            userFee: 1
+            fee: 15
         };
 
         signRollupTx(wallets[3], tx);
@@ -580,7 +580,7 @@ contract("Rollup", (accounts) => {
         expect(Scalar.e(inputSm.input[offChainHashInput])).to.be.equal(Scalar.e(inputRetrieved[offChainHashInput]));
 
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
-        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-4).toString()); //2 fees + 2 amountTransfer = 4
+        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-6).toString()); //2 fees + 4 amountTransfer = 6
     });
 
     it("Should withdraw previous off-chain transactions", async () => {
@@ -607,13 +607,13 @@ contract("Rollup", (accounts) => {
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId3 = await insTokenRollup.balanceOf(id3);
-        expect(resRollup.toString()).to.be.equal("9"); // 13-4; 2 2fees + 2 withdraw
-        expect(resId3.toString()).to.be.equal("22");
+        expect(resRollup.toString()).to.be.equal("17"); // 23-6; --> 2 fees + 4 withdraw
+        expect(resId3.toString()).to.be.equal("24");
     });
     
     it("Should deposit and transfer to 0", async () => {
-        // Current Tokens: leaf 5 --> undefined, id3 --> 22 tokens
-        // After this test: leaf 5 --> 3 tokens, id3 --> 14 tokens
+        // Current Tokens: leaf 5 --> undefined, id3 --> 24 tokens
+        // After this test: leaf 5 --> 3 tokens, id3 --> 16 tokens
 
         const fromAxAy = [wallets[5].publicKey[0].toString(), wallets[5].publicKey[1].toString()];
         const toAxAy = [0, 0];
@@ -632,8 +632,8 @@ contract("Rollup", (accounts) => {
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId3 = await insTokenRollup.balanceOf(id3);
-        expect(resRollup.toString()).to.be.equal("17");
-        expect(resId3.toString()).to.be.equal("14");
+        expect(resRollup.toString()).to.be.equal("25");
+        expect(resId3.toString()).to.be.equal("16");
 
         // forge genesis batch
         await forgerTest.forgeBatch();
@@ -653,8 +653,8 @@ contract("Rollup", (accounts) => {
         // Steps:
         // - Get data from rollupDB
         // - Transaction to withdraw amount indicated in previous step
-        // Current Tokens: id3 --> 14 tokens
-        // After this test: id3 --> 19 tokens
+        // Current Tokens: id3 --> 16 tokens
+        // After this test: id3 --> 21 tokens
 
         // last batch forged
         const lastBatch = await insRollupTest.getStateDepth();
@@ -674,8 +674,8 @@ contract("Rollup", (accounts) => {
         // Check token balances for id1 and rollup smart contract
         const resRollup = await insTokenRollup.balanceOf(insRollupTest.address);
         const resId3 = await insTokenRollup.balanceOf(id3);
-        expect(resRollup.toString()).to.be.equal("12"); //13 - 4 ( 2 fees + 2 withdraw )
-        expect(resId3.toString()).to.be.equal("19");
+        expect(resRollup.toString()).to.be.equal("20"); // 25 - 5
+        expect(resId3.toString()).to.be.equal("21");
     });
         
     it("Should forge off-chain transaction with fee", async () => {
@@ -684,11 +684,11 @@ contract("Rollup", (accounts) => {
         // - Update rollupTree
         // - forge batch to include transaction
         // - Check block number information and balance of beneficiary
-        // Current Tokens: leaf 3 --> 5 tokens
-        // After this test: leaf 3 --> 3 tokens
+        // Current Tokens: leaf 3 --> 13 tokens
+        // After this test: leaf 3 --> 10 tokens
 
         let initialBalanceId3 = await rollupDB.getStateByIdx(3);
-        expect(initialBalanceId3.amount.toString()).to.be.equal("5");
+        expect(initialBalanceId3.amount.toString()).to.be.equal("13");
     
         const tx = {
             fromAx: wallets[3].publicKey[0].toString(16),
@@ -698,9 +698,9 @@ contract("Rollup", (accounts) => {
             toAy: wallets[1].publicKey[1].toString(16),
             toEthAddr: id1,
             coin: 0,
-            amount: 1,
+            amount: 2,
             nonce: 2,
-            userFee: 1
+            fee: 15
         };
         signRollupTx(wallets[3], tx);
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
@@ -737,7 +737,7 @@ contract("Rollup", (accounts) => {
         expect(Scalar.e(inputSm.input[offChainHashInput])).to.be.equal(Scalar.e(inputRetrieved[offChainHashInput]));
     
         let finalBalanceId3 = await rollupDB.getStateByIdx(3);
-        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-2).toString());
+        expect(finalBalanceId3.amount.toString()).to.be.equal((parseInt(initialBalanceId3.amount.toString())-3).toString());
     });
 
     it("Should forge deposit off-chain", async () => {
@@ -747,12 +747,12 @@ contract("Rollup", (accounts) => {
         // - Update rollupTree
         // - forge batch to include both transactions
         // - Check block number information and balance of beneficiary
-        // Current Tokens:  leaf 3 --> 3 tokens  leaf 6 --> undefined
-        // After this test: leaf 3 --> 0 tokens  leaf 6 --> 2 tokens
+        // Current Tokens:  leaf 3 --> 10 tokens  leaf 6 --> undefined
+        // After this test: leaf 3 --> 7 tokens  leaf 6 --> 2 tokens
 
         const tokenId = 0;
         let initialBalanceId3 = await rollupDB.getStateByIdx(3);
-        expect(initialBalanceId3.amount.toString()).to.be.equal("3");
+        expect(initialBalanceId3.amount.toString()).to.be.equal("10");
     
         const tx = {
             fromAx: wallets[3].publicKey[0].toString(16),
@@ -764,7 +764,7 @@ contract("Rollup", (accounts) => {
             coin: 0,
             amount: 2,
             nonce: 3,
-            userFee: 1
+            fee: 15
         };
         signRollupTx(wallets[3], tx);
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
@@ -823,14 +823,14 @@ contract("Rollup", (accounts) => {
         // - Perform 20 deposits
         // - forge batch to include both transactions
         // - Check block number information and balance of beneficiary
-        // Current Tokens:  id1 --> 33 tokens 
+        // Current Tokens:  id1 --> 23 tokens 
         // After this test: id1 --> 0 tokens 
 
         const loadAmount = 1;
         const tokenId = 0;
 
         const initialId1 = await insTokenRollup.balanceOf(id1);
-        expect(initialId1.toString()).to.be.equal("33");
+        expect(initialId1.toString()).to.be.equal("23");
 
         await insTokenRollup.approve(insRollupTest.address, loadAmount*20, { from: id1 });
 
@@ -863,7 +863,7 @@ contract("Rollup", (accounts) => {
 
         // Check token balances for id1 and rollup smart contract
         const resId1 = await insTokenRollup.balanceOf(id1);
-        expect(resId1.toString()).to.be.equal("23");
+        expect(resId1.toString()).to.be.equal("13");
 
         // forge batch with no transactions
         await forgerTest.forgeBatch();

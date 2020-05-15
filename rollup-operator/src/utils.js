@@ -35,11 +35,10 @@ function buildPublicInputsSm(bb) {
         padding256(bb.getNewExitRoot()),
         padding256(bb.getOnChainHash()),
         padding256(bb.getOffChainHash()),
-        padding256(bb.getCountersOut()),
         padding256(bb.getInitIdx()),
         padding256(bb.getOldStateRoot()),
         padding256(bb.getFeePlanCoins()),
-        padding256(bb.getFeePlanFees())
+        padding256(bb.getFeeTotal())
     ];
 }
 
