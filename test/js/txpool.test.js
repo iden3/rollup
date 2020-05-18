@@ -23,7 +23,6 @@ const conversion = {
 const eth = (e) => Scalar.mul(e, Scalar.pow(10, 18));
 const gwei = (e) => Scalar.mul(e, Scalar.pow(10, 9));
 const dai = (e) => Scalar.mul(e, Scalar.pow(10, 18));
-const cdai = (e) => Scalar.mul(e, Scalar.pow(10, 16));
 
 
 async function initBlock(rollupDB) {
@@ -34,7 +33,7 @@ async function initBlock(rollupDB) {
     const account2 = new RollupAccount(2);
 
     bb.addTx({  
-        loadAmount: eth(10), 
+        loadAmount: eth(100), 
         coin: 0, 
         fromAx: account1.ax, 
         fromAy: account1.ay,
@@ -87,7 +86,7 @@ async function initBlock(rollupDB) {
     return [account1, account2];
 }
 
-describe("Rollup circuit - tx pool integration", function () {
+describe("Tx pool", function () {
 
     this.timeout(150000);
 
@@ -102,12 +101,12 @@ describe("Rollup circuit - tx pool integration", function () {
         const txPool = await TxPool(rollupDB, conversion);
 
         const txs = [];
-        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -146,12 +145,12 @@ describe("Rollup circuit - tx pool integration", function () {
         const txPool = await TxPool(rollupDB, conversion);
 
         const txs = [];
-        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -198,7 +197,7 @@ describe("Rollup circuit - tx pool integration", function () {
         txPool.setEthPrice(conversion[0].price);
 
         // Transaction to a non-existent leaf with insufficient funds
-        let tx = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(10) };
+        let tx = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.001%"]};
 
         account1.signTx(tx);
 
@@ -206,7 +205,7 @@ describe("Rollup circuit - tx pool integration", function () {
         assert.equal(resPool, false);
 
         // Transaction to a non-existent leaf with enough funds
-        tx = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: eth(1) };
+        tx = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["50%"]};
 
         account1.signTx(tx);
 
@@ -232,8 +231,8 @@ describe("Rollup circuit - tx pool integration", function () {
         assert.equal(state3.ethAddress, account3.ethAddress);
 
         const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
-        // finalAmount = initialDeposit - transfer - fee = 10 - 2 - 1 eth
-        assert.equal(Scalar.eq(state1.amount, eth(7)), true);  
+        // finalAmount = initialDeposit - transfer - fee = 100 - 2 - 1 eth
+        assert.equal(Scalar.eq(state1.amount, eth(97)), true);  
     });
 
     it("Should save/load deposits off-chain from Db", async () => {
@@ -252,9 +251,9 @@ describe("Rollup circuit - tx pool integration", function () {
         txPool.setEthPrice(conversion[0].price);
 
         // Transaction to a non-existent leaf with enough funds
-        const tx0 = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: eth(3) };
-        const tx1 = { toAx: account4.ax, toAy: account4.ay, toEthAddr: account4.ethAddress, coin: 0, amount: eth(1), nonce: 0, userFee: eth(1) };
-        const tx2 = { toAx: account5.ax, toAy: account5.ay, toEthAddr: account5.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: eth(2) };
+        const tx0 = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(6), nonce: 0, fee: Constants.fee["50%"]};
+        const tx1 = { toAx: account4.ax, toAy: account4.ay, toEthAddr: account4.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["50%"]};
+        const tx2 = { toAx: account5.ax, toAy: account5.ay, toEthAddr: account5.ethAddress, coin: 0, amount: eth(4), nonce: 0, fee: Constants.fee["50%"]};
 
         account1.signTx(tx0);
         account1.signTx(tx1);
@@ -287,17 +286,17 @@ describe("Rollup circuit - tx pool integration", function () {
         
         // Check balances
         const state3 = await rollupDB.getStateByAccount(0, account3.ax, account3.ay);
-        assert.equal(Scalar.eq(state3.amount, eth(3)), true);
+        assert.equal(Scalar.eq(state3.amount, eth(6)), true);
 
         const state4 = await rollupDB.getStateByAccount(0, account4.ax, account4.ay);
         assert.equal(state4, null);
 
         const state5 = await rollupDB.getStateByAccount(0, account5.ax, account5.ay);
-        assert.equal(Scalar.eq(state5.amount, eth(2)), true);
+        assert.equal(Scalar.eq(state5.amount, eth(4)), true);
 
         const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
-        // finalAmount = initialDeposit - 2*transfer - 2*fee = 10 - 2 - 3 - 2*2 eth
-        assert.equal(Scalar.eq(state1.amount, eth(1)), true);
+        // finalAmount = initialDeposit - 2*transfer - 2*fee = 100 - 6 - 4 - 3 - 2 eth
+        assert.equal(Scalar.eq(state1.amount, eth(85)), true);
     });
 
     it("Should check purge functionality", async () => {
@@ -311,12 +310,12 @@ describe("Rollup circuit - tx pool integration", function () {
         const txPool = await TxPool(rollupDB, conversion, {executableSlots: 1, nonExecutableSlots: 1});
 
         const txs = [];
-        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -345,12 +344,12 @@ describe("Rollup circuit - tx pool integration", function () {
         const txPool = await TxPool(rollupDB, conversion, {executableSlots: 1, nonExecutableSlots: 1, maxSlots: 10});
 
         const txs = [];
-        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -380,14 +379,14 @@ describe("Rollup circuit - tx pool integration", function () {
         const txPool = await TxPool(rollupDB, conversion);
 
         const txs = [];
-        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // from: unexistent leaf
-        txs[1] = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)}; // to: unexistent leaf
-        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 3, amount: dai(4), nonce: 0, userFee: cdai(1)}; // coin does not match
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(1000), nonce: 0, userFee: cdai(1)}; // insufficient funds
-        txs[4] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 10, userFee: cdai(3)}; // invalid nonce 
-        txs[5] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: dai(5), nonce: 0, userFee: eth(40)}; // insufficient fee funds
-        txs[6] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20), onChain : true}; // onChain should be false
-        txs[7] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(30)}; // invalid signature
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]}; // from: unexistent leaf
+        txs[1] = { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]}; // to: unexistent leaf
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 3, amount: dai(4), nonce: 0, fee: Constants.fee["0.05%"]}; // coin does not match
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(1000), nonce: 0, fee: Constants.fee["0.01%"]}; // insufficient funds
+        txs[4] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 10, fee: Constants.fee["0.01%"]}; // invalid nonce 
+        txs[5] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(70), nonce: 0, fee: Constants.fee["50%"]}; // insufficient fee funds
+        txs[6] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.01%"], onChain : true}; // onChain should be false
+        txs[7] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.01%"]}; // invalid signature
 
         account3.signTx(txs[0]);
         account1.signTx(txs[1]);
@@ -409,7 +408,6 @@ describe("Rollup circuit - tx pool integration", function () {
         const bb2 = await rollupDB.buildBatch(4, 8);
 
         await txPool.fillBatch(bb2);
-
         const calcSlots = bb2.offChainTxs.map((tx) => tx.slot);
         const expectedSlots = [];
 
@@ -440,9 +438,9 @@ describe("Rollup circuit - tx pool integration", function () {
                 toAy: account2.ay,
                 toEthAddr: account2.ethAddress,
                 coin: 0,
-                amount: 1,
+                amount: gwei(1),
                 nonce: i,
-                userFee: Math.floor(Math.random() * 10) + 1,
+                fee: Constants.fee["1%"],
                 rqOffset: 0,
                 onChain: 0,
                 newAccount: 0,

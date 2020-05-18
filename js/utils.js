@@ -243,6 +243,32 @@ function isStrHex(input) {
     return false;
 }
 
+function decodeDataAvailability(nLevels, dataSm){
+    const txs = [];
+
+    const indexBits = nLevels;
+    const amountBits = 16;
+    const feeBits = 4;
+
+    if (!dataSm) return txs;
+    if (!dataSm.slice(2).length) return txs;
+
+    let txsData = Scalar.fromString(dataSm, 16);
+
+    while(!Scalar.isZero(txsData)){
+        const tx = {};
+        tx.fee = Scalar.toNumber(extract(txsData, 0, feeBits));
+        tx.amount = float2fix(Scalar.toNumber(extract(txsData, feeBits, amountBits)));
+        tx.toIdx = Scalar.toNumber(extract(txsData, feeBits + amountBits, indexBits));
+        tx.fromIdx = Scalar.toNumber(extract(txsData, feeBits + amountBits + indexBits, indexBits));
+        txs.push(tx);
+
+        txsData = Scalar.shr(txsData, feeBits + amountBits + 2*indexBits);
+    }
+
+    return txs.reverse();
+}
+
 module.exports.padZeros = padZeros;
 module.exports.buildTxData = buildTxData;
 module.exports.decodeTxData = decodeTxData;
@@ -258,3 +284,4 @@ module.exports.isStrHex = isStrHex;
 module.exports.extract = extract;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
 module.exports.decodeDepositOffChain = decodeDepositOffChain;
+module.exports.decodeDataAvailability = decodeDataAvailability;

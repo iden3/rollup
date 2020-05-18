@@ -1,5 +1,6 @@
 const { assert, expect } = require("chai");
 const Scalar = require("ffjavascript").Scalar;
+const lodash = require("lodash");
 
 const utils = require("../../js/utils");
 
@@ -207,4 +208,55 @@ describe("Utils", function () {
         expect(depositOffchain2.fromEthAddr).to.be.equal(decodedTx2.fromEthAddr);
         expect(depositOffchain2.coin).to.be.equal(decodedTx2.coin);
     });
+
+    it("Decode data availability", async () => { 
+        const nLevels = 8;
+        const testVectors = [
+            {
+                txs:[],
+                data: null
+            },
+            {
+                txs:[],
+                data: "0x"
+            },
+            {
+                txs:[{fromIdx: 1, toIdx: 3, amount: Scalar.e(3), fee: 0}],
+                data: "0x0010300030"
+            },
+            {
+                txs:[{fromIdx: 1, toIdx: 2, amount: Scalar.e(50), fee: 13}],
+                data: "0x001020032d"
+            },
+            {
+                txs:[
+                    {fromIdx: 3, toIdx: 4, amount: Scalar.e(50), fee: 13},
+                    {fromIdx: 3, toIdx: 4, amount: Scalar.e(50), fee: 15}
+                ],
+                data: "0x03040032d03040032f"
+            },
+            {
+                txs:[
+                    {fromIdx: 3, toIdx: 4, amount: Scalar.e(40000000), fee: 1},
+                    {fromIdx: 4, toIdx: 3, amount: Scalar.e(500000), fee: 3},
+                    {fromIdx: 1, toIdx: 2, amount: Scalar.e(50), fee: 13},
+                    {fromIdx: 2, toIdx: 1, amount: Scalar.e(50), fee: 15},
+                ],
+                data: "0x030429901040319f4301020032d02010032f"
+            },
+        ];
+        
+        for (let i = 0; i < testVectors.length; i++){
+            const data = testVectors[i].data;
+            const testTxs = testVectors[i].txs;
+
+            const decodeTxs = utils.decodeDataAvailability(nLevels, data);
+            
+            expect(decodeTxs.length).to.be.equal(testTxs.length);
+            for (let j = 0; j < decodeTxs.length; j++){
+                expect(lodash.isEqual(decodeTxs[j], testTxs[j])).to.be.equal(true);
+            }
+        }
+    });
+
 });

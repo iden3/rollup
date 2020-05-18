@@ -67,6 +67,7 @@
     "morgan": "^1.9.1",
     "snarkjs": "^0.1.31",
     "solc": "^0.6.1",
+    "tmp-promise": "^3.0.2",
     "truffle": "^5.1.16",
     "truffle-hdwallet-provider": "^1.0.17",
     "v8-compile-cache": "^2.1.0",

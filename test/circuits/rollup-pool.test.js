@@ -24,9 +24,7 @@ const conversion = {
 };
 
 const eth = (e) => Scalar.mul(e, Scalar.pow(10, 18));
-const gwei = (e) => Scalar.mul(e, Scalar.pow(10, 9));
 const dai = (e) => Scalar.mul(e, Scalar.pow(10, 18));
-const cdai = (e) => Scalar.mul(e, Scalar.pow(10, 16));
 
 
 async function initBlock(rollupDB) {
@@ -37,7 +35,7 @@ async function initBlock(rollupDB) {
     const account2 = new RollupAccount(2);
 
     bb.addTx({  
-        loadAmount: eth(10), 
+        loadAmount: eth(100), 
         coin: 0, 
         fromAx: account1.ax, 
         fromAy: account1.ay,
@@ -90,7 +88,7 @@ async function initBlock(rollupDB) {
     return [account1, account2];
 }
 
-describe("txPool test", function () {
+describe("Rollup circuit integration with tramsaction pool test", function () {
 
     this.timeout(150000);
 
@@ -100,7 +98,7 @@ describe("txPool test", function () {
         circuit = await tester(path.join(__dirname, "circuits-test", "rollup_pool_test.circom"), {reduceConstraints:false});
 
         // const testerAux = require("circom").testerAux;
-        // const pathTmp = "/tmp/circom_11728nWkeunFG3svf";
+        // const pathTmp = "/tmp/circom_7077PVZGqa7G3s75";
         // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
     });
 
@@ -115,12 +113,12 @@ describe("txPool test", function () {
         const txPool = await TxPool(rollupDB, conversion);
 
         const txs = [];
-        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, userFee: gwei(10)};
-        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, userFee: gwei(20)};
-        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, userFee: cdai(1)};
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, userFee: cdai(3)};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, userFee: cdai(20)};
-        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, userFee: cdai(10)};
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
+        txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
 
         account1.signTx(txs[0]);
@@ -144,7 +142,9 @@ describe("txPool test", function () {
         assert.deepEqual(calcSlots, expectedSlots);
 
         const input = bb.getInput();
+        
         const w = await circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
+        
         await checkBatch(circuit, w, bb);
 
         await rollupDB.consolidate(bb);
