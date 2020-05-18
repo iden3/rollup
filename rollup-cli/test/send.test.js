@@ -2,6 +2,7 @@ const fs = require('fs');
 const { expect } = require('chai');
 const path = require('path');
 
+const tableFee = require('../../js/constants').fee;
 const { send } = require('../src/actions/offchain/send.js');
 const { createWallet, deleteResources } = require('./config/build-resources');
 const { Wallet } = require('../src/wallet');
@@ -16,7 +17,7 @@ describe('Send', async function () {
     let wallet;
     const password = 'foo';
     const tokenId = 0;
-    const userFee = 10;
+    const fee = tableFee['10%'];
 
     before(async () => {
         await createWallet();
@@ -25,7 +26,7 @@ describe('Send', async function () {
 
     it('Should call send', async () => {
         const walletRollup = await Wallet.fromEncryptedJson(wallet, password);
-        const res = await send(UrlOperator, babyjubTo, amount, walletRollup, tokenId, userFee);
+        const res = await send(UrlOperator, babyjubTo, amount, walletRollup, tokenId, fee);
         expect(res.status).to.be.equal(200);
     });
 

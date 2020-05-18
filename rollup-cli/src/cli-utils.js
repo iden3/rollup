@@ -12,15 +12,15 @@ const { approve } = require('./actions/onchain/approve.js');
 const { hexToPoint } = require('../helpers/utils');
 const { exitAx, exitAy } = require('../../js/constants');
 
-async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject, ethAddress) {
+async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, fee, nonce, nonceObject, ethAddress) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
     const babyjubTo = hexToPoint(babyjubCompressed);
-    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, userFee, nonce, nonceObject, ethAddress);
+    return send(urlOperator, babyjubTo, amount, walletRollup, tokenId, fee, nonce, nonceObject, ethAddress);
 }
 
-async function withdrawOffChainTx(urlOperator, amount, walletJson, passphrase, tokenId, userFee, nonce, nonceObject) {
+async function withdrawOffChainTx(urlOperator, amount, walletJson, passphrase, tokenId, fee, nonce, nonceObject) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
-    return send(urlOperator, [exitAx, exitAy], amount, walletRollup, tokenId, userFee, nonce, nonceObject);
+    return send(urlOperator, [exitAx, exitAy], amount, walletRollup, tokenId, fee, nonce, nonceObject);
 }
 
 async function depositTx(nodeEth, addressSC, loadAmount, tokenId, walletJson, passphrase, ethAddress, abi, gasLimit, gasMultiplier) {

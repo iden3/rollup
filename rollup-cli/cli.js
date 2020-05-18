@@ -5,6 +5,7 @@ const fs = require('fs');
 const readline = require('readline');
 const { Writable } = require('stream');
 
+const feeTable = require('../js/constants').fee;
 const { Wallet } = require('./src/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
@@ -67,7 +68,7 @@ offchainTx command
         Amount to send
     --tk or --tokenid <token ID>
     -r or --recipient <recipient babyJub compressed publick key>
-    -e or --fee <user fee>
+    -e or --fee <% fee>
     --ethaddr or --ethereumaddress <ethereum address>
         only used in deposit offchain transaction
     --no or --nonce <nonce TX> (optional)
@@ -146,7 +147,7 @@ const amount = (argv.amount) ? argv.amount.toString() : -1;
 const loadamount = (argv.loadamount) ? argv.loadamount.toString() : -1;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
 const ethAddr = (argv.ethereumaddress || argv.ethereumaddress === 0) ? argv.ethereumaddress : 'noethaddr';
-const userFee = argv.fee ? argv.fee.toString() : 'nouserfee';
+const fee = argv.fee ? argv.fee.toString() : 'nofee';
 const numExitBatch = argv.numexitbatch ? argv.numexitbatch.toString() : 'nonumexitbatch';
 const filter = argv.filter ? argv.filter : 'nofilter';
 const nonce = (argv.nonce || argv.nonce === 0) ? argv.nonce.toString() : undefined;
@@ -277,13 +278,13 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 }
                 if (type.toUpperCase() === 'SEND') {
                     const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId,
-                        userFee, nonce, actualNonce);
+                        feeTable[fee], nonce, actualNonce);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
                     }
                 } else if (type.toUpperCase() === 'WITHDRAWOFFCHAIN') {
-                    const res = await withdrawOffChainTx(urlOperator, amount, wallet, passphrase, tokenId, userFee,
+                    const res = await withdrawOffChainTx(urlOperator, amount, wallet, passphrase, tokenId, feeTable[fee],
                         nonce, actualNonce);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
@@ -291,7 +292,7 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     }
                 } else if (type.toUpperCase() === 'DEPOSITOFFCHAIN') {
                     checkparam(ethAddr, 'noethaddr', 'Ethereum address');
-                    const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, userFee,
+                    const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, feeTable[fee],
                         nonce, actualNonce, ethAddr);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
@@ -485,21 +486,24 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(recipient, 'norecipient', 'recipient');
-        checkparam(userFee, 'nouserfee', 'fee');
+        checkparam(fee, 'nofee', 'fee');
+        checkFees(fee);
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         break;
     case 'WITHDRAWOFFCHAIN':
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
-        checkparam(userFee, 'nouserfee', 'fee');
+        checkparam(fee, 'nofee', 'fee');
+        checkFees(fee);
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         break;
     case 'DEPOSITOFFCHAIN':
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
-        checkparam(userFee, 'nouserfee', 'fee');
+        checkparam(fee, 'nofee', 'fee');
+        checkFees(fee);
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         checkparam(ethAddr, 'noethaddr', 'Ethereum address');
@@ -531,6 +535,16 @@ function checkparam(param, def, name) {
         throw new Error(error.NO_PARAM);
     }
 }
+
+function checkFees(fee) {
+    if (feeTable[fee] === undefined) {
+        console.log(`Fee selected ${fee} is not valid`);
+        console.log('Please, select a valid fee amoung among the next values:');
+        console.log(`${feeTable}`);
+        throw new Error(error.INVALID_FEE);
+    }
+}
+
 
 function getPassword() {
     return new Promise((resolve) => {

@@ -79,6 +79,7 @@ describe('CREATE KEYS RANDOM', function () {
 
 describe('CREATE KEYS MNEMONIC', async function () {
     this.timeout(10000);
+
     it('createkeys mnemonic', (done) => {
         const command = spawn(`cd ..; node cli.js createkeys --mnemonic "obscure property tackle faculty fresh gas clerk order silver answer belt brother" -w ${walletMnemonic}`, {
             shell: true,
@@ -148,6 +149,7 @@ describe('CREATE KEYS MNEMONIC', async function () {
 
 describe('CREATE KEYS IMPORT', async function () {
     this.timeout(10000);
+
     it('create wallet to import', (done) => {
         const command = spawn(`cd ..; node cli.js createkeys --mnemonic "obscure property tackle faculty fresh gas clerk order silver answer belt brother" -w ${walletMnemonic}`, {
             shell: true,
@@ -412,6 +414,7 @@ describe('ONCHAINTX depositOnTop', async function () {
 
 describe('ONCHAINTX forceWithdraw', async function () {
     this.timeout(10000);
+
     it('onchaintx forcewithdraw', (done) => {
         const command = spawn(`cd ..; node cli.js onchaintx --type forceWithdraw --amount 2 --tokenid 0 -c ${configTest}`, {
             shell: true,
@@ -461,7 +464,7 @@ describe('ONCHAINTX forceWithdraw', async function () {
 });
 
 describe('OFFCHAINTX', async function () {
-    this.timeout(100000);
+    this.timeout(20000);
 
     let recipient;
     before(async () => {
@@ -471,7 +474,7 @@ describe('OFFCHAINTX', async function () {
     });
 
     it('offchaintx send', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2  -r ${recipient} --tokenid 0 --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2  -r ${recipient} --tokenid 0 --fee 10% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -488,7 +491,7 @@ describe('OFFCHAINTX', async function () {
     });
 
     it('offchaintx withdraw', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type withdrawOffChain --amount 2 --tokenid 0 --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type withdrawOffChain --amount 2 --tokenid 0 --fee 50% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -506,7 +509,7 @@ describe('OFFCHAINTX', async function () {
 
     it('offchaintx deposit', (done) => {
         const ethAddr = '0x123456789ABCDEF123456789ABCDEF123456789A';
-        const command = spawn(`cd ..; node cli.js offchaintx --type depositOffChain --amount 2 -r ${recipient} --tokenid 0 --fee 1 -c ${configTest} --ethaddr ${ethAddr}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type depositOffChain --amount 2 -r ${recipient} --tokenid 0 --fee 50% -c ${configTest} --ethaddr ${ethAddr}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -523,7 +526,7 @@ describe('OFFCHAINTX', async function () {
     });
 
     it('offchaintx send error pass', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2  -r ${recipient} --tokenid 0 --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2  -r ${recipient} --tokenid 0 --fee 10% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -540,7 +543,7 @@ describe('OFFCHAINTX', async function () {
     });
 
     it('offchaintx send error amount', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type send  -r ${recipient} --tokenid 0 --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type send  -r ${recipient} --tokenid 0 --fee 10% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -555,7 +558,7 @@ describe('OFFCHAINTX', async function () {
     });
 
     it('offchaintx send error recipient', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2 --tokenid 0 --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2 --tokenid 0 --fee 10% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -570,7 +573,7 @@ describe('OFFCHAINTX', async function () {
     });
 
     it('offchaintx send error token id', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2 -r ${recipient} --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2 -r ${recipient} --fee 50% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -599,8 +602,23 @@ describe('OFFCHAINTX', async function () {
         });
     });
 
+    it('offchaintx send error no valid fee', (done) => {
+        const command = spawn(`cd ..; node cli.js offchaintx --type send --amount 2 --tokenid 0 -r ${recipient} --fee 30% -c ${configTest}`, {
+            shell: true,
+        });
+        command.stdout.on('data', (data) => {
+            if ((data.toString()).includes('Password:')) {
+                command.stdin.write(`${pass}\n`);
+            }
+        });
+        command.on('exit', (code) => {
+            expect(code).to.be.equal(error.INVALID_FEE);
+            done();
+        });
+    });
+
     it('offchaintx send deposit ether address', (done) => {
-        const command = spawn(`cd ..; node cli.js offchaintx --type depositOffChain --amount 2 --tokenid 0 -r ${recipient} --fee 1 -c ${configTest}`, {
+        const command = spawn(`cd ..; node cli.js offchaintx --type depositOffChain --amount 2 --tokenid 0 -r ${recipient} --fee 10% -c ${configTest}`, {
             shell: true,
         });
         command.stdout.on('data', (data) => {
@@ -715,7 +733,7 @@ describe('General', async function () {
     });
 
     it('error invalid config path', (done) => {
-        const command = spawn('cd ..; node cli.js offchaintx --type send --amount 2 --to 12 --tokenid 0 --fee 1 -c ./resources/config-examplee.json', {
+        const command = spawn('cd ..; node cli.js offchaintx --type send --amount 2 --to 12 --tokenid 0 --fee 10% -c ./resources/config-examplee.json', {
             shell: true,
         });
         command.stdout.on('data', (data) => {
