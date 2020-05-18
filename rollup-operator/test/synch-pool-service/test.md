@@ -2,7 +2,7 @@
 Commands are called from repository `rollup` root directory
 
 Start local ethereum blockchain
-  - `ganache-cli -a 100 --defaultBalanceEther 10000`
+  - `ganache-cli -a 10 --defaultBalanceEther 10000`
 
 ## Unit test
 
