@@ -200,4 +200,15 @@ contract("Synchronizer PoS", async (accounts) => {
             equal(operators[1].url);
         await checkFullSynch();
     });
+
+    it("Should get static data", async () => {
+        const staticData = await synchPoS.getStaticData();
+
+        expect(staticData.contractAddress).to.be.equal(insRollupPoS.address);
+        expect(staticData.blocksPerSlot).to.be.equal(publicData.blocksPerSlot);
+        expect(staticData.slotsPerEra).to.be.equal(publicData.slotsPerEra);
+        expect(staticData.slotDeadline).to.be.equal(publicData.slotDeadline);
+        expect(staticData.genesisBlock).to.be.equal(publicData.genesisBlock);
+        expect(staticData.minStake.toString()).to.be.equal(publicData.minStake.toString());
+    });
 });

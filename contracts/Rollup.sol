@@ -77,7 +77,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 public totalMinningOnChainFee;
 
     // Fees recollected for every on-chain transaction
-
     uint256 public feeOnchainTx = 0.1 ether;
     uint256 public depositFeeMul = 1 ether; // 18 decimals
 

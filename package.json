@@ -7,10 +7,11 @@
     "doc": "doc"
   },
   "scripts": {
+    "ganache": "npx ganache-cli -a 100 --defaultBalanceEther 1000000 > ganache-output.log &",
     "test:circuits": "npx mocha --max-old-space-size=4096 --timeout 20000 ./test/circuits",
     "test:utils": "npx mocha --timeout 20000 ./test/rollup-utils",
     "test:js": "npx mocha --timeout 20000 ./test/js",
-    "test:contracts": "npx truffle test ./test/contracts/*.test.js",
+    "test:contracts": "npm run ganache && npx truffle test ./test/contracts/*.test.js && rm './ganache-output.log' && pkill -f 'ganache-cli'",
     "test:coverage": "npx truffle run coverage --file='./test/contracts/*.test.js'",
     "build:webapp": "browserify rollup-cli/index.js -s rollup > simple-webapp/src/utils/bundle-cli.js && browserify rollup-operator/index.js -s operator > simple-webapp/src/utils/bundle-op.js && simple-webapp/src/utils/disable-eslint.sh"
   },

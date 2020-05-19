@@ -99,7 +99,10 @@ class CliExternalOperator {
     }
 
     /**
-     * Get off-chain transaction in an specific batch
+     * Get transactions in an specific batch
+     * - provide hash to retrieve off-chain transactions
+     * - provide all on-chain transactions
+     * - provide timestamp whwre the batch has been synchronized
      * @param {Number} - batch depth
      * @returns {Object} - http response
      */

@@ -164,8 +164,8 @@ describe("Utils", function () {
 
         // 1 deposit off-chain
         const depositOffchain = {
-            fromAx: Scalar.e(30890499764467592830739030727222305800976141688008169211302).toString(16),
-            fromAy: Scalar.e(19826930437678088398923647454327426275321075228766562806246).toString(16),
+            fromAx: utils.padding256(30890499764467592830739030727222305800976141688008169211302),
+            fromAy: utils.padding256(19826930437678088398923647454327426275321075228766562806246),
             fromEthAddr: "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c",
             coin: 3,
         };
@@ -184,8 +184,8 @@ describe("Utils", function () {
 
         // 2 deposits off-chain
         const depositOffchain2 = {
-            fromAx: Scalar.e(30890499764467592830739030727222305800976141688008169211302).toString(16),
-            fromAy: Scalar.e(19826930437678088398923647454327426275321075228766562806246).toString(16),
+            fromAx: utils.padding256(30890499764467592830739030727222305800976141688008169211302),
+            fromAy: utils.padding256(19826930437678088398923647454327426275321075228766562806246),
             fromEthAddr: "0xe0fbce58cfaa72812103f003adce3f284fe5fc7c",
             coin: 3,
         };

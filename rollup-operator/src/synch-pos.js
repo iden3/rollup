@@ -131,17 +131,19 @@ class SynchPoS {
         // Initialize class variables
         this.genesisBlock = 0;
         this.totalSynch = 0;
+        this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
+            .call({from: this.ethAddress}));
         this.blocksPerSlot = Number(await this.contractPoS.methods.BLOCKS_PER_SLOT()
             .call({from: this.ethAddress}));
         this.slotsPerEra = Number(await this.contractPoS.methods.SLOTS_PER_ERA()
             .call({from: this.ethAddress}));
         this.slotDeadline = Number(await this.contractPoS.methods.SLOT_DEADLINE()
             .call({from: this.ethAddress}));
+        this.minStake = Scalar.e(await this.contractPoS.methods.MIN_STAKE()
+            .call({from: this.ethAddress}));
         this.blocksNextInfo = this.blocksPerSlot*this.slotsPerEra;
         
         if (this.creationHash) {
-            this.genesisBlock = Number(await this.contractPoS.methods.genesisBlock()
-                .call({from: this.ethAddress}));
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
         }
@@ -164,6 +166,10 @@ class SynchPoS {
                 await this._updateWinners(lastSynchEra - 2);
             await this._updateWinners(lastSynchEra - 1);
         }
+
+        // Init info message
+        this.info = `${chalk.magenta("POS SYNCH".padEnd(12))} | `;
+        this.info += "Initializing data";
 
         // Start logger
         this.logInterval = setInterval(() => {
@@ -471,6 +477,21 @@ class SynchPoS {
             return Number(await this.contractPoS.methods.SLOT_DEADLINE()
                 .call({from: this.ethAddress}));
         }
+    }
+
+    /**
+     * Get static data 
+     * @returns {Object} - static data info  
+     */
+    async getStaticData() {
+        return {
+            contractAddress: this.rollupPoSAddress,
+            blocksPerSlot: this.blocksPerSlot,
+            slotsPerEra: this.slotsPerEra,
+            slotDeadline: this.slotDeadline,
+            genesisBlock: this.genesisBlock,
+            minStake: this.minStake,
+        };
     }
 }
 
