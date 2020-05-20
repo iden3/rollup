@@ -5,6 +5,8 @@
 const fs = require('fs');
 const { stringifyBigInts } = require('snarkjs');
 const path = require('path');
+
+const feeTable = require('../../../js/constants').fee;
 const { Wallet } = require('../../src/wallet');
 const CliExternalOperator = require('../../../rollup-operator/src/cli-external-operator');
 
@@ -15,8 +17,8 @@ const apiOperator = new CliExternalOperator('http://localhost:9000/');
 const fromIdx = 3;
 const numTx = 40;
 const toIdx = 4;
-const userFee = 1;
-const amount = 1;
+const fee = feeTable['50%'];
+const amount = 2;
 const coin = 0;
 
 
@@ -38,7 +40,7 @@ async function send() {
             coin,
             amount,
             nonce: nonceToSend + i,
-            userFee,
+            fee,
             rqOffset: 0,
             onChain: 0,
             newAccount: 0,

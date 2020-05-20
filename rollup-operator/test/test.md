@@ -4,7 +4,7 @@ Commands are called from repository `rollup` root directory
 In case some test doesn't work as expected, try to increase the `timeoutDelay` global variable
 
 Start local ethereum blockchain
-  - `ganache-cli -a 100 --defaultBalanceEther 10000`
+  - `ganache-cli -a 20 --defaultBalanceEther 10000`
 
 ## Unit test
 

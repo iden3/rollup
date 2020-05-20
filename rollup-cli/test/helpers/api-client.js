@@ -12,7 +12,7 @@ app.post('/pool', (req, res) => {
     if (transaction.fromAx === undefined || transaction.fromAy === undefined
         || transaction.fromEthAddr === undefined || transaction.toAx === undefined || transaction.toAy === undefined
         || transaction.toEthAddr === undefined || transaction.amount === undefined || transaction.r8x === undefined
-        || transaction.nonce === undefined || transaction.coin === undefined || transaction.userFee === undefined) {
+        || transaction.nonce === undefined || transaction.coin === undefined || transaction.fee === undefined) {
         res.sendStatus(500);
     } else {
         res.sendStatus(200);
