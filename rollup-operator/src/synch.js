@@ -79,6 +79,8 @@ class Synchronizer {
         this.rollupPoSContract = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         abiDecoder.addABI(rollupPoSABI);
         this.forgeEventsCache = new Map();
+        this.retrySameBatch = 0;
+        this.cacheBatchToUpdate = null;
         this.mode = mode;
         
         this._initTimeouts(timeouts);
@@ -275,6 +277,7 @@ class Synchronizer {
                     console.log(`Update flag: ${updateFlag}`);
                     if (!updateFlag) continue;
                     lastBatchSaved = await this.getLastBatch();
+                    this.cacheBatchToUpdate = lastBatchSaved;
                 }
                 console.log();
                 totalSynch = (currentBatchDepth == 0) ? 100 : ((lastBatchSaved / currentBatchDepth) * 100);
@@ -345,6 +348,15 @@ class Synchronizer {
         // beyond "confirmationBlocks" blockchain is considered secure and immutable
         if (lastSynchBlock >= currentBlock - confirmationBlocks)
             this.forgeEventsCache.clear();
+
+        if (this.cacheBatchToUpdate == batchToSynch)
+            this.retrySameBatch += 1;
+
+        if (this.retrySameBatch > 4){
+            this.forgeEventsCache.clear();
+            this.retrySameBatch = 0;
+        }
+
 
         let targetBlockNumber = this.forgeEventsCache.get(batchToSynch);
         if (!targetBlockNumber){
@@ -444,10 +456,13 @@ class Synchronizer {
      * @returns {Bool} - true if updated was successful, false otherwise
      */
     async _updateEvents(logs, nextBatchSynched, blockNumber){
+        console.log("<======== UPDATE EVENTS ========>");
         try {
             // save events on database
             const numBatchesToSynch = await this._saveEvents(logs, nextBatchSynched);
+            console.log("Num Batches to synch: ", numBatchesToSynch);
             for (const batchSynch of numBatchesToSynch){
+                console.log("Batch to Synch: ", batchSynch);
                 const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${batchSynch}`);
                 const tmpOnChainArray = await this.db.getOrDefault(`${eventOnChainKey}${separator}${batchSynch-2}`);
 
