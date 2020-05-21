@@ -62,19 +62,39 @@ async function getGeneralInfo(rollupSynch, posSynch) {
     generalInfo["posSynch"] = {};
     generalInfo["rollupSynch"] = {};
 
+    const staticDataPoS = await posSynch.getStaticData();
+    const staticDataRollup = await rollupSynch.getStaticData();
+
     generalInfo.currentBlock = await posSynch.getCurrentBlock();
 
+    // PoS
     generalInfo["posSynch"].isSynched = await posSynch.isSynched();
     generalInfo["posSynch"].synch = await posSynch.getSynchPercentage();
-    generalInfo["posSynch"].genesisBlock = await posSynch.genesisBlock;
     generalInfo["posSynch"].lastEraSynch = await posSynch.getLastSynchEra();
     generalInfo["posSynch"].currentEra = await posSynch.getCurrentEra();
     generalInfo["posSynch"].currentSlot = await posSynch.getCurrentSlot();
+    // Static Data
+    generalInfo["posSynch"].contractAddress = staticDataPoS.contractAddress;
+    generalInfo["posSynch"].blocksPerSlot = staticDataPoS.blocksPerSlot;
+    generalInfo["posSynch"].slotsPerEra = staticDataPoS.slotsPerEra;
+    generalInfo["posSynch"].slotDeadline = staticDataPoS.slotDeadline;
+    generalInfo["posSynch"].genesisBlock = staticDataPoS.genesisBlock;
+    generalInfo["posSynch"].minStake = staticDataPoS.minStake.toString();
 
+    // Core
     generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
     generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
     generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
     generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+    generalInfo["rollupSynch"].feeDeposit = await rollupSynch.getFeeDepOffChain().toString();
+    generalInfo["rollupSynch"].feeOnChainTx = await rollupSynch.getFeeOnChainTx().toString();
+
+    // StaticData
+    generalInfo["rollupSynch"].contractAddress = staticDataRollup.contractAddress;
+    generalInfo["rollupSynch"].maxTx = staticDataRollup.maxTx;
+    generalInfo["rollupSynch"].maxOnChainTx = staticDataRollup.maxOnChainTx;
+    generalInfo["rollupSynch"].nLevels = staticDataRollup.nLevels;
+
 
     return generalInfo;
 }

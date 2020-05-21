@@ -16,7 +16,7 @@ const timeTravel = require("../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../src/utils");
 const testUtils = require("./helpers/utils-test");
 
-const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
+const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const MemDb = require("../../rollup-utils/mem-db");
 const RollupDB = require("../../js/rollupdb");
 const utils = require("../../rollup-utils/rollup-utils");

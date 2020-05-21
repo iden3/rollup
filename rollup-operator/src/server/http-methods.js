@@ -98,8 +98,8 @@ class HttpMethods {
         this.app.get("/batch/:numbatch", async (req, res) => {
             const numBatch = req.params.numbatch;
             try {
-                const infoTx = await this.rollupSynch.getOffChainTxByBatch(numBatch);
-                if (infoTx.length === 0 || infoTx.length === undefined)
+                const infoTx = await this.rollupSynch.getBatchInfo(numBatch);
+                if (infoTx === null)
                     res.status(404).send("Batch not found");
                 else   
                     res.status(200).json(stringifyBigInts(infoTx));

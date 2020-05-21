@@ -32,5 +32,7 @@ jobs:
       run: npm run test:utils
     - name: Test js
       run: npm run test:js
+    - name: Test contracts
+      run: npm run test:contracts
 
 

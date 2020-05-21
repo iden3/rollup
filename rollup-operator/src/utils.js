@@ -51,15 +51,16 @@ function manageEvent(event) {
     if (event.event == "OnChainTx") {
         const txData = utils.decodeTxData(event.args.txData);
         return {
+            txData: event.args.txData,
             amount: txData.amount,
             loadAmount: Scalar.e(event.args.loadAmount),
             coin: txData.coin,
-            fromAx: Scalar.e(event.args.fromAx).toString(16),
-            fromAy: Scalar.e(event.args.fromAy).toString(16),
-            fromEthAddr: Scalar.fromString(event.args.fromEthAddress, 16).toString(16),
-            toAx: Scalar.e(event.args.toAx).toString(16),
-            toAy: Scalar.e(event.args.toAy).toString(16),
-            toEthAddr: Scalar.fromString(event.args.toEthAddress, 16).toString(16),
+            fromAx: padding256(event.args.fromAx),
+            fromAy: padding256(event.args.fromAy),
+            fromEthAddr: event.args.fromEthAddress,
+            toAx: padding256(event.args.toAx),
+            toAy: padding256(event.args.toAy),
+            toEthAddr: event.args.toEthAddress,
             onChain: txData.onChain
         };
     } else if (event.event == "OffChainTx") {
@@ -130,4 +131,5 @@ module.exports = {
     manageEvent,
     generateCall,
     purgeArray,
+    padding256,
 };

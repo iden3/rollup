@@ -5,6 +5,18 @@ const { beInt2Buff, beBuff2int } = require("ffjavascript").utils;
 
 const Constants = require("./constants");
 
+/**
+ * Convert to hexadecimal string padding until 256 characters
+ * @param {Number | Scalar} n - input number
+ * @returns {String} - String encoded as hexadecimal with 256 characters
+ */
+function padding256(n) {
+    let nstr = Scalar.e(n).toString(16);
+    while (nstr.length < 64) nstr = "0"+nstr;
+    nstr = `0x${nstr}`;
+    return nstr;
+}
+
 function extract(num, origin, len) {
     const mask = Scalar.sub(Scalar.shl(1, len), 1);
     return Scalar.band(Scalar.shr(num, origin), mask);
@@ -221,8 +233,8 @@ function decodeDepositOffChain(depositsOffchain) {
         const tx = {
             loadAmount: 0,
             coin: Scalar.toNumber(beBuff2int(token)),
-            fromAx: beBuff2int(ax).toString(16),
-            fromAy: beBuff2int(ay).toString(16),
+            fromAx: padding256(beBuff2int(ax)),
+            fromAy: padding256(beBuff2int(ay)),
             fromEthAddr: `0x${beBuff2int(ethAddress).toString(16)}`,
             toAx: Constants.exitAx,
             toAy: Constants.exitAy,
@@ -270,6 +282,7 @@ function decodeDataAvailability(nLevels, dataSm){
 }
 
 module.exports.padZeros = padZeros;
+module.exports.padding256 = padding256; 
 module.exports.buildTxData = buildTxData;
 module.exports.decodeTxData = decodeTxData;
 module.exports.fix2float = fix2float;

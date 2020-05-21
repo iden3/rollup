@@ -69,12 +69,33 @@ contract("Synchronizer", (accounts) => {
                 batch.addTx(manageEvent(elem));
             });
         }
+
         await batch.build();
         const inputSm = buildPublicInputsSm(batch, beneficiary);
         ptr = ptr - 1;
         await insRollupPoS.commitAndForge(hashChain[ptr] , batch.getDataAvailableSM(),
             proofA, proofB, proofC, inputSm, compressedOnChain, config);
         await opRollupDb.consolidate(batch);
+
+        // Test vector deposit off-chain
+        depositOffChainDataTest.push(compressedOnChain);
+
+        // Test vectors off-chain
+        offChainDataTest.push({
+            compressedTxs: batch.getDataAvailableSM(), 
+            feePlanCoins: Scalar.fromString(inputSm[7], 16),
+            feeTotals: Scalar.fromString(inputSm[8], 16),
+        });
+
+        // Test vector on-chain
+        const tmpOnChain = [];
+        if (events) {
+            events.forEach(elem => {
+                const tx = manageEvent(elem);
+                if (tx.onChain && elem.event == "OnChainTx") tmpOnChain.push(tx);
+            });
+        }
+        onChainDataTest.push(tmpOnChain);
     }
 
     const {
@@ -101,9 +122,15 @@ contract("Synchronizer", (accounts) => {
     let ptr = 0;
     const initialMsg = "rollup";
 
+    // Test vectors
+    const offChainDataTest = [];
+    const onChainDataTest = [];
+    const depositOffChainDataTest = [];
+
     const slotPerEra = 20;
     const blocksPerSlot = 100;
     const blockPerEra = slotPerEra * blocksPerSlot;
+    
     // Operator database
     let opDb;
     let opRollupDb;
@@ -238,6 +265,16 @@ contract("Synchronizer", (accounts) => {
         const event0 = await insRollupTest.deposit(loadAmount.toString(), tokenId, rollupAccounts[0].ethAddr,
             [rollupAccounts[0].Ax, rollupAccounts[0].Ay], { from: id1, value: web3.utils.toWei("1", "ether") });
         eventsInitial.push(event0.logs[0]);
+        // { txData:
+        //     '0x0000000000000000000001800000000000000000000000004327a53486aa4e99',
+        //    loadAmount: 10000000000000000000n,
+        //    fromAx:
+        //     20566531304548732851571786311172719427795820689023288667301816573498893123196n,
+        //    fromAy:
+        //     18733853983043078605675170125606193733392672005115671605023181815590573081083n,
+        //    toAx: 0n,
+        //    toAy: 0n,
+        //    toEthAddr: '0x0000000000000000000000000000000000000000' }
     });
 
     it("Should move to era 2 and synch", async () => {
@@ -255,7 +292,7 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        await forgeBlock(eventsInitial); // add initial onchain event deposit
+        await forgeBlock(eventsInitial); // add initial on-chain event deposit
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
     });
@@ -644,6 +681,81 @@ contract("Synchronizer", (accounts) => {
             const res = await synch.getExitTreeInfo(numBatch, coin, ax, ay);
             expect(res.found).to.be.equal(true);
             expect(Scalar.eq(res.state.amount, to18(10))).to.be.equal(true);
+        }
+    });
+
+    it("Should check static data", async () => {
+        const staticData = await synch.getStaticData();
+
+        expect(staticData.contractAddress).to.be.equal(insRollupTest.address);
+        expect(staticData.maxTx).to.be.equal(maxTx);
+        expect(staticData.maxOnChainTx).to.be.equal(maxOnChainTx);
+        expect(staticData.nLevels).to.be.equal(nLevels);
+    });
+
+    it("Should check fees", async () => {
+        const feeDepositSM = Scalar.e(await insRollupTest.getCurrentDepositFee());
+        const feeOnChainTxSM = Scalar.e(await insRollupTest.feeOnchainTx());
+        
+        const feeDeposit = await synch.getFeeDepOffChain();
+        const feeOnChainTx = await synch.getFeeOnChainTx();
+
+        expect(feeDeposit.toString()).to.be.equal(feeDepositSM.toString());
+        expect(feeOnChainTx.toString()).to.be.equal(feeOnChainTxSM.toString());
+    });
+
+    it("Should get individual batch data", async () => {
+        // wait until is fully synched
+        let isSynched = await synch.isSynched();
+        
+        while (!isSynched){
+            await timeout(timeoutDelay);
+            isSynched = await synch.isSynched();
+        }
+
+        const batchData = await synch.getBatchInfo(0);
+        expect(batchData).to.be.equal(null);
+
+        // Check test data vector length
+        expect(offChainDataTest.length).to.be.equal(onChainDataTest.length);
+
+        for (let i = 0; i < offChainDataTest.length; i++){
+            const batchData = await synch.getBatchInfo(i+1);
+
+            // Check off-chain data
+            const offChainData = batchData.offChainData[0];
+            const offDataTest = offChainDataTest[i]; 
+            expect(offDataTest.compressedTxs).to.be.equal(offChainData.compressedTxs);
+            expect(Scalar.eq(offDataTest.feePlanCoins, offChainData.feePlanCoins)).to.be.equal(true);
+            expect(Scalar.eq(offDataTest.feeTotals, offChainData.feeTotals)).to.be.equal(true);
+        
+            // Check on-chain data test
+            const onChainData = batchData.onChainData;
+            const onDataTest = onChainDataTest[i];
+
+            expect(onChainData.length).to.be.equal(onDataTest.length);
+
+            for (let j = 0; j < onChainData.length; j++){
+                const onChainTx = onChainData[j];
+                const onChainTxTest = onDataTest[j];
+
+                expect(onChainTx.txData).to.be.equal(onChainTxTest.txData);
+                expect(Scalar.eq(onChainTx.loadAmount, onChainTxTest.loadAmount)).to.be.equal(true);
+
+                expect(onChainTx.fromAx).to.be.equal(onChainTxTest.fromAx);
+                expect(onChainTx.fromAy).to.be.equal(onChainTxTest.fromAy);
+                expect(onChainTx.fromEthAddr).to.be.equal(onChainTxTest.fromEthAddr);
+
+                expect(onChainTx.toAx).to.be.equal(onChainTxTest.toAx);
+                expect(onChainTx.toAy).to.be.equal(onChainTxTest.toAy);
+                expect(onChainTx.toEthAddr).to.be.equal(onChainTxTest.toEthAddr);
+            }
+
+            // Check deposit off-chain data test
+            const depositOffChainData = batchData.depositOffChainData[0];
+            const depositOffDataTest = depositOffChainDataTest[i];
+            
+            expect(depositOffChainData).to.be.equal(depositOffDataTest);
         }
     });
 });

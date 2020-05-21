@@ -331,7 +331,7 @@ contract RollupHelpers {
 
   /**
    * @dev update on-chain fees
-   * it updates every batch if is full or is build
+   * it updates every batch if it is full or build
    * @param onChainTxCount number of on-chain transactions in the same batch
    * @param currentFee current on-chain fee
    * @return newFee
