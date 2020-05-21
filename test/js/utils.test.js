@@ -32,6 +32,20 @@ describe("Utils", function () {
         }
     });
 
+    it("Floor fix to float", async () => {
+        const testVector = [
+            [0x776f, "87999990000000000"],
+            [0x776f, "87950000000000001"],
+            [0x776f, "87950000000000000"],
+            [0x736f, "87949999999999999"],
+        ];
+
+        for (let i = 0; i < testVector.length; i++) {
+            const testFloat = utils.floorFix2Float(testVector[i][1]);
+            assert.equal(testFloat , testVector[i][0]);
+        }
+    });
+
     it("Transaction data", async () => {
         const tx = {
             amount: 24,

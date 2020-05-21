@@ -7,6 +7,7 @@ const RollupAccount = require("../../js/rollupaccount");
 const RollupDB = require("../../js/rollupdb");
 const Constants = require("../../js/constants");
 const { depositTx } = require("./helpers/utils-test");
+const { computeFee } = require("../../js/utils");
 
 describe("Rollup Db - batchbuilder", async function(){
 
@@ -68,7 +69,7 @@ describe("Rollup Db - batchbuilder", async function(){
         assert.equal(s2_1.ax, account1.ax);
         assert.equal(s2_1.ay, account1.ay);
         assert.equal(s2_1.ethAddress, account1.ethAddress);
-        assert.equal(s2_1.amount, 945);
+        assert.equal(s2_1.amount, 946);
         assert.equal(s2_1.coin, 1);
         assert.equal(s2_1.nonce, 1);
     
@@ -128,7 +129,7 @@ describe("Rollup Db - batchbuilder", async function(){
             nonce: 0,
             fee: Constants.fee["10%"],
         };
-        const feeTx1 = tx.amount / Constants.tableFeeInv[tx.fee];
+        const feeTx1 = computeFee(tx.amount, tx.fee);
 
         account1.signTx(tx);
         bb2.addTx(tx);
@@ -142,7 +143,7 @@ describe("Rollup Db - batchbuilder", async function(){
             nonce: 0,
             fee: Constants.fee["50%"],
         };
-        const feeTx2 = tx2.amount / Constants.tableFeeInv[tx2.fee];
+        const feeTx2 = computeFee(tx2.amount, tx2.fee);
         account1.signTx(tx2);
         bb2.addTx(tx2);
 
@@ -276,6 +277,43 @@ describe("Rollup Db - batchbuilder", async function(){
         }
     });
 
+    it("Should check error fee selected", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        const bb = await rollupDB.buildBatch(4, 8);
+        
+        const account1 = new RollupAccount(1);
+        const account2 = new RollupAccount(2);
+        
+        depositTx(bb, account1, 0, 1000);
+        depositTx(bb, account2, 0, 2000);
+        
+        await bb.build();
+        await rollupDB.consolidate(bb);
+        
+        const bb2 = await rollupDB.buildBatch(4, 8);
+        
+        const tx = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 50,
+            nonce: 0,
+            fee: 16,
+        };
+        account1.signTx(tx);
+        bb2.addTx(tx);
+        
+        try {
+            await bb2.build();   
+            await rollupDB.consolidate(bb2);
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "Fee selected does not exist");
+        }
+    });
 });
 
 describe("RollupDb - rollback functionality", async function () {

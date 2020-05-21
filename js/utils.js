@@ -1,6 +1,7 @@
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
+const assert = require("assert");
 const { beInt2Buff, beBuff2int } = require("ffjavascript").utils;
 
 const Constants = require("./constants");
@@ -42,24 +43,24 @@ function float2fix(fl) {
     return res;
 }
 
+function _floorFix2Float(_f) {
+    const f = Scalar.e(_f);
+    if (Scalar.isZero(f)) return 0;
+
+    let m = f;
+    let e = 0;
+
+    while (!Scalar.isZero(Scalar.shr(m, 10))) {
+        m = Scalar.div(m, 10);
+        e++;
+    }
+
+    const res = Scalar.toNumber(m) + (e << 11);
+    return res;
+}
+
 function fix2float(_f) {
     const f = Scalar.e(_f);
-
-    function floorFix2Float(_f) {
-        const f = Scalar.e(_f);
-        if (Scalar.isZero(f)) return 0;
-
-        let m = f;
-        let e = 0;
-
-        while (!Scalar.isZero(Scalar.shr(m, 10))) {
-            m = Scalar.div(m, 10);
-            e++;
-        }
-
-        const res = Scalar.toNumber(m) + (e << 11);
-        return res;
-    }
 
     function dist(n1, n2) {
         const tmp = Scalar.sub(n1, n2);
@@ -67,7 +68,7 @@ function fix2float(_f) {
         return Scalar.abs(tmp);
     }
 
-    const fl1 = floorFix2Float(f);
+    const fl1 = _floorFix2Float(f);
     const fi1 = float2fix(fl1);
     const fl2 = fl1 | 0x400;
     const fi2 = float2fix(fl2);
@@ -96,6 +97,20 @@ function fix2float(_f) {
     }
 
     return res;
+}
+
+function floorFix2Float(_f){
+    const f = Scalar.e(_f);
+
+    const fl1 = _floorFix2Float(f);
+    const fl2 = fl1 | 0x400;
+    const fi2 = float2fix(fl2);
+
+    if (Scalar.leq(fi2, f)){
+        return fl2;
+    } else {
+        return fl1;
+    }
 }
 
 function buildTxData(tx) {
@@ -255,13 +270,6 @@ function isStrHex(input) {
     return false;
 }
 
-function calculateFee(tx) {
-    if (tx.fee !== Constants.fee["0%"]){
-        const feeInv = Constants.tableFeeInv[tx.fee];
-        return float2fix(fix2float(Scalar.div(tx.amount, feeInv)));
-    } else return 0;
-}
-
 function decodeDataAvailability(nLevels, dataSm) {
     const txs = [];
 
@@ -288,6 +296,22 @@ function decodeDataAvailability(nLevels, dataSm) {
     return txs.reverse();
 }
 
+/**
+ * Compute fee to apply
+ * @param {Scalar} amount - Fee will be applied to this amount
+ * @param {Number} feeSelector - Fee selected among 0 - 15
+ * @returns {Scalar} resulting fee applied
+ */
+function computeFee(amount, feeSelector){
+    assert(feeSelector < Constants.tableAdjustedFee.length, 
+        "Fee selected does not exist");
+
+    let fee2Charge = Scalar.mul(amount, Constants.tableAdjustedFee[feeSelector]);
+    fee2Charge = Scalar.shr(fee2Charge, 32);
+
+    return fee2Charge;
+}
+
 module.exports.padZeros = padZeros;
 module.exports.padding256 = padding256; 
 module.exports.buildTxData = buildTxData;
@@ -304,5 +328,6 @@ module.exports.isStrHex = isStrHex;
 module.exports.extract = extract;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
 module.exports.decodeDepositOffChain = decodeDepositOffChain;
-module.exports.calculateFee = calculateFee;
 module.exports.decodeDataAvailability = decodeDataAvailability;
+module.exports.computeFee = computeFee;
+module.exports.floorFix2Float = floorFix2Float; 

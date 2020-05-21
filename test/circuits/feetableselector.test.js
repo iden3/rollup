@@ -1,5 +1,6 @@
 const path = require("path");
 const tester = require("circom").tester;
+const Scalar = require("ffjavascript").Scalar;
 
 const Constants = require("../../js/constants");
 
@@ -13,14 +14,14 @@ describe("Fee table selector circuit", function () {
     });
 
     it("Should test fee table", async () => {
-        const { tableFeeInv } = Constants;
+        const { tableAdjustedFee } = Constants;
         const input = {};
         const output = {};
 
-        for (let i = 0; i < tableFeeInv.length; i ++){
+        for (let i = 0; i < tableAdjustedFee.length; i ++){
             input.feeSel = i;
 
-            output.feeOut = tableFeeInv[i];
+            output.feeOut = tableAdjustedFee[i];
 
             const w = await circuit.calculateWitness(input);
             await circuit.assertOut(w, output);

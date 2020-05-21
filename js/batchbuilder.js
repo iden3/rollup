@@ -186,7 +186,7 @@ module.exports = class BatchBuilder {
         if (tx.onChain){
             fee2Charge = Scalar.e(0);
         } else {
-            fee2Charge = utils.calculateFee(tx);
+            fee2Charge = utils.computeFee(tx.amount, tx.fee);
         }      
 
         let effectiveAmount = amount; 
@@ -612,7 +612,7 @@ module.exports = class BatchBuilder {
     _getFeeTotal() {
         let res = Scalar.e(0);
         for (let i = 0; i < this.feeTotals.length; i++) {
-            res = Scalar.add(res, Scalar.shl(Scalar.e(utils.fix2float(this.feeTotals[i])), 16*i));
+            res = Scalar.add(res, Scalar.shl(Scalar.e(utils.floorFix2Float(this.feeTotals[i])), 16*i));
         }
         return res;
     }

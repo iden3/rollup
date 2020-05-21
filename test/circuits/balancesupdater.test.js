@@ -4,6 +4,7 @@ const tester = require("circom").tester;
 const Scalar = require("ffjavascript").Scalar;
 
 const Constants = require("../../js/constants");
+const { computeFee } = require("../../js/utils");
 
 describe("Balance updater circuit", function () {
     let circuit;
@@ -18,7 +19,7 @@ describe("Balance updater circuit", function () {
         const input = {
             oldStAmountSender: 10,
             oldStAmountReceiver: 20,
-            amount: 5,
+            amount: 6,
             loadAmount: 0,
             fee: Constants.fee["20%"],
             onChain: 0,
@@ -27,14 +28,14 @@ describe("Balance updater circuit", function () {
 
         const w = await circuit.calculateWitness(input, {logOutput: false});
 
-        const feeApplied = Scalar.div(input.amount, Constants.tableFeeInv[input.fee]);
+        let feeApplied = computeFee(input.amount, input.fee);
 
         const output = {
             newStAmountSender: Scalar.sub(Scalar.sub(input.oldStAmountSender, input.amount), feeApplied ),
             newStAmountReceiver: Scalar.add(input.oldStAmountReceiver, input.amount),
             fee2Charge: feeApplied
         };
-
+        
         await circuit.assertOut(w, output);
     });
 
@@ -43,7 +44,7 @@ describe("Balance updater circuit", function () {
             oldStAmountSender: 10,
             oldStAmountReceiver: 20,
             amount: 0,
-            loadAmount: 5,
+            loadAmount: 6,
             fee: Constants.fee["20%"],
             onChain: 1,
             nop: 0,
@@ -116,39 +117,5 @@ describe("Balance updater circuit", function () {
         // - Therefore, 192 - 128 = 64 --> meaning that 2^64 transactions has to be done to get overflow
         // - Economic incentives to not reach 2^64 tx since each deposit has a fee of 0.1 eth
         // - We assume overflow is not feasible
-    });
-
-    it("Should check enough amount for fee selected", async () => {
-        const input = {
-            oldStAmountSender: 10,
-            oldStAmountReceiver: 20,
-            amount: 2,
-            loadAmount: 0,
-            fee: Constants.fee["1%"],
-            onChain: 0,
-            nop: 0,
-        };
-
-        try {
-            await circuit.calculateWitness(input, {logOutput: false});
-            assert(false, "Constraint matches");
-        } catch (err) {
-            assert.equal(err.message.includes("Constraint doesn't match"), true);
-            assert.equal(err.message.includes("1 != 0"), true);
-        }
-
-        input.fee = Constants.fee["50%"];
-
-        const feeApplied = Scalar.div(input.amount, Constants.tableFeeInv[input.fee]);
-
-        const output = {
-            newStAmountSender: Scalar.sub(Scalar.sub(input.oldStAmountSender, input.amount), feeApplied),
-            newStAmountReceiver: Scalar.add(input.oldStAmountReceiver, input.amount),
-            fee2Charge: feeApplied,
-        };
-
-        const w = await circuit.calculateWitness(input, {logOutput: false});
-
-        await circuit.assertOut(w, output);
     });
 });

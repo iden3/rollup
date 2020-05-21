@@ -27,7 +27,6 @@ module.exports.exitAy = "0x00000000000000000000000000000000000000000000000000000
 module.exports.exitEthAddr = "0x0000000000000000000000000000000000000000";
 module.exports.exitAccount = hash6([Scalar.fromString(this.exitAx, 16), Scalar.fromString(this.exitAy, 16)]);
 
-module.exports.tableFeeInv = [ 0, 100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2];
 module.exports.fee = {
     "0%" :      0,
     "0.001%" :  1,
@@ -46,3 +45,22 @@ module.exports.fee = {
     "20%":      14,
     "50%" :     15,
 };
+
+module.exports.tableAdjustedFee = [ 
+    0,
+    42949,
+    85899,
+    214748,
+    429496,
+    858993,
+    2147483,
+    4294967,
+    8589934,
+    21474836,
+    42949672,
+    85899345,
+    214748364,
+    429496729,
+    858993459,
+    2147483648,
+];

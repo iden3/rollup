@@ -344,7 +344,7 @@ contract("Synchronizer", (accounts) => {
             expect(resEthAddress[0].ay).to.be.equal(ay);
         }
 
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(10), to18(10), to18(10), null, null]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should add off-chain tx and synch", async () => {
@@ -371,7 +371,7 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(7), to18(13), to18(10), null, null]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should add deposit off-chain and synch", async () => {
@@ -413,7 +413,7 @@ contract("Synchronizer", (accounts) => {
         expect(resId.ay).to.be.equal(ay);
         expect(resId.ethAddress).to.be.equal(ethAddr);
         
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(7), to18(13), to18(10), to18(0), null]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should add deposit off-chain and off-chain transfer and synch", async () => {
@@ -469,7 +469,7 @@ contract("Synchronizer", (accounts) => {
         expect(resId.ay).to.be.equal(ay);
         expect(resId.ethAddress).to.be.equal(ethAddr);
         
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(4), to18(13), to18(10), to18(0), to18(3)]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should add two off-chain withdraw tx and synch", async () => {
@@ -514,7 +514,7 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(4), to18(11), to18(10), to18(0), to18(1)]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should check exit batches by account", async () => {
@@ -577,7 +577,7 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(4), to18(5), to18(10), to18(5), to18(1)]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should add on-chain and two off-chain tx and synch", async () => {
@@ -631,7 +631,7 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(4), to18(5), to18(20), to18(3), to18(0)]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
     });
 
     it("Should add two off-chain withdraw and synch", async () => {
@@ -664,7 +664,7 @@ contract("Synchronizer", (accounts) => {
         await timeout(timeoutSynch);
         await utilsTest.checkSynch(synch, opRollupDb);
 
-        await utilsTest.assertBalances(synch, rollupAccounts, [to18(4), to18(5), to18(8), to18(3), to18(0)]);
+        await utilsTest.assertBalancesDb(synch, rollupAccounts, opRollupDb);
 
         // Check exit batches
         const numExitBatch = 13;

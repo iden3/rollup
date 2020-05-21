@@ -54,7 +54,7 @@ describe("Rollup Basic circuit TXs", function () {
         console.log("Constraints `rollup.circom` circuit: " + circuit.constraints.length + "\n");
 
         // const testerAux = require("circom").testerAux;
-        // const pathTmp = "/tmp/circom_20572IXT6cYJnHkBr";
+        // const pathTmp = "/tmp/circom_68877HIjMzTYwE6L";
         // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_test.circom"));
     });
 
@@ -299,7 +299,7 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w, bb);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 450);
+        assert.equal(state1.amount.toString(), 451);
 
         const state2 = await rollupDB.getStateByIdx(2);
         assert.equal(state2.amount.toString(), 2500);
@@ -341,7 +341,7 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 995);
+        assert.equal(state1.amount.toString(), 996);
     });
 
     it("Should create 2 deposits on-chain and then 3 off-chain transfers", async () => {
@@ -399,10 +399,10 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w, bb);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 800);
+        assert.equal(state1.amount.toString(), 802);
 
         const state2 = await rollupDB.getStateByIdx(2);
-        assert.equal(state2.amount.toString(), 1900);
+        assert.equal(state2.amount.toString(), 1901);
     });
 
     it("Should create 5 deposits on-chain and then 5 off-chain transfers", async () => {
@@ -499,19 +499,19 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w2, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 900);
+        assert.equal(state1.amount.toString(), 901);
 
         const state2 = await rollupDB.getStateByIdx(2);
-        assert.equal(state2.amount.toString(), 1900);
+        assert.equal(state2.amount.toString(), 1901);
 
         const state3 = await rollupDB.getStateByIdx(3);
-        assert.equal(state3.amount.toString(), 2900);
+        assert.equal(state3.amount.toString(), 2901);
 
         const state4 = await rollupDB.getStateByIdx(4);
-        assert.equal(state4.amount.toString(), 3900);
+        assert.equal(state4.amount.toString(), 3901);
 
         const state5 = await rollupDB.getStateByIdx(5);
-        assert.equal(state5.amount.toString(), 4900);
+        assert.equal(state5.amount.toString(), 4901);
     });
 
     it("Should create 1 deposit on-chain of 0 amount", async () => {
@@ -572,7 +572,7 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w2, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 940);
+        assert.equal(state1.amount.toString(), 941);
     });
 
     it("Should create 2 deposits on-chain and then 4 off-chain transfer, 3 of them are exits", async () => {
@@ -642,7 +642,7 @@ describe("Rollup Basic circuit TXs", function () {
         await checkBatch(circuit, w2, bb2);
 
         const state1 = await rollupDB.getStateByIdx(1);
-        assert.equal(state1.amount.toString(), 605);
+        assert.equal(state1.amount.toString(), 608);
 
         const state2 = await rollupDB.getStateByIdx(2);
         assert.equal(state2.amount.toString(), 2050);
