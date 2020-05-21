@@ -83,7 +83,7 @@ describe("Synchronizer pool", function () {
         expect(_.isEqual(poolTable, conversionJson)).to.be.equal(true);
 
         // Check Ethereum price
-        const poolEthPrice = pool.depositsStates.ethPrice;
+        const poolEthPrice = pool.ethPrice;
         const ethPriceJson = jsonTable.ethPrice;
         expect(poolEthPrice).to.be.equal(ethPriceJson);
     });
@@ -122,7 +122,7 @@ describe("Synchronizer pool", function () {
         expect(_.isEqual(poolTable, conversionJson)).to.be.equal(true);
 
         // Check Ethereum price
-        const poolEthPrice = pool.depositsStates.ethPrice;
+        const poolEthPrice = pool.ethPrice;
         const ethPriceJson = jsonTable.ethPrice;
         expect(poolEthPrice).to.be.equal(ethPriceJson);
     });

@@ -166,7 +166,7 @@ contract RollupHelpersTest is RollupHelpers{
   function updateOnchainFeeTest(uint256 onChainTxCount, uint256 currentFee) public pure returns (uint256) {
     return updateOnchainFee(onChainTxCount, currentFee);
   }
-  function udateDepositFeeTest(uint256 lastLeafIndex, uint32 depositCount, uint256 oldFee) public pure returns (uint256) {
-    return updateDepositFee(lastLeafIndex, depositCount, oldFee);
+  function udateDepositFeeTest(uint32 depositCount, uint256 oldFee) public pure returns (uint256) {
+    return updateDepositFee(depositCount, oldFee);
   }
 }

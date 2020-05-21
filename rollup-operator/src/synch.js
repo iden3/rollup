@@ -248,7 +248,7 @@ class Synchronizer {
                 }
 
                 // update deposit fee
-                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
+                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.depositFee()
                     .call({from: this.ethAddress}));
 
                 // update on-chain fee
@@ -1123,7 +1123,7 @@ class Synchronizer {
      */
     async getFeeDepOffChain() {
         if (this.feeDepOffChain) return this.feeDepOffChain;
-        return Scalar.e(await this.rollupContract.methods.getCurrentDepositFee()
+        return Scalar.e(await this.rollupContract.methods.depositFee()
             .call({from: this.ethAddress}));
     }
 

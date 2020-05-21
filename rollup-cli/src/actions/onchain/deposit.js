@@ -30,7 +30,7 @@ async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletRollup,
     const address = ethAddress || await walletEth.getAddress();
 
     const feeOnchainTx = await contractWithSigner.feeOnchainTx();
-    const feeDeposit = await contractWithSigner.getCurrentDepositFee();
+    const feeDeposit = await contractWithSigner.depositFee();
 
     const overrides = {
         gasLimit,

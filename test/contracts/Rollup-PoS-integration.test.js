@@ -6,6 +6,7 @@
 
 const { expect } = require("chai");
 const SMTMemDB = require("circomlib/src/smt_memdb");
+const Scalar = require("ffjavascript").Scalar;
 
 const timeTravel = require("./helpers/timeTravel.js");
 const { decodeMethod, getEtherBalance, getPublicPoSVariables} = require("./helpers/helpers");
@@ -138,8 +139,8 @@ contract("Rollup - RollupPoS", (accounts) => {
         // Check balances
         const balOpBeforeForge = await getEtherBalance(operator1);
         // Forge genesis batch by operator 1
-        await insRollupPoS.commitBatch(hashChain.pop(), block.getDataAvailableSM(), [], {from: operator1});
-        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
+        const receiptCommit1 = await insRollupPoS.commitBatch(hashChain.pop(), block.getDataAvailableSM(), [], {from: operator1});
+        const receiptForge1 = await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
         // Consolidate Batch
         await rollupDB.consolidate(block);
 
@@ -151,16 +152,21 @@ contract("Rollup - RollupPoS", (accounts) => {
         const inputs1 = buildPublicInputsSm(block1);
 
         // Forge batch by operator 1
-        await insRollupPoS.commitBatch(hashChain.pop(), block.getDataAvailableSM(), [], {from: operator1});
-        await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
+        const receiptCommit2 = await insRollupPoS.commitBatch(hashChain.pop(), block.getDataAvailableSM(), [], {from: operator1});
+        const receiptForge2 = await insRollupPoS.forgeCommittedBatch(proofA, proofB, proofC, inputs1, [], {from: operator1, value: web3.utils.toWei("1", "ether")});
         // Consolidate Batch
         await rollupDB.consolidate(block1);
 
         // Check balances
         const balOpAfterForge = await getEtherBalance(operator1);
 
-        expect(balOpBeforeForge).to.be.lessThan(balOpAfterForge);
+        const gasPrice = await web3.eth.getGasPrice();
+        const totalGasWasted = receiptCommit1.receipt.gasUsed + receiptForge1.receipt.gasUsed + receiptCommit2.receipt.gasUsed + receiptForge2.receipt.gasUsed;
+        const totalEtherWasted = Scalar.mul(gasPrice, totalGasWasted);
+        const totalEtherWastedInt = Number(web3.utils.fromWei(totalEtherWasted.toString(), "ether"));
+        expect(balOpBeforeForge - totalEtherWastedInt).to.be.lessThan(balOpAfterForge);
 
+        
         // Retrieve off-chain data forged
         // Step1: Get block number from 'ForgeBatch' event triggered by Rollup.sol
         const logs = await insRollup.getPastEvents("ForgeBatch", {

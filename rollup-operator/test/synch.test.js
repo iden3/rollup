@@ -58,7 +58,7 @@ contract("Synchronizer", (accounts) => {
             if (params.depositOffChainData){
                 compressedOnChain = `0x${(params.depositOffChainData).toString("hex")}`;
                 const numDep = params.depositOffChainData.length / 88;
-                const feeDep = Scalar.e(await insRollupTest.getCurrentDepositFee());
+                const feeDep = Scalar.e(await insRollupTest.depositFee());
                 const amountToPay = Scalar.mul(feeDep, numDep);
                 config.value = amountToPay.toString();                
             }
@@ -694,7 +694,7 @@ contract("Synchronizer", (accounts) => {
     });
 
     it("Should check fees", async () => {
-        const feeDepositSM = Scalar.e(await insRollupTest.getCurrentDepositFee());
+        const feeDepositSM = Scalar.e(await insRollupTest.depositFee());
         const feeOnChainTxSM = Scalar.e(await insRollupTest.feeOnchainTx());
         
         const feeDeposit = await synch.getFeeDepOffChain();
