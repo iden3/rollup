@@ -297,6 +297,7 @@ class SynchPoS {
     _getRegOperatorsData(operatorData){
         return {
             controllerAddress: operatorData.controllerAddress,
+            beneficiaryAddress: operatorData.beneficiaryAddress,
             operatorId: operatorData.operatorId,
             url: operatorData.url,
         };

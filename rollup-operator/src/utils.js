@@ -38,7 +38,8 @@ function buildPublicInputsSm(bb) {
         padding256(bb.getInitIdx()),
         padding256(bb.getOldStateRoot()),
         padding256(bb.getFeePlanCoins()),
-        padding256(bb.getFeeTotal())
+        padding256(bb.getFeeTotal()),
+        padding256(bb.getBeneficiaryAddress()),
     ];
 }
 

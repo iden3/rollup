@@ -20,7 +20,7 @@ contract RollupPoSTest is RollupPoS {
         fullFilled[slot] = true;
     }
 
-  /**
+    /**
      * @dev update raffles mapping
      * initialize raffle according its era
      */
@@ -117,7 +117,7 @@ contract RollupPoSTest is RollupPoS {
         uint[2] memory proofA,
         uint[2][2] memory proofB,
         uint[2] memory proofC,
-        uint[9] memory input,
+        uint[10] memory input,
         bytes memory compressedOnChainTx
     ) public payable override {
         uint32 slot = currentSlot();
@@ -126,15 +126,24 @@ contract RollupPoSTest is RollupPoS {
         uint32 updateEra = currentEra() + 2;
         _updateRafflesTest();
         Raffle storage raffle = raffles[updateEra];
+
+        // beneficiary address input must be operator benefiacry address
+        require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+            'beneficiary address must be operator beneficiary address');
+
         // Check input off-chain hash matches hash commited
         require(commitSlot[slot].offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
+
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
+
         // update previous hash committed by the operator
         op.rndHash = commitSlot[slot].previousHash;
+
         // clear committed data
         commitSlot[slot].committed = false;
+
         // one block has been forged in this slot
         fullFilled[slot] = true;
         raffle.seedRnd = bytes8(keccak256(abi.encodePacked(raffle.seedRnd, op.rndHash)));

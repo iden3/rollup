@@ -133,6 +133,7 @@ contract("Rollup - RollupPoS", (accounts) => {
 
         // build inputs
         const block = await rollupDB.buildBatch(maxTx, nLevels);
+        block.addBeneficiaryAddress(operator1);
         await block.build();
         const inputs = buildPublicInputsSm(block);
 
@@ -148,6 +149,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         const block1 = await rollupDB.buildBatch(maxTx, nLevels);
         const tx = manageEvent(eventTmp.logs[0]);
         block1.addTx(tx);
+        block1.addBeneficiaryAddress(operator1);
         await block1.build();
         const inputs1 = buildPublicInputsSm(block1);
 
@@ -233,7 +235,7 @@ contract("Rollup - RollupPoS", (accounts) => {
         };
         batch.addTx(txOnchain);
         batch.addDepositOffChain(txOnchain);
-
+        batch.addBeneficiaryAddress(operator1);
         await batch.build();
 
         // Encode depositOffchain

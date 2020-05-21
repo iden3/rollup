@@ -9,6 +9,7 @@ contract RollupPoS is RollupPoSHelpers{
 
     // Input snark definition
     uint256 constant offChainHashInput = 4;
+    uint256 constant beneficiaryAddressInput = 9;
 
     // Maximum rollup transactions: either off-chain or on-chain transactions
     uint public MAX_TX;
@@ -614,14 +615,19 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2] memory proofA,
         uint[2][2] memory proofB,
         uint[2] memory proofC,
-        uint[9] memory input,
+        uint[10] memory input,
         bytes memory compressedOnChainTx
      ) public payable virtual {
         uint32 slot = currentSlot();
         uint opId = getRaffleWinner(slot);
         Operator storage op = operators[opId];
+
         // message sender must be the controller address
         require(msg.sender == op.controllerAddress, 'message sender must be controllerAddress');
+
+        // beneficiary address input must be operator benefiacry address
+        require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+            'beneficiary address must be operator beneficiary address');
 
         // Check input off-chain hash matches hash commited
         require(commitSlot[slot].offChainHash == input[offChainHashInput],
@@ -634,7 +640,7 @@ contract RollupPoS is RollupPoSHelpers{
         // Check that operator has committed data
         require(commitSlot[slot].committed == true, 'There is no committed data');
 
-        rollupInterface.forgeBatch.value(msg.value)(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
+        rollupInterface.forgeBatch.value(msg.value)(proofA, proofB, proofC, input, compressedOnChainTx);
 
         uint32 updateEra = currentEra() + 2;
         _updateRaffles();
@@ -655,7 +661,7 @@ contract RollupPoS is RollupPoSHelpers{
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[9] calldata input,
+        uint[10] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable {
         commitBatch(previousRndHash, compressedTx, compressedOnChainTx);

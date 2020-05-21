@@ -95,16 +95,16 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 public NLevels = 24;
 
     // Input snark definition
-    uint256 constant finalIdx = 0;
+    uint256 constant finalIdxInput = 0;
     uint256 constant newStateRootInput = 1;
     uint256 constant newExitRootInput = 2;
     uint256 constant onChainHashInput = 3;
     uint256 constant offChainHashInput = 4;
-    uint256 constant initialIdx = 5;
+    uint256 constant initialIdxInput = 5;
     uint256 constant oldStateRootInput = 6;
     uint256 constant feePlanCoinsInput = 7;
-    uint256 constant feeTotals = 8;
-    uint256 constant benefciaryAddress = 9;
+    uint256 constant feeTotalsInput = 8;
+    uint256 constant beneficiaryAddressInput = 9;
 
     /**
      * @dev Event called when any on-chain transaction has benn done
@@ -513,7 +513,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     /**
      * @dev Checks proof given by the operator
      * forge a batch if succesfull and pay fees to beneficiary address
-     * @param beneficiaryAddress address to receive all fees
      * @param proofA zk-snark input
      * @param proofB zk-snark input
      * @param proofC zk-snark input
@@ -521,11 +520,10 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
      * @param compressedOnChainTx compresssed deposit offchain
      */
     function forgeBatch(
-        address payable beneficiaryAddress,
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[9] calldata input,
+        uint[10] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable override virtual isForgeBatch {
 
@@ -534,7 +532,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
             'old state root does not match current state root');
 
         // Initial index must be the final index of the last batch
-        require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdx], 'Initial index does not match');
+        require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdxInput], 'Initial index does not match');
 
         // Deposits that will be added in this batch
         uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
@@ -561,7 +559,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
 
         // Update and verify lastLeafIndex
         batchToInfo[getStateDepth()+1].lastLeafIndex = batchToInfo[getStateDepth()].lastLeafIndex + depositCount;
-        require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdx], 'Final index does not match');
+        require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdxInput], 'Final index does not match');
 
         // Verify on-chain hash
         require(input[onChainHashInput] == miningOnChainTxsHash,
@@ -571,7 +569,11 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
             'zk-snark proof is not valid');
 
-        fillingInfo storage currentFilling = fillingMap[getStateDepth()]; // curren batch filling Info
+        // current batch filling Info
+        fillingInfo storage currentFilling = fillingMap[getStateDepth()];
+
+        // Get beneficiary address from zk-inputs 
+        address payable beneficiaryAddress = address(input[beneficiaryAddressInput]);
 
         // Clean fillingOnChainTxsHash an its fees
         uint payOnChainFees = totalMinningOnChainFee;
@@ -597,7 +599,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         exitRoots.push(bytes32(input[newExitRootInput]));
 
         // Calculate fees and pay them
-        withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotals]),
+        withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotalsInput]),
         beneficiaryAddress);
 
         // Pay onChain transactions fees and  remaining ether to the msg.sender    

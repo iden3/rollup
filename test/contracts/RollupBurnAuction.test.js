@@ -31,7 +31,7 @@ contract("RollupBurnAuction", (accounts) => {
         A: ["0", "0"],
         B: [["0", "0"], ["0", "0"]],
         C: ["0", "0"],
-        input: ["0", "0", "0", "0", "0", "0", "0", "0","0"]
+        input: ["0", "0", "0", "0", "0", "0", "0", "0", "0", "0"]
     };
     
     // INITIAL SETUP
@@ -335,8 +335,8 @@ contract("RollupBurnAuction", (accounts) => {
         const currentAuctionSlot = parseInt(stringifyBigInts(currentSlot)) + 2;
         const currentAucttion = await getAuction(currentAuctionSlot); 
         return stringifyBigInts({
-            slot: currentAuctionSlot,
-            ... currentAucttion
+            slot: currentAuctionSlot, 
+            ...currentAucttion,
         })
     }
 
