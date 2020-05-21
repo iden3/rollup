@@ -116,8 +116,8 @@ describe("Rollup circuit integration with tramsaction pool test", function () {
         txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
         txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
         txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
-        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]};
+        txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]}; 
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]}; // can't be mined
         txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
 
 
@@ -137,12 +137,12 @@ describe("Rollup circuit integration with tramsaction pool test", function () {
         await txPool.fillBatch(bb);
 
         const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
-        const expectedSlots = [2,5,0,1];
+        const expectedSlots = [ 2, 5, 3, 0 ];
 
         assert.deepEqual(calcSlots, expectedSlots);
 
         const input = bb.getInput();
-        
+
         const w = await circuit.calculateWitness(input, {logTrigger:false, logOutput: false, logSet: false});
         
         await checkBatch(circuit, w, bb);

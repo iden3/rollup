@@ -276,43 +276,6 @@ describe("Rollup Db - batchbuilder", async function(){
         }
     });
 
-    it("Should check error minimum fee", async () => {
-        // Start a new state
-        const db = new SMTMemDB();
-        const rollupDB = await RollupDB(db);
-        const bb = await rollupDB.buildBatch(4, 8);
-        
-        const account1 = new RollupAccount(1);
-        const account2 = new RollupAccount(2);
-        
-        depositTx(bb, account1, 0, 1000);
-        depositTx(bb, account2, 0, 2000);
-        
-        await bb.build();
-        await rollupDB.consolidate(bb);
-        
-        const bb2 = await rollupDB.buildBatch(4, 8);
-        
-        const tx = {
-            toAx: account2.ax,
-            toAy: account2.ay,
-            toEthAddr: account2.ethAddress,
-            coin: 0,
-            amount: 50,
-            nonce: 0,
-            fee: Constants.fee["0.01%"],
-        };
-        account1.signTx(tx);
-        bb2.addTx(tx);
-        
-        try {
-            await bb2.build();   
-            await rollupDB.consolidate(bb2);
-            assert(false);
-        } catch (error) {
-            assert.include(error.message, "Amount less than fee requested");
-        }
-    });
 });
 
 describe("RollupDb - rollback functionality", async function () {

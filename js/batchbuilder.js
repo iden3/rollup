@@ -186,7 +186,7 @@ module.exports = class BatchBuilder {
         if (tx.onChain){
             fee2Charge = Scalar.e(0);
         } else {
-            fee2Charge = this._calculateFee(tx);
+            fee2Charge = utils.calculateFee(tx);
         }      
 
         let effectiveAmount = amount; 
@@ -599,14 +599,6 @@ module.exports = class BatchBuilder {
     _uniqueAccount(coin, ax, ay){
         const h = poseidon.createHash(6, 8, 57);
         return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
-    }
-
-    _calculateFee(tx){
-        if (tx.fee !== Constants.fee["0%"]){
-            const feeInv = Constants.tableFeeInv[tx.fee];
-            assert(Scalar.geq(tx.amount, feeInv), "Amount less than fee requested");
-            return Scalar.div(tx.amount, feeInv);
-        } else return 0;
     }
 
     _accumulateFees(coin, fee2Charge){
