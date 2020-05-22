@@ -35,7 +35,7 @@ async function depositAndTransfer(nodeEth, addressSC, loadAmount, amount, tokenI
     const amountF = fix2float(amount);
 
     const feeOnchainTx = await contractWithSigner.feeOnchainTx();
-    const feeDeposit = await contractWithSigner.getCurrentDepositFee();
+    const feeDeposit = await contractWithSigner.depositFee();
 
     const overrides = {
         gasLimit,

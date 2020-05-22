@@ -338,27 +338,28 @@ contract RollupHelpers {
    */
   function updateOnchainFee(uint256 onChainTxCount, uint256 currentFee) internal pure returns (uint256 newFee) {
       if (10 < onChainTxCount)
-          newFee = (currentFee*101)/100;
+          newFee = (currentFee*100722)/100000;
       else if (10 > onChainTxCount)
-          newFee = (currentFee*99)/100;
+          newFee = (currentFee*100000)/100722;
       else
           newFee = currentFee;
+      if (newFee > 1 ether)
+          newFee = 1 ether;
+      else if (newFee < (1 szabo / 1000) ) // 1 Gwei
+          newFee = 1 szabo / 1000;
   }
 
   /**
    * @dev update deposit fee
    * It updates every batch
-   * @param lastLeafIndex last leaf added
    * @param depositCount number of deposits in the same batch
    * @param oldFee current deposit fee
    * @return newFee
    */
-  function updateDepositFee(uint256 lastLeafIndex, uint32 depositCount, uint256 oldFee) internal pure returns (uint256 newFee) {
+  function updateDepositFee(uint32 depositCount, uint256 oldFee) internal pure returns (uint256 newFee) {
       newFee = oldFee;
-      if ((lastLeafIndex >> 22) > 0) {
-          for (uint32 i = 0; i < depositCount; i++) {
-              newFee = newFee * 10000005 / 10000000;
-          }
+      for (uint32 i = 0; i < depositCount; i++) {
+          newFee = newFee * 10000008235 / 10000000000;
       }
   }
 }

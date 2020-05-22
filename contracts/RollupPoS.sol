@@ -75,7 +75,7 @@ contract RollupPoS is RollupPoSHelpers{
     /**
      * @dev Event called when an operator is added to the staker tree
      */
-    event createOperatorLog(address controllerAddress, uint operatorId, string url);
+    event createOperatorLog(address controllerAddress, uint operatorId, string url, address beneficiaryAddress);
 
     /**
      * @dev Event called when an operator is removed from the staker tree
@@ -289,7 +289,7 @@ contract RollupPoS is RollupPoSHelpers{
         raffle.root = newRoot;
         raffle.activeStake += eStake;
         raffle.historicStake += eStake;
-        emit createOperatorLog(controllerAddress, idOp, url);
+        emit createOperatorLog(controllerAddress, idOp, url, beneficiaryAddress);
         return idOp;
     }
 

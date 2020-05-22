@@ -28,7 +28,7 @@ contract RollupTest is Rollup {
       uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
       // Operator must pay for every off-chain deposit
-      require(msg.value >=  depositFeeMul / 1 ether * feeOnchainTx * depositOffChainLength, 'Amount deposited less than fee required');
+      require(msg.value >=  depositFee * depositOffChainLength, 'Amount deposited less than fee required');
     
       // Add deposits off-chain
       for (uint32 i = 0; i < depositOffChainLength; i++) {  
@@ -70,7 +70,7 @@ contract RollupTest is Rollup {
       delete fillingMap[getStateDepth()];
 
       // Update deposit fee
-      depositFeeMul = updateDepositFee(input[finalIdx], depositCount, depositFeeMul);
+      depositFee = updateDepositFee(depositCount, depositFee);
 
 
       // Update state roots

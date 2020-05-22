@@ -77,8 +77,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 public totalMinningOnChainFee;
 
     // Fees recollected for every on-chain transaction
-    uint256 public feeOnchainTx = 0.1 ether;
-    uint256 public depositFeeMul = 1 ether; // 18 decimals
+    uint256 public feeOnchainTx = 0.01 ether;
+    uint256 public depositFee = 0.001 ether; 
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;
@@ -104,6 +104,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 constant oldStateRootInput = 6;
     uint256 constant feePlanCoinsInput = 7;
     uint256 constant feeTotals = 8;
+    uint256 constant benefciaryAddress = 9;
 
     /**
      * @dev Event called when any on-chain transaction has benn done
@@ -244,7 +245,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint256[2] memory babyPubKey
     ) public payable {
         // Onchain fee + deposit fee
-        uint256 totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
+        uint256 totalFee = feeOnchainTx + depositFee;
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
@@ -269,7 +270,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         leaf.ethAddress = ethAddress;
 
         // Burn deposit fee
-        address(0).transfer(totalFee - feeOnchainTx);
+        address(0).transfer(depositFee);
         
         _updateOnChainHash(uint256(txDataDeposit), loadAmount, ethAddress, babyPubKey, address(0), [uint256(0),uint256(0)]);
 
@@ -395,7 +396,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint16 amountF
     ) public payable{
         // Onchain fe + deposit Fee
-        uint256 totalFee = feeOnchainTx + (depositFeeMul / 1 ether) * feeOnchainTx;        
+        uint256 totalFee = feeOnchainTx + depositFee;        
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
         require(loadAmount > 0, 'Deposit amount must be greater than 0');
         require(loadAmount < MAX_AMOUNT_DEPOSIT, 'deposit amount larger than the maximum allowed');
@@ -426,7 +427,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         fromLeaf.ethAddress = fromEthAddress;
         
         // Burn deposit fee
-        address(0).transfer(totalFee - feeOnchainTx);
+        address(0).transfer(depositFee);
 
         _updateOnChainHash(uint256(txDataDepositAndTransfer), loadAmount, fromEthAddress, fromBabyPubKey,
         toLeaf.ethAddress, toBabyPubKey);
@@ -540,7 +541,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
         // Deposit off-chain fee * depositOffchainLength
-        uint256 totalFee = (depositFeeMul / 1 ether) * feeOnchainTx * depositOffChainLength;
+        uint256 totalFee = depositFee * depositOffChainLength;
         // Operator must pay for every off-chain deposit
         require(msg.value >= totalFee, 'Amount deposited less than fee required');
 
@@ -587,7 +588,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         delete fillingMap[getStateDepth()];
 
         // Update deposit fee
-        depositFeeMul = updateDepositFee(input[finalIdx], depositCount, depositFeeMul);
+        depositFee = updateDepositFee(depositCount, depositFee);
 
         // Update state roots
         stateRoots.push(bytes32(input[newStateRootInput]));
@@ -599,11 +600,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotals]),
         beneficiaryAddress);
 
-        // Pay onChain transactions fees
-        beneficiaryAddress.transfer(payOnChainFees);
-
-        // Return remaining ether to the msg.sender    
-        beneficiaryAddress.transfer(msg.value - totalFee);
+        // Pay onChain transactions fees and  remaining ether to the msg.sender    
+        beneficiaryAddress.transfer(payOnChainFees + msg.value - totalFee);
 
         // Event with all compressed transactions given its batch number
         emit ForgeBatch(getStateDepth(), block.number);
@@ -699,14 +697,6 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
         }
     }
 
-    /**
-     * @dev cCalculates current deposit fee
-     * @return current deposit fee
-     */
-    function getCurrentDepositFee() public view returns (uint256) {
-        return (depositFeeMul / 1 ether) * feeOnchainTx;
-    }
-    
     ///////////
     // helpers ERC20 functions
     ///////////

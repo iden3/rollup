@@ -79,7 +79,6 @@ class LoopManager{
         this.poolTx = poolTx;
         this.opManager = opManager;
         this.cliServerProof = cliServerProof;
-        this.mulDepositFee = 1.01;
 
         this.registerId = [];
         this.state = state.SYNCHRONIZING;
@@ -432,8 +431,7 @@ class LoopManager{
             const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
 
             // + 1% in case some batch is fullfilled and the fee increases, the remaining fee is transfer back to the operator
-            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.infoCurrentBatch.depositFee * this.mulDepositFee;
-            
+            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.infoCurrentBatch.depositFee;
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
             if (!proofServer.publicInputs){ // get inputs from batchBuilder

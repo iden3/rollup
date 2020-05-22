@@ -6,9 +6,9 @@ Start local ethereum blockchain
 
 Deploy contracts and build configuration files
   - Memory database 
-    `truffle test ./rollup-operator/test/server/build-configs-memDb.test.js`
+    `npx truffle test ./rollup-operator/test/server/build-configs-memDb.test.js`
   - LevelDb database
-    `truffle test ./rollup-operator/test/server/build-configs-levelDb.test.js`
+    `npx truffle test ./rollup-operator/test/server/build-configs-levelDb.test.js`
 
 Open new terminal and run `server-proof` server
   - `cd ./rollup-operator`
@@ -31,4 +31,4 @@ Open new terminal and run operator service
     - *It should be noted that this file should be where the `operator.js` is invoked and its name should be `config.env` 
 
 Run test 
-  - `truffle test ./rollup-operator/test/server/operator-server.test.js`
+  - `npx truffle test ./rollup-operator/test/server/operator-server.test.js`

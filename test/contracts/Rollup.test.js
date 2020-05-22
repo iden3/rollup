@@ -146,18 +146,11 @@ contract("Rollup", (accounts) => {
         const loadAmount = 10;
         const tokenId = 0;
         const feeOnChain = await insRollupTest.feeOnchainTx();
-        const feeDeposit = await insRollupTest.depositFeeMul();
+        const feeDeposit = await insRollupTest.depositFee();
 
-        // totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
-        const feeRequired =  
-        Scalar.add(
-            feeOnChain,
-            Scalar.mul( 
-                Scalar.div(feeDeposit, 10**18),
-                Scalar.e(feeOnChain)
-            )
-        );
-    
+        // totalFee = feeOnchainTx + depositFee;
+        const feeRequired = Scalar.add(feeOnChain, feeDeposit);
+
         const resApprove = await insTokenRollup.approve(insRollupTest.address, loadAmount, { from: id1 });
         expect(resApprove.logs[0].event).to.be.equal("Approval");
 
@@ -198,17 +191,10 @@ contract("Rollup", (accounts) => {
         // - forge batches to include both deposits
 
         const feeOnChain = await insRollupTest.feeOnchainTx();
-        const feeDeposit = await insRollupTest.depositFeeMul();
+        const feeDeposit = await insRollupTest.depositFee();
 
-        // totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
-        const feeRequired =  
-        Scalar.add(
-            feeOnChain,
-            Scalar.mul( 
-                Scalar.div(feeDeposit, 10**18),
-                Scalar.e(feeOnChain)
-            )
-        );
+        // totalFee = feeOnchainTx + depositFee;
+        const feeRequired = Scalar.add(feeOnChain, feeDeposit);
 
         const loadAmount = 5;
         const tokenId = 0;
@@ -793,17 +779,10 @@ contract("Rollup", (accounts) => {
 
         // Calculate fees
         const feeOnChain = await insRollupTest.feeOnchainTx();
-        const feeDeposit = await insRollupTest.depositFeeMul();
-        // totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
-        const feeRequired =  
-        Scalar.add(
-            feeOnChain,
-            Scalar.mul( 
-                Scalar.div(feeDeposit, 10**18),
-                Scalar.e(feeOnChain)
-            )
-        );
-        
+        const feeDeposit = await insRollupTest.depositFee();
+        // totalFee = feeOnchainTx + depositFee;
+        const feeRequired = Scalar.add(feeOnChain, feeDeposit);
+
         // Add the offchainDeposit data
         await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
             inputSm.proofB, inputSm.proofC, inputSm.input, encodedDeposits, {value: feeRequired.toString() });
@@ -842,17 +821,11 @@ contract("Rollup", (accounts) => {
         let logs = [];
 
         const feeOnChain = await insRollupTest.feeOnchainTx();
-        const feeDeposit = await insRollupTest.depositFeeMul();
+        const feeDeposit = await insRollupTest.depositFee();
 
-        // totalFee = feeOnchainTx + depositFeeMul / 1 ether * feeOnchainTx;
-        const feeRequired =  
-        Scalar.add(
-            feeOnChain,
-            Scalar.mul( 
-                Scalar.div(feeDeposit, 10**18),
-                Scalar.e(feeOnChain)
-            )
-        );
+        // totalFee = feeOnchainTx + depositFee;
+        const feeRequired = Scalar.add(feeOnChain, feeDeposit);
+
 
         for (let i = 0; i<maxOnChainTx*2; i++) {
             const response = await insRollupTest.deposit(loadAmount, tokenId, id1,
