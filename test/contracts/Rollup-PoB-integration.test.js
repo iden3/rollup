@@ -30,7 +30,8 @@ contract("Rollup - RollupPoB", (accounts) => {
         2: ethAddress,
         3: tokenList,
         4: operator1,
-        5: feeTokenAddress
+        5: feeTokenAddress,
+        6: defaultOperator,
     } = accounts;
 
     let db;
@@ -83,7 +84,7 @@ contract("Rollup - RollupPoB", (accounts) => {
             maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, defaultOperator, url);
 
         // init rollup database
         db = new SMTMemDB();
@@ -133,6 +134,7 @@ contract("Rollup - RollupPoB", (accounts) => {
         
         // build inputs
         const block = await rollupDB.buildBatch(maxTx, nLevels);
+        block.addBeneficiaryAddress(operator1);
         await block.build();
         const inputs = buildPublicInputsSm(block);
 
@@ -143,6 +145,7 @@ contract("Rollup - RollupPoB", (accounts) => {
         await insRollupPoB.commitAndForge(compressedTxTest, proofA, proofB, proofC, inputs, [], {from: operator1});
         // Build inputs
         const block1 = await rollupDB.buildBatch(maxTx, nLevels);
+        block1.addBeneficiaryAddress(operator1);
         const tx = manageEvent(eventTmp.logs[0]);
         block1.addTx(tx);
         await block1.build();
@@ -209,6 +212,7 @@ contract("Rollup - RollupPoB", (accounts) => {
 
         // Create the off-chain deposit and add it to the Batchbuilder
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        batch.addBeneficiaryAddress(operator1);
 
         const txOnchain = {
             fromAx: Ax2,

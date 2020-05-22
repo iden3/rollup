@@ -24,6 +24,8 @@ contract RollupPoB is RollupPoBHelpers{
 
     // Burn Address
     address payable burn;
+    // Operator by Default
+    Operator public opDefault;
 
     // Minimum bid to enter the auction
     uint public constant MIN_BID = 0.1 ether;
@@ -88,37 +90,34 @@ contract RollupPoB is RollupPoBHelpers{
      * @param _rollup rollup main smart contract address
      * @param _maxTx maximum transactions
      */
-    constructor(address _rollup, uint256 _maxTx, address payable burnAddress) public {
+    constructor(address _rollup, uint256 _maxTx, address payable burnAddress, address payable opDefaultAddr, string memory urlDefault) public {
         require(_rollup != address(0), 'Address 0 inserted');
         rollupInterface = RollupInterface(_rollup);
         genesisBlock = getBlockNumber() + DELAY_GENESIS;
         MAX_TX = _maxTx;
         burn = burnAddress;
+        opDefault = Operator(opDefaultAddr, opDefaultAddr, opDefaultAddr, opDefaultAddr, urlDefault);
     }
 
     /**
      * @dev save the winning operator and return the amount to the previous winner
      * @param slot block number
-     * @param forgerAddress address to forge
-     * @param beneficiaryAddress address to receive fees
-     * @param withdrawAddress address to withdraw amount
-     * @param bonusAddress address to receive bonus in SC
+     * @param op operator address and url
      * @param useBonus to use the saved bonus
+     * @param value bid value
      */
     function doBid(
         uint32 slot,
-        string memory url,
-        address payable beneficiaryAddress,
-        address forgerAddress,
-        address withdrawAddress,
-        address bonusAddress,
-        bool useBonus
-    ) internal {
-        uint256 amount = msg.value;
+        Operator memory op,
+        bool useBonus,
+        uint256 value
+    ) internal returns (uint) {
+        uint256 amount = value;
+        uint burnAmount = 0;
         if (useBonus) {
-            require(msg.sender == bonusAddress, "To use bonus it is necessary that sender is the bonusAddress");
-            amount += bonusBalance[bonusAddress];
-            bonusBalance[bonusAddress] = 0;
+            require(msg.sender == op.bonusAddress, "To use bonus it is necessary that sender is the bonusAddress");
+            amount += bonusBalance[op.bonusAddress];
+            bonusBalance[op.bonusAddress] = 0;
         }
         if(slotBid[slot].initialized) {
             uint minNextBid = slotBid[slot].amount + (slotBid[slot].amount * percentNextBid)/100;
@@ -126,27 +125,71 @@ contract RollupPoB is RollupPoBHelpers{
             uint bonus = (slotBid[slot].amount * percentBonus)/100;
             _returnBid(slotBid[slot].amount, bonus, slotWinner[slot]);
             infoSlot[slot].accumulatedBonus += bonus;
-            burn.transfer(amount - slotBid[slot].amount - bonus);
+            burnAmount = amount - slotBid[slot].amount - bonus;
         } else {
             require(amount >= MIN_BID, 'Ether send not enough to enter auction');
-            burn.transfer(amount);
+            opDefault.beneficiaryAddress.transfer(amount);
             slotBid[slot].initialized = true;
         }
-        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, url);
         slotWinner[slot] = op;
         slotBid[slot].amount = amount;
         infoSlot[slot].slotPrice = amount - infoSlot[slot].accumulatedBonus;
-        emit newBestBid(slot, slotBid[slot].amount, infoSlot[slot].slotPrice, forgerAddress, url);
+        emit newBestBid(slot, slotBid[slot].amount, infoSlot[slot].slotPrice, op.forgerAddress, op.url);
+        return burnAmount;
     }
 
     /**
      * @dev Receive a bid from an operator
      * Beneficiary address, forger address, withdraw address and bonus address are the same address ( msg.sender )
+     * @param url orperator url
      * @param slot slot for which the operator is offering
      */
     function bid(uint32 slot, string calldata url) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, url, msg.sender, msg.sender, msg.sender, msg.sender, true);
+        Operator memory op = Operator(msg.sender, msg.sender, msg.sender, msg.sender, url);
+        uint burnAmount = doBid(slot, op, true, msg.value);
+        burn.transfer(burnAmount);
+    }
+
+    /**
+     * @dev Receive a bid from an operator
+     * Beneficiary address, forger address, withdraw address and bonus address are the same address ( msg.sender )
+     * @param rangeBid range bids value
+     * @param rangeSlot range slots for which the operator is offering
+     * @param url orperator url
+     */
+    function multiBid(uint256[] calldata rangeBid, uint32[2][] calldata rangeSlot, string calldata url) external payable {
+        require(rangeBid.length == rangeSlot.length, "Range length error");
+        uint256 totalAmount = 0;
+        for (uint i = 0; i < rangeBid.length; i++) {
+            require(rangeSlot[i][0] >= currentSlot() + minNumSlots, "One auction is already closed");
+            require(rangeSlot[i][1] >= rangeSlot[i][0], "Slot range error");
+            totalAmount += rangeBid[i]*(rangeSlot[i][1] - rangeSlot[i][0] + 1);
+        }
+        require(msg.value >= totalAmount, "Not enought value");
+        Operator memory op = Operator(msg.sender, msg.sender, msg.sender, msg.sender, url);
+        uint256 burnAmount = 0;
+        uint256 returnAmount = 0;
+        uint256 minNextBid;
+        for(uint j = 0; j < rangeBid.length; j++) {
+            for (uint32 z = rangeSlot[j][0]; z <= rangeSlot[j][1]; z++) {
+                uint32 actualSlot = z;
+                uint256 amountBid = rangeBid[j];
+                Bid memory actualBid = slotBid[actualSlot];
+                if(!actualBid.initialized) {
+                    minNextBid = MIN_BID;
+                } else {
+                    minNextBid = actualBid.amount + (actualBid.amount * percentNextBid)/100;
+                }
+                if(amountBid >= minNextBid) {
+                    burnAmount += doBid(actualSlot, op, false, amountBid);
+                } else {
+                    returnAmount += amountBid;
+                }
+            }
+        }
+        burn.transfer(burnAmount);
+        (msg.sender).transfer(returnAmount);
     }
 
     /**
@@ -154,11 +197,14 @@ contract RollupPoB is RollupPoBHelpers{
      * Forger address, withdraw address and bonus address are the same address ( msg.sender )
      * Specify address ( beneficiary address ) to receive operator earnings
      * @param slot slot for which the operator is offering
+     * @param url orperator url
      * @param beneficiaryAddress beneficiary address
      */
     function bidWithDifferentBeneficiary(uint32 slot, string calldata url, address payable beneficiaryAddress) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, url, beneficiaryAddress, msg.sender, msg.sender, msg.sender, true);
+        Operator memory op = Operator(beneficiaryAddress, msg.sender, msg.sender, msg.sender, url);
+        uint burnAmount = doBid(slot, op, true, msg.value);
+        burn.transfer(burnAmount);
     }
 
     /**
@@ -166,12 +212,15 @@ contract RollupPoB is RollupPoBHelpers{
      * Withdraw address and bonus address are the same address ( msg.sender )
      * Forger address and beneficiary address are submitted as parameters
      * @param slot slot for which the operator is offering
+     * @param url orperator url
      * @param forgerAddress controller address
      * @param beneficiaryAddress beneficiary address
      */
     function bidRelay(uint32 slot, string calldata url, address payable beneficiaryAddress, address forgerAddress) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, url, beneficiaryAddress, forgerAddress, msg.sender, msg.sender, true);
+        Operator memory op = Operator(beneficiaryAddress, forgerAddress, msg.sender, msg.sender, url);
+        uint burnAmount = doBid(slot, op, true, msg.value);
+        burn.transfer(burnAmount);
     }
 
     /**
@@ -179,6 +228,7 @@ contract RollupPoB is RollupPoBHelpers{
      * msg.sender is the bonus address
      * Forger address, beneficiary address and withdraw address are submitted as parameters
      * @param slot slot for which the operator is offering
+     * @param url orperator url
      * @param forgerAddress controller address
      * @param beneficiaryAddress beneficiary address
      * @param withdrawAddress withdraw address
@@ -191,13 +241,16 @@ contract RollupPoB is RollupPoBHelpers{
         address withdrawAddress
     ) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress, msg.sender, true);
+        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, msg.sender, url);
+        uint burnAmount = doBid(slot, op, true, msg.value);
+        burn.transfer(burnAmount);
     }
 
     /**
      * @dev Receive a bid from an operator
      * Forger address, beneficiary address, withdraw address and bonus address are submitted as parameters
      * @param slot slot for which the operator is offering
+     * @param url orperator url
      * @param forgerAddress controller address
      * @param beneficiaryAddress beneficiary address
      * @param withdrawAddress withdraw address
@@ -214,7 +267,9 @@ contract RollupPoB is RollupPoBHelpers{
         bool useBonus
     ) external payable {
         require(slot >= currentSlot() + minNumSlots, 'This auction is already closed');
-        doBid(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus);
+        Operator memory op = Operator(beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, url);
+        uint burnAmount = doBid(slot, op, useBonus, msg.value);
+        burn.transfer(burnAmount);
     }
 
     /**
@@ -255,12 +310,17 @@ contract RollupPoB is RollupPoBHelpers{
         uint32 slot = currentSlot();
         Operator storage op = slotWinner[slot];
 
-        // message sender must be the controller address
-        require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
-
-        // beneficiary address input must be operator benefiacry address
-        require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
-            'beneficiary address must be operator beneficiary address');
+        if(op.forgerAddress != address(0x00)){
+            // message sender must be the controller address
+            require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
+            // beneficiary address input must be operator benefiacry address
+            require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+                'beneficiary address must be operator beneficiary address');
+        } else {
+            require(msg.sender == opDefault.forgerAddress, 'message sender must be default operator');
+            require(opDefault.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+                    'beneficiary address must be default operator beneficiary address');
+        }
 
         uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
 
@@ -313,11 +373,17 @@ contract RollupPoB is RollupPoBHelpers{
      * @dev Retrieve slot winner
      * @return slot, forger, url, amount
      */
-    function getWinner(uint slot) public view returns (uint, address, string memory, uint) {
-        uint256 amount = slotBid[slot].amount;
-        address forger = slotWinner[slot].forgerAddress;
-        string memory url = slotWinner[slot].url;
-        return (slot, forger, url, amount);
+    function getWinner(uint slot) public view returns (address, address, string memory, uint) {
+        Operator storage op = slotWinner[slot];
+        if(op.forgerAddress != address(0x00)) {
+            uint256 amount = slotBid[slot].amount;
+            address forger = slotWinner[slot].forgerAddress;
+            address beneficiary = slotWinner[slot].beneficiaryAddress;
+            string memory url = slotWinner[slot].url;
+            return (forger, beneficiary, url, amount);
+        } else {
+            return (opDefault.forgerAddress, opDefault.beneficiaryAddress, opDefault.url, 0);
+        }
     }
 
      /**
@@ -325,7 +391,12 @@ contract RollupPoB is RollupPoBHelpers{
      * @return url
      */
     function getWinnerUrl(uint slot) public view returns (string memory) {
-        return slotWinner[slot].url;
+        Operator storage op = slotWinner[slot];
+        if(op.forgerAddress != address(0x00)) {
+            return op.url;
+        } else {
+            return opDefault.url;
+        }
     }
 
      /**

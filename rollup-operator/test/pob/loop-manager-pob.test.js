@@ -49,9 +49,7 @@ contract("Loop Manager PoB", async (accounts) => {
         0: id0,
         1: id1,
         2: id2,
-        // eslint-disable-next-line no-unused-vars
         3: operator2Address,
-        // eslint-disable-next-line no-unused-vars
         4: id4,
         5: rollupSynchAddress,
         6: pobSynchAddress,
@@ -71,6 +69,7 @@ contract("Loop Manager PoB", async (accounts) => {
     const gasLimit = "default";
     const gasMultiplier = 1;
     const burnAddress = "0x0000000000000000000000000000000000000000";
+    const url = "localhost";
 
     let insPoseidonUnit;
     let insTokenRollup;
@@ -124,7 +123,7 @@ contract("Loop Manager PoB", async (accounts) => {
             maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, operator2Address, url);
 
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoB.address, { from: owner });
@@ -140,7 +139,7 @@ contract("Loop Manager PoB", async (accounts) => {
         await web3.eth.sendTransaction({to: wallet.address, from: owner,
             value: web3.utils.toWei(initBalance.toString(), "ether")});
 
-        // get PoS public data
+        // get PoB public data
         publicData = await testUtils.publicDataPoB(insRollupPoB);
         genesisBlock = publicData.genesisBlock;
         blocksPerSlot = publicData.blocksPerSlot;
@@ -198,7 +197,7 @@ contract("Loop Manager PoB", async (accounts) => {
             configRollupSynch.timeouts,
         );
         
-        // Init PoS Synch
+        // Init PoB Synch
         synchPoBDb = new MemDb();
 
         let configSynchPoB = {
@@ -342,7 +341,7 @@ contract("Loop Manager PoB", async (accounts) => {
             [rollupAccounts[2].Ax, rollupAccounts[2].Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
 
         // Check forge batch
-        await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
+        await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop*2);
 
         // Check balances
         await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(100), to18(100), to18(100), null, null]);

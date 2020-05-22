@@ -22,6 +22,13 @@ const state = {
     MINING: 3,
 };
 
+const winnerStruct = {
+    FORGER: 0,
+    BENEFICIARY: 1,
+    URL: 2,
+    AMOUNT: 3,
+};
+
 class LoopBids {
 
     constructor(
@@ -49,6 +56,7 @@ class LoopBids {
         this.nodeUrl = nodeUrl;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.contractPoB = new this.web3.eth.Contract(rollupPoBABI, rollupPoBAddress, burnAddress, {handleRevert: true});
+        this.minBid = this.web3.utils.fromWei(this.pobSynch.getMinBid().toString(), "ether");
 
         this.state = state.SYNCHRONIZING;
         this.infoCurrentBid = {};
@@ -191,12 +199,12 @@ class LoopBids {
             .call({from: this.pobSynch.ethAddress}));
         const nextWinnerInfo = await this.contractPoB.methods.getWinner(currentSlot + this.nextBidSlot)
             .call({from: this.pobSynch.ethAddress});
-        const nextWinner = nextWinnerInfo[1];
+        const nextWinner = nextWinnerInfo[winnerStruct.FORGER];
         if(this.opManager.wallet && nextWinner === this.opManager.wallet.address) {
             this.timeouts.NEXT_STATE = 5000;
             this.state = state.SYNCHRONIZING;
         } else {
-            const nextBid = nextWinnerInfo[3];
+            const nextBid = nextWinnerInfo[winnerStruct.AMOUNT];
             const maxTx = this.pobSynch.getMaxTx();
             const txs = await this.poolTx.getForgedTx(maxTx);
             let fee = 0;
@@ -207,11 +215,10 @@ class LoopBids {
             }
             let nextMinBid;
             if(nextBid === "0") {
-                nextMinBid = this.web3.utils.fromWei(this.pobSynch.getMinBid().toString(), "ether");
+                nextMinBid = this.minBid;
             } else {
                 nextMinBid = nextBid + nextBid*this.nextBidPercent;
             }
-
             if(fee > nextMinBid) {
                 this.infoCurrentBid.slotBid = currentSlot + this.nextBidSlot;
                 this.infoCurrentBid.bid = nextMinBid;
@@ -373,7 +380,7 @@ class LoopBids {
         this._logTxKO(reason); 
         this._resetInfoTx();
         this._resetInfoBid();
-        this.timeouts.NEXT_STATE = 0;
+        this.timeouts.NEXT_STATE = 5000;
         this.state = state.SYNCHRONIZING;
     }
 

@@ -26,13 +26,6 @@ const stateServer = {
     FINISHED: 3,
 };
 
-// Enum states for loop bids
-/*const stateBids = {
-    SYNCHRONIZING: 0,
-    CHECK_BIDS: 1,
-    BID: 2,
-};*/
-
 // Enum states for loop manager
 const state = {
     SYNCHRONIZING: 0,
@@ -138,6 +131,7 @@ class LoopManager{
     async _init(){
         // get slot deadline
         this.slotDeadline = await this.pobSynch.getSlotDeadline();
+        this.defaultOperator = await this.pobSynch.getDefaultOperator();
         
         // get fee for deposits off-chain
         const feeWei = await this.rollupSynch.getFeeDepOffChain();
@@ -172,7 +166,7 @@ class LoopManager{
                 info += `${chalk.white.bold(`${this.infoCurrentBatch.fromBlock}`)} | `;
                 info += `current block: ${chalk.white.bold(`${currentBlock}`)} | `;
                 info += "operator winner: ";
-                info += `${chalk.white.bold(`${this.infoCurrentBatch.opAddress}`)}`;
+                info += `${chalk.white.bold(`${this.infoCurrentBatch.forgerAddress}`)}`;
                 break;
 
             case state.BUILD_BATCH:
@@ -276,13 +270,13 @@ class LoopManager{
      * Check if operator registered has won a slot to forge
      */
     async _checkWinner() {
-        const winners = await this.pobSynch.getWinners();
+        const winners = await this.pobSynch.getOperatorsWinners();
         const opWinner = winners[0];
-        const slots = await this.pobSynch.getSlotWinners();
-        const slotWinner = slots[0];
+        const slotWinner = opWinner.slot;
         const currentBlock = await this.pobSynch.getCurrentBlock();
 
-        const opAddress = this.opManager.wallet.address;
+        const forgerAddress = this.opManager.wallet.address;
+
         const slotFullFilled = await this.pobSynch.getFullFilledSlot(slotWinner);
 
         const fromBlockWinner = await this.pobSynch.getBlockBySlot(slotWinner);
@@ -290,8 +284,9 @@ class LoopManager{
 
         let checkForge = false;
 
-        if (opWinner === opAddress && (currentBlock < toBlockWinner)){
-            this._setInfoBatch(fromBlockWinner, toBlockWinner, opWinner);
+        if (opWinner.forger === forgerAddress && (currentBlock < toBlockWinner)){
+            const beneficiaryAddress = opWinner.beneficiary;
+            this._setInfoBatch(fromBlockWinner, toBlockWinner, forgerAddress, beneficiaryAddress);
         } else if (slotWinner > 1 && !slotFullFilled) {
             checkForge = true;
         }
@@ -327,16 +322,21 @@ class LoopManager{
      * Send zkSnark input to sever-proof
      */
     async _buildBatch() {
+
+        // Update deposit fees 
+        this._getDepositFee();
+
         // Check if batch has been built
         if (this.infoCurrentBatch.waiting) this.infoCurrentBatch.waiting = false;
 
         if(!this.infoCurrentBatch.builded) { // If batch has been already built
             const bb = await this.rollupSynch.getBatchBuilder();
-
+            bb.addBeneficiaryAddress(this.infoCurrentBatch.beneficiaryAddress);
             this.infoCurrentBatch.tmpOnChainHash = bb.getTmpOnChainHash();
             await this.poolTx.fillBatch(bb);
             this.infoCurrentBatch.batchData = bb;
             this.infoCurrentBatch.builded = true;
+            this.infoCurrentBatch.depositFee = this.feeDepOffChain;
         }
 
         // Check server proof is available
@@ -372,8 +372,9 @@ class LoopManager{
             const proofServer = generateCall(res.data.proof);
             const commitData = this.infoCurrentBatch.batchData.getDataAvailableSM();
             const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
-            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.feeDepOffChain;
-            
+
+            // + 1% in case some batch is fullfilled and the fee increases, the remaining fee is transfer back to the operator
+            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.infoCurrentBatch.depositFee;
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
             if (!proofServer.publicInputs){ // get inputs from batchBuilder
@@ -535,6 +536,14 @@ class LoopManager{
             });
     }
 
+    async _getDepositFee(){
+        // get fee for deposits off-chain
+        const feeWei = await this.rollupSynch.getFeeDepOffChain();
+        const feeEth = this.web3.utils.fromWei(feeWei.toString() , "ether");
+        this.feeDepOffChain = Number(feeEth);
+        this.poolTx.setFeeDeposit(this.feeDepOffChain);
+    }
+
     async _checkForge(){
         const slots = await this.pobSynch.getSlotWinners();
         const slotWinner = slots[0];
@@ -543,6 +552,7 @@ class LoopManager{
         this.infoCurrentBatch.deadlineBlock = deadlineBlock;
         if (currentBlock > deadlineBlock) {
             this._setInfoBatch();
+            this.infoCurrentBatch.beneficiaryAddress = this.opManager.wallet.address;
             this.infoCurrentBatch.checkForge = true;
             this.infoCurrentBatch.waiting = true;
             this.timeouts.NEXT_STATE = 0;
@@ -557,12 +567,14 @@ class LoopManager{
      * Initialize batch information
      * @param {Number} fromBlock - Ethereum block when the operator is able to forge  
      * @param {Number} toBlock - Ethereum block until the operatir is able to forge
-     * @param {Number} opId - operator identifier
+     * @param {String} forgerAddress - operator forger address
+     * @param {String} beneficiaryAddress - operator beneficiary address
      */
-    _setInfoBatch(fromBlock, toBlock, opAddress){
+    _setInfoBatch(fromBlock, toBlock, forgerAddress, beneficiaryAddress){
         this.infoCurrentBatch.fromBlock = fromBlock;
         this.infoCurrentBatch.toBlock = toBlock;
-        this.infoCurrentBatch.opAddress = opAddress;
+        this.infoCurrentBatch.forgerAddress = forgerAddress;
+        this.infoCurrentBatch.beneficiaryAddress = beneficiaryAddress;
         this.infoCurrentBatch.builded = false;
         this.infoCurrentBatch.batchData = undefined;
         this.infoCurrentBatch.waiting = false;

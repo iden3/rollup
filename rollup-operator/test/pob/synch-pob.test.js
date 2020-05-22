@@ -60,7 +60,7 @@ contract("Synchronizer PoB", async (accounts) => {
 
     before(async () => {
         // Deploy token test
-        insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress, accounts[9], url);
         
         // Init synch db
         synchDb = new MemDb();
@@ -128,13 +128,11 @@ contract("Synchronizer PoB", async (accounts) => {
         expect(slots[0]).to.be.equal(1);
         expect(slots[1]).to.be.equal(2);
         
-        
         await timeTravel.addBlocks(blocksPerSlot); // slot 2
         await timeout(timeoutSynch);
         winners = await synchPoB.getWinners();
-        
         expect(winners[0]).to.be.equal(operators[0].address);
-        expect(winners[1]).to.be.equal("-1");
+        expect(winners[1]).to.be.equal(accounts[9]);
         slots = await synchPoB.getSlotWinners();
         expect(slots[0]).to.be.equal(2);
         expect(slots[1]).to.be.equal(3);
@@ -160,12 +158,11 @@ contract("Synchronizer PoB", async (accounts) => {
         let currentWinners = await synchPoB.getCurrentWinners();
         let slots = await synchPoB.getSlotWinners();
         let bids = await synchPoB.getCurrentBids();
-
         expect(slots[1]).to.be.equal(initSlot + 2);
         expect(slots[9]).to.be.equal(initSlot + 10);
         let index1 = slots.indexOf(initSlot + 2);
         let index2 = slots.indexOf(initSlot + 10);
-        expect(winners[0]).to.be.equal("-1");
+        expect(winners[0]).to.be.equal(accounts[9]);
         expect(winners[1]).to.be.equal(operators[0].address);
         expect(bids[index1]).to.be.equal(publicData.minBid.toString());
         expect(bids[index2]).to.be.equal(publicData.minBid.toString());
@@ -194,7 +191,7 @@ contract("Synchronizer PoB", async (accounts) => {
         let index3 = slots.indexOf(initSlot + 4);
         index2 = slots.indexOf(initSlot + 10);
         expect(winners[0]).to.be.equal(operators[0].address);
-        expect(winners[1]).to.be.equal("-1");
+        expect(winners[1]).to.be.equal(accounts[9]);
         expect(bids[index1]).to.be.equal(publicData.minBid.toString());
         expect(bids[index3]).to.be.equal(publicData.minBid.toString());
         expect(bids[index2]).to.be.equal(newBid.toString());

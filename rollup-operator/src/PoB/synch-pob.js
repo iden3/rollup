@@ -8,6 +8,13 @@ const { timeout } = require("../utils");
 // db keys
 const lastSlotKey = "last-slot-synch";
 
+const winnerStruct = {
+    FORGER: 0,
+    BENEFICIARY: 1,
+    URL: 2,
+    AMOUNT: 3,
+};
+
 /**
 * Synchronize Rollup proof-of-burn (PoB) smart contract 
 */
@@ -149,21 +156,26 @@ class SynchPoB {
 
         // Initialize currentWinners / currentBids / currentSlots with proper length
         this.winners = ["-1", "-1"];
+        this.currentWinners = ["-1", "-1", "-1"];
         for (let i = 0; i < 10; i++) {
-            this.currentWinners.push("-1");
+            if (i > 2) {
+                const winnerRes = await this.contractPoB.methods.getWinner(i).call({from: this.ethAddress});
+                const winner = winnerRes[winnerStruct.FORGER];
+                this.currentWinners.push(winner);
+            }
             this.bids.push("-1");
             if (i === 0) this.slots.push(-1);
             else this.slots.push(i-1);
         }
 
-        const lastSynchSlot = await this.getLastSynchSlot();
-        if(lastSynchSlot) {
-            if(lastSynchSlot > 0) {
-                for(let i = lastSynchSlot - 1; i < lastSynchSlot + 9; i++) {
-                    this._shiftVars();
-                    await this._addBid(i);
-                }
+        const currentSlot = await this.getCurrentSlot();
+        if(currentSlot > 0) {
+            for(let i = currentSlot; i <= currentSlot + 9; i++) {
+                this._shiftVars();
+                await this._addBid(i);
             }
+            // update slot
+            await this.db.insert(lastSlotKey, this._toString(currentSlot + 1));
         }
 
         // Start logger
@@ -188,7 +200,6 @@ class SynchPoB {
                 const currentBlock = await this.web3.eth.getBlockNumber();
                 const currentSlot = await this.getCurrentSlot();
                 const blockNextUpdate = this.genesisBlock + lastSynchSlot*this.blocksNextInfo;
-
                 if (currentSlot === 0 && lastSynchSlot === 0){
                     totalSynch = 100;
                 } else {
@@ -257,7 +268,7 @@ class SynchPoB {
     async _updateWinners(logs, currentSlot) {
         for (const event of logs) {
             const slot = event.returnValues.slot;
-            if (slot <= this.slots[this.slots.length-1]) {
+            if (slot <= this.slots[this.slots.length-1] && currentSlot < slot) {
                 this.currentWinners[slot - currentSlot + 1] = event.returnValues.operator;
                 this.bids[slot - currentSlot + 1] = event.returnValues.amount;
             }
@@ -269,13 +280,8 @@ class SynchPoB {
      * Retrieve data from contract regarding winners
      */
     async _updateBids(slotUpdate) {
-        for( let i = slotUpdate; i < slotUpdate + 10; i++) {
-            if (i === slotUpdate) {
-                this._shiftVars();
-            } else if (i === slotUpdate + 9) {
-                await this._addBid(i);
-            }
-        }
+        this._shiftVars();
+        await this._addBid(slotUpdate + 9);
     }
 
     _shiftVars() {
@@ -288,16 +294,8 @@ class SynchPoB {
 
     async _addBid(slot){
         const winnerRes = await this.contractPoB.methods.getWinner(slot).call({from: this.ethAddress});
-        let winner;
-        let amount;
-        if(winnerRes[1] === "0x0000000000000000000000000000000000000000") {
-            winner = "-1";
-            amount = "-1";
-        }
-        else {
-            winner = winnerRes[1];
-            amount = winnerRes[3];
-        } 
+        const winner = winnerRes[winnerStruct.FORGER];
+        const amount = winnerRes[winnerStruct.AMOUNT];
         this.currentWinners.push(winner);
         this.slots.push(slot);
         this.bids.push(amount);
@@ -337,18 +335,20 @@ class SynchPoB {
         const opWinner0data = await this.contractPoB.methods.getWinner(this.slots[0])
             .call({from: this.ethAddress});
         const opWinner0 = {
-            slot: opWinner0data[0],
-            forger: opWinner0data[1],
-            url: opWinner0data[2],
-            amount: opWinner0data[3],
+            slot: this.slots[0],
+            forger: opWinner0data[winnerStruct.FORGER],
+            beneficiary: opWinner0data[winnerStruct.BENEFICIARY],
+            url: opWinner0data[winnerStruct.URL],
+            amount: opWinner0data[winnerStruct.AMOUNT],
         };
         const opWinner1data = await this.contractPoB.methods.getWinner(this.slots[1])
             .call({from: this.ethAddress});
         const opWinner1 = {
-            slot: opWinner1data[0],
-            forger: opWinner1data[1],
-            url: opWinner1data[2],
-            amount: opWinner1data[3],
+            slot: this.slots[1],
+            forger: opWinner1data[winnerStruct.FORGER],
+            beneficiary: opWinner1data[winnerStruct.BENEFICIARY],
+            url: opWinner1data[winnerStruct.URL],
+            amount: opWinner1data[winnerStruct.AMOUNT],
         };
         const opWinners = [opWinner0, opWinner1];
         return opWinners;
@@ -433,6 +433,15 @@ class SynchPoB {
      */
     async getFullFilledSlot(slot){
         return await this.contractPoB.methods.fullFilledSlot(slot)
+            .call({from: this.ethAddress});
+    }
+
+    /**
+     * Get default operator PoB
+     * @returns {Number}
+     */
+    async getDefaultOperator(){
+        return await this.contractPoB.methods.opDefault()
             .call({from: this.ethAddress});
     }
 

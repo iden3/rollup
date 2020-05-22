@@ -151,9 +151,10 @@ contract("Operator", (accounts) => {
 
     it("Should get empty operator list", async () => { 
         const res = await cliExternalOp.getOperators();
+        const defaultOperator = await insRollupPoB.opDefault();
         let length = 0;
         for (let i = 0; i < res.data.length; i++) {
-            if(res.data[i].forger !== "0x0000000000000000000000000000000000000000") {
+            if(res.data[i].forger !== defaultOperator.forgerAddress) {
                 length++;
             }
         }
@@ -184,17 +185,6 @@ contract("Operator", (accounts) => {
         const resRegister = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
         expect(resRegister.status).to.be.equal(true);
 
-        /* const tx2 = {
-            from: walletOp.address,
-            to: pobAddress,
-            gasLimit: web3.utils.toHex(800000),
-            gasPrice: web3.utils.toHex(web3.utils.toWei("10", "gwei")),
-            value: web3.utils.toHex(bidValue.toString()),
-            data: insRollupPoB.contract.methods.bid(slot+1, urlExternalOp).encodeABI()
-        };
-        const txSign2 = await web3.eth.accounts.signTransaction(tx2, walletOp.signingKey.privateKey);
-        const resRegister2 = await web3.eth.sendSignedTransaction(txSign2.rawTransaction);
-        expect(resRegister2.status).to.be.equal(true); */
     });
 
     it("Should add two deposits", async () => {
@@ -347,7 +337,9 @@ contract("Operator", (accounts) => {
         await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
 
         // Check Balances
-        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(344), to18(18), to18(300)]);
+        // Check Balances
+        await testUtils.assertBalances(cliExternalOp, rollupWallets,
+            [to18(344), Scalar.fromString("18000000041909515858"), to18(300)]);
     });
 
     it("Should check exit batches and get its information", async () => {
