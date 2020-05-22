@@ -7,14 +7,15 @@ const customPath = path.join(__dirname, "./custom.json");
 const configSynch = JSON.parse(fs.readFileSync(configSynchPath, "utf-8"));
 
 const config = {
-    synchDb: __dirname,
-    ethNodeUrl:configSynch.ethNodeUrl,    
+    pathDb: "/leveldb-synch-pool/tmp-0",
+    ethNodeUrl: configSynch.ethNodeUrl,    
     ethAddress: configSynch.ethAddress,
-    rollupAddress:configSynch.rollup.address,
-    rollupAbi:configSynch.rollup.abi,
-    logLevel:"debug",
-    pathConversionTable:path.join(__dirname, "../table-conversion/table-conversion.json"),
+    rollupAddress: configSynch.rollup.address,
+    rollupAbi: configSynch.rollup.abi,
+    logLevel: process.env.LOG_LEVEL,
+    pathConversionTable: path.join(__dirname, "../table-conversion/table-conversion.json"),
     pathCustomTokens: customPath,
-    timeouts:{"ERROR":6000,"NEXT_LOOP":60000}
+    timeouts: {"ERROR":6000, "NEXT_LOOP":60000}
 };
+
 fs.writeFileSync(configPath, JSON.stringify(config));

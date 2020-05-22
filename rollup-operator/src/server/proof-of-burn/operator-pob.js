@@ -75,8 +75,8 @@ let pool;
     // Parse client command arguments
     // const passString = (argv.passphrase) ? argv.passphrase : "nopassphrase";
     const pathEnvFile = (argv.pathconfig) ? argv.pathconfig : pathEnvFileDefault;
-    const clearFlag = (argv.clear) ? argv.clear : false;
-    const onlySynch = (argv.onlysynch) ? argv.onlysynch : false;
+    const clearFlag = (argv.clear === "true") ? true : false;
+    const onlySynch = (argv.onlysynch === "true") ? true : false;
 
     // Check if environment mandatory data already exist
     if (checkEnvVariables()){
@@ -153,7 +153,7 @@ let pool;
     }
 
     // delete database folders if `--clear true`
-    if (clearFlag === "true"){
+    if (clearFlag){
         if (synchConfig.rollup.synchDb)
             rmRf.sync(synchConfig.rollup.synchDb);
         if (synchConfig.rollup.treeDb)
