@@ -31,11 +31,13 @@ contract("Operator Server", (accounts) => {
         1: tokenId,
         2: callerAddress,
         3: feeTokenAddress,
+        4: defaultOperator,
     } = accounts;
 
     const maxTx = 10;
     const maxOnChainTx = 5;
     const tokenInitialAmount = to18(100000);
+    const url = "localhost";
     const burnAddress = "0x0000000000000000000000000000000000000000";
 
     let insPoseidonUnit;
@@ -61,7 +63,7 @@ contract("Operator Server", (accounts) => {
             maxTx, maxOnChainTx, feeTokenAddress);
 
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, defaultOperator, url);
 
         // load forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoB.address);
@@ -96,7 +98,7 @@ contract("Operator Server", (accounts) => {
                 creationHash: insRollup.transactionHash,
                 timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000 },
             },
-            rollupPoS: {
+            rollupPoB: {
                 synchDb: pathRollupPoSSynch,
                 address: insRollupPoB.address,
                 abi: RollupPoB.abi,

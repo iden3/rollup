@@ -39,6 +39,7 @@ contract("Interface PoB", async (accounts) => {
         4: withdrawAddress,
         5: bonusAddress,
         6: operator2,
+        7: defaultOperator,
     } = accounts;
 
     let db;
@@ -89,7 +90,7 @@ contract("Interface PoB", async (accounts) => {
             maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, defaultOperator, url);
 
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoB.address, { from: owner });
@@ -201,6 +202,7 @@ contract("Interface PoB", async (accounts) => {
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        batch.addBeneficiaryAddress(opManager.wallet.address);
         await batch.build();
         const input = await buildPublicInputsSm(batch);
         const commitData = batch.getDataAvailableSM();
@@ -231,6 +233,7 @@ contract("Interface PoB", async (accounts) => {
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        batch.addBeneficiaryAddress(opManager.wallet.address);
         await batch.build();
         const input = await buildPublicInputsSm(batch);
         const commitData = batch.getDataAvailableSM();

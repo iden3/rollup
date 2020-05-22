@@ -141,7 +141,7 @@ let pool;
     if (process.env.CONFIG_SYNCH) {
         synchConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_SYNCH, "utf8"));
     } else {
-        synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-config.json", "utf8"));
+        synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-pob-config.json", "utf8"));
     }
 
     // load pool configuration file

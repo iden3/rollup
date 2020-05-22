@@ -296,7 +296,7 @@ class SynchPoB {
         }
         else {
             winner = winnerRes[1];
-            amount = winnerRes[3];
+            amount = winnerRes[4];
         } 
         this.currentWinners.push(winner);
         this.slots.push(slot);
@@ -339,16 +339,18 @@ class SynchPoB {
         const opWinner0 = {
             slot: opWinner0data[0],
             forger: opWinner0data[1],
-            url: opWinner0data[2],
-            amount: opWinner0data[3],
+            beneficiary: opWinner0data[2],
+            url: opWinner0data[3],
+            amount: opWinner0data[4],
         };
         const opWinner1data = await this.contractPoB.methods.getWinner(this.slots[1])
             .call({from: this.ethAddress});
         const opWinner1 = {
             slot: opWinner1data[0],
             forger: opWinner1data[1],
-            url: opWinner1data[2],
-            amount: opWinner1data[3],
+            beneficiary: opWinner1data[2],
+            url: opWinner1data[3],
+            amount: opWinner1data[4],
         };
         const opWinners = [opWinner0, opWinner1];
         return opWinners;
@@ -433,6 +435,15 @@ class SynchPoB {
      */
     async getFullFilledSlot(slot){
         return await this.contractPoB.methods.fullFilledSlot(slot)
+            .call({from: this.ethAddress});
+    }
+
+    /**
+     * Get default operator PoB
+     * @returns {Number}
+     */
+    async getDefaultOperator(){
+        return await this.contractPoB.methods.opDefault()
             .call({from: this.ethAddress});
     }
 

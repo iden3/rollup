@@ -73,6 +73,7 @@ contract("Loop Bids", async (accounts) => {
     const nextBidslot = 2;
     const gasLimit = "default";
     const gasMultiplier = 1;
+    const url = "localhost";
     const burnAddress = "0x0000000000000000000000000000000000000000";
 
     let insPoseidonUnit;
@@ -128,7 +129,7 @@ contract("Loop Bids", async (accounts) => {
             maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, operator2Address, url);
 
         // Add forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoB.address, { from: owner });
@@ -224,7 +225,8 @@ contract("Loop Bids", async (accounts) => {
             configSynchPoB.creationHash,
             configSynchPoB.ethAddress,
             configSynchPoB.logLevel,
-            configSynchPoB.timeouts);
+            configSynchPoB.timeouts,
+            burnAddress);
         
         // Init operator manager
         opManager = new OperatorManager(

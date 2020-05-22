@@ -196,7 +196,7 @@ class LoopBids {
             this.timeouts.NEXT_STATE = 5000;
             this.state = state.SYNCHRONIZING;
         } else {
-            const nextBid = nextWinnerInfo[3];
+            const nextBid = nextWinnerInfo[4];
             const maxTx = this.pobSynch.getMaxTx();
             const txs = await this.poolTx.getForgedTx(maxTx);
             let fee = 0;
@@ -211,7 +211,6 @@ class LoopBids {
             } else {
                 nextMinBid = nextBid + nextBid*this.nextBidPercent;
             }
-
             if(fee > nextMinBid) {
                 this.infoCurrentBid.slotBid = currentSlot + this.nextBidSlot;
                 this.infoCurrentBid.bid = nextMinBid;
@@ -373,7 +372,7 @@ class LoopBids {
         this._logTxKO(reason); 
         this._resetInfoTx();
         this._resetInfoBid();
-        this.timeouts.NEXT_STATE = 0;
+        this.timeouts.NEXT_STATE = 5000;
         this.state = state.SYNCHRONIZING;
     }
 

@@ -60,7 +60,7 @@ contract("Synchronizer PoB", async (accounts) => {
 
     before(async () => {
         // Deploy token test
-        insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
+        insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress, accounts[1], url);
         
         // Init synch db
         synchDb = new MemDb();
