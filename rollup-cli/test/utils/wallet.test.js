@@ -1,5 +1,5 @@
 const chai = require('chai');
-const { Wallet, verifyMessageBabyJub, verifyMessageEthereum } = require('../src/wallet');
+const { Wallet, verifyMessageBabyJub, verifyMessageEthereum } = require('../../src/utils/wallet');
 
 const { expect } = chai;
 

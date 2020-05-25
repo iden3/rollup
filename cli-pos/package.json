@@ -6,6 +6,10 @@
   "bin": {
     "rollup-cli-pos": "cli-pos.js"
   },
+  "scripts": {
+    "ganache": "npx ganache-cli -b 1 --mnemonic 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous' --defaultBalanceEther 100000 > ganache-output.log &",
+    "test:integation": "npm run ganache && npx truffle test test/helpers/build-configs.test.js && npx mocha ./test/*register.test.js && npx truffle test test/helpers/add-blocks.js && npx mocha test/withdraw.test.js; rm './ganache-output.log' ; pkill -f 'ganache-cli'"
+  },
   "keywords": [
     "client",
     "rollup",

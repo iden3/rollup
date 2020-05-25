@@ -34,5 +34,23 @@ jobs:
       run: npm run test:js
     - name: Test contracts
       run: npm run test:contracts
-
-
+    - name: Test operator
+      run: cd rollup-operator; npm ci; 
+    - name: Test operator_js
+      run: cd rollup-operator; npm run test:js-pob
+    - name: Test operator_pool
+      run: cd rollup-operator; npm run test:pool
+    - name: Test operator_server
+      run: cd rollup-operator; npm run test:server-pob
+    - name: Test cli
+      run: cd rollup-cli; npm ci; 
+    - name: Test cli_utils
+      run: cd rollup-cli; npm run test:utils
+    - name: Test cli_actions
+      run: cd rollup-cli; npm run test:actions
+    - name: Test cli_integration
+      run: cd rollup-cli; npm run test:integration
+    - name: Test cli_pob
+      run: cd cli-pob; npm ci
+    - name: Test cli_pob_all
+      run: cd cli-pob; npm run test:all

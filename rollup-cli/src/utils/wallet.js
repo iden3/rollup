@@ -3,10 +3,10 @@
 const { eddsa } = require('circomlib');
 const { Scalar } = require('ffjavascript');
 
-const { EthereumWallet, verifyEthereum } = require('../src/ethereum-wallet');
-const { BabyJubWallet, verifyBabyJub } = require('../../rollup-utils/babyjub-wallet');
-const utils = require('../../js/utils');
-const { hash } = require('../../rollup-utils/utils');
+const { EthereumWallet, verifyEthereum } = require('./ethereum-wallet');
+const { BabyJubWallet, verifyBabyJub } = require('../../../rollup-utils/babyjub-wallet');
+const utils = require('../../../js/utils');
+const { hash } = require('../../../rollup-utils/utils');
 
 class Wallet {
     constructor(ethWallet, babyjubWallet) {

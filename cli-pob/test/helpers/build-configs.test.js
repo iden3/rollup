@@ -2,6 +2,7 @@
 /* global contract */
 /* global web3 */
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
+const path = require('path');
 
 const Verifier = artifacts.require('../contracts/test/VerifierHelper');
 const RollupPoB = artifacts.require('../contracts/RollupPoB');
@@ -12,8 +13,9 @@ const ethers = require('ethers');
 const mnemonic = 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous';
 const passString = 'foo';
 
-const walletPath = '../wallet-test.json';
-const configPath = '../config.json';
+
+const walletPath = path.join(__dirname, '../../wallet-test.json');
+const configPath = path.join(__dirname, '../../config.json');
 
 contract('Build configuration files for cli-pob', (accounts) => {
     const {

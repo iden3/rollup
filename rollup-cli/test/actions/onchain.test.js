@@ -12,19 +12,19 @@ const poseidonUnit = require('circomlib/src/poseidon_gencontract');
 const SMTMemDB = require('circomlib/src/smt_memdb');
 const path = require('path');
 
-const { ForgerTest } = require('./helpers/helpers');
-const { Wallet } = require('../src/wallet.js');
-const RollupDB = require('../../js/rollupdb');
-const { createWallet, deleteResources } = require('./config/build-resources');
+const { ForgerTest } = require('../helpers/helpers');
+const { Wallet } = require('../../src/utils/wallet.js');
+const RollupDB = require('../../../js/rollupdb');
+const { createWallet, deleteResources } = require('../integration-test/config/build-resources');
 const {
     depositTx, depositOnTopTx, withdrawTx, forceWithdrawTx, transferTx, depositAndTransferTx,
-} = require('../src/cli-utils');
+} = require('../../src/utils/cli-utils');
 
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
 const RollupTest = artifacts.require('../../../../contracts/test/RollupTest');
 const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
 
-const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
+const walletPathDefault = path.join(__dirname, '../integration-test/resources/wallet-test.json');
 
 const gasLimit = 5000000;
 const gasMultiplier = 1;

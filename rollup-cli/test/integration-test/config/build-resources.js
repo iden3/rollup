@@ -1,17 +1,17 @@
 const path = require('path');
 const fs = require('fs');
 const fse = require('fs-extra');
-const { Wallet } = require('../../src/wallet');
+const { Wallet } = require('../../../src/utils/wallet');
 
 const resources = path.join(__dirname, '../resources');
 const configTestPath = path.join(__dirname, '../resources/config-test.json');
-const configPath = path.join(__dirname, '../../config.json');
+const configPath = path.join(__dirname, '../../../config.json');
 const abiRollupPath = path.join(__dirname, '../resources/rollupabi.json');
-const walletPathDefault = path.join(__dirname, '../../wallet.json');
+const walletPathDefault = path.join(__dirname, '../../../wallet.json');
 const walletPath = path.join(__dirname, '../resources/wallet-test.json');
 const walletEthPath = path.join(__dirname, '../resources/ethWallet.json');
 const walletBabyjubPath = path.join(__dirname, '../resources/babyjubWallet.json');
-const noncePath = path.join(__dirname, '../../nonceJson.json');
+const noncePath = path.join(__dirname, '../../../nonceJson.json');
 
 const passphrase = 'foo';
 
@@ -32,11 +32,11 @@ async function createConfig(address, depositEthAddress) {
         await fs.mkdirSync(resources);
     }
     const actualConfig = {
-        wallet: './test/resources/wallet-test.json',
+        wallet: path.join(__dirname, '../resources/wallet-test.json'),
         urlOperator: 'http://127.0.0.1:9000',
         addressRollup: '',
         nodeEth: 'http://localhost:8545',
-        abiRollupPath: './test/resources/rollupabi.json',
+        abiRollupPath: path.join(__dirname, '../resources/rollupabi.json'),
         depositEthAddress: '',
     };
 
