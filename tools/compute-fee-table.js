@@ -34,5 +34,28 @@ for (let i = 1; i < table.length; i++){
     tablePercentage[i] = `${((1 / table[i]) * 100).toString()}%`;
 }
 
-console.log(table);
-console.log(tablePercentage);
+// Compute decimal fee table
+const tableDecimal = new Array(16).fill(0);
+tableDecimal[0] = 0;
+for (let i = 1; i < table.length; i++){
+    tableDecimal[i] = 1 / table[i];
+}
+
+// Compute decimal fee table
+const adjustedTable = new Array(16).fill(0);
+for (let i = 0; i < tableDecimal.length; i++){
+    adjustedTable[i] = tableDecimal[i] * 2**32;
+}
+
+// Compute decimal fee table
+const realFee = new Array(16).fill(0);
+for (let i = 0; i < tableDecimal.length; i++){
+    realFee[i] = (adjustedTable[i] / 2**32) * 100;
+}
+
+// console.log(table);
+console.log("tablePercentage: ", tablePercentage);
+console.log("tableDecimal: ", tableDecimal);
+
+console.log("AdjustedTable: ", adjustedTable);
+console.log("RealFee: ", realFee);

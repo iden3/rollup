@@ -98,7 +98,7 @@ describe("Rollup circuit integration with tramsaction pool test", function () {
         circuit = await tester(path.join(__dirname, "circuits-test", "rollup_pool_test.circom"), {reduceConstraints:false});
 
         // const testerAux = require("circom").testerAux;
-        // const pathTmp = "/tmp/circom_7077PVZGqa7G3s75";
+        // const pathTmp = "/tmp/circom_70740E7ND3Z1t3Vf";
         // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_pool_test.circom"), {reduceConstraints:false});
     });
 

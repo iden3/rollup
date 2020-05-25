@@ -436,7 +436,7 @@ class TXPool {
 
             if (convRate) {
 
-                const feeTx =  utils.calculateFee(tx);
+                const feeTx =  utils.computeFee(tx.amount, tx.fee);
                 const num = Scalar.mul(feeTx, Math.floor(convRate.price * 2**64));
                 const den = Scalar.pow(10, convRate.decimals);
 
@@ -671,9 +671,7 @@ class TXPool {
             delete futureTxs[idx][nonce];
             return res;
         }
-
     }
-
 }
 
 

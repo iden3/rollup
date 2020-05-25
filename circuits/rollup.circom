@@ -22,6 +22,10 @@ template Rollup(nTx, nLevels) {
     signal output onChainHash;
     signal output offChainHash;
 
+    // // Beneficiary Address
+    // signal input pubEthAddress;
+    // signal private input privEthAddress;
+
     // Intermediary States to parallelize the witness computation
     signal private input imStateRoot[nTx-1];
     signal private input imExitRoot[nTx-1];
@@ -236,7 +240,6 @@ template Rollup(nTx, nLevels) {
         Tx[i].newExitRoot  === imExitRoot[i];
     }
 
-    
     component n2bOffChainHash = Bits2Num(256);
     for (i=0; i<256; i++) {
         n2bOffChainHash.in[i] <== offChainHasher.out[255-i];
@@ -254,8 +257,9 @@ template Rollup(nTx, nLevels) {
     for (i = 0; i < 16; i++){
         checkFees.accFee[i] <== Tx[nTx-1].accFeeOut[i];
     }
-
     checkFees.feeTotals <== feeTotals;
 
     checkFees.feeTotalOk === 1;
+
+    // privEthAddress === pubEthAddress;
 }

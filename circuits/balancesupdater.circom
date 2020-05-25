@@ -30,10 +30,8 @@ template BalancesUpdater() {
     signal output fee2Charge; // amount of fee that needs to be discounted
 
     signal feeApplies;        // 1 If fee applies (offChain), 0 if not applies (onChain)      
-    signal tmpFee2Charge;
 
-    signal limitsOk;        // 1 if from is >0
-    signal feeOk;           // If fee > minimum required fee
+    signal limitsOk;        // 1 if from is > 0
     signal txOk;            // If both are ok.
 
     signal effectiveAmount1;
@@ -41,35 +39,32 @@ template BalancesUpdater() {
     signal effectiveLoadAmount;
 
     component n2bSender = Num2Bits(193);
-    component feeGE = GreaterEqThan(193);
     component effectiveAmountIsZero = IsZero();
+
+    component n2bFee = Num2Bits(193 + 32);
 
     feeApplies <== (1-onChain)*(1-nop);  // Fee applies only on offChainTx and is not a NOP
  
     component feeTableSelector = FeeTableSelector();
     feeTableSelector.feeSel <== fee*feeApplies;
 
-    if (feeTableSelector.feeOut > 0){
-        tmpFee2Charge <-- amount \ feeTableSelector.feeOut;
-    } else {
-        tmpFee2Charge <-- 0;
-    }
+    n2bFee.in <== amount * feeTableSelector.feeOut;
 
-    fee2Charge <== tmpFee2Charge;
+    component b2nFee = Bits2Num(193);
+    for (var i = 0; i < 193; i++) {
+        b2nFee.in[i] <== n2bFee.out[i + 32];
+    }
+    b2nFee.out ==> fee2Charge;
+
     effectiveLoadAmount <== loadAmount*onChain;
     effectiveAmount1 <== amount*(1-nop);
 
     // Check limits and fees on limits
     n2bSender.in <== (1<<192) + oldStAmountSender + effectiveLoadAmount - effectiveAmount1 - fee2Charge;
 
-    // Fee demanded by the user must be greater than the minium value
-    feeGE.in[0] <== amount;
-    feeGE.in[1] <== feeTableSelector.feeOut;
-
-    feeOk <== feeGE.out + (1-feeApplies) - feeGE.out*(1-feeApplies);     // Is greater or does not apply
     limitsOk <== n2bSender.out[192];
 
-    txOk <== feeOk * limitsOk;
+    txOk <== limitsOk;
 
     // if not onChain and not txOk => error
     (1-txOk)*(1-onChain) === 0;

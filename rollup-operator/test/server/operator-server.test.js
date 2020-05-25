@@ -324,8 +324,8 @@ contract("Operator", (accounts) => {
     });
 
     it("Should forge deposit off-chain transaction", async () => {
-        // Account |  0  |  1  |  2  |
-        // Amount  | 345 |  18 | 300 |
+        // Account |  0  |            1          |  2  |
+        // Amount  | 345 |  18000000041909515858 | 300 |
 
         const res = await cliExternalOp.getState();
         const lastBatch = res.data.rollupSynch.lastBatchSynched; 
@@ -334,7 +334,8 @@ contract("Operator", (accounts) => {
         await testUtils.assertForgeBatch(cliExternalOp, lastBatch + 1, timeoutLoop);
 
         // Check Balances
-        await testUtils.assertBalances(cliExternalOp, rollupWallets, [to18(344), to18(18), to18(300)]);
+        await testUtils.assertBalances(cliExternalOp, rollupWallets,
+            [to18(344), Scalar.fromString("18000000041909515858"), to18(300)]);
     });
 
     it("Should check exit batches and get its information", async () => {
@@ -517,7 +518,6 @@ contract("Operator", (accounts) => {
         for (let i = 0; i < currentNumBatch + 1; i++){
             try {
                 const res = await cliExternalOp.getBatchTx(i);
-                console.log(`Batch number ${i}:`, res.data);
                 expect(i).to.be.above(0);
                 expect(res.data).to.not.be.equal(undefined);
             } catch (error){

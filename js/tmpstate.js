@@ -36,7 +36,7 @@ class TmpState {
 
         // Check there is enough funds
         const amount = utils.float2fix(utils.fix2float(tx.amount));
-        const fee = utils.calculateFee(tx);
+        const fee = utils.computeFee(tx.amount, tx.fee);
         if (!Scalar.geq(stFrom.amount, Scalar.add(fee, amount))) return "NOT_NOW";
 
         // Check onChain flag
@@ -77,7 +77,7 @@ class TmpState {
 
         // Check there is enough funds
         const amount = utils.float2fix(utils.fix2float(tx.amount));
-        const fee = utils.calculateFee(tx);
+        const fee = utils.computeFee(tx.amount, tx.fee);
         if (!Scalar.geq(stFrom.amount, Scalar.add(fee, amount))) return false;
 
         // Check onChain flag
@@ -135,7 +135,7 @@ class TmpState {
         if (this.feeDeposit === null || this.ethPrice === null || this.conversion === null) 
             return false;
 
-        const feeTx =  utils.calculateFee(tx);
+        const feeTx =  utils.computeFee(tx.amount, tx.fee);
         const convRate = this.conversion[tx.coin];
         
         if (convRate) {

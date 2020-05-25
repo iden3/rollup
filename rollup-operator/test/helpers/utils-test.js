@@ -35,6 +35,31 @@ async function checkSynch(synch, opRollupDb){
     }
 }
 
+async function assertBalancesDb(synch, rollupAccounts, opDb){
+    const numAccounts = rollupAccounts.length;
+    const coin = 0;
+
+    for (let i = 0; i < numAccounts; i++){
+        const ax = Scalar.e(rollupAccounts[i].Ax).toString("16");
+        const ay = Scalar.e(rollupAccounts[i].Ay).toString("16");
+
+        const resSynch = await synch.getStateByAccount(coin, ax, ay);
+        let synchBalance;
+        if (resSynch !== null) synchBalance = resSynch.amount;
+        else synchBalance = null;
+        
+        const resOpDb = await opDb.getStateByAccount(coin, ax, ay);
+        let opBalance;
+        if (resOpDb !== null) opBalance = resOpDb.amount;
+        else opBalance = null;
+
+        if (synchBalance != null && opBalance != null)
+            expect(Scalar.eq(synchBalance, opBalance)).to.be.equal(true);
+        else
+            expect(synchBalance).to.be.equal(opBalance);
+    }
+}
+
 async function assertBalances(synch, rollupAccounts, arrayBalances){
     const numAccounts = rollupAccounts.length;
     const coin = 0;
@@ -48,6 +73,24 @@ async function assertBalances(synch, rollupAccounts, arrayBalances){
             expect(Scalar.eq(res.amount, arrayBalances[i])).to.be.equal(true);
         }
     }
+}
+
+async function getBalances(synch, rollupAccounts){
+    const numAccounts = rollupAccounts.length;
+    const coin = 0;
+    const arrayBalances = [];
+
+    for (let i = 0; i < numAccounts; i++){
+        const ax = Scalar.e(rollupAccounts[i].Ax).toString("16");
+        const ay = Scalar.e(rollupAccounts[i].Ay).toString("16");
+
+        const res = await synch.getStateByAccount(coin, ax, ay);
+        if (res != null)
+            arrayBalances.push(res.amount);
+        else
+            arrayBalances.push(null);
+    }
+    return arrayBalances;
 }
 
 async function assertForgeBatch(rollupSynch, targetBatch, timeoutLoop){
@@ -68,6 +111,8 @@ async function assertForgeBatch(rollupSynch, targetBatch, timeoutLoop){
 module.exports = {
     publicDataPoS,
     checkSynch,
-    assertBalances,
+    assertBalancesDb,
     assertForgeBatch,
+    assertBalances,
+    getBalances,
 };
