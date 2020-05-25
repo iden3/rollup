@@ -2,7 +2,7 @@ const path = require("path");
 const tester = require("circom").tester;
 
 describe("Compile all circuits for 24 Levels", function () {
-    this.timeout(200000);
+    this.timeout(250000);
 
     let circuitBalanceUpdater;
     let circuitDecodeFloat;

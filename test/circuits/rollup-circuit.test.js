@@ -12,6 +12,7 @@ const Constants = require("../../js/constants");
 
 const NTX = 5;
 const NLEVELS = 8;
+const beneficiaryAddress = "0x123456789abcdef123456789abcdef123456789a";
 
 async function depositTx(bb, account, loadamount) {
     bb.addTx({
@@ -54,7 +55,7 @@ describe("Rollup Basic circuit TXs", function () {
         console.log("Constraints `rollup.circom` circuit: " + circuit.constraints.length + "\n");
 
         // const testerAux = require("circom").testerAux;
-        // const pathTmp = "/tmp/circom_68877HIjMzTYwE6L";
+        // const pathTmp = "/tmp/circom_13593C5usZGcXaWeA";
         // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "rollup_test.circom"));
     });
 
@@ -63,6 +64,8 @@ describe("Rollup Basic circuit TXs", function () {
         const db = new SMTMemDB();
         const rollupDB = await RollupDB(db);
         const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        bb.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb.build();
         const input = bb.getInput();
@@ -81,6 +84,8 @@ describe("Rollup Basic circuit TXs", function () {
         const account1 = new RollupAccount(1);
 
         depositTx(bb, account1, 1000);
+
+        bb.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb.build();
         await rollupDB.consolidate(bb);
@@ -104,6 +109,8 @@ describe("Rollup Basic circuit TXs", function () {
 
         depositTx(bb, account1, 1000);
         depositTx(bb, account1, 2000);
+
+        bb.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb.build();
         await rollupDB.consolidate(bb);
@@ -139,6 +146,8 @@ describe("Rollup Basic circuit TXs", function () {
             onChain: true
         });
 
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input = bb2.getInput();
@@ -164,6 +173,8 @@ describe("Rollup Basic circuit TXs", function () {
 
         depositTx(bb, account1, 1000);
 
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
 
@@ -182,6 +193,8 @@ describe("Rollup Basic circuit TXs", function () {
             nonce: 0,
             onChain: true
         });
+
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -207,6 +220,8 @@ describe("Rollup Basic circuit TXs", function () {
 
         depositTx(bb, account1, 1000);
 
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
 
@@ -224,6 +239,8 @@ describe("Rollup Basic circuit TXs", function () {
             nonce: 0,
             onChain: true
         });
+
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -258,6 +275,8 @@ describe("Rollup Basic circuit TXs", function () {
             onChain: true
         });
 
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
         const input = bb.getInput();
@@ -291,6 +310,8 @@ describe("Rollup Basic circuit TXs", function () {
         bb.addTx(tx);
         bb.addCoin(0);
        
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
         const input = bb.getInput();
@@ -332,7 +353,8 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx);
         bb2.addTx(tx);
         bb2.addCoin(0);
-       
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input = bb2.getInput();
@@ -390,7 +412,8 @@ describe("Rollup Basic circuit TXs", function () {
         bb.addTx(tx2);
         bb.addTx(tx3);
         bb.addCoin(0);
-       
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
         const input = bb.getInput();
@@ -489,7 +512,8 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx4);
         bb2.addTx(tx5);
         bb2.addCoin(0);
-       
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+        
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input2 = bb2.getInput();
@@ -524,6 +548,8 @@ describe("Rollup Basic circuit TXs", function () {
 
         depositTx(bb, account1, 0);
 
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
         const input = bb.getInput();
@@ -545,7 +571,7 @@ describe("Rollup Basic circuit TXs", function () {
         const account1 = new RollupAccount(1);
 
         depositTx(bb, account1, 1000);
-    
+
         await bb.build();
         await rollupDB.consolidate(bb);
 
@@ -563,7 +589,8 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx);
         bb2.addTx(tx);
         bb2.addCoin(0);
-       
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input2 = bb2.getInput();
@@ -633,7 +660,8 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx3);
         bb2.addTx(tx4);
         bb2.addCoin(0);
-       
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input2 = bb2.getInput();
@@ -701,7 +729,8 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx2);
         bb2.addTx(tx3);
         bb2.addCoin(0);
-       
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb2.build();
         const input2 = bb2.getInput();
         await rollupDB.consolidate(bb2);
@@ -735,6 +764,7 @@ describe("Rollup Basic circuit TXs", function () {
             onChain: true
         };
         bb2.addTx(tx);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -800,6 +830,7 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
         bb2.addTx(tx2);
         bb2.addTx(tx3);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -836,6 +867,7 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx);
         bb2.addTx(tx);
         bb2.addCoin(0);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -887,6 +919,7 @@ describe("Rollup Basic circuit TXs", function () {
         bb2.addTx(tx);
         bb2.addTx(tx2);
         bb2.addCoin(0);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -922,6 +955,7 @@ describe("Rollup Basic circuit TXs", function () {
         account2.signTx(tx);
         bb2.addTx(tx);
         bb2.addCoin(0);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -962,6 +996,7 @@ describe("Rollup Basic circuit TXs", function () {
         account1.signTx(tx);
         bb2.addTx(tx);
         bb2.addCoin(0);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         const input2 = bb2.getInput();
@@ -989,7 +1024,8 @@ describe("Rollup Basic circuit TXs", function () {
         const account2 = new RollupAccount(2);
 
         depositTx(bb, account1, 1000);
-        
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
         const input = bb.getInput();
@@ -1100,6 +1136,7 @@ describe("Rollup Basic circuit TXs", function () {
 
         depositTx(bb, account1, 1000);
         depositTx(bb, account1, 2000);
+        bb.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb.build();
         await rollupDB.consolidate(bb);
@@ -1194,6 +1231,7 @@ describe("Rollup Basic circuit TXs", function () {
             nonce: 0,
             onChain: true
         });
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -1330,6 +1368,8 @@ describe("Rollup Basic circuit TXs", function () {
             nonce: 0,
             onChain: true
         });
+        
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -1433,6 +1473,8 @@ describe("Rollup Basic circuit TXs", function () {
             onChain: true
         });
 
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb2.build();
         await rollupDB.consolidate(bb2);
         const input = bb2.getInput();
@@ -1477,8 +1519,8 @@ describe("Rollup Basic circuit TXs", function () {
         };
         account1.signTx(tx);
         bb2.addTx(tx);
-
         bb2.addCoin(0);
+        bb2.addBeneficiaryAddress(beneficiaryAddress);
 
         await bb2.build();
         await rollupDB.consolidate(bb2);
@@ -1658,7 +1700,8 @@ describe("Rollup Basic circuit TXs", function () {
         bb.addTx(tx2);
         bb.addTx(tx3);
         bb.addCoin(0);
-       
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
         await bb.build();
         await rollupDB.consolidate(bb);
         const input = bb.getInput();
@@ -1674,6 +1717,60 @@ describe("Rollup Basic circuit TXs", function () {
         } catch (error) {
             assert.include(error.message, "Constraint doesn't match");
             assert.include(error.message, "0 != 1");
+        }
+    });
+
+    it("Should check error beneficiary address", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+        
+        const [account1, account2] = await initBlock2deposits(rollupDB);
+
+        const bb = await rollupDB.buildBatch(NTX, NLEVELS);
+
+        const tx1 = {
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            coin: 0,
+            amount: 500,
+            nonce: 0,
+            fee: Constants.fee["20%"]
+        };
+
+        account1.signTx(tx1);
+       
+        bb.addTx(tx1);
+        bb.addCoin(0);
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+
+        await bb.build();
+        await rollupDB.consolidate(bb);
+        const input = bb.getInput();
+        
+        // Manipulate public beneficiary address
+        const fakeBeneficiaryAddress = "0x123456789abcdef123456789abcdef123456789b";
+        input.pubEthAddress = Scalar.fromString(fakeBeneficiaryAddress, 16);
+        
+        try {
+            await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "Constraint doesn't match");
+            assert.include(error.message, "103929005321308650693500321209372945468207036570 != 103929005321308650693500321209372945468207036571");
+        }
+
+        // Manipulate private beneficiary address
+        input.pubEthAddress = Scalar.fromString(beneficiaryAddress, 16);
+        input.privEthAddress = Scalar.fromString(fakeBeneficiaryAddress, 16);
+        
+        try {
+            await circuit.calculateWitness(input, {logTrigger: false, logOutput: false, logSet: false});
+            assert(false);
+        } catch (error) {
+            assert.include(error.message, "Constraint doesn't match");
+            assert.include(error.message, "103929005321308650693500321209372945468207036571 != 103929005321308650693500321209372945468207036570");
         }
     });
 });

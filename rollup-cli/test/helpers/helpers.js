@@ -41,9 +41,11 @@ class ForgerTest {
             }));
             await Promise.all(addTxPromises);
         }
+        batch.addBeneficiaryAddress(this.beneficiary);
+
         await batch.build();
         const inputSm = buildFullInputSm(batch, this.beneficiary);
-        await this.insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+        await this.insRollupTest.forgeBatch(inputSm.proofA,
             inputSm.proofB, inputSm.proofC, inputSm.input, compressedOnChainTx);
         await this.rollupDB.consolidate(batch);
     }

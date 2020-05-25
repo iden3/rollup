@@ -15,6 +15,7 @@ contract RollupPoB is RollupPoBHelpers{
 
     // Input snark definition
     uint256 constant offChainHashInput = 4;
+    uint256 constant beneficiaryAddressInput = 9;
 
     // Defines slot/era block duration
     uint constant public DELAY_GENESIS = 1000;
@@ -244,18 +245,27 @@ contract RollupPoB is RollupPoBHelpers{
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[9] calldata input,
+        uint[10] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable virtual {
         uint32 slot = currentSlot();
         Operator storage op = slotWinner[slot];
+
         // message sender must be the controller address
         require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
+
+        // beneficiary address input must be operator benefiacry address
+        require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+            'beneficiary address must be operator beneficiary address');
+
         uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
+
         // Check input off-chain hash matches hash commited
         require(offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
-        rollupInterface.forgeBatch.value(msg.value)(op.beneficiaryAddress, proofA, proofB, proofC, input, compressedOnChainTx);
+
+        rollupInterface.forgeBatch.value(msg.value)(proofA, proofB, proofC, input, compressedOnChainTx);
+
         // one block has been forged in this slot
         infoSlot[slot].fullFilled = true;
         emit dataCommitted(offChainHash);
@@ -274,24 +284,28 @@ contract RollupPoB is RollupPoBHelpers{
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[9] calldata input,
+        uint[10] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable virtual {
         uint32 slot = currentSlot();
+
         // Check if deadline has been achieved to forge data
         uint blockDeadline = getBlockBySlot(slot + 1) - SLOT_DEADLINE;
         require(getBlockNumber() >= blockDeadline, 'not possible to forge data before deadline');
+
         // Check there is no data to be forged
         require(!infoSlot[slot].fullFilled, 'another operator has already forged data');
         uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
+
         // Check input off-chain hash matches hash commited
         require(offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
-        rollupInterface.forgeBatch.value(msg.value)(msg.sender, proofA, proofB, proofC, input, compressedOnChainTx);
+
+        rollupInterface.forgeBatch.value(msg.value)(proofA, proofB, proofC, input, compressedOnChainTx);
         emit dataCommitted(offChainHash);
     }
 
-     /**
+    /**
      * @dev Retrieve block number
      * @return current block number
      */

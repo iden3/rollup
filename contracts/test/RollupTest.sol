@@ -8,11 +8,10 @@ contract RollupTest is Rollup {
     Rollup(_verifier, _poseidon, _maxTx, _maxOnChainTx, _feeTokenAddress) public {}
 
   function forgeBatch(
-        address payable beneficiaryAddress,
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[9] calldata input,
+        uint[10] calldata input,
         bytes calldata compressedOnChainTx
     ) external payable override {
 
@@ -21,7 +20,7 @@ contract RollupTest is Rollup {
           'old state root does not match current state root');
 
       // Initial index must be the final index of the last batch
-      require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdx], 'Initial index does not match');
+      require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdxInput], 'Initial index does not match');
 
       // Deposits that will be added in this batch
       uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
@@ -43,7 +42,7 @@ contract RollupTest is Rollup {
 
       // Update and verify lastLeafIndex
       batchToInfo[getStateDepth()+1].lastLeafIndex = batchToInfo[getStateDepth()].lastLeafIndex + depositCount;
-      require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdx], 'Final index does not match');
+      require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdxInput], 'Final index does not match');
 
       // Verify on-chain hash
       require(input[onChainHashInput] == miningOnChainTxsHash,
@@ -53,7 +52,11 @@ contract RollupTest is Rollup {
       require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
         'zk-snark proof is not valid');
 
-      fillingInfo storage currentFilling = fillingMap[getStateDepth()]; // curren batch filling Info
+      // curren batch filling Info
+      fillingInfo storage currentFilling = fillingMap[getStateDepth()];
+
+      // Get beneficiary address from zk-inputs 
+      address payable beneficiaryAddress = address(input[beneficiaryAddressInput]);
 
       // Clean fillingOnChainTxsHash an its fees
       uint payOnChainFees = totalMinningOnChainFee;
@@ -80,7 +83,7 @@ contract RollupTest is Rollup {
       exitRoots.push(bytes32(input[newExitRootInput]));
 
       // Calculate fees and pay them
-      withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotals]),
+      withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotalsInput]),
        beneficiaryAddress);
 
 

@@ -536,10 +536,11 @@ contract("Rollup", (accounts) => {
         // Add fee
         batch.addCoin(0, 1);
         batch.addCoin(1, 5);
+        batch.addBeneficiaryAddress(beneficiary);
         await batch.build();
-        const inputSm = buildFullInputSm(batch, beneficiary);
+        const inputSm = buildFullInputSm(batch);
         const balanceBefore = await insTokenRollup.balanceOf(beneficiary);
-        const resForge = await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+        const resForge = await insRollupTest.forgeBatch(inputSm.proofA,
             inputSm.proofB, inputSm.proofC, inputSm.input, []);
         await rollupDB.consolidate(batch);
 
@@ -693,10 +694,11 @@ contract("Rollup", (accounts) => {
         batch.addTx(tx);
         // Add fee
         batch.addCoin(0, 1);
+        batch.addBeneficiaryAddress(beneficiary);
         await batch.build();
-        const inputSm = buildFullInputSm(batch, beneficiary);
+        const inputSm = buildFullInputSm(batch);
         const balanceBefore = await insTokenRollup.balanceOf(beneficiary);
-        const resForge = await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+        const resForge = await insRollupTest.forgeBatch(inputSm.proofA,
             inputSm.proofB, inputSm.proofC, inputSm.input, []);
         await rollupDB.consolidate(batch);
     
@@ -771,11 +773,11 @@ contract("Rollup", (accounts) => {
         };
         batch.addTx(txOnchain);
         batch.addDepositOffChain(txOnchain);
-
+        batch.addBeneficiaryAddress(beneficiary);
         // Encode depositOffchain
         await batch.build();
         const encodedDeposits = batch.getDepOffChainData();
-        const inputSm = buildFullInputSm(batch, beneficiary);
+        const inputSm = buildFullInputSm(batch);
 
         // Calculate fees
         const feeOnChain = await insRollupTest.feeOnchainTx();
@@ -784,7 +786,7 @@ contract("Rollup", (accounts) => {
         const feeRequired = Scalar.add(feeOnChain, feeDeposit);
 
         // Add the offchainDeposit data
-        await insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+        await insRollupTest.forgeBatch(inputSm.proofA,
             inputSm.proofB, inputSm.proofC, inputSm.input, encodedDeposits, {value: feeRequired.toString() });
         await rollupDB.consolidate(batch);
     

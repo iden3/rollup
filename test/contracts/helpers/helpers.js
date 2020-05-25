@@ -26,10 +26,9 @@ function decodeMethod(transaction){
     return abiDecoder.decodeMethod(transaction);
 }
 
-function buildFullInputSm(bb, beneficiary) {
+function buildFullInputSm(bb) {
     const input = buildPublicInputsSm(bb);
     return {
-        beneficiary: beneficiary,
         proofA,
         proofB,
         proofC,
@@ -50,6 +49,8 @@ class ForgerTest {
     async forgeBatch(events = undefined, compressedOnChainTx = []) {
         const batch = await this.rollupDB.buildBatch(this.maxTx, this.nLevels);
 
+        batch.addBeneficiaryAddress(this.beneficiary);
+
         if (events) {
             let addTxPromises = events.map(async elem => {
                 return new Promise((resolve) => {
@@ -61,8 +62,8 @@ class ForgerTest {
             await Promise.all(addTxPromises);
         }
         await batch.build();
-        const inputSm = buildFullInputSm(batch, this.beneficiary);
-        await this.insRollupTest.forgeBatch(inputSm.beneficiary, inputSm.proofA,
+        const inputSm = buildFullInputSm(batch);
+        await this.insRollupTest.forgeBatch(inputSm.proofA,
             inputSm.proofB, inputSm.proofC, inputSm.input, compressedOnChainTx);
         await this.rollupDB.consolidate(batch);
     }    

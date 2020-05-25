@@ -288,7 +288,7 @@ contract("RollupPoS", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", operators[0].address];
             // reset rollup PoS
             insRollupPoS = await RollupPoS.new(addressRollupTest, maxTx);
             await insRollupPoS.setBlockNumber(eraBlock[0]);

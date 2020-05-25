@@ -81,6 +81,7 @@ class LoopManager{
         this.cliServerProof = cliServerProof;
 
         this.registerId = [];
+        this.registerBenAddress = {};
         this.state = state.SYNCHRONIZING;
         this.hashChain = [];
         this.infoCurrentBatch = {};
@@ -301,8 +302,10 @@ class LoopManager{
             for (const opInfo of Object.values(listOpRegistered)) {
                 if (opInfo.controllerAddress == opAddress.toString()) {
                     const opId = Number(opInfo.operatorId);
-                    if (!this.registerId.includes(opId))
+                    if (!this.registerId.includes(opId)){
                         this.registerId.push(Number(opInfo.operatorId));
+                        this.registerBenAddress[Number(opInfo.operatorId)] = opInfo.beneficiaryAddress;
+                    }
                 }
             }
         }
@@ -323,8 +326,10 @@ class LoopManager{
         // Delete active operators that are no longer registered
         for (const index in this.registerId) {
             const opId = this.registerId[index];
-            if(!(opId.toString() in listOpRegistered))
+            if(!(opId.toString() in listOpRegistered)){
                 this.registerId.splice(index, 1);
+                delete this.registerBenAddress[opId];
+            }     
         }
     }
 
@@ -388,7 +393,7 @@ class LoopManager{
 
         if(!this.infoCurrentBatch.builded) { // If batch has been already built
             const bb = await this.rollupSynch.getBatchBuilder();
-
+            bb.addBeneficiaryAddress(this.infoCurrentBatch.beneficiaryAddress);
             this.infoCurrentBatch.tmpOnChainHash = bb.getTmpOnChainHash();
             await this.poolTx.fillBatch(bb);
             this.infoCurrentBatch.batchData = bb;
@@ -644,6 +649,7 @@ class LoopManager{
         this.infoCurrentBatch.fromBlock = fromBlock;
         this.infoCurrentBatch.toBlock = toBlock;
         this.infoCurrentBatch.opId = opId;
+        this.infoCurrentBatch.beneficiaryAddress = this.registerBenAddress[opId];
         this.infoCurrentBatch.builded = false;
         this.infoCurrentBatch.batchData = undefined;
         this.infoCurrentBatch.waiting = false;

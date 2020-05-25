@@ -22,9 +22,9 @@ template Rollup(nTx, nLevels) {
     signal output onChainHash;
     signal output offChainHash;
 
-    // // Beneficiary Address
-    // signal input pubEthAddress;
-    // signal private input privEthAddress;
+    // Beneficiary Address
+    signal input pubEthAddress;
+    signal private input privEthAddress;
 
     // Intermediary States to parallelize the witness computation
     signal private input imStateRoot[nTx-1];
@@ -261,5 +261,5 @@ template Rollup(nTx, nLevels) {
 
     checkFees.feeTotalOk === 1;
 
-    // privEthAddress === pubEthAddress;
+    privEthAddress === pubEthAddress;
 }

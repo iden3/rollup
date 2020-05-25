@@ -8,6 +8,6 @@ interface VerifierInterface {
     uint[2] calldata proofA,
     uint[2][2] calldata proofB,
     uint[2] calldata proofC,
-    uint[9] calldata input
+    uint[10] calldata input
   ) external view returns (bool);
 }

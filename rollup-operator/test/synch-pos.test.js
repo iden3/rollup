@@ -77,7 +77,7 @@ contract("Synchronizer PoS", async (accounts) => {
         // fill 10 addresses for operators
         const numOp = 10;
         for (let i = 0; i < numOp; i++) {
-            operators.push({address: accounts[i+1], idOp: i, url: `localhost:900${i}`});
+            operators.push({address: accounts[i+1], beneficiaryAddress: accounts[i+1], idOp: i, url: `localhost:900${i}`});
         }
 
         // get PoS public data
@@ -120,6 +120,8 @@ contract("Synchronizer PoS", async (accounts) => {
             .to.be.equal(operators[0].address.toString());
         expect(listOperators[operators[0].idOp.toString()].url)
             .to.be.equal(operators[0].url);
+        expect(listOperators[operators[0].idOp.toString()].beneficiaryAddress)
+            .to.be.equal(operators[0].beneficiaryAddress);
 
         let winners = await synchPoS.getRaffleWinners();
         expect(winners.length).to.be.equal(2*slotPerEra);
@@ -192,12 +194,16 @@ contract("Synchronizer PoS", async (accounts) => {
             expect(value.controllerAddress).to.be.
                 equal(operators[i+1].address.toString());
             expect(value.url).to.be.equal(operators[i+1].url);
+            expect(value.beneficiaryAddress).to.be.
+                equal(operators[i+1].beneficiaryAddress.toString())
         }
         const opIdInfo = await synchPoS.getOperatorById(1);
         expect(opIdInfo.controllerAddress).to.be.
             equal(operators[1].address.toString());
         expect(opIdInfo.url).to.be.
             equal(operators[1].url);
+        expect(opIdInfo.beneficiaryAddress).to.be.
+            equal(operators[1].beneficiaryAddress.toString());
         await checkFullSynch();
     });
 

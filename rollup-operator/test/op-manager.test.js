@@ -154,6 +154,7 @@ contract("Operator Manager", async (accounts) => {
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        batch.addBeneficiaryAddress(opManager.wallet.address);
         await batch.build();
         const input = await buildPublicInputsSm(batch);
 
@@ -189,6 +190,7 @@ contract("Operator Manager", async (accounts) => {
         const proofB = [["0", "0"], ["0", "0"]];
         const proofC = ["0", "0"];
         const batch = await rollupDB.buildBatch(maxTx, nLevels);
+        batch.addBeneficiaryAddress(opManager.wallet.address);
         await batch.build();
         const input = await buildPublicInputsSm(batch);
         const commitData = batch.getDataAvailableSM();

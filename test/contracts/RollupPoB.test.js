@@ -286,7 +286,7 @@ contract("RollupPoB", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", beneficiaryAddress];
 
             await insRollupPoB.setBlockNumber(slotBlock[slot]);
 
@@ -446,7 +446,7 @@ contract("RollupPoB", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", operators[0].address];
 
             // reset rollup PoB
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
@@ -488,7 +488,7 @@ contract("RollupPoB", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", operators[1].address];
 
             // reset rollup PoB
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
@@ -529,7 +529,7 @@ contract("RollupPoB", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", operators[0].address];
 
             // reset rollup PoB
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
@@ -576,7 +576,7 @@ contract("RollupPoB", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", operators[0].address];
 
             // reset rollup PoB
             insRollupPoB = await RollupPoB.new(addressRollupTest, maxTx, burnAddress);
@@ -634,7 +634,7 @@ contract("RollupPoB", (accounts) => {
             const proofA = ["0", "0"];
             const proofB = [["0", "0"], ["0", "0"]];
             const proofC = ["0", "0"];
-            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0"];
+            const input = ["0", "0", "0", "0", hashOffChain, "0", "0", "0","0", operators[2].address];
             
             // try to bid for a slot too close
             await insRollupPoB.setBlockNumber(slotBlock[slot-2]);

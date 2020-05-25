@@ -632,6 +632,7 @@ module.exports = class BatchBuilder {
             oldStRoot: this.stateTree.root,
             feePlanCoins: this._buildFeePlanCoins(),
             feeTotals: Scalar.e(0),
+            pubEthAddress: this.beneficiaryAddress,
 
             imStateRoot: [],
             imExitRoot: [],
@@ -674,6 +675,9 @@ module.exports = class BatchBuilder {
             isOld0_2: [],
             oldKey2: [],
             oldValue2: [],
+
+            // benefiacry address
+            privEthAddress: this.beneficiaryAddress,
         };
 
         if (this.builded) throw new Error("Batch already builded");
@@ -736,6 +740,11 @@ module.exports = class BatchBuilder {
     getNewExitRoot() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.exitTree.root;
+    }
+
+    getBeneficiaryAddress(){
+        if (!this.builded) throw new Error("Batch must first be builded");
+        return this.input.pubEthAddress;
     }
 
     getOnChainHash() {
@@ -881,5 +890,9 @@ module.exports = class BatchBuilder {
         }
         this.feePlanCoins[this.nCoins] = coin;
         this.nCoins = this.nCoins + 1;
+    }
+
+    addBeneficiaryAddress(beneficiaryAddress) {
+        this.beneficiaryAddress = Scalar.fromString(beneficiaryAddress, 16);
     }
 };

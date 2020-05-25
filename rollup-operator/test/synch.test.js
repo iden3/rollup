@@ -69,9 +69,10 @@ contract("Synchronizer", (accounts) => {
                 batch.addTx(manageEvent(elem));
             });
         }
+        batch.addBeneficiaryAddress(op1);
 
         await batch.build();
-        const inputSm = buildPublicInputsSm(batch, beneficiary);
+        const inputSm = buildPublicInputsSm(batch);
         ptr = ptr - 1;
         await insRollupPoS.commitAndForge(hashChain[ptr] , batch.getDataAvailableSM(),
             proofA, proofB, proofC, inputSm, compressedOnChain, config);
@@ -104,9 +105,8 @@ contract("Synchronizer", (accounts) => {
         2: id3,
         3: owner,
         4: synchAddress,
-        5: beneficiary,
-        6: op1,
-        7: feeTokenAddress,
+        5: op1,
+        6: feeTokenAddress,
     } = accounts;
 
     let synchDb;

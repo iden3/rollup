@@ -26,6 +26,7 @@ const conversion = {
 const eth = (e) => Scalar.mul(e, Scalar.pow(10, 18));
 const dai = (e) => Scalar.mul(e, Scalar.pow(10, 18));
 
+const beneficiaryAddress = "0x123456789abcdef123456789abcdef123456789a";
 
 async function initBlock(rollupDB) {
 
@@ -133,7 +134,8 @@ describe("Rollup circuit integration with tramsaction pool test", function () {
         }
 
         const bb = await rollupDB.buildBatch(4, 8);
-
+        bb.addBeneficiaryAddress(beneficiaryAddress);
+        
         await txPool.fillBatch(bb);
 
         const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
