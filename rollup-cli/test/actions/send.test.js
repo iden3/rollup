@@ -2,12 +2,12 @@ const fs = require('fs');
 const { expect } = require('chai');
 const path = require('path');
 
-const tableFee = require('../../js/constants').fee;
-const { send } = require('../src/actions/offchain/send.js');
-const { createWallet, deleteResources } = require('./config/build-resources');
-const { Wallet } = require('../src/wallet');
+const tableFee = require('../../../js/constants').fee;
+const { send } = require('../../src/actions/offchain/send.js');
+const { createWallet, deleteResources } = require('../integration-test/config/build-resources');
+const { Wallet } = require('../../src/utils/wallet');
 
-const walletPathDefault = path.join(__dirname, './resources/wallet-test.json');
+const walletPathDefault = path.join(__dirname, '../integration-test/resources/wallet-test.json');
 
 describe('Send', async function () {
     this.timeout(10000);

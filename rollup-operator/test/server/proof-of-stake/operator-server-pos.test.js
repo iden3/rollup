@@ -13,18 +13,18 @@ const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 
-const { addBlocks } = require("../../../../test/contracts/helpers/timeTravel");
-const CliExternalOp = require("../../../src/cli-external-operator");
-const { Wallet } = require("../../../../rollup-cli/src/wallet");
+const { addBlocks } = require("../../../test/contracts/helpers/timeTravel");
+const CliExternalOp = require("../../src/cli-external-operator");
+const { Wallet } = require("../../../rollup-cli/src/utils/wallet");
 
-const cliPoS = require("../../../../cli-pos/src/utils");
-const { getSeedFromPrivKey, loadHashChain } = require("../../../../rollup-utils/rollup-utils");
-const { depositTx, sendTx, withdrawOffChainTx } = require("../../../../rollup-cli/src/cli-utils");
-const { timeout } = require("../../../src/utils");
-const testUtils = require("../helpers/utils-test");
-const Constants = require("../../../../js/constants");
+const cliPoS = require("../../../cli-pos/src/utils");
+const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rollup-utils");
+const { depositTx, sendTx, withdrawOffChainTx } = require("../../../rollup-cli/src/utils/cli-utils");
+const { timeout } = require("../../src/utils");
+const testUtils = require("./helpers/utils-test");
+const Constants = require("../../../js/constants");
 
-const configTestPath = path.join(__dirname, "../../config/test.json");
+const configTestPath = path.join(__dirname, "../config/test.json");
 // test timeouts
 const timeoutSynch = 20000;
 const timeoutBlocks = 10000;

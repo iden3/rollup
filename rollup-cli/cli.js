@@ -6,12 +6,12 @@ const readline = require('readline');
 const { Writable } = require('stream');
 
 const feeTable = require('../js/constants').fee;
-const { Wallet } = require('./src/wallet');
+const { Wallet } = require('./src/utils/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
     showAccounts, transferTx, depositAndTransferTx, showExitsBatch, approveTx,
     showStateAccount, withdrawOffChainTx,
-} = require('./src/cli-utils');
+} = require('./src/utils/cli-utils');
 const { error } = require('./helpers/list-errors');
 
 const walletPathDefault = './wallet.json';

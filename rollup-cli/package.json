@@ -4,9 +4,14 @@
   "description": "light client rollup",
   "main": "index.js",
   "scripts": {
-    "operator-dummy": "node ./test/helpers/api-client.js",
+    "ganache": "npx ganache-cli -a 100 --defaultBalanceEther 1000000 > ganache-output.log &",
+    "operator-dummy": "node ./test/helpers/api-client.js > operator-output.log &",
     "test": "mocha",
-    "lint": "eslint ./src"
+    "lint": "eslint ./src",
+    "test:utils": "npm run operator-dummy && npx mocha ./test/utils; rm 'operator-output.log' ; pkill -x 'node*'",
+    "test:actions": "npm run operator-dummy && npm run ganache && npx mocha ./test/actions/send.test.js && npx truffle test ./test/actions/onchain.test.js ; rm *output.log ; pkill -x 'node*'",
+    "test:integration": "npm run operator-dummy && npm run ganache && npx truffle test ./test/integration-test/config/setup-cli.test.js && npx mocha test/integration-test/cli.test.js ; rm *output.log ; pkill -x 'node*'",
+    "test:all": "npm run test:utils && npm run test:actions && npm run test:integration"
   },
   "bin": {
     "rollup-cli": "cli.js"
