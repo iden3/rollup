@@ -4,7 +4,7 @@ const Scalar = require("ffjavascript").Scalar;
 /**
  * Interface to interact with rollup PoS contract
  */
-class OperatorManager {
+class InterfacePoS {
     /**
      * Initilize operator manager
      * @param {String} nodeUrl - ethereum node url 
@@ -165,4 +165,4 @@ class OperatorManager {
     }
 }
 
-module.exports = OperatorManager;
+module.exports = InterfacePoS;

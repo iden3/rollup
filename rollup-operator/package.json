@@ -6,8 +6,8 @@
   "scripts": {
     "test": "mocha",
     "lint": "eslint ./src",
-    "test:operator": "node ./src/server/operator.js",
-    "test:operator-pob": "node ./src/server/pob/operator-pob.js",
+    "test:operator-pos": "node ./src/server/proof-of-stake/operator-pos.js",
+    "test:operator-pob": "node ./src/server/proof-of-burn/operator-pob.js",
     "server-proof": "node ./src/server-proof.js",
     "service-synch-pool": "node ./src/synch-pool-service/run-synch-pool.js"
   },

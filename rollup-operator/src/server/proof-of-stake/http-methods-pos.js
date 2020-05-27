@@ -1,6 +1,6 @@
 const { stringifyBigInts } = require("ffjavascript").utils;
 
-const utils = require("./utils");
+const utils = require("../utils");
 
 /**
  * Expose http methods to retrieve rollup data

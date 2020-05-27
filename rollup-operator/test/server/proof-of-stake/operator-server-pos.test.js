@@ -13,18 +13,18 @@ const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const Rollup = artifacts.require("../contracts/test/Rollup");
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
 
-const { addBlocks } = require("../../../test/contracts/helpers/timeTravel");
-const CliExternalOp = require("../../src/cli-external-operator");
-const { Wallet } = require("../../../rollup-cli/src/wallet");
+const { addBlocks } = require("../../../../test/contracts/helpers/timeTravel");
+const CliExternalOp = require("../../../src/cli-external-operator");
+const { Wallet } = require("../../../../rollup-cli/src/wallet");
 
-const cliPoS = require("../../../cli-pos/src/utils");
-const { getSeedFromPrivKey, loadHashChain } = require("../../../rollup-utils/rollup-utils");
-const { depositTx, sendTx, withdrawOffChainTx } = require("../../../rollup-cli/src/cli-utils");
-const { timeout } = require("../../src/utils");
-const testUtils = require("./helpers/utils-test");
-const Constants = require("../../../js/constants");
+const cliPoS = require("../../../../cli-pos/src/utils");
+const { getSeedFromPrivKey, loadHashChain } = require("../../../../rollup-utils/rollup-utils");
+const { depositTx, sendTx, withdrawOffChainTx } = require("../../../../rollup-cli/src/cli-utils");
+const { timeout } = require("../../../src/utils");
+const testUtils = require("../helpers/utils-test");
+const Constants = require("../../../../js/constants");
 
-const configTestPath = path.join(__dirname, "../config/test.json");
+const configTestPath = path.join(__dirname, "../../config/test.json");
 // test timeouts
 const timeoutSynch = 20000;
 const timeoutBlocks = 10000;
@@ -156,7 +156,7 @@ contract("Operator", (accounts) => {
     });
 
     it("Should load operator wallet", async () => { 
-        const walletOpPath = path.join(__dirname, "../config/wallet-test.json");
+        const walletOpPath = path.join(__dirname, "../../config/wallet-test.json");
 
         const readOpWallet = fs.readFileSync(walletOpPath, "utf8");
         walletOp = await ethers.Wallet.fromEncryptedJson(readOpWallet, passOp);

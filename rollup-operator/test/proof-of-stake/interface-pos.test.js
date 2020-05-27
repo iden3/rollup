@@ -7,23 +7,23 @@ const ethers = require("ethers");
 const { expect } = chai;
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const abiDecoder = require("abi-decoder");
-const poseidonUnit = require("../../node_modules/circomlib/src/poseidon_gencontract.js");
+const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const Scalar = require("ffjavascript").Scalar;
 
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
 const RollupPoS = artifacts.require("../contracts/test/RollupPoSTest");
 const Rollup = artifacts.require("../contracts/Rollup");
 
-const RollupDB = require("../../js/rollupdb");
-const OperatorManager = require("../src/operator-manager");
-const timeTravel = require("../../test/contracts/helpers/timeTravel");
-const { buildPublicInputsSm } = require("../src/utils");
-const testUtils = require("./helpers/utils-test");
-const { encodeDepositOffchain } = require("../../js/utils");
+const RollupDB = require("../../../js/rollupdb");
+const OperatorManager = require("../../src/proof-of-stake/interface-pos");
+const timeTravel = require("../../../test/contracts/helpers/timeTravel");
+const { buildPublicInputsSm } = require("../../src/utils");
+const testUtils = require("../helpers/utils-test");
+const { encodeDepositOffchain } = require("../../../js/utils");
 
 abiDecoder.addABI(Rollup.abi);
 
-contract("Operator Manager", async (accounts) => { 
+contract("Interface PoS", async (accounts) => { 
 
     async function getEtherBalance(address) {
         let balance = await web3.eth.getBalance(address);

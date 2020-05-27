@@ -5,8 +5,8 @@ const chalk = require("chalk");
 const { stringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 
-const { timeout, buildPublicInputsSm, generateCall } = require("../src/utils"); 
-const { loadHashChain } = require("../../rollup-utils/rollup-utils");
+const { timeout, buildPublicInputsSm, generateCall } = require("../../src/utils"); 
+const { loadHashChain } = require("../../../rollup-utils/rollup-utils");
 
 // Logging state information
 const strState = [

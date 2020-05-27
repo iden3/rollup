@@ -15,7 +15,7 @@ const RollupPoB = artifacts.require("../../../contracts/test/RollupPoBTest");
 const Rollup = artifacts.require("../../../contracts/Rollup");
 
 const RollupDB = require("../../../js/rollupdb");
-const OperatorManager = require("../../src/PoB/interface-pob");
+const OperatorManager = require("../../src/proof-of-burn/interface-pob");
 const timeTravel = require("../../../test/contracts/helpers/timeTravel");
 const { buildPublicInputsSm } = require("../../src/utils");
 const testUtils = require("../helpers/utils-test");

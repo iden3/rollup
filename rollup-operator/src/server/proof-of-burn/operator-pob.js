@@ -11,23 +11,23 @@ const ip = require("ip");
 const SMTMemDB = require("circomlib/src/smt_memdb");
 const { unstringifyBigInts } = require("ffjavascript").utils;
 
-const { SMTLevelDb } = require("../../../rollup-utils/smt-leveldb");
-const RollupDB = require("../../../js/rollupdb");
-const MemDb = require("../../../rollup-utils/mem-db");
-const LevelDb = require("../../../rollup-utils/level-db");
-const { HttpMethods } = require("./http-methods");
+const { SMTLevelDb } = require("../../../../rollup-utils/smt-leveldb");
+const RollupDB = require("../../../../js/rollupdb");
+const MemDb = require("../../../../rollup-utils/mem-db");
+const LevelDb = require("../../../../rollup-utils/level-db");
+const { HttpMethods } = require("./http-methods-pob");
 
-const Synchronizer = require("../synch");
-const SynchPoS = require("../synch-pos");
-const SynchPool = require("../synch-pool");
-const SynchTokens = require("../synch-tokens");
-const Pool = require("../../../js/txpool");
-const OperatorManager = require("../operator-manager");
-const CliServerProof = require("../cli-proof-server");
-const LoopManager = require("../loop-manager");
-const Constants = require("../constants");
-const utils = require("../../../rollup-utils/rollup-utils");
-const { checkEnvVariables, checkPassEnv, getPassword } = require("./utils");
+const Synchronizer = require("../../synch");
+const SynchPoB = require("../../proof-of-burn/synch-pob");
+const SynchPool = require("../../synch-pool");
+const SynchTokens = require("../../synch-tokens");
+const Pool = require("../../../../js/txpool");
+const OperatorManager = require("../../proof-of-burn/interface-pob");
+const CliServerProof = require("../../cli-proof-server");
+const LoopManager = require("../../proof-of-burn/loop-manager-pob");
+const Constants = require("../../constants");
+const utils = require("../../../../rollup-utils/rollup-utils");
+const { checkEnvVariables, checkPassEnv, getPassword } = require("../utils");
 
 const { argv } = require("yargs")
     .usage(`
@@ -60,7 +60,7 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
 // Global vars
 const pathEnvFileDefault = `${__dirname}/config.env`;
 
-let posSynch;
+let pobSynch;
 let rollupSynch;
 let tokenSynch;
 let poolSynch;
@@ -141,7 +141,7 @@ let pool;
     if (process.env.CONFIG_SYNCH) {
         synchConfig = JSON.parse(fs.readFileSync(process.env.CONFIG_SYNCH, "utf8"));
     } else {
-        synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-config.json", "utf8"));
+        synchConfig = JSON.parse(fs.readFileSync("./rollup-synch-pob-config.json", "utf8"));
     }
 
     // load pool configuration file
@@ -158,8 +158,8 @@ let pool;
             rmRf.sync(synchConfig.rollup.synchDb);
         if (synchConfig.rollup.treeDb)
             rmRf.sync(synchConfig.rollup.treeDb);
-        if (synchConfig.rollupPoS.synchDb)
-            rmRf.sync(synchConfig.rollupPoS.synchDb);
+        if (synchConfig.rollupPoB.synchDb)
+            rmRf.sync(synchConfig.rollupPoB.synchDb);
     }
 
     ///////////////////
@@ -203,8 +203,8 @@ let pool;
         synchConfig.ethNodeUrl,
         synchConfig.rollup.address,
         synchConfig.rollup.abi,
-        synchConfig.rollupPoS.address,
-        synchConfig.rollupPoS.abi,
+        synchConfig.rollupPoB.address,
+        synchConfig.rollupPoB.abi,
         synchConfig.rollup.creationHash,
         synchConfig.ethAddress,
         loggerLevel,
@@ -231,29 +231,30 @@ let pool;
     ///////////////
     let posDb;
 
-    if (synchConfig.rollupPoS.synchDb == undefined) {
+    if (synchConfig.rollupPoB.synchDb == undefined) {
         info = infoInit;
-        info += "Rollup PoS synchronizer: ";
+        info += "Rollup PoB synchronizer: ";
         info += chalk.white.bold("memory database");
         logger.info(info);
         posDb = new MemDb();
     } else {
         info = infoInit;
-        info += "Rollup PoS synchronizer: ";
+        info += "Rollup PoB synchronizer: ";
         info += chalk.white.bold("levelDb database");
         logger.info(info);
-        posDb = new LevelDb(synchConfig.rollupPoS.synchDb);
+        posDb = new LevelDb(synchConfig.rollupPoB.synchDb);
     }
 
-    posSynch = new SynchPoS(
+    pobSynch = new SynchPoB(
         posDb,
         synchConfig.ethNodeUrl,
-        synchConfig.rollupPoS.address,
-        synchConfig.rollupPoS.abi,
-        synchConfig.rollupPoS.creationHash,
+        synchConfig.rollupPoB.address,
+        synchConfig.rollupPoB.abi,
+        synchConfig.rollupPoB.creationHash,
         synchConfig.ethAddressCaller,
         loggerLevel,
-        synchConfig.rollupPoS.timeouts,
+        synchConfig.rollupPoB.timeouts,
+        synchConfig.burnAddress
     );
 
     /////////////////
@@ -297,8 +298,8 @@ let pool;
         //////////////////////
         opManager = new OperatorManager(
             synchConfig.ethNodeUrl,
-            synchConfig.rollupPoS.address,
-            synchConfig.rollupPoS.abi,
+            synchConfig.rollupPoB.address,
+            synchConfig.rollupPoB.abi,
             wallet,
             envGasMul,
             envGasLimit);
@@ -330,7 +331,7 @@ let pool;
         ///////////////////
         loopManager = new LoopManager(
             rollupSynch,
-            posSynch,
+            pobSynch,
             pool, 
             opManager,
             cliServerProof,
@@ -339,12 +340,10 @@ let pool;
             synchConfig.rollup.timeouts,
             pollingTimeout);
         
-        const seed = utils.getSeedFromPrivKey(wallet.privateKey);
-        await loopManager.loadSeedHashChain(seed);
     }
 
     startRollup(operatorMode);
-    startRollupPoS();
+    startRollupPoB();
     loadServer(flagForge, envExpose, flagLAN, operatorMode);
 
     if (flagForge) {
@@ -353,12 +352,12 @@ let pool;
     }
 })();
 
-// start synchronizer PoS loop
-function startRollupPoS(){
+// start synchronizer PoB loop
+function startRollupPoB(){
     let info = infoInit;
-    info += "Start Rollup PoS synchronizer";
+    info += "Start Rollup PoB synchronizer";
     logger.info(info);
-    posSynch.synchLoop();
+    pobSynch.synchLoop();
 }
 
 // start synchronizer Rollup loop
@@ -374,7 +373,7 @@ function startRollup(operatorMode){
 // start synchronizer Manager loop
 function startLoopManager(){
     let info = infoInit;
-    info += "Start Rollup PoS manager";
+    info += "Start Rollup PoB manager";
     logger.info(info);
     loopManager.startLoop();
 }
@@ -409,7 +408,7 @@ function loadServer(flagForge, expose, flagLAN, operatorMode){
         const apiMethods = new HttpMethods(
             appExternal,
             rollupSynch,
-            posSynch,
+            pobSynch,
             tokenSynch,
             logger
         );

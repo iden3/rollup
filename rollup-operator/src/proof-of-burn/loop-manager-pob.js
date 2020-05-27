@@ -5,7 +5,7 @@ const chalk = require("chalk");
 const { stringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 
-const { timeout, buildPublicInputsSm, generateCall } = require("../../src/utils"); 
+const { timeout, buildPublicInputsSm, generateCall } = require("../utils"); 
 
 // Logging state information
 const strState = [
