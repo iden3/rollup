@@ -3,6 +3,6 @@ node_modules
 test/config/*-test.json
 test/config/test.json
 test/config/test-pob.json
-test/server/tmp-*
-test/server/pob/tmp-*
+test/server/proof-of-stake/tmp-*
+test/server/proof-of-burn/tmp-*
 test/synch-pool-service/config/*-test.json

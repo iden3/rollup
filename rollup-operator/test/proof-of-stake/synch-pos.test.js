@@ -5,11 +5,11 @@
 const { expect } = require("chai");
 
 const RollupPoS = artifacts.require("../contracts/RollupPoS");
-const MemDb = require("../../rollup-utils/mem-db");
-const SynchPoS = require("../src/synch-pos");
-const timeTravel = require("../../test/contracts/helpers/timeTravel");
-const { timeout } = require("../src/utils");
-const testUtils = require("./helpers/utils-test");
+const MemDb = require("../../../rollup-utils/mem-db");
+const SynchPoS = require("../../src/proof-of-stake/synch-pos");
+const timeTravel = require("../../../test/contracts/helpers/timeTravel");
+const { timeout } = require("../../src/utils");
+const testUtils = require("../helpers/utils-test");
 
 // timeouts test
 const timeoutDelay = 15000;

@@ -4,7 +4,7 @@ const chalk = require("chalk");
 const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 
-const { timeout } = require("../src/utils");
+const { timeout } = require("../../src/utils");
 
 // db keys
 const lastEraKey = "last-era-synch";
