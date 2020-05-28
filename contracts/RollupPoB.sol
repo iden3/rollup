@@ -18,9 +18,9 @@ contract RollupPoB is RollupPoBHelpers{
     uint256 constant beneficiaryAddressInput = 9;
 
     // Defines slot/era block duration
-    uint constant public DELAY_GENESIS = 1000;
-    uint32 constant public BLOCKS_PER_SLOT = 100;
-    uint constant public SLOT_DEADLINE = 20;
+    uint constant public DELAY_GENESIS = 20;
+    uint32 constant public BLOCKS_PER_SLOT = 20;
+    uint constant public SLOT_DEADLINE = 4;
 
     // Burn Address
     address payable burn;
@@ -28,7 +28,7 @@ contract RollupPoB is RollupPoBHelpers{
     Operator public opDefault;
 
     // Minimum bid to enter the auction
-    uint public constant MIN_BID = 0.1 ether;
+    uint public constant MIN_BID = 0.001 ether;
 
     // Minimum next Bid
     uint constant minNumSlots = 2;
