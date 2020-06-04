@@ -20,6 +20,19 @@ async function publicDataPoS(insRollupPoS){
     return publicData;
 }
 
+
+async function publicDataPoB(insRollupPoB){
+    const publicData = {};
+    publicData.delayGenesis = Number(await insRollupPoB.DELAY_GENESIS());
+    publicData.blocksPerSlot = Number(await insRollupPoB.BLOCKS_PER_SLOT());
+    publicData.slotDeadline = Number(await insRollupPoB.SLOT_DEADLINE());
+    publicData.maxTx = Number(await insRollupPoB.MAX_TX());
+    publicData.minBid = Scalar.e(await insRollupPoB.MIN_BID());
+    publicData.genesisBlock = Number(await insRollupPoB.genesisBlock());
+
+    return publicData;
+}
+
 async function checkSynch(synch, opRollupDb){
     // Check fully synchronized
     const totalSynched = await synch.getSynchPercentage();
@@ -110,6 +123,7 @@ async function assertForgeBatch(rollupSynch, targetBatch, timeoutLoop){
 
 module.exports = {
     publicDataPoS,
+    publicDataPoB,
     checkSynch,
     assertBalancesDb,
     assertForgeBatch,

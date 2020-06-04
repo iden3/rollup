@@ -4,7 +4,13 @@ import "../RollupPoB.sol";
 
 contract RollupPoBTest is RollupPoB {
 
-    constructor(address _rollup, uint256 _maxTx, address payable burnAddress) RollupPoB(_rollup, _maxTx, burnAddress) public {}
+    constructor(
+        address _rollup,
+        uint256 _maxTx,
+        address payable burnAddress,
+        address payable opDefaultAddr,
+        string memory urlDefault
+    ) RollupPoB(_rollup, _maxTx, burnAddress, opDefaultAddr, urlDefault) public {}
 
     uint public blockNumber;
 
@@ -26,15 +32,19 @@ contract RollupPoBTest is RollupPoB {
     ) external payable override {
         uint32 slot = currentSlot();
         Operator storage op = slotWinner[slot];
+        if(op.forgerAddress != address(0x00)){
+            // message sender must be the controller address
+            require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
+            // beneficiary address input must be operator benefiacry address
+            require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+                'beneficiary address must be operator beneficiary address');
+        } else {
+            require(msg.sender == opDefault.forgerAddress, 'message sender must be default operator');
+            require(opDefault.beneficiaryAddress == address(input[beneficiaryAddressInput]),
+                    'beneficiary address must be default operator beneficiary address');
+        }
 
-        // message sender must be the controller address
-        require(msg.sender == op.forgerAddress, 'message sender must be forgerAddress');
         uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
-
-        // beneficiary address input must be operator benefiacry address
-        require(op.beneficiaryAddress == address(input[beneficiaryAddressInput]),
-            'beneficiary address must be operator beneficiary address');
-
         // Check input off-chain hash matches hash commited
         require(offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');
@@ -60,8 +70,8 @@ contract RollupPoBTest is RollupPoB {
 
         // Check there is no data to be forged
         require(!infoSlot[slot].fullFilled, 'another operator has already forged data');
-        uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
 
+        uint256 offChainHash = hashOffChainTx(compressedTx, MAX_TX);
         // Check input off-chain hash matches hash commited
         require(offChainHash == input[offChainHashInput],
             'hash off chain input does not match hash commited');

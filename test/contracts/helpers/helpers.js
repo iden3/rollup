@@ -185,6 +185,14 @@ function signRollupTx(walletBabyJub, tx) {
     tx.s = signature.S;
 }
 
+function toFixedDown(value, digits) {
+    if( isNaN(value) )
+        return 0;
+    var n = value - Math.pow(10, -digits)/2;
+    n += n / Math.pow(2, 53);
+    return n.toFixed(digits);
+}
+
 module.exports = {
     buildFullInputSm,
     ForgerTest,
@@ -197,5 +205,6 @@ module.exports = {
     buildhashOnChain,
     hashOnChain,
     signRollupTx,
-    getPublicPoBVariables
+    getPublicPoBVariables,
+    toFixedDown
 };

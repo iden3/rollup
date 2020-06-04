@@ -7,6 +7,7 @@
     "test": "mocha",
     "lint": "eslint ./src",
     "test:operator": "node ./src/server/operator.js",
+    "test:operator-pob": "node ./src/server/pob/operator-pob.js",
     "server-proof": "node ./src/server-proof.js",
     "service-synch-pool": "node ./src/synch-pool-service/run-synch-pool.js"
   },

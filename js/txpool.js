@@ -484,6 +484,7 @@ class TXPool {
                 availableTxs.push(this.txs[i]);
             }
         }
+
         const fnSort = (a,b) => {
             if ((b.adjustedFee - a.adjustedFee == 0) && a.fromIdx == b.fromIdx){
                 return b.nonce - a.nonce;
@@ -500,10 +501,10 @@ class TXPool {
         while (availableTxs.length>0) {
             const tx = availableTxs.pop();
             const res = await tmpState.canProcess(tx);
+
             if (res == "YES") {
 
                 await tmpState.process(tx);
-
                 if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
                 txsByCoin[tx.coin].push(tx);
                 const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
@@ -671,6 +672,201 @@ class TXPool {
             delete futureTxs[idx][nonce];
             return res;
         }
+    }
+    
+    async getForgedTx(maxSlots) {
+        const futureTxs = {};
+        const txsByCoin = {};
+    
+        let NSlots = maxSlots;
+    
+        // Order tx
+        await this._classifyTxs(); 
+    
+        const availableTxs = [];
+        for (let i=0; i<this.txs.length; i++) {
+            if (!this.txs[i].removed) {
+                availableTxs.push(this.txs[i]);
+            }
+        }
+    
+        const fnSort = (a,b) => {
+            if ((b.adjustedFee - a.adjustedFee == 0) && a.fromIdx == b.fromIdx){
+                return b.nonce - a.nonce;
+            }
+            else{
+                return a.adjustedFee - b.adjustedFee;
+            } 
+        };
+    
+        // Sort the TXs reverse normalized Fee (First is the most profitable)
+        availableTxs.sort(fnSort);
+    
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
+        while (availableTxs.length>0) {
+            const tx = availableTxs.pop();
+            const res = await tmpState.canProcess(tx);
+    
+            if (res == "YES") {
+    
+                await tmpState.process(tx);
+                if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
+                txsByCoin[tx.coin].push(tx);
+                const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
+                    
+                if (tx.toIdx){ 
+                    const stTo = await tmpState.getState(tx.toIdx);
+                    
+                    const ftxTo = popFuture(tx.toIdx, stTo.nonce);
+                    if ((ftxFrom.length>0) || (ftxTo.length>0)) {
+                        availableTxs.push(...ftxFrom);
+                        availableTxs.push(...ftxTo);
+                        availableTxs.sort(fnSort);
+                    }
+                }
+            } else if (res == "NOT_NOW") {
+                pushFuture(tx);
+            } else {
+                tx.removed = true;
+            }
+        }
+    
+        const incTable = {};
+        for (let coin in txsByCoin) {
+            incTable[coin] = [];
+    
+            // Accumulated values
+            let accValue = 0;
+            let nTx = 0;
+    
+            // Best values
+            let bestAccValue = 0;
+            let bestNTx = 0;
+            let depositCount = 0;
+    
+            for (let i=0; i<txsByCoin[coin].length; i++) {
+                const tx = txsByCoin[coin][i];
+                nTx++;
+                accValue += tx.normalizedFee;
+    
+                if (tx.isDeposit) {
+                    depositCount++;
+                }
+                if (accValue > bestAccValue) {
+                    incTable[coin].push({
+                        nTx: nTx,
+                        incTx: nTx - bestNTx + depositCount,
+                        accValue: accValue,
+                        marginalFeeValue: (accValue) / (nTx - bestNTx + depositCount),
+                    });
+                    bestAccValue = accValue;
+                    bestNTx = nTx; 
+                    accValue = 0;
+                    depositCount = 0;
+                }
+                else if (accValue == bestAccValue && bestAccValue != 0) {
+                    incTable[coin].push({
+                        nTx: nTx,
+                        incTx: nTx - bestNTx + depositCount,
+                        accValue: accValue,
+                        marginalFeeValue: (accValue) / (nTx - bestNTx + depositCount),
+                    });
+                    bestNTx = nTx; 
+                    accValue = 0;
+                    depositCount = 0;
+                }
+                else if (i + 1 == txsByCoin[coin].length) { // put the rest of the transactions
+                    incTable[coin].push({
+                        nTx: nTx,
+                        incTx: nTx - bestNTx + depositCount,
+                        accValue: accValue,
+                        marginalFeeValue: (accValue) / (nTx - bestNTx + depositCount),
+                    });
+                }
+            }
+        }
+        let forgedTxs = [];
+        const PTable = {};
+    
+        fillTx(forgedTxs, NSlots, incTable, PTable, this._getOnChainTx);
+    
+        // max coin should be 24 - 32 bits, max safe integer in js is 2^53, 
+        const usedCoins = Object.keys(PTable).map(coinStr => Number(coinStr));
+    
+        usedCoins.sort((a,b) => {
+            return incTable[b][ PTable[b] ].accValue -
+                       incTable[a][ PTable[a] ].accValue;
+        });
+        const removedCoins = [];
+        while (usedCoins.length>this.MaxCoins) {
+            const coin = usedCoins.pop();
+            removedCoins.push(coin);
+            delete incTable[coin];
+        }
+    
+        removeTxsOfCoins(forgedTxs, removedCoins);
+    
+        fillTx(forgedTxs, NSlots-forgedTxs.length, incTable, PTable, this._getOnChainTx);
+    
+        return forgedTxs;
+    
+        function fillTx(forgedTxs, n, incTable, PTable, getOnChainTx) {
+    
+            let totalTx =0;
+            let end = false;
+            while (!end) {
+                let bestCoin = -1;
+                let bestMarginalFeeValue = 0;
+                for (let coin in incTable) {
+                    const p = (typeof PTable[coin] == "undefined") ? 0 : PTable[coin]+1;
+                    if (p >= incTable[coin].length) continue;  // End of the table
+                    if ((incTable[coin][p].marginalFeeValue > bestMarginalFeeValue)&&
+                            (incTable[coin][p].incTx + totalTx <=  n))
+                    {
+                        bestCoin = coin;
+                        bestMarginalFeeValue = incTable[coin][p].marginalFeeValue;
+                    }
+                }
+                if (bestCoin >= 0) {
+                    const firstT = (typeof PTable[bestCoin] == "undefined") ? 0 : incTable[bestCoin][PTable[bestCoin]].nTx;
+                    PTable[bestCoin] = (typeof PTable[bestCoin] == "undefined") ? 0 : PTable[bestCoin]+1;
+                    const lastT = incTable[bestCoin][PTable[bestCoin]].nTx;
+                    totalTx += incTable[bestCoin][PTable[bestCoin]].incTx;
+                    for (let i=firstT; i<lastT; i++) {
+                        forgedTxs.push(txsByCoin[bestCoin][i]);
+                        if (txsByCoin[bestCoin][i].isDeposit){
+                            forgedTxs.push(getOnChainTx(txsByCoin[bestCoin][i])); 
+                        }
+                    }
+                } else {
+                    end = true;
+                }
+            }
+            return totalTx;
+        }
+    
+        function removeTxsOfCoins(txs, coins) {
+            for (let i=txs.length-1; i>=0; i--) {
+                if (coins.indexOf(txs[i].coin) >= 0) {
+                    txs.splice(i, 1);
+                }
+            }
+        }
+    
+        function pushFuture(tx) {
+            futureTxs[tx.fromIdx] = futureTxs[tx.fromIdx] || [];
+            futureTxs[tx.fromIdx][tx.nonce] = futureTxs[tx.fromIdx][tx.nonce] || [];
+            futureTxs[tx.fromIdx][tx.nonce].push(tx);
+        }
+    
+        function popFuture(idx, nonce) {
+            if (typeof futureTxs[idx] == "undefined") return [];
+            if (typeof futureTxs[idx][nonce] == "undefined") return [];
+            const res = futureTxs[idx][nonce];
+            delete futureTxs[idx][nonce];
+            return res;
+        }
+
     }
 }
 
