@@ -7,7 +7,7 @@
     "ganache": "npx ganache-cli -a 100 --defaultBalanceEther 10000 > ganache-output.log &",
     "proof-dummy": "node ./src/server-proof.js > serverProof-output.log &",
     "pool-dummy": "./test/synch-pool-service/config/create-config-env.sh; node ./src/synch-pool-service/run-synch-pool.js > pool-output.log &",
-    "operator-pob-dummy": "./test/server/proof-of-burn/create-config-env.sh; node ./src/server/proof-of-burn/operator-pob.js > operatorburn-output.log &",
+    "operator-pob-dummy": "./test/server/proof-of-burn/create-config-env.sh; cat ./src/server/proof-of-burn/config.env; ls ./test/config/ ; node ./src/server/proof-of-burn/operator-pob.js > operatorburn-output.log &",
     "operator-pos-dummy": "./test/server/proof-of-stake/create-config-env.sh; node ./src/server/proof-of-stake/operator-pos.js > operatorstake-output.log &",
     "test": "mocha",
     "lint": "eslint ./src",

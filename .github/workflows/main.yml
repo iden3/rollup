@@ -28,8 +28,6 @@ jobs:
     - name: Test 
       run: npm ci
     - name: Test operator
-      run: cd rollup-operator; npm ci; ls;
+      run: cd rollup-operator; npm ci;
     - name: Test operator_js
-      run: cd rollup-operator; ls; npm run test:js-pob
-    - name: Test contracts
-      run: npm run test:contracts
+      run: cd rollup-operator; npm run test:server-pob
