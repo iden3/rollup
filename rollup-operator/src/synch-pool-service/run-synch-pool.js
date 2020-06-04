@@ -63,9 +63,9 @@ const infoInit = `${chalk.bgCyan.black("LOADING")} ==> `;
     });
 
     // delete database folders if `--clear true`
-    const clearFlag = (argv.clear) ? argv.clear : false;
+    const clearFlag = (argv.clear === "true") ? true : false;
 
-    if (clearFlag === "true"){
+    if (clearFlag){
         if (config.pathDb)
             rmRf.sync(config.pathDb);
     }

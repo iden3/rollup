@@ -4,7 +4,7 @@ services:
   operator:
     container_name: operator
     ports:
-      - "9000:9000"
+      - '9000:9000'
     build:
       context: ./operator/
       args:
@@ -25,10 +25,14 @@ services:
       - ./synch-pool/config.env
     volumes:
       - pool-volume:/table-conversion
+      - ./leveldb-synch-pool:/leveldb-synch-pool
   
   server-proof:
     container_name: server-proof
-    build: ./server-proof/
+    build: 
+      context: ./server-proof/
+      args:
+        - branch=${BRANCH_SERVER_PROOF}
     env_file:
       - ./server-proof/config.env
     expose:

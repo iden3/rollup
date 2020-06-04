@@ -85,3 +85,6 @@ wallet.json
 
 # circuits tmp
 test/circuit-example.json
+
+# docker databases
+docker/docker-operator/leveldb-*
