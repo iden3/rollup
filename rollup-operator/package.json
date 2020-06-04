@@ -15,7 +15,7 @@
     "test:operator-pob": "node ./src/server/proof-of-burn/operator-pob.js",
     "server-proof": "node ./src/server-proof.js",
     "service-synch-pool": "node ./src/synch-pool-service/run-synch-pool.js",
-    "test:js-pob": "npm run ganache && npx truffle test test/synch-pool.test.js test/synch-tokens.test.js test/synch.test.js test/proof-of-burn/synch-pob.test.js test/proof-of-burn/interface-pob.test.js && npm run proof-dummy && npx mocha test/server-proof.test.js && npx truffle test test/proof-of-burn/loop-manager-pob.test.js ; rm *output.log ; pkill -x 'node*'",
+    "test:js-pob": "npm run ganache && npx truffle test test/synch-pool.test.js ; rm *output.log ; pkill -x 'node*'",
     "test:js-pos": "npm run ganache && npx truffle test test/synch-pool.test.js test/synch-tokens.test.js test/synch.test.js test/proof-of-stake/synch-pos.test.js test/proof-of-stake/interface-pos.test.js && npm run proof-dummy && npx mocha test/server-proof.test.js && npx truffle test test/proof-of-stake/loop-manager-pos.test.js ; rm *output.log ; pkill -x 'node*'",
     "test:pool": "npm run ganache && npx mocha test/synch-pool-service/api-bitfinex.test.js && npx truffle test test/synch-pool-service/synch-pool-service.test.js && npx truffle test test/synch-pool-service/build-configs-levelDb.test.js && npm run pool-dummy && npx truffle test test/synch-pool-service/run-synch-pool.test.js; rm *output.log ; pkill -x 'node*'",
     "test:server-pob": "npm run ganache && npx truffle test test/server/proof-of-burn/build-configs-levelDb-pob.test.js && npm run proof-dummy && npm run pool-dummy && npm run operator-pob-dummy && npx truffle test test/server/proof-of-burn/operator-server-pob.test.js; rm *output.log ; pkill -x 'node*'",
@@ -35,6 +35,7 @@
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-mocha": "^6.2.0",
+    "ganache-cli": "^6.9.1",
     "mocha": "^6.2.0"
   },
   "dependencies": {
