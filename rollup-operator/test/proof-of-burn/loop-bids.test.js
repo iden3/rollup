@@ -27,12 +27,12 @@ const RollupPoB = artifacts.require("../../contracts/RollupPoB");
 const Rollup = artifacts.require("../../contracts/Rollup");
 
 const RollupSynch = require("../../src/synch");
-const PoBSynch = require("../../src/PoB/synch-pob");
-const OperatorManager = require("../../src/PoB/interface-pob");
+const PoBSynch = require("../../src/proof-of-burn/synch-pob");
+const OperatorManager = require("../../src/proof-of-burn/interface-pob");
 const Pool = require("../../../js/txpool");
 const CliServerProof = require("../../src/cli-proof-server");
-const LoopManager = require("../../src/PoB/loop-manager-pob");
-const LoopBids = require("../../src/PoB/loop-bids");
+const LoopManager = require("../../src/proof-of-burn/loop-manager-pob");
+const LoopBids = require("../../src/proof-of-burn/loop-bids");
 const { fee } = require("../../../js/constants");
 
 // timeouts test

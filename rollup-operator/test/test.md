@@ -12,10 +12,10 @@ Test Token synchronizer:
   - `npx truffle test ./rollup-operator/test/synch-tokens.test.js`
 
 Test PoS synchronizer:
-  - `npx truffle test ./rollup-operator/test/synch-pos.test.js`
+  - `npx truffle test ./rollup-operator/test/proof-of-stake/synch-pos.test.js`
 
 Test PoB synchronizer:
-  - `npx truffle test ./rollup-operator/test/pob/synch-pob.test.js`
+  - `npx truffle test ./rollup-operator/test/proof-of-burn/synch-pob.test.js`
 
 Test pool synchronizer:
   - `npx truffle test ./rollup-operator/test/synch-pool.test.js`
@@ -24,13 +24,13 @@ Test Rollup synchronizer:
   - `npx truffle test ./rollup-operator/test/synch.test.js`
 
 Test operator manager:
-  - `npx truffle test ./rollup-operator/test/op-manager.test.js`
+  - `npx truffle test ./rollup-operator/test/proof-of-stake/interface-pos.test.js`
 
 Test interface PoB:
-  - `npx truffle test ./rollup-operator/test/pob/interface-pob.test.js`
+  - `npx truffle test ./rollup-operator/test/proof-of-burn/interface-pob.test.js`
 
 All at once:
-  - `npx truffle test ./rollup-operator/test/synch-tokens.test.js; npx truffle test ./rollup-operator/test/synch-pos.test.js; npx truffle test ./rollup-operator/test/pob/synch-pob.test.js; npx truffle test ./rollup-operator/test/synch-pob.test.js; npx truffle test ./rollup-operator/test/synch-pool.test.js; npx truffle test ./rollup-operator/test/synch.test.js; npx truffle test ./rollup-operator/test/op-manager.test.js; npx truffle test ./rollup-operator/test/pob/interface-pob.test.js`
+  - `npx truffle test ./rollup-operator/test/synch-tokens.test.js; npx truffle test ./rollup-operator/test/proof-of-stake/synch-pos.test.js; npx truffle test ./rollup-operator/test/proof-of-burn/synch-pob.test.js; npx truffle test ./rollup-operator/test/synch-pool.test.js; npx truffle test ./rollup-operator/test/synch.test.js; npx truffle test ./rollup-operator/test/proof-of-stake/interface-pos.test.js; npx truffle test ./rollup-operator/test/proof-of-burn/interface-pob.test.js`
 
 ## Test server proof
 
@@ -51,7 +51,7 @@ Open new terminal and run server-proof service:
   - `npm run server-proof`
 
 Test loop-manager:
-  - `npx truffle test ./rollup-operator/test/loop-manager.test.js`
+  - `npx truffle test ./rollup-operator/test/proof-of-stake/loop-manager-pos.test.js`
 
 Test loop-manager PoB:
-  - `npx truffle test ./rollup-operator/test/pob/loop-manager-pob.test.js`
+  - `npx truffle test ./rollup-operator/test/proof-of-burn/loop-manager-pob.test.js`

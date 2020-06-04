@@ -6,9 +6,9 @@ Start local ethereum blockchain
 
 Deploy contracts and build configuration files
   - Memory database 
-    `npx truffle test ./rollup-operator/test/server/build-configs-memDb.test.js`
+    `npx truffle test ./rollup-operator/test/server/proof-of-burn/build-configs-memDb-pob.test.js`
   - LevelDb database
-    `npx truffle test ./rollup-operator/test/server/build-configs-levelDb.test.js`
+    `npx truffle test ./rollup-operator/test/server/proof-of-burn/build-configs-levelDb-pob.test.js`
 
 Open new terminal and run `server-proof` server
   - `cd ./rollup-operator`
@@ -23,7 +23,7 @@ Open new terminal and run `synch-pool-service` server
 
 Open new terminal and run operator service
   - `cd ./rollup-operator`
-  - `npm run test:operator`
+  - `npm run test:operator-pob`
     - password could be typed on console or by adding an environment variable:
       - `PASSWORD=passTest`
     - operator needs configuration file `config.env` in its path
@@ -31,4 +31,4 @@ Open new terminal and run operator service
     - *It should be noted that this file should be where the `operator.js` is invoked and its name should be `config.env` 
 
 Run test 
-  - `npx truffle test ./rollup-operator/test/server/operator-server.test.js`
+  - `npx truffle test ./rollup-operator/test/server/proof-of-burn/operator-server-pob.test.js`

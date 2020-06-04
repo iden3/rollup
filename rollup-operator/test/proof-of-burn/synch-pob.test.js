@@ -6,7 +6,7 @@ const { expect } = require("chai");
 
 const RollupPoB = artifacts.require("../../contracts/RollupPoB");
 const MemDb = require("../../../rollup-utils/mem-db");
-const SynchPoB = require("../../src/PoB/synch-pob");
+const SynchPoB = require("../../src/proof-of-burn/synch-pob");
 const timeTravel = require("../../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../../src/utils");
 const testUtils = require("../helpers/utils-test");

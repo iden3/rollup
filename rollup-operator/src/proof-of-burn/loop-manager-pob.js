@@ -5,18 +5,17 @@ const chalk = require("chalk");
 const { stringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 
-const { timeout, buildPublicInputsSm, generateCall } = require("../src/utils"); 
-const { loadHashChain } = require("../../rollup-utils/rollup-utils");
+const { timeout, buildPublicInputsSm, generateCall } = require("../utils"); 
 
 // Logging state information
 const strState = [
     "Synchronizing",
-    "Updating operators",
     "Checking winners",
     "Waiting to forge at block: ",
     "Building batch",
     "Getting proof",
-    "Mining transaction"
+    "Mining transaction",
+    "Checking forge"
 ];
 
 // server-proof states
@@ -30,12 +29,12 @@ const stateServer = {
 // Enum states for loop manager
 const state = {
     SYNCHRONIZING: 0,
-    UPDATE_OPERATORS: 1,
-    CHECK_WINNERS: 2,
-    WAIT_FORGE: 3,
-    BUILD_BATCH: 4,
-    GET_PROOF: 5,
-    MINING: 6,
+    CHECK_WINNERS: 1,
+    WAIT_FORGE: 2,
+    BUILD_BATCH: 3,
+    GET_PROOF: 4,
+    MINING: 5,
+    CHECK_FORGE: 6,
 };
 
 /**
@@ -44,46 +43,40 @@ const state = {
  * - prepare batch to be commited and forged
  * - sends zkSnark inputs to server-proof
  * - get proof from server-proof
- * - send ethereum transaction to Rollup PoS
+ * - send ethereum transaction to Rollup PoB
  */
 class LoopManager{
     /**
      * Initialize loop manager
      * @param {Object} rollupSynch - Rollup core synchronizer 
-     * @param {Object} posSynch - Rollup PoS synchronizer
+     * @param {Object} pobSynch - Rollup PoB synchronizer
      * @param {Object} poolTx - Transaction pool
-     * @param {Object} opManager - Client to interact with Rollup PoS
+     * @param {Object} opManager - Client to interact with Rollup PoB
      * @param {Object} cliServerProof - Client to interact woth server-proof
      * @param {String} logLevel - logger level
      * @param {String} nodeUrl - ethereum node url
      * @param {Object} timeouts - Configure timeouts
-     * @param {Number} pollingTimeout - Time to wait to consider a transaction failed
      */
     constructor(
         rollupSynch, 
-        posSynch,
+        pobSynch,
         poolTx,
         opManager,
         cliServerProof,
         logLevel,
         nodeUrl,
-        timeouts,
-        pollingTimeout
+        timeouts
     ) {
         this.nodeUrl = nodeUrl;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.web3.eth.handleRevert = true;
-        this.web3.eth.transactionPollingTimeout = pollingTimeout;
         this.rollupSynch = rollupSynch;
-        this.posSynch = posSynch;
+        this.pobSynch = pobSynch;
         this.poolTx = poolTx;
         this.opManager = opManager;
         this.cliServerProof = cliServerProof;
 
-        this.registerId = [];
-        this.registerBenAddress = {};
         this.state = state.SYNCHRONIZING;
-        this.hashChain = [];
         this.infoCurrentBatch = {};
         this.currentTx = {};
         
@@ -137,10 +130,14 @@ class LoopManager{
      */
     async _init(){
         // get slot deadline
-        this.slotDeadline = await this.posSynch.getSlotDeadline();
+        this.slotDeadline = await this.pobSynch.getSlotDeadline();
+        this.defaultOperator = await this.pobSynch.getDefaultOperator();
         
-        // get deposit fees
-        this._getDepositFee();
+        // get fee for deposits off-chain
+        const feeWei = await this.rollupSynch.getFeeDepOffChain();
+        const feeEth = this.web3.utils.fromWei(feeWei.toString() , "ether");
+        this.feeDepOffChain = Number(feeEth);
+        this.poolTx.setFeeDeposit(this.feeDepOffChain);
     }
 
     /**
@@ -159,24 +156,17 @@ class LoopManager{
             // Fill log information depending on the state
             switch(this.state) {
 
-            case state.UPDATE_OPERATORS: 
-                if (this.opManager.wallet.address){
-                    info += " | public address: ";
-                    info += `${chalk.white.bold(`${this.opManager.wallet.address}`)}`;
-                }
-                break;
-
             case state.CHECK_WINNERS: 
-                info += " | operator identifiers found: ";
-                info += `${chalk.white.bold(`${this.registerId}`)}`;
+                info += " | forger address: ";
+                info += `${chalk.white.bold(`${this.opManager.wallet.address}`)}`;
                 break;
 
             case state.WAIT_FORGE:  
-                currentBlock = await this.posSynch.getCurrentBlock();
+                currentBlock = await this.pobSynch.getCurrentBlock();
                 info += `${chalk.white.bold(`${this.infoCurrentBatch.fromBlock}`)} | `;
                 info += `current block: ${chalk.white.bold(`${currentBlock}`)} | `;
-                info += "operator identifier winner: ";
-                info += `${chalk.white.bold(`${this.infoCurrentBatch.opId}`)}`;
+                info += "operator winner: ";
+                info += `${chalk.white.bold(`${this.infoCurrentBatch.forgerAddress}`)}`;
                 break;
 
             case state.BUILD_BATCH:
@@ -199,6 +189,13 @@ class LoopManager{
                 info += " | transaction pending: ";
                 info += `${chalk.white.bold(`${((timeTx - this.currentTx.startTx)/1000).toFixed(2)} s`)}`;
                 break;
+
+            case state.CHECK_FORGE:
+                currentBlock = await this.pobSynch.getCurrentBlock();
+                info += ` | current block: ${chalk.white.bold(`${currentBlock}`)} |  `;
+                info += "deadline block: ";
+                info += `${chalk.white.bold(`${this.infoCurrentBatch.deadlineBlock}`)}`;
+                break;
             }
 
             this.logger.info(info);
@@ -210,12 +207,6 @@ class LoopManager{
                 // check all is fully synched
                 case state.SYNCHRONIZING:
                     await this._fullySynch();
-                    break;
-
-                // update operators
-                // if operator has been loaded, check if it is registered
-                case state.UPDATE_OPERATORS: 
-                    await this._checkRegister();
                     break;
                 
                 // check if operator is the winner
@@ -243,6 +234,10 @@ class LoopManager{
                     await this._monitorTx();
                     this.timeouts.NEXT_STATE = 5000;
                     break;
+
+                case state.CHECK_FORGE:
+                    await this._checkForge();
+                    break;
                 }
 
                 if (this.timeouts.NEXT_STATE) await timeout(this.timeouts.NEXT_STATE);
@@ -255,81 +250,19 @@ class LoopManager{
     }
 
     /**
-     * Load hash chain
-     * @param {String} seed - seed encoded as an string
-     */
-    async loadSeedHashChain(seed){
-        this.hashChain = loadHashChain(seed);
-    }
-
-    /**
-     * Gets current index for hash chain
-     * @param {Number} opId - operator identifier
-     * @returns {Number} - hash chain index
-     */
-    async _getIndexHashChain(opId){
-        const lastHash = await this.posSynch.getLastCommitedHash(opId);
-        const index = this.hashChain.findIndex(hash => hash === lastHash);
-        return index;
-    }
-
-    /**
-     * Checks if synchronizers, either rollup core and rollup PoS,
+     * Checks if synchronizers, either rollup core and rollup PoB,
      * are fully synchronized
      */
     async _fullySynch() {
         this.timeouts.NEXT_STATE = 5000;
         // check rollup is fully synched
         const rollupSynched = await this.rollupSynch.isSynched();
-        // check PoS is fully synched
-        const posSynched = await this.posSynch.isSynched();
-        if (rollupSynched & posSynched) { // Both 100% synched
+        // check PoB is fully synched
+        const pobSynched = await this.pobSynch.isSynched();
+        if (rollupSynched & pobSynched) { // Both 100% synched
             this.timeouts.NEXT_STATE = 0;
             if (this.infoCurrentBatch.waiting) this.state = state.BUILD_BATCH;
-            else this.state = state.UPDATE_OPERATORS;
-        }
-    }
-
-    /**
-     * Checks if operator loaded is registered on Rollup PoS
-     */
-    async _checkRegister() {
-        const listOpRegistered = await this.posSynch.getOperators();
-        await this._purgeRegisterOperators(listOpRegistered);
-
-        if (this.opManager.wallet != undefined) {
-            const opAddress = this.opManager.wallet.address;
-            for (const opInfo of Object.values(listOpRegistered)) {
-                if (opInfo.controllerAddress == opAddress.toString()) {
-                    const opId = Number(opInfo.operatorId);
-                    if (!this.registerId.includes(opId)){
-                        this.registerId.push(Number(opInfo.operatorId));
-                        this.registerBenAddress[Number(opInfo.operatorId)] = opInfo.beneficiaryAddress;
-                    }
-                }
-            }
-        }
-        if (this.registerId.length) {
-            this.timeouts.NEXT_STATE = 0;
-            this.state = state.CHECK_WINNERS;
-        } else {
-            this.timeouts.NEXT_STATE = 5000;
-            this.state = state.SYNCHRONIZING;
-        }
-    }
-
-    /**
-     * Update list of operators
-     * @param {Object} listOpRegistered 
-     */
-    async _purgeRegisterOperators(listOpRegistered) {
-        // Delete active operators that are no longer registered
-        for (const index in this.registerId) {
-            const opId = this.registerId[index];
-            if(!(opId.toString() in listOpRegistered)){
-                this.registerId.splice(index, 1);
-                delete this.registerBenAddress[opId];
-            }     
+            else this.state = state.CHECK_WINNERS;
         }
     }
 
@@ -337,28 +270,33 @@ class LoopManager{
      * Check if operator registered has won a slot to forge
      */
     async _checkWinner() {
-        const winners = await this.posSynch.getRaffleWinners();
-        const slots = await this.posSynch.getSlotWinners();
-        const currentBlock = await this.posSynch.getCurrentBlock();
+        const winners = await this.pobSynch.getOperatorsWinners();
+        const opWinner = winners[0];
+        const slotWinner = opWinner.slot;
+        const currentBlock = await this.pobSynch.getCurrentBlock();
 
-        let foundSlotWinner = false;
+        const forgerAddress = this.opManager.wallet.address;
 
-        for (const index in winners){
-            const opWinner = winners[index];
-            const slotWinner = slots[index];
+        const slotFullFilled = await this.pobSynch.getFullFilledSlot(slotWinner);
 
-            const fromBlockWinner = await this.posSynch.getBlockBySlot(slotWinner);
-            const toBlockWinner = await this.posSynch.getBlockBySlot(slotWinner + 1) - this.slotDeadline;
-            
-            if (this.registerId.includes(opWinner) && (currentBlock < toBlockWinner)){
-                foundSlotWinner = true;
-                this._setInfoBatch(fromBlockWinner, toBlockWinner, opWinner);
-            }
-            if (foundSlotWinner) break;
+        const fromBlockWinner = await this.pobSynch.getBlockBySlot(slotWinner);
+        const toBlockWinner = await this.pobSynch.getBlockBySlot(slotWinner + 1);
+
+        let checkForge = false;
+
+        if (opWinner.forger === forgerAddress && (currentBlock < toBlockWinner)){
+            const beneficiaryAddress = opWinner.beneficiary;
+            this._setInfoBatch(fromBlockWinner, toBlockWinner, forgerAddress, beneficiaryAddress);
+        } else if (slotWinner > 1 && !slotFullFilled) {
+            checkForge = true;
         }
+
         if (this.infoCurrentBatch.fromBlock) {
             this.timeouts.NEXT_STATE = 0;
             this.state = state.WAIT_FORGE;
+        } else if (checkForge) {
+            this.timeouts.NEXT_STATE = 2000;
+            this.state = state.CHECK_FORGE;
         } else {
             this.timeouts.NEXT_STATE = 5000;
             this.state = state.SYNCHRONIZING;
@@ -387,7 +325,7 @@ class LoopManager{
 
         // Update deposit fees 
         this._getDepositFee();
-        
+
         // Check if batch has been built
         if (this.infoCurrentBatch.waiting) this.infoCurrentBatch.waiting = false;
 
@@ -423,12 +361,12 @@ class LoopManager{
     /**
      * Checks state of server-proof
      * If server-proof finishes correctly:
-     * - sends proof to Rollup PoS using `commitAndForge` batch
+     * - sends proof to Rollup PoB using `commitAndForge` batch
      */
     async _stateProof() {
         const res = await this.cliServerProof.getStatus();
         const statusServer = res.data.state;
-        const currentBlock = await this.posSynch.getCurrentBlock();
+        // const currentBlock = await this.pobSynch.getCurrentBlock();
         if (statusServer == stateServer.FINISHED) {
             // get proof, commit data and forge block
             const proofServer = generateCall(res.data.proof);
@@ -449,22 +387,18 @@ class LoopManager{
                 }
             }
 
-            // Check I am still the winner
-            const deadlineReach = await this._blockDeadline(currentBlock);
-            if (deadlineReach) {
-                this.timeouts.NEXT_STATE = 5000;
-                this.state = state.SYNCHRONIZING;
-                this._resetInfoBatch();
-                return;
+            let txSign;
+            let tx;
+            if  (this.infoCurrentBatch.checkForge) {
+                [txSign, tx] = await this.opManager.getTxCommitAndForgeDeadline(commitData, proofServer.proofA, proofServer.proofB,
+                    proofServer.proofC, proofServer.publicInputs, depOffChainData, feeDepOffChain); 
+            } else {
+                [txSign, tx] = await this.opManager.getTxCommitAndForge(commitData, proofServer.proofA, proofServer.proofB,
+                    proofServer.proofC, proofServer.publicInputs, depOffChainData, feeDepOffChain);
             }
+                 
 
-            const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
-
-            const [txSign, tx] = await this.opManager.getTxCommitAndForge(this.hashChain[indexHash - 1],
-                commitData, proofServer.proofA, proofServer.proofB, proofServer.proofC, proofServer.publicInputs,
-                depOffChainData, feeDepOffChain); 
-
-            this._setInfoTx(tx, txSign.transactionHash, indexHash);
+            this._setInfoTx(tx, txSign.transactionHash);
 
             this.state = state.MINING;
             this.timeouts.NEXT_STATE = 1000;
@@ -519,11 +453,9 @@ class LoopManager{
             this.infoCurrentBatch.retryTimes += 1;
         } else { // Server in pending sate
             this.timeouts.NEXT_STATE = 5000;
-            // Check I am still the winner
-            const deadlineReach = await this._blockDeadline(currentBlock);
             const checkState = await this._checkStateRollup();  //true --> the state matches with the SC
 
-            if (deadlineReach || !checkState)
+            if (!checkState)
             {
                 // Cancel proof calculation
                 await this.cliServerProof.cancel();
@@ -561,7 +493,6 @@ class LoopManager{
             this._resetInfoBatch();
             return;
         }
-
         const txSign = await this.opManager.signTransaction(this.currentTx.tx);
         this._updateTx(txSign.transactionHash);
         this._logResendTx();
@@ -570,20 +501,8 @@ class LoopManager{
         try { //sanity check
             await this.web3.eth.call(this.currentTx.tx);
         } catch (error) { //error EVM transaction
-            const indexHash = await this._getIndexHashChain(this.infoCurrentBatch.opId);
-            if (error.message.includes("hash revealed not match current committed hash") 
-            && indexHash == this.currentTx.indexHash + 1)  //already mined!
-            {
-                self.timeouts.NEXT_STATE = 5000;
-                self.state = state.SYNCHRONIZING;
-                self._logTxOK();
-                self._resetInfoTx();
-                self._resetInfoBatch();   
-                return;
-            } else {
-                this._errorTx(error.message);
-                return;
-            }
+            this._errorTx(error.message);
+            return;
         }
         this.web3.eth.sendSignedTransaction(txSign.rawTransaction)
             .then( receipt => {
@@ -616,6 +535,7 @@ class LoopManager{
                 }
             });
     }
+
     async _getDepositFee(){
         // get fee for deposits off-chain
         const feeWei = await this.rollupSynch.getFeeDepOffChain();
@@ -623,33 +543,38 @@ class LoopManager{
         this.feeDepOffChain = Number(feeEth);
         this.poolTx.setFeeDeposit(this.feeDepOffChain);
     }
-    /**
-     * Checks and log if slot deadline has been reached
-     * @param {Number} currentBlock
-     * @returns {Bool} - true iif slot deadline has been reached, false otherwise  
-     */
-    async _blockDeadline(currentBlock){
-        if (currentBlock >= this.infoCurrentBatch.toBlock){
-            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
-            info += `${chalk.bgYellow.black("warning info")}`;
-            info += ` ==> ${chalk.white.bold("Reach slot deadline block. Cancelling proof computation")}`;
-            this.logger.info(info);
-            return true;
+
+    async _checkForge(){
+        const slots = await this.pobSynch.getSlotWinners();
+        const slotWinner = slots[0];
+        const currentBlock = await this.pobSynch.getCurrentBlock();
+        const deadlineBlock = await this.pobSynch.getBlockBySlot(slotWinner + 1) - this.slotDeadline;
+        this.infoCurrentBatch.deadlineBlock = deadlineBlock;
+        if (currentBlock > deadlineBlock) {
+            this._setInfoBatch();
+            this.infoCurrentBatch.beneficiaryAddress = this.opManager.wallet.address;
+            this.infoCurrentBatch.checkForge = true;
+            this.infoCurrentBatch.waiting = true;
+            this.timeouts.NEXT_STATE = 0;
+            this.state = state.SYNCHRONIZING;
+        } else {
+            this.timeouts.NEXT_STATE = 2000;
+            this.state = state.SYNCHRONIZING;
         }
-        return false;
     }
 
     /**
      * Initialize batch information
      * @param {Number} fromBlock - Ethereum block when the operator is able to forge  
      * @param {Number} toBlock - Ethereum block until the operatir is able to forge
-     * @param {Number} opId - operator identifier
+     * @param {String} forgerAddress - operator forger address
+     * @param {String} beneficiaryAddress - operator beneficiary address
      */
-    _setInfoBatch(fromBlock, toBlock, opId){
+    _setInfoBatch(fromBlock, toBlock, forgerAddress, beneficiaryAddress){
         this.infoCurrentBatch.fromBlock = fromBlock;
         this.infoCurrentBatch.toBlock = toBlock;
-        this.infoCurrentBatch.opId = opId;
-        this.infoCurrentBatch.beneficiaryAddress = this.registerBenAddress[opId];
+        this.infoCurrentBatch.forgerAddress = forgerAddress;
+        this.infoCurrentBatch.beneficiaryAddress = beneficiaryAddress;
         this.infoCurrentBatch.builded = false;
         this.infoCurrentBatch.batchData = undefined;
         this.infoCurrentBatch.waiting = false;
@@ -668,15 +593,13 @@ class LoopManager{
     /**
      * Initialize transaction information 
      * @param {Object} tx - ethereum transaction
-     * @param {String} transactionHash - transaction hash
-     * @param {Number} indexHash - hashchain index
+     * @param {String} transactionHash - transaction hashx
      */
-    _setInfoTx(tx, transactionHash, indexHash){
+    _setInfoTx(tx, transactionHash){
         this.currentTx.startTx = performance.now();
         this.currentTx.txHash = transactionHash;
         this.currentTx.tx = tx;
         this.currentTx.attempts = 0;
-        this.currentTx.indexHash = indexHash;
     }
 
     /**

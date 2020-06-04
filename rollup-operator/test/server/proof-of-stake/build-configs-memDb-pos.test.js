@@ -11,15 +11,15 @@ const path = require("path");
 const ethers = require("ethers");
 const Scalar = require("ffjavascript").Scalar;
 
-const configSynchPath = path.join(__dirname, "../config/synch-config-test.json");
-const configPoolPath = path.join(__dirname, "../config/pool-config-test.json");
-const configWalletPath = path.join(__dirname, "../config/wallet-test.json");
-const configTestPath = path.join(__dirname, "../config/test.json");
+const configSynchPath = path.join(__dirname, "../../config/synch-config-test.json");
+const configPoolPath = path.join(__dirname, "../../config/pool-config-test.json");
+const configWalletPath = path.join(__dirname, "../../config/wallet-test.json");
+const configTestPath = path.join(__dirname, "../../config/test.json");
 
 // service synchronize pool
-const configSynchPoolPath = path.join(__dirname, "../synch-pool-service/config/config-test.json");
-const pathConversionTable = path.join(__dirname,"../config/table-conversion-test.json");
-const pathCustomTokens = path.join(__dirname,"../config/custom-test.json");
+const configSynchPoolPath = path.join(__dirname, "../../synch-pool-service/config/config-test.json");
+const pathConversionTable = path.join(__dirname,"../../config/table-conversion-test.json");
+const pathCustomTokens = path.join(__dirname,"../../config/custom-test.json");
 
 function to18(e) {
     return Scalar.mul(e, Scalar.pow(10, 18));

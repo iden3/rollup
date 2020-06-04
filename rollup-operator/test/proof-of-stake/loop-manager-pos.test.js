@@ -14,24 +14,25 @@ const Scalar = require("ffjavascript").Scalar;
 
 const timeTravel = require("../../../test/contracts/helpers/timeTravel");
 const { timeout } = require("../../src/utils");
-const testUtils = require("./../helpers/utils-test");
+const testUtils = require("../helpers/utils-test");
 
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
 const MemDb = require("../../../rollup-utils/mem-db");
 const RollupDB = require("../../../js/rollupdb");
+const utils = require("../../../rollup-utils/rollup-utils");
 const RollupAccount = require("../../../js/rollupaccount");
 
-const TokenRollup = artifacts.require("../../contracts/test/TokenRollup");
-const Verifier = artifacts.require("../../contracts/test/VerifierHelper");
-const RollupPoB = artifacts.require("../../contracts/RollupPoB");
-const Rollup = artifacts.require("../../contracts/Rollup");
+const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
+const Verifier = artifacts.require("../contracts/test/VerifierHelper");
+const RollupPoS = artifacts.require("../contracts/RollupPoS");
+const Rollup = artifacts.require("../contracts/Rollup");
 
 const RollupSynch = require("../../src/synch");
-const PoBSynch = require("../../src/PoB/synch-pob");
-const OperatorManager = require("../../src/PoB/interface-pob");
+const PoSSynch = require("../../src/proof-of-stake/synch-pos");
+const OperatorManager = require("../../src/proof-of-stake/interface-pos");
 const Pool = require("../../../js/txpool");
 const CliServerProof = require("../../src/cli-proof-server");
-const LoopManager = require("../../src/PoB/loop-manager-pob");
+const LoopManager = require("../../src/proof-of-stake/loop-manager-pos");
 const { exitAx, exitEthAddr, exitAy, fee } = require("../../../js/constants");
 
 // timeouts test
@@ -42,24 +43,27 @@ function to18(e) {
     return Scalar.mul(e, Scalar.pow(10, 18));
 }
 
-contract("Loop Manager PoB", async (accounts) => { 
+contract("Loop Manager", async (accounts) => { 
 
-    //id3 is not necessary
     const {
         0: id0,
         1: id1,
         2: id2,
-        3: operator2Address,
+        // eslint-disable-next-line no-unused-vars
+        3: id3,
+        // eslint-disable-next-line no-unused-vars
         4: id4,
         5: rollupSynchAddress,
-        6: pobSynchAddress,
+        6: posSynchAddress,
         7: tokenList,
         8: feeTokenAddress,
         9: owner,
     } = accounts;
 
     let publicData;
+    let slotPerEra;
     let blocksPerSlot;
+    let blockPerEra;
     let genesisBlock;
 
     const tokenInitialAmount = to18(1000);
@@ -68,12 +72,10 @@ contract("Loop Manager PoB", async (accounts) => {
     const tokenId = 0;
     const gasLimit = "default";
     const gasMultiplier = 1;
-    const burnAddress = "0x0000000000000000000000000000000000000000";
-    const url = "localhost";
 
     let insPoseidonUnit;
     let insTokenRollup;
-    let insRollupPoB;
+    let insRollupPoS;
     let insRollup;
     let insVerifier;
 
@@ -94,7 +96,7 @@ contract("Loop Manager PoB", async (accounts) => {
 
     // Instances to load on loop manager
     let rollupSynch;
-    let pobSynch;
+    let posSynch;
     let poolTx;
     let opManager;
     let cliServerProof;
@@ -104,7 +106,7 @@ contract("Loop Manager PoB", async (accounts) => {
     let synchDb;
     let db;
     let synchRollupDb;
-    let synchPoBDb;
+    let synchPoSDb;
 
     before(async () => {
     // Deploy poseidon
@@ -123,10 +125,10 @@ contract("Loop Manager PoB", async (accounts) => {
             maxTx, maxOnChainTx, feeTokenAddress, { from: owner });
 
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, operator2Address, url);
+        insRollupPoS = await RollupPoS.new(insRollup.address, maxTx);
 
         // Add forge batch mechanism
-        await insRollup.loadForgeBatchMechanism(insRollupPoB.address, { from: owner });
+        await insRollup.loadForgeBatchMechanism(insRollupPoS.address, { from: owner });
         
         // Add token to rollup token list
         await insRollup.addToken(insTokenRollup.address,
@@ -135,14 +137,16 @@ contract("Loop Manager PoB", async (accounts) => {
         // load wallet with funds
         let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
         wallet = new ethers.Wallet(privateKey);
-        const initBalance = 20;
+        const initBalance = 5;
         await web3.eth.sendTransaction({to: wallet.address, from: owner,
             value: web3.utils.toWei(initBalance.toString(), "ether")});
 
-        // get PoB public data
-        publicData = await testUtils.publicDataPoB(insRollupPoB);
+        // get PoS public data
+        publicData = await testUtils.publicDataPoS(insRollupPoS);
         genesisBlock = publicData.genesisBlock;
+        slotPerEra = publicData.slotsPerEra;
         blocksPerSlot = publicData.blocksPerSlot;
+        blockPerEra = slotPerEra * blocksPerSlot;
     });
 
     it("manage rollup token", async () => { 
@@ -152,16 +156,13 @@ contract("Loop Manager PoB", async (accounts) => {
             { from: owner, value: web3.utils.toWei("1", "ether") });
         await insTokenRollup.transfer(rollupAccounts[1].ethAddr, amountDistribution.toString(), { from: rollupAccounts[0].ethAddr });
         await insTokenRollup.transfer(rollupAccounts[2].ethAddr, amountDistribution.toString(), { from: rollupAccounts[0].ethAddr });
-        await insTokenRollup.transfer(rollupAccounts[4].ethAddr, amountDistribution.toString(), { from: rollupAccounts[0].ethAddr });
-
+        
         await insTokenRollup.approve(insRollup.address, tokenInitialAmount.toString(),
             { from: rollupAccounts[0].ethAddr });
         await insTokenRollup.approve(insRollup.address, amountDistribution.toString(),
             { from: rollupAccounts[1].ethAddr });
         await insTokenRollup.approve(insRollup.address, amountDistribution.toString(),
             { from: rollupAccounts[2].ethAddr });
-        await insTokenRollup.approve(insRollup.address, amountDistribution.toString(),
-            { from: rollupAccounts[4].ethAddr });
     });
 
     it("Should initialize loop manager", async () => {
@@ -178,8 +179,8 @@ contract("Loop Manager PoB", async (accounts) => {
             creationHash: insRollup.transactionHash,
             ethAddress: rollupSynchAddress,
             abi: Rollup.abi,
-            rollupPoBAddress: insRollupPoB.address,
-            rollupPoBABI: RollupPoB.abi,
+            rollupPoSAddress: insRollupPoS.address,
+            rollupPoSABI: RollupPoS.abi,
             logLevel: "debug",
             timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000},
         };
@@ -189,44 +190,43 @@ contract("Loop Manager PoB", async (accounts) => {
             configRollupSynch.ethNodeUrl,
             configRollupSynch.contractAddress,
             configRollupSynch.abi,
-            configRollupSynch.rollupPoBAddress,
-            configRollupSynch.rollupPoBABI, 
+            configRollupSynch.rollupPoSAddress,
+            configRollupSynch.rollupPoSABI, 
             configRollupSynch.creationHash,
             configRollupSynch.ethAddress,
             configRollupSynch.logLevel,
             configRollupSynch.timeouts,
         );
         
-        // Init PoB Synch
-        synchPoBDb = new MemDb();
+        // Init PoS Synch
+        synchPoSDb = new MemDb();
 
-        let configSynchPoB = {
-            synchDb: synchPoBDb,
+        let configSynchPoS = {
+            synchDb: synchPoSDb,
             ethNodeUrl: "http://localhost:8545",
-            contractAddress: insRollupPoB.address,
-            creationHash: insRollupPoB.transactionHash,
-            ethAddress: pobSynchAddress,
-            abi: RollupPoB.abi,
+            contractAddress: insRollupPoS.address,
+            creationHash: insRollupPoS.transactionHash,
+            ethAddress: posSynchAddress,
+            abi: RollupPoS.abi,
             logLevel: "debug",
             timeouts: { ERROR: 1000, NEXT_LOOP: 2500, LOGGER: 5000},
         };
         
-        pobSynch = new PoBSynch(
-            configSynchPoB.synchDb,
-            configSynchPoB.ethNodeUrl,
-            configSynchPoB.contractAddress,
-            configSynchPoB.abi,
-            configSynchPoB.creationHash,
-            configSynchPoB.ethAddress,
-            configSynchPoB.logLevel,
-            configSynchPoB.timeouts,
-            burnAddress);
+        posSynch = new PoSSynch(
+            configSynchPoS.synchDb,
+            configSynchPoS.ethNodeUrl,
+            configSynchPoS.contractAddress,
+            configSynchPoS.abi,
+            configSynchPoS.creationHash,
+            configSynchPoS.ethAddress,
+            configSynchPoS.logLevel,
+            configSynchPoS.timeouts);
         
         // Init operator manager
         opManager = new OperatorManager(
-            configSynchPoB.ethNodeUrl,
-            configSynchPoB.contractAddress, 
-            configSynchPoB.abi,
+            configSynchPoS.ethNodeUrl,
+            configSynchPoS.contractAddress, 
+            configSynchPoS.abi,
             wallet,
             gasMultiplier,
             gasLimit);
@@ -252,54 +252,49 @@ contract("Loop Manager PoB", async (accounts) => {
         // Init loop Manager
         loopManager = new LoopManager(
             rollupSynch,
-            pobSynch,
+            posSynch,
             poolTx, 
             opManager,
             cliServerProof,
-            configSynchPoB.logLevel,
-            configSynchPoB.ethNodeUrl,
-            configSynchPoB.timeouts,
+            configSynchPoS.logLevel,
+            configSynchPoS.ethNodeUrl,
+            configSynchPoS.timeouts,
         );
                
         // Init loops    
         loopManager.startLoop();
         rollupSynch.synchLoop();
-        pobSynch.synchLoop();
+        posSynch.synchLoop();
     });
 
+    let hashChain;
+    
+    it("Should calculate hashChain", async () => {
+        const seed = utils.getSeedFromPrivKey(wallet.privateKey);
+        hashChain = utils.loadHashChain(seed);
+        await loopManager.loadSeedHashChain(seed);
+    });
 
-    it("Should register operators", async () => {
+    it("Should register operator", async () => {
         const url = "localhost";
-        const amountBid = 2;
-        const minBidSlots = 2;
-        
-        const currentSlot = await pobSynch.getCurrentSlot();
-        const slot = currentSlot + minBidSlots;
+        const amountToStake = 2;
 
-        const [txSign,] = await opManager.getTxBid(slot, url, amountBid);
-        const resBid = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
-        expect(resBid.status).to.be.equal(true);
-
-        const [txSign2,] = await opManager.getTxBid(slot+1, url, amountBid);
-        const resBid2 = await web3.eth.sendSignedTransaction(txSign2.rawTransaction);
-        expect(resBid2.status).to.be.equal(true);
-
-        const [txSign3,] = await opManager.getTxBid(slot+2, url, amountBid);
-        const resBid3 = await web3.eth.sendSignedTransaction(txSign3.rawTransaction);
-        expect(resBid3.status).to.be.equal(true);
-
-        const amountNextMinBid = Number(publicData.minBid);
-        await insRollupPoB.bid(slot+4, url, {
-            from: operator2Address, value: amountNextMinBid
-        });
+        const txSign = await opManager.getTxRegister(hashChain[hashChain.length - 1], amountToStake, url);
+        const resRegister = await web3.eth.sendSignedTransaction(txSign.rawTransaction);
+        expect(resRegister.status).to.be.equal(true);
 
         const currentBlock = await web3.eth.getBlockNumber();
-        await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // slot 0
+        await timeTravel.addBlocks(genesisBlock - currentBlock + 1); // era 0
         await timeout(timeoutSynch);
-        
-        const currentWinners = await pobSynch.getCurrentWinners();
-        expect(currentWinners[minBidSlots]).to.be.equal(opManager.wallet.address);
-        
+        const listOperators = await posSynch.getOperators();
+        // check address operator is in list operators
+        let found = false;
+        for (const opInfo of Object.values(listOperators)){
+            if (opInfo.controllerAddress == wallet.address.toString()){
+                found = true;
+            }
+        }
+        expect(found).to.be.equal(true);
     });
 
     it("Should add one deposit", async () => {
@@ -309,12 +304,10 @@ contract("Loop Manager PoB", async (accounts) => {
     });
 
     it("Should wait until operator turn", async () => {
-        await timeTravel.addBlocks(blocksPerSlot); // slot 1
+        await timeTravel.addBlocks(blockPerEra); // era 1
         await timeout(timeoutSynch);
-        await timeTravel.addBlocks(blocksPerSlot); // slot 2
+        await timeTravel.addBlocks(blockPerEra); // era 2
         await timeout(timeoutSynch);
-        const currentWinners = await pobSynch.getCurrentWinners();
-        expect(currentWinners[0]).to.be.equal(opManager.wallet.address);
     });
 
     it("Should forge genesis and on-chain transaction", async () => {
@@ -323,7 +316,6 @@ contract("Loop Manager PoB", async (accounts) => {
 
         // Check forge batch
         await testUtils.assertForgeBatch(rollupSynch, 1, timeoutLoop);
-        
         // Check balances
         await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(100), null, null, null, null]);
     });
@@ -341,7 +333,7 @@ contract("Loop Manager PoB", async (accounts) => {
             [rollupAccounts[2].Ax, rollupAccounts[2].Ay], { from: id2, value: web3.utils.toWei("1", "ether") });
 
         // Check forge batch
-        await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop*2);
+        await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
 
         // Check balances
         await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(100), to18(100), to18(100), null, null]);
@@ -366,6 +358,7 @@ contract("Loop Manager PoB", async (accounts) => {
         tx.fromEthAddr = rollupAccounts[0].ethAddr;
 
         await poolTx.addTx(tx);
+        
         // Check forge batch
         await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
         // Check balances
@@ -422,41 +415,5 @@ contract("Loop Manager PoB", async (accounts) => {
         await testUtils.assertForgeBatch(rollupSynch, lastBatch + 1, timeoutLoop);
         // Check balances
         await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(94), to18(104), to18(25), to18(47), null]);
-    }); 
-
-    it("Should add two deposits, forge them after deadline and check states", async () => {
-        // Account |  0  |  1  |  2  |  3  |  4  |
-        // Amount  |  94 | 104 |  25 |  47 | 100 |
-        let lastBatch = await rollupSynch.getLastBatch();
-
-        const loadAmount = to18(100);
-        await insRollup.deposit(loadAmount.toString(), tokenId, rollupAccounts[4].ethAddr,
-            [rollupAccounts[4].Ax, rollupAccounts[4].Ay], { from: id4, value: web3.utils.toWei("1", "ether") });
-
-        let currentSlot = await pobSynch.getCurrentSlot();
-        let currentBlock = await pobSynch.getCurrentBlock();
-
-        const blocksNextSlot = await pobSynch.getBlockBySlot(currentSlot + 1);
-        const addBlocks = blocksNextSlot - currentBlock - 10;
-        if (addBlocks > 0) {
-            await timeTravel.addBlocks(addBlocks); // slot 8
-        } else {
-            await timeTravel.addBlocks(blocksPerSlot); // slot 8
-            
-        }
-        await timeout(timeoutSynch);
-        // Check forge batch
-        await testUtils.assertForgeBatch(rollupSynch, lastBatch, timeoutLoop);
-
-        await timeTravel.addBlocks(blocksPerSlot); // slot 8
-        await timeout(timeoutSynch);
-
-        lastBatch = await rollupSynch.getLastBatch();
-        await testUtils.assertForgeBatch(rollupSynch, lastBatch, timeoutLoop);
-
-        // Check balances
-        await testUtils.assertBalances(rollupSynch, rollupAccounts, [to18(94), to18(104), to18(25), to18(47), to18(100),]);
-
     });
-
 });
