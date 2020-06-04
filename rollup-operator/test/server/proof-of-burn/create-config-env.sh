@@ -1,9 +1,9 @@
 #!/bin/bash
 
 path_wallet="$(pwd)/test/config/wallet-test.json"
-path_synch="$(pwd)/test/config/synch-config-test.json"
-path_pool="$(pwd)/test/config/pool-config-test.json"
-path_env="$(pwd)/src/server/config.env"
+path_synch="$(pwd)/test/config/synch-config-pob-test.json"
+path_pool="$(pwd)/test/config/pool-config-pob-test.json"
+path_env="$(pwd)/src/server/proof-of-burn/config.env"
 
 echo "WALLET_PATH = $path_wallet
 CONFIG_SYNCH = $path_synch

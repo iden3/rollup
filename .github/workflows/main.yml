@@ -37,11 +37,11 @@ jobs:
     - name: Test operator
       run: cd rollup-operator; npm ci; 
     - name: Test operator_js
-      run: cd rollup-operator; npm run test:js
+      run: cd rollup-operator; npm run test:js-pob
     - name: Test operator_pool
       run: cd rollup-operator; npm run test:pool
     - name: Test operator_server
-      run: cd rollup-operator; npm run test:server
+      run: cd rollup-operator; npm run test:server-pob
     - name: Test cli
       run: cd rollup-cli; npm ci; 
     - name: Test cli_utils
