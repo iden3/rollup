@@ -34,10 +34,10 @@ async function compileCircuit(nTx, levels) {
 
     const cmd = `cd ${pathName} && \
     node  --max-old-space-size=100000 \
-    ../../../circom/cli.js \
+    ../../node_modules/circom/cli.js \
     ${cirName} \
     -c -r -v`; 
-
+    console.log(cmd);
     const out = process.exec(cmd);
     out.stdout.on("data", (data) => {
         console.log(data);
@@ -121,23 +121,15 @@ async function inputs(nTx, levels) {
     
     await bb.build();
     const input = bb.getInput();
-
+    console.log(inputFile);
     fs.writeFileSync(inputFile, JSON.stringify(stringifyBigInts(input), null, 1), "utf-8");
 }
 
 async function witness(nTx, levels){
 
-    // if (fs.existsSync(`${__dirname}/../config.json`))
-    //     config = JSON.parse(fs.readFileSync(`${__dirname}/../config.json`, "utf8"));
-    // else {
-    //     console.error(`Config file ${__dirname}/../config.json is missing`);
-    //     process.exit(0);
-    // }
-
     // create folder to store input file
     const pathName = path.join(__dirname, `../rollup-${nTx}-${levels}`);
-    const cppName = path.join(pathName, `${circuitName}-${nTx}-${levels}.cpp`);
-    // const exeOutputName = path.join(pathName, `${circuitName}-${nTx}-${levels}`); 
+    const cppName = path.join(pathName, `${circuitName}-${nTx}-${levels}.cpp`); 
 
     // compile witness cpp program
     const pathBase = path.dirname(cppName);
@@ -163,19 +155,6 @@ async function witness(nTx, levels){
 
     console.error("Witness compilation done");
 
-
-    // const cmd = `g++ -pthread ${cppName} \
-    // ${circomPath}/c/main.cpp \
-    // ${circomPath}/c/calcwit.cpp \
-    // ${circomPath}/c/fr.c \
-    // ${circomPath}/c/fr.o \
-    // ${circomPath}/c/utils.cpp \
-    // -o ${exeOutputName} -I ${circomPath}/c -lgmp -std=c++11 -O3`;
-
-    // console.error("Compiling witness...");
-    // await exec(cmd);
-    // console.error("Witness compilation done");
-
     // generate empty witness as an example
     const witnessName = path.join(pathName, `witness-${nTx}-${levels}.bin`);
     const inputName = path.join(pathName, `input-${nTx}-${levels}.json`);
@@ -198,19 +177,45 @@ async function compileFr(pathC){
     fs.writeFileSync(path.join(pathC, "fr.c"), source.c, "utf8");
 
     let pThread = "";
+    pThread = "-pthread";
 
-    if (process.platform === "darwin") {
-        await exec("nasm -fmacho64 --prefix _ " +
-            ` ${path.join(pathC,  "fr.asm")}`
-        );
-    }  else if (process.platform === "linux") {
-        pThread = "-pthread";
-        await exec("nasm -felf64 " +
-            ` ${path.join(pathC,  "fr.asm")}`
-        );
-    } else throw("Unsupported platform");
+    await exec("nasm -f elf64" +
+        ` ${path.join(pathC,  "fr.asm")}`
+    );
 
     return pThread;
+}
+
+async function exportFiles(nTx, levels){
+
+    let config;
+    if (fs.existsSync(`${__dirname}/../config.json`))
+        config = JSON.parse(fs.readFileSync(`${__dirname}/../config.json`, "utf8"));
+    else {
+        console.error(`Config file ${__dirname}/../config.json is missing`);
+        process.exit(0);
+    }
+
+    // Folders
+    const pyCir = config.pathCir;
+
+    // Files to export
+    const pathName = path.join(__dirname, `../rollup-${nTx}-${levels}`);
+    
+    const pkName = `pk-${nTx}-${levels}`;
+    const pkFile = path.join(pathName, `${pkName}.bin`);
+
+    const vkName = `vk-${nTx}-${levels}`;
+    const vkFile = path.join(pathName, `${vkName}.json`);
+
+    const witnessName = `witness-${nTx}-${levels}`;
+    const witnessFile = path.join(pathName, `${witnessName}.bin`);
+
+    const cmd = `cp ${pkFile} ${pyCir} && ` +
+                `cp ${vkFile} ${pyCir} && ` +
+                `cp ${witnessFile} ${pyCir}`;
+    
+    await exec(cmd);
 }
 
 module.exports = {
@@ -219,4 +224,5 @@ module.exports = {
     setupCircuit,
     inputs,
     witness,
+    exportFiles,
 };

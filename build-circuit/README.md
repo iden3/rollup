@@ -10,7 +10,7 @@ This tool is intended to be used to:
 - `input`
 
 General command line:
-`node build-circuit.js "actions" "nT" "levels"`
+  - `node build-circuit.js "actions" "nTx" "levels"`
 
 ## Commands
 
@@ -20,7 +20,7 @@ General command line:
   - circuit: `circuit-nTx-levels`
 
 Example command: 
-`node build-circuit.js create 16 24`
+  - `node build-circuit.js create 16 24`
 
 ### Compile
 - Compiles rollup circuit and store it into above folder:
@@ -28,7 +28,7 @@ Example command:
   - `circuit-nTx-levels.cpp`: calculate witness cpp
 
 Example command: 
-`node build-circuit.js compile 16 24`
+  - `node build-circuit.js compile 16 24`
 
 ### Setup
 - Perform local setup to retrieve proving key and verification key:
@@ -36,18 +36,28 @@ Example command:
   - `vk-nTx-levels.json`
 
 Example command:
-`node build-circuit.js setup 16 24`
+  - `node build-circuit.js setup 16 24 r1cs` for circuit compiles in `r1cs` format
+  - `node build-circuit.js setup 16 24` for circuit compiles in `json` format
 
 ### Inputs
 - Creates and stores an empty input for a circuit
 
 Example command:
-`node build-circuit.js input 16 24`
+  - `node build-circuit.js input 16 24`
 
 ### Witness
 - Compiles C witness program and creates an example witness given the inputs generated with `input command`
   - `circuit-nTx-levels`: executable to compute witness
   - `witness-nTx-levels.bin`: witness in binary format
+
+Example command:
+  - `node build-circuit.js witness 4 8`
+
+### Export
+- Exports all usefiles to `pathCir`
+
+Example command:
+  - `node build-circuit.js export 16 24`
 
 ## Config
 - `config.json` file is loaded to load some configuration variables:

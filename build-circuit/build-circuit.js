@@ -1,4 +1,5 @@
-const { createCircuit, compileCircuit, setupCircuit, inputs, witness } = require("./helpers/actions");
+const { createCircuit, compileCircuit, setupCircuit,
+    inputs, witness, exportFiles } = require("./helpers/actions");
 
 // Input parameters
 const op = process.argv[2];
@@ -17,4 +18,8 @@ if (op == "create"){
     inputs(nTx, Levels);
 } else if (op == "witness"){
     witness(nTx, Levels);
+} else if (op == "export"){
+    exportFiles(nTx, Levels);
+} else {
+    console.error(`command "${op}" not accepted`);
 }
