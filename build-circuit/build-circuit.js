@@ -17,7 +17,7 @@ if (op == "create"){
 } else if (op == "input"){
     inputs(nTx, Levels);
 } else if (op == "witness"){
-    witness(nTx, Levels);
+    witness(nTx, Levels, process.platform);
 } else if (op == "export"){
     exportFiles(nTx, Levels);
 } else {

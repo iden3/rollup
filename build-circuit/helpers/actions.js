@@ -1,8 +1,5 @@
 const fs = require("fs");
 const path = require("path");
-const snarkjs = require("snarkjs");
-const compiler = require("circom");
-const JSONStream = require("JSONStream");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const process = require("child_process");
@@ -121,11 +118,11 @@ async function inputs(nTx, levels) {
     
     await bb.build();
     const input = bb.getInput();
-    console.log(inputFile);
+
     fs.writeFileSync(inputFile, JSON.stringify(stringifyBigInts(input), null, 1), "utf-8");
 }
 
-async function witness(nTx, levels){
+async function witness(nTx, levels, platform){
 
     // create folder to store input file
     const pathName = path.join(__dirname, `../rollup-${nTx}-${levels}`);
@@ -135,7 +132,7 @@ async function witness(nTx, levels){
     const pathBase = path.dirname(cppName);
     const baseName = path.basename(cppName);
 
-    const pThread = await compileFr(pathBase);
+    const pThread = await compileFr(pathBase, platform);
 
     const cdir = path.join(path.dirname(require.resolve("circom_runtime")), "c");
 
@@ -166,7 +163,7 @@ async function witness(nTx, levels){
     console.log("Witness example calculated");
 }
 
-async function compileFr(pathC){
+async function compileFr(pathC, platform){
 
     const p = Scalar.fromString("21888242871839275222246405745257275088548364400416034343698204186575808495617");
 
@@ -177,11 +174,17 @@ async function compileFr(pathC){
     fs.writeFileSync(path.join(pathC, "fr.c"), source.c, "utf8");
 
     let pThread = "";
-    pThread = "-pthread";
 
-    await exec("nasm -f elf64" +
-        ` ${path.join(pathC,  "fr.asm")}`
-    );
+    if (platform === "darwin") {
+        await exec("nasm -fmacho64 --prefix _ " +
+            ` ${path.join(pathC,  "fr.asm")}`
+        );
+    }  else if (platform === "linux") {
+        pThread = "-pthread";
+        await exec("nasm -felf64 " +
+            ` ${path.join(pathC,  "fr.asm")}`
+        );
+    } else throw("Unsupported platform");
 
     return pThread;
 }
