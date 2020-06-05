@@ -37,8 +37,6 @@ contract RollupPoB is RollupPoBHelpers{
     uint constant percentBonus = 10;
     uint constant percentNextBid = 30;
 
-    uint32 a;
-
     // Defines operator structure
     struct Operator {
         address payable beneficiaryAddress;
@@ -375,12 +373,17 @@ contract RollupPoB is RollupPoBHelpers{
      * @dev Retrieve slot winner
      * @return slot, forger, url, amount
      */
-    function getWinner(uint slot) public view returns (uint, address, address, string memory, uint) {
-        uint256 amount = slotBid[slot].amount;
-        address forger = slotWinner[slot].forgerAddress;
-        address beneficiary = slotWinner[slot].beneficiaryAddress;
-        string memory url = slotWinner[slot].url;
-        return (slot, forger, beneficiary, url, amount);
+    function getWinner(uint slot) public view returns (address, address, string memory, uint) {
+        Operator storage op = slotWinner[slot];
+        if(op.forgerAddress != address(0x00)) {
+            uint256 amount = slotBid[slot].amount;
+            address forger = slotWinner[slot].forgerAddress;
+            address beneficiary = slotWinner[slot].beneficiaryAddress;
+            string memory url = slotWinner[slot].url;
+            return (forger, beneficiary, url, amount);
+        } else {
+            return (opDefault.forgerAddress, opDefault.beneficiaryAddress, opDefault.url, 0);
+        }
     }
 
      /**
@@ -388,7 +391,12 @@ contract RollupPoB is RollupPoBHelpers{
      * @return url
      */
     function getWinnerUrl(uint slot) public view returns (string memory) {
-        return slotWinner[slot].url;
+        Operator storage op = slotWinner[slot];
+        if(op.forgerAddress != address(0x00)) {
+            return op.url;
+        } else {
+            return opDefault.url;
+        }
     }
 
      /**
