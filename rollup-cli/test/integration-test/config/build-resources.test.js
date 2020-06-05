@@ -9,13 +9,13 @@
 const chai = require('chai');
 const fs = require('fs');
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
-const { Wallet } = require('../../src/wallet.js');
+const { Wallet } = require('../../../src/utils/wallet.js');
 
 const { expect } = chai;
 const Verifier = artifacts.require('../../../../contracts/test/VerifierHelper');
 const RollupTest = artifacts.require('../../../../contracts/test/RollupTest');
 const TokenRollup = artifacts.require('../../../../contracts/test/TokenRollup');
-const configPath = '../../src/resources/';
+const configPath = '../src/resources/';
 
 contract('Rollup', async (accounts) => {
     let insPoseidonUnit;

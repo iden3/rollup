@@ -15,11 +15,11 @@ const RollupPoS = artifacts.require("../contracts/RollupPoS");
 
 const { addBlocks } = require("../../../../test/contracts/helpers/timeTravel");
 const CliExternalOp = require("../../../src/cli-external-operator");
-const { Wallet } = require("../../../../rollup-cli/src/wallet");
+const { Wallet } = require("../../../../rollup-cli/src/utils/wallet");
 
 const cliPoS = require("../../../../cli-pos/src/utils");
 const { getSeedFromPrivKey, loadHashChain } = require("../../../../rollup-utils/rollup-utils");
-const { depositTx, sendTx, withdrawOffChainTx } = require("../../../../rollup-cli/src/cli-utils");
+const { depositTx, sendTx, withdrawOffChainTx } = require("../../../../rollup-cli/src/utils/cli-utils");
 const { timeout } = require("../../../src/utils");
 const testUtils = require("../helpers/utils-test");
 const Constants = require("../../../../js/constants");

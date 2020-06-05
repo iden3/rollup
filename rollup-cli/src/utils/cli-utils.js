@@ -1,16 +1,16 @@
 /* eslint-disable no-console */
-const { send } = require('./actions/offchain/send.js');
-const { deposit } = require('./actions/onchain/deposit.js');
-const { depositOnTop } = require('./actions/onchain//deposit-on-top');
-const { withdraw } = require('./actions/onchain/withdraw.js');
-const { forceWithdraw } = require('./actions/onchain/force-withdraw.js');
-const { transfer } = require('./actions/onchain/transfer.js');
-const { depositAndTransfer } = require('./actions/onchain/deposit-and-transfer.js');
-const CliExternalOperator = require('../../rollup-operator/src/cli-external-operator');
+const { send } = require('../actions/offchain/send.js');
+const { deposit } = require('../actions/onchain/deposit.js');
+const { depositOnTop } = require('../actions/onchain/deposit-on-top');
+const { withdraw } = require('../actions/onchain/withdraw.js');
+const { forceWithdraw } = require('../actions/onchain/force-withdraw.js');
+const { transfer } = require('../actions/onchain/transfer.js');
+const { depositAndTransfer } = require('../actions/onchain/deposit-and-transfer.js');
+const CliExternalOperator = require('../../../rollup-operator/src/cli-external-operator');
 const { Wallet } = require('./wallet');
-const { approve } = require('./actions/onchain/approve.js');
-const { hexToPoint } = require('../helpers/utils');
-const { exitAx, exitAy } = require('../../js/constants');
+const { approve } = require('../actions/onchain/approve.js');
+const { hexToPoint } = require('../../helpers/utils');
+const { exitAx, exitAy } = require('../../../js/constants');
 
 async function sendTx(urlOperator, babyjubCompressed, amount, walletJson, passphrase, tokenId, fee, nonce, nonceObject, ethAddress) {
     const walletRollup = await Wallet.fromEncryptedJson(walletJson, passphrase);
