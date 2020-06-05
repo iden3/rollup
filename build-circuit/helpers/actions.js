@@ -211,12 +211,12 @@ async function exportFiles(nTx, levels){
     const vkName = `vk-${nTx}-${levels}`;
     const vkFile = path.join(pathName, `${vkName}.json`);
 
-    const witnessName = `witness-${nTx}-${levels}`;
-    const witnessFile = path.join(pathName, `${witnessName}.bin`);
+    const witnessCppName = `${circuitName}-${nTx}-${levels}`;
+    const witnessCppFile = path.join(pathName, `${witnessCppName}`);
 
     const cmd = `cp ${pkFile} ${pyCir} && ` +
                 `cp ${vkFile} ${pyCir} && ` +
-                `cp ${witnessFile} ${pyCir}`;
+                `cp ${witnessCppFile} ${pyCir}`;
     
     await exec(cmd);
 }
