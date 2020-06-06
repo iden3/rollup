@@ -6,6 +6,7 @@ const process = require("child_process");
 const { stringifyBigInts } = require("ffjavascript").utils;
 const Scalar = require("ffjavascript").Scalar;
 const buildZqField = require("ffiasm").buildZqField;
+const { performance } = require("perf_hooks");
 
 // Define name-files
 const circuitName = "circuit";
@@ -26,6 +27,8 @@ async function createCircuit(nTx, levels){
 
 
 async function compileCircuit(nTx, levels) {
+    const startTime = performance.now();
+
     const pathName = path.join(__dirname, `../rollup-${nTx}-${levels}`);
     const cirName = `${circuitName}-${nTx}-${levels}.circom`;
 
@@ -39,10 +42,15 @@ async function compileCircuit(nTx, levels) {
     out.stdout.on("data", (data) => {
         console.log(data);
     });
+    
+    const stopTime = performance.now();
+    
+    console.log(`Compile command took ${(stopTime - startTime)/1000} s`);
 }
 
 async function setupCircuit(nTx, levels, setupFile) {
-    
+    const startTime = performance.now();
+
     let config;
     if (fs.existsSync(`${__dirname}/../config.json`))
         config = JSON.parse(fs.readFileSync(`${__dirname}/../config.json`, "utf8"));
@@ -94,9 +102,15 @@ async function setupCircuit(nTx, levels, setupFile) {
     console.error("Calculating setup...");
     await exec(cmd);
     console.error("Setup finished");
+
+    const stopTime = performance.now();
+    
+    console.log(`Setup command took ${(stopTime - startTime)/1000} s`);
 }
 
 async function inputs(nTx, levels) {
+    const startTime = performance.now();
+
     const SMTMemDB = require("circomlib").SMTMemDB;
     const RollupDb = require("../../js/rollupdb");
 
@@ -120,10 +134,15 @@ async function inputs(nTx, levels) {
     const input = bb.getInput();
 
     fs.writeFileSync(inputFile, JSON.stringify(stringifyBigInts(input), null, 1), "utf-8");
+
+    const stopTime = performance.now();
+    
+    console.log(`Input command took ${(stopTime - startTime)/1000} s`);
 }
 
 async function witness(nTx, levels, platform){
-
+    const startTime = performance.now();
+    
     // create folder to store input file
     const pathName = path.join(__dirname, `../rollup-${nTx}-${levels}`);
     const cppName = path.join(pathName, `${circuitName}-${nTx}-${levels}.cpp`); 
@@ -161,6 +180,10 @@ async function witness(nTx, levels, platform){
     console.log("Calculating witness example...");
     await exec(cmd2);
     console.log("Witness example calculated");
+
+    const stopTime = performance.now();
+    
+    console.log(`Witness command took ${(stopTime - startTime)/1000} s`);
 }
 
 async function compileFr(pathC, platform){
