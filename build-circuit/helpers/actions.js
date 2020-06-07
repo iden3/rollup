@@ -142,7 +142,7 @@ async function inputs(nTx, levels) {
 
 async function witness(nTx, levels, platform){
     const startTime = performance.now();
-    
+
     // create folder to store input file
     const pathName = path.join(__dirname, `../rollup-${nTx}-${levels}`);
     const cppName = path.join(pathName, `${circuitName}-${nTx}-${levels}.cpp`); 
@@ -178,7 +178,9 @@ async function witness(nTx, levels, platform){
     const cmd2 = `cd ${pathName} && ./${circuitName}-${nTx}-${levels} ${inputName} ${witnessName}`;
 
     console.log("Calculating witness example...");
+    console.time("witness time");
     await exec(cmd2);
+    console.timeEnd("witness time");
     console.log("Witness example calculated");
 
     const stopTime = performance.now();
