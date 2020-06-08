@@ -275,6 +275,7 @@ class Synchronizer {
                     if (!updateFlag) continue;
                     lastBatchSaved = await this.getLastBatch();
                     this.cacheBatchToUpdate = lastBatchSaved;
+                    this.retrySameBatch = 0;
                 }
 
                 totalSynch = (currentBatchDepth == 0) ? 100 : ((lastBatchSaved / currentBatchDepth) * 100);

@@ -3,3 +3,4 @@ node_modules
 /test/resources/
 /wallet.json
 /config.json
+/*.test.json

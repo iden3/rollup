@@ -79,6 +79,7 @@ async function approveTx(nodeEth, addressTokens, amount, spender, walletJson, pa
     return approve(nodeEth, addressTokens, amount, spender, walletRollup, abi, gasLimit, gasMultiplier);
 }
 
+
 module.exports = {
     sendTx,
     depositTx,

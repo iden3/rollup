@@ -142,10 +142,10 @@ class HttpMethods {
 
             try {
                 const resFind = await this.rollupSynch.getExitsBatchById(coin, ax, ay);
-                if (resFind.length > 0)
-                    res.status(200).json(stringifyBigInts(resFind));
-                else
+                if (resFind === null || resFind.length === 0)
                     res.status(404).send("No exits batch found");
+                else
+                    res.status(200).json(stringifyBigInts(resFind));
             } catch (error) {
                 this.logger.error(`Message error: ${error.message}`);
                 this.logger.debug(`Message error: ${error.stack}`);

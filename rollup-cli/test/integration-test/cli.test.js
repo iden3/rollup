@@ -11,7 +11,6 @@ const { Wallet } = require('../../src/utils/wallet');
 const walletPathDefault = path.join(__dirname, '../../wallet.json');
 const walletRollupTest = path.join(__dirname, './resources/wallet-rollup.json');
 const walletMnemonic = path.join(__dirname, './resources/wallet-mnemonic.json');
-const walletImport = path.join(__dirname, './resources/wallet-import.json');
 const walletPathDefaultTest = path.join(__dirname, './resources/wallet-test.json');
 
 const configTest = path.join(__dirname, './resources/config-test.json');
@@ -143,96 +142,6 @@ describe('CREATE KEYS MNEMONIC', async function () {
         });
         command.on('exit', (code) => {
             expect(code).to.be.equal(error.INVALID_MNEMONIC);
-            done();
-        });
-    });
-});
-
-describe('CREATE KEYS IMPORT', async function () {
-    this.timeout(10000);
-
-    it('create wallet to import', (done) => {
-        const command = spawn(`node cli.js createkeys --mnemonic "obscure property tackle faculty fresh gas clerk order silver answer belt brother" -w ${walletMnemonic}`, {
-            shell: true,
-        });
-        command.stdout.on('data', (data) => {
-            if ((data.toString()).includes('Password:')) {
-                command.stdin.write(`${pass}\n`);
-            }
-        });
-        command.on('exit', (code) => {
-            const readWalletMnemonic = fs.readFileSync(`${walletMnemonic}`, 'utf8');
-            expect(JSON.parse(readWalletMnemonic).ethWallet.address).to.be.equal('ea7863f14d1a38db7a5e937178fdb7dfa9c96ed7');
-            expect(code).to.be.equal(0);
-            done();
-        });
-    });
-
-    it('createkeys import', (done) => {
-        const command = spawn(`node cli.js createkeys --import ${walletMnemonic} -w ${walletImport}`, {
-            shell: true,
-        });
-        command.stdout.on('data', (data) => {
-            if ((data.toString()).includes('Password:')) {
-                command.stdin.write(`${pass}\n`);
-            }
-        });
-        command.on('exit', (code) => {
-            const readWalletImport = fs.readFileSync(`${walletImport}`, 'utf8');
-            expect(JSON.parse(readWalletImport).ethWallet.address).to.be.equal('ea7863f14d1a38db7a5e937178fdb7dfa9c96ed7');
-            process.exec(`rm ${walletImport}`);
-            expect(code).to.be.equal(0);
-            done();
-        });
-    });
-
-    it('createkeys import default path', (done) => {
-        const command = spawn(`node cli.js createkeys --import ${walletMnemonic}`, {
-            shell: true,
-        });
-        command.stdout.on('data', (data) => {
-            if ((data.toString()).includes('Password:')) {
-                command.stdin.write(`${pass}\n`);
-            }
-        });
-        command.on('exit', (code) => {
-            const readWalletImport = fs.readFileSync(walletPathDefault, 'utf8');
-            expect(JSON.parse(readWalletImport).ethWallet.address).to.be.equal('ea7863f14d1a38db7a5e937178fdb7dfa9c96ed7');
-            expect(code).to.be.equal(0);
-            done();
-        });
-    });
-
-    it('createkeys import error', (done) => {
-        const command = spawn(`node cli.js createkeys --import ./no-wallet.json -w ${walletImport}`, {
-            shell: true,
-        });
-        command.stdout.on('data', (data) => {
-            if ((data.toString()).includes('Password:')) {
-                command.stdin.write(`${pass}\n`);
-            }
-        });
-        command.on('exit', (code) => {
-            expect(code).to.be.equal(error.INVALID_PATH);
-            done();
-        });
-    });
-
-    it('createkeys import error password', (done) => {
-        let first = true;
-        const command = spawn(`node cli.js createkeys --import ${walletMnemonic} -w ${walletImport}`, {
-            shell: true,
-        });
-        command.stdout.on('data', (data) => {
-            if ((data.toString()).includes('Password:')) {
-                if (first) {
-                    command.stdin.write(`${pass}\n`);
-                    first = false;
-                } else { command.stdin.write('nope\n'); }
-            }
-        });
-        command.on('exit', (code) => {
-            expect(code).to.be.equal(error.PASSWORD_NOT_MATCH);
             done();
         });
     });
