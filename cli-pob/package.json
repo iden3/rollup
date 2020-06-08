@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "ganache": "npx ganache-cli -b 1 --mnemonic 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous' --defaultBalanceEther 100000 > ganache-output.log &",
-    "test:all": "npm run ganache && npx truffle test test/helpers/build-configs.test.js && mocha test/bid.test.js && mocha test/withdraw.test.js ; rm *output.log ; pkill -x 'node*'"
+    "test:all": "npm run ganache && npx truffle test test/helpers/build-configs.test.js && mocha test/bid.test.js && mocha test/multibid.test.js && mocha test/withdraw.test.js ; rm *output.log ; pkill -x 'node*'"
   },
   "bin": {
     "rollup-cli-pob": "cli-pob.js"

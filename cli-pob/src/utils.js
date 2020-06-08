@@ -76,7 +76,7 @@ async function bidWithDifferentBeneficiary(wallet, actualConfig, slot, url, bidV
         gasLimit,
         gasPrice: await _getGasPrice(gasMul, web3),
         value: web3.utils.toHex(web3.utils.toWei(bidValue.toString(), 'ether')),
-        data: rollupPoB.methods.bidWithDifferentBeneficiary(slot, url, beneficiary),
+        data: rollupPoB.methods.bidWithDifferentBeneficiary(slot, url, beneficiary).encodeABI(),
     };
     const signedTx = await web3.eth.accounts.signTransaction(tx, wallet.privateKey);
     return signedTx;
@@ -143,6 +143,75 @@ async function bidRelayAndWithdrawAddress(wallet, actualConfig, slot, url, bidVa
 }
 
 /**
+ * Make bid to RollupPoB
+ * @param {Object} wallet - wallet json object
+ * @param {Object} actualConfig - client configuration
+ * @param {Number} slot - slot
+ * @param {String} url - operator url
+ * @param {Number} bidValue - bid value (ether)
+ * @param {String} beneficiary - beneficiary Address
+ * @param {String} forger - forger Address
+ * @param {String} withdrawAddress - address to withdraw bid
+ * @param {String} bonusAddress - bonus Address
+ * @param {Boolean} useBonus - use the bonus or not
+ * @param {Number} gasLimit - gas limit
+ * @param {Number} gasMul - gas multiplier
+ * @returns {Object} - signed transaction
+ */
+
+async function bidWithDifferentAddresses(wallet, actualConfig, slot, url, bidValue, beneficiary,
+    forger, withdrawAddress, bonusAddress, useBonus, gasLimit, gasMul) {
+    const web3 = new Web3(new Web3.providers.HttpProvider(actualConfig.nodeUrl));
+    const rollupPoB = new web3.eth.Contract(actualConfig.pobAbi, actualConfig.pobAddress);
+    const tx = {
+        from: wallet.address,
+        to: actualConfig.pobAddress,
+        gasLimit,
+        gasPrice: await _getGasPrice(gasMul, web3),
+        value: web3.utils.toHex(web3.utils.toWei(bidValue.toString(), 'ether')),
+        data: rollupPoB.methods.bidWithDifferentAddresses(slot, url, beneficiary, forger, withdrawAddress, bonusAddress, useBonus).encodeABI(),
+    };
+    const signedTx = await web3.eth.accounts.signTransaction(tx, wallet.privateKey);
+    return signedTx;
+}
+
+/**
+ * Make bid to RollupPoB
+ * @param {Object} wallet - wallet json object
+ * @param {Object} actualConfig - client configuration
+ * @param {Array} rangeSlot - slot
+ * @param {String} url - operator url
+ * @param {Array} rangeBid - bid value (ether)
+ * @param {Number} gasLimit - gas limit
+ * @param {Number} gasMul - gas multiplier
+ * @returns {Object} - signed transaction
+ */
+
+async function multiBid(wallet, actualConfig, rangeSlot, url, rangeBid, gasLimit, gasMul) {
+    const web3 = new Web3(new Web3.providers.HttpProvider(actualConfig.nodeUrl));
+    const rollupPoB = new web3.eth.Contract(actualConfig.pobAbi, actualConfig.pobAddress);
+    let totalAmount = web3.utils.toBN(0);
+    const rangeBidWei = [];
+    for (let i = 0; i < rangeBid.length; i++) {
+        const bidWei = web3.utils.toWei(rangeBid[i].toString(), 'ether');
+        rangeBidWei.push(bidWei);
+        const auxBid = web3.utils.toBN(bidWei);
+        const addBid = auxBid.mul(web3.utils.toBN(rangeSlot[i][1] - rangeSlot[i][0] + 1));
+        totalAmount = totalAmount.add(addBid);
+    }
+    const tx = {
+        from: wallet.address,
+        to: actualConfig.pobAddress,
+        gasLimit,
+        gasPrice: await _getGasPrice(gasMul, web3),
+        value: web3.utils.toHex(totalAmount),
+        data: rollupPoB.methods.multiBid(rangeBidWei, rangeSlot, url).encodeABI(),
+    };
+    const signedTx = await web3.eth.accounts.signTransaction(tx, wallet.privateKey);
+    return signedTx;
+}
+
+/**
  * Get bid from RollupPoB
  * @param {Object} wallet - wallet json object
  * @param {Object} actualConfig - client configuration
@@ -169,6 +238,8 @@ module.exports = {
     bidWithDifferentBeneficiary,
     bidRelay,
     bidRelayAndWithdrawAddress,
+    bidWithDifferentAddresses,
+    multiBid,
     withdraw,
     getEtherBalance,
 };

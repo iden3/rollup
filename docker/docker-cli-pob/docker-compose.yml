@@ -1,0 +1,13 @@
+version: '3'
+services:
+  cli-pob:
+    container_name: cli-pob
+    network_mode: "host"
+    build:
+      context: .
+      args:
+        - branch=${BRANCH}
+    env_file: 
+      - ./.env
+    stdin_open: true
+    tty: true
