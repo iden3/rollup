@@ -5,7 +5,7 @@ const { createCircuit, compileCircuit, setupCircuit,
 const op = process.argv[2];
 const nTx = Number(process.argv[3]);
 const Levels = Number(process.argv[4]);
-const setupFile = process.argv[5];
+const setupOption = process.argv[5];
 
 // compile circuit
 if (op == "create"){
@@ -13,11 +13,11 @@ if (op == "create"){
 } else if (op == "compile") {
     compileCircuit(nTx, Levels);
 } else if (op == "setup") {
-    setupCircuit(nTx, Levels, setupFile);
+    setupCircuit(nTx, Levels, setupOption);
 } else if (op == "input"){
     inputs(nTx, Levels);
 } else if (op == "witness"){
-    witness(nTx, Levels, process.platform);
+    witness(nTx, Levels, process.platform, setupOption);
 } else if (op == "export"){
     exportFiles(nTx, Levels);
 } else {

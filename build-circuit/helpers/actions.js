@@ -140,7 +140,7 @@ async function inputs(nTx, levels) {
     console.log(`Input command took ${(stopTime - startTime)/1000} s`);
 }
 
-async function witness(nTx, levels, platform){
+async function witness(nTx, levels, platform, setupOption){
     const startTime = performance.now();
 
     // create folder to store input file
@@ -155,9 +155,9 @@ async function witness(nTx, levels, platform){
 
     const cdir = path.join(path.dirname(require.resolve("circom_runtime")), "c");
 
-    console.error("Compiling witness...");
-
-    await exec("g++" + ` ${pThread}` +
+    if (setupOption !== "skip"){
+        console.error("Compiling witness...");
+        await exec("g++" + ` ${pThread}` +
                ` ${path.join(cdir,  "main.cpp")}` +
                ` ${path.join(cdir,  "calcwit.cpp")}` +
                ` ${path.join(cdir,  "utils.cpp")}` +
@@ -167,9 +167,9 @@ async function witness(nTx, levels, platform){
                ` -o ${path.join(pathBase, path.parse(baseName).name)}` +
                ` -I ${pathBase} -I${cdir}` +
                " -lgmp -std=c++11 -DSANITY_CHECK -g"
-    );
-
-    console.error("Witness compilation done");
+        );
+        console.error("Witness compilation done");
+    }
 
     // generate empty witness as an example
     const witnessName = path.join(pathName, `witness-${nTx}-${levels}.bin`);
