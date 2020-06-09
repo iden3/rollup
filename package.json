@@ -16,7 +16,6 @@
     "test:coverage": "npx truffle run coverage --file='./test/contracts/*.test.js'",
     "build:webapp": "browserify rollup-cli/index.js -s rollup > simple-webapp/src/utils/bundle-cli.js && browserify rollup-operator/index.js -s operator > simple-webapp/src/utils/bundle-op.js && simple-webapp/src/utils/disable-eslint.sh",
     "test:all": "npm run test:rollup && cd rollup-cli && npm run test:all && cd ../rollup-operator && npm run test:all && cd ../cli-pob && npm run test:all"
-
   },
   "repository": {
     "type": "git",

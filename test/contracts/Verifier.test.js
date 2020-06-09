@@ -61,6 +61,11 @@ contract("Verifier", () => {
         const res = await insVerifier.verifyProof(proof.proofA, proof.proofB, proof.proofC,
             proof.publicInputs);
         expect(res).to.be.equal(true);
+
+        const gasVerify = (await insVerifier.verifyProof.estimateGas(proof.proofA, proof.proofB, proof.proofC,
+            proof.publicInputs)).toString();
+        
+        console.log("Gas spend by \"VerifyProof\" function: ", gasVerify);
     });
 
     it("verify incorrect proof", async () => {

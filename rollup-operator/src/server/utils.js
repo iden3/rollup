@@ -86,8 +86,8 @@ async function getGeneralInfo(rollupSynch, posSynch) {
     generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
     generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
     generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
-    generalInfo["rollupSynch"].feeDeposit = await rollupSynch.getFeeDepOffChain().toString();
-    generalInfo["rollupSynch"].feeOnChainTx = await rollupSynch.getFeeOnChainTx().toString();
+    generalInfo["rollupSynch"].feeDeposit = (await rollupSynch.getFeeDepOffChain()).toString();
+    generalInfo["rollupSynch"].feeOnChainTx = (await rollupSynch.getFeeOnChainTx()).toString();
 
     // StaticData
     generalInfo["rollupSynch"].contractAddress = staticDataRollup.contractAddress;
@@ -130,8 +130,8 @@ async function getGeneralInfoPob(rollupSynch, pobSynch) {
     generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
     generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
     generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
-    generalInfo["rollupSynch"].feeDeposit = await rollupSynch.getFeeDepOffChain().toString();
-    generalInfo["rollupSynch"].feeOnChainTx = await rollupSynch.getFeeOnChainTx().toString();
+    generalInfo["rollupSynch"].feeDeposit = (await rollupSynch.getFeeDepOffChain()).toString();
+    generalInfo["rollupSynch"].feeOnChainTx = (await rollupSynch.getFeeOnChainTx()).toString();
 
     // StaticData
     generalInfo["rollupSynch"].contractAddress = staticDataRollup.contractAddress;

@@ -77,8 +77,10 @@ class Synchronizer {
         this.rollupPoSContract = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         abiDecoder.addABI(rollupPoSABI);
         this.forgeEventsCache = new Map();
+        this.retrySameBatch = 0;
+        this.cacheBatchToUpdate = 0;
         this.mode = mode;
-        
+
         this._initTimeouts(timeouts);
         this._initLogger(logLevel);
     }
@@ -272,6 +274,8 @@ class Synchronizer {
                     const updateFlag = await this._updateEvents([...logsForge,...logsOnChain], lastBatchSaved + 1, targetBlockNumber);
                     if (!updateFlag) continue;
                     lastBatchSaved = await this.getLastBatch();
+                    this.cacheBatchToUpdate = lastBatchSaved;
+                    this.retrySameBatch = 0;
                 }
 
                 totalSynch = (currentBatchDepth == 0) ? 100 : ((lastBatchSaved / currentBatchDepth) * 100);
@@ -342,6 +346,14 @@ class Synchronizer {
         // beyond "confirmationBlocks" blockchain is considered secure and immutable
         if (lastSynchBlock >= currentBlock - confirmationBlocks)
             this.forgeEventsCache.clear();
+
+        if (this.cacheBatchToUpdate == batchToSynch)
+            this.retrySameBatch += 1;
+
+        if (this.retrySameBatch > 4){
+            this.forgeEventsCache.clear();
+            this.retrySameBatch = 0;
+        }
 
         let targetBlockNumber = this.forgeEventsCache.get(batchToSynch);
         if (!targetBlockNumber){
