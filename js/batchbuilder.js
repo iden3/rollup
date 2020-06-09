@@ -92,6 +92,10 @@ module.exports = class BatchBuilder {
             const lastHash = i == 0 ? 0: this.input.imOnChainHash[i-1];
             this.input.imOnChainHash[i] = lastHash;
             this.input.imOnChain[i] = 0;
+            this.input.imFeeAcc[i] = [];
+            for (let j=0; j<16; j++) {
+                this.input.imFeeAcc[i][j] = (i == 0) ? 0: this.input.imFeeAcc[i-1][j];
+            }
         }
     }
 
@@ -534,6 +538,11 @@ module.exports = class BatchBuilder {
                 this.input.imOnChainHash[i] = lastHash;
                 this.input.imOnChain[i] = 0;
             }
+
+            this.input.imFeeAcc[i] = [];
+            for (let j=0; j<16; j++) {
+                this.input.imFeeAcc[i][j] = this.feeTotals[j];
+            }
         }
 
         // Database numBatch - Idx
@@ -638,6 +647,7 @@ module.exports = class BatchBuilder {
             imExitRoot: [],
             imOnChainHash: [],
             imOnChain: [],
+            imFeeAcc: [],
 
             txData: [],
             fromIdx: [],

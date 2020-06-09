@@ -31,6 +31,7 @@ template Rollup(nTx, nLevels) {
     signal private input imExitRoot[nTx-1];
     signal private input imOnChainHash[nTx-1];
     signal private input imOnChain[nTx-1];
+    signal private input imFeeAcc[nTx-1][16];
 
     signal private input txData[nTx];
     signal private input fromIdx[nTx];
@@ -213,7 +214,7 @@ template Rollup(nTx, nLevels) {
             Tx[i].oldStRoot <== imStateRoot[i-1];
             Tx[i].oldExitRoot <== imExitRoot[i-1];
             for (j = 0; j < 16; j++){
-                Tx[i].accFeeIn[j] <== Tx[i-1].accFeeOut[j];
+                Tx[i].accFeeIn[j] <== imFeeAcc[i-1][j]; // Tx[i-1].accFeeOut[j];
             }
         }
 
@@ -238,6 +239,9 @@ template Rollup(nTx, nLevels) {
     for (i=0; i<nTx-1; i++) {
         Tx[i].newStRoot  === imStateRoot[i];
         Tx[i].newExitRoot  === imExitRoot[i];
+        for (j = 0; j < 16; j++){
+            Tx[i].accFeeOut[j]  === imFeeAcc[i][j];
+        }
     }
 
     component n2bOffChainHash = Bits2Num(256);
