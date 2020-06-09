@@ -66,7 +66,7 @@ class TXPool {
     }
 
     setConversion(conversion) {
-        this.conversion = conversion;
+        this.conversion = conversion || {};
     }
 
     setFeeDeposit(feeDeposit) {

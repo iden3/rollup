@@ -132,7 +132,7 @@ class TmpState {
 
 
     _checkFeeDeposit(tx){
-        if (this.feeDeposit === null || this.ethPrice === null || this.conversion === null) 
+        if (this.feeDeposit === null || this.ethPrice === null) 
             return false;
 
         const feeTx =  utils.computeFee(tx.amount, tx.fee);
