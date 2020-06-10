@@ -467,7 +467,7 @@ class SynchPoB {
      */
     async getStaticData() {
         return {
-            contractAddress: this.rollupPoSAddress,
+            contractAddress: this.rollupPoBAddress,
             blocksPerSlot: this.blocksPerSlot,
             slotDeadline: this.slotDeadline,
             genesisBlock: this.genesisBlock,
