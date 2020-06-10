@@ -338,8 +338,9 @@ class TXPool {
                             tx.queue = "NAV";
                             nNotAv ++;
                             notAvTxs[i][n].push(tx);
-                        } else {
-                            assert(0, "Unreachable code");
+                        } else { 
+                            console.log("Unreachable code: tranction should be rejected before");
+                            tx.removed = true;
                         }
                     }
                     if (possibleTxs.length>0) {
@@ -608,7 +609,7 @@ class TXPool {
         }
 
         for (let i=0; i<forgedTxs.length; i++) {
-            bb.addTx(forgedTxs[i]);
+            bb.addTx(Object.assign({}, forgedTxs[i])); // clone forged Tx, cause batchbuilder could modify them
             if (forgedTxs[i].onChain){
                 bb.addDepositOffChain(forgedTxs[i]);
             }

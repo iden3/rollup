@@ -315,7 +315,9 @@ let pool;
         //////////
         const tableConversion = JSON.parse(fs.readFileSync(poolConfig.pathConversionTable));
         poolConfig.ethPrice = tableConversion.ethPrice;
-        poolConfig.feeDeposit = await rollupSynch.getFeeDepOffChain();
+        const feeWei = await rollupSynch.getFeeDepOffChain();
+        const feeEth = ethers.utils.formatEther(feeWei.toString());
+        poolConfig.feeDeposit = Number(feeEth);
         pool = await Pool(initRollupDb, tableConversion.conversion, poolConfig);
 
         ////////////////

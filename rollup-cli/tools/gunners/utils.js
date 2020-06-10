@@ -4,27 +4,28 @@
 
 const fs = require('fs');
 const ethers = require('ethers');
+const { Scalar } = require('ffjavascript');
 
 const { Wallet } = require('../../src/utils/wallet');
 const { deposit } = require('../../src/actions/onchain/deposit');
 const { depositOnTop } = require('../../src/actions/onchain/deposit-on-top');
 
 async function createWallets(numWallets, amountToken, passString, addressRollup, walletEthFunder,
-    amountEther, addressTokens, abiTokens, node, path, mnemonic) {
+    amountEther, addressTokens, abiTokens, node, path, mnemonic, index) {
     const pathNewWallets = path || './wallets';
 
     if (!fs.existsSync(pathNewWallets)) {
         fs.mkdirSync(pathNewWallets);
     }
-    const wallets = [];
+    const wallets = {};
     const provider = new ethers.providers.JsonRpcProvider(node);
     walletEthFunder = walletEthFunder.connect(provider);
 
     const contractTokensFunder = new ethers.Contract(addressTokens, abiTokens, walletEthFunder);
 
-    for (let i = 1; i <= numWallets; i++) {
+    for (let i = index; i < numWallets + index; i++) {
         if (mnemonic) {
-            wallets[i] = await Wallet.fromMnemonic(mnemonic, i - 1);
+            wallets[i] = await Wallet.fromMnemonic(mnemonic, i);
         } else {
             wallets[i] = await Wallet.createRandom();
         }
@@ -46,16 +47,18 @@ async function createWallets(numWallets, amountToken, passString, addressRollup,
             await receipt.wait();
         }
 
-        // provide tokens:
-        const tokens = await contractTokensFunder.balanceOf(address); // if dont have enough tokens:
-        if (parseInt(tokens._hex, 16) < amountToken) {
-            await contractTokensFunder.transfer(address, amountToken);
-        }
+        if (Scalar.gt(amountToken, 0)) {
+            // provide tokens:
+            const tokens = await contractTokensFunder.balanceOf(address); // if dont have enough tokens:
+            if (Scalar.lt(Scalar.fromString(tokens._hex, 16), amountToken)) {
+                await contractTokensFunder.transfer(address, amountToken.toString());
+            }
 
-        // approve tokens.
-        walletEth = walletEth.connect(provider);
-        const contractTokensBot = new ethers.Contract(addressTokens, abiTokens, walletEth);
-        await contractTokensBot.approve(addressRollup, amountToken); // config.Json address of rollupSC
+            // approve tokens.
+            walletEth = walletEth.connect(provider);
+            const contractTokensBot = new ethers.Contract(addressTokens, abiTokens, walletEth);
+            await contractTokensBot.approve(addressRollup, amountToken.toString()); // config.Json address of rollupSC
+        }
     }
     return wallets;
 }
@@ -77,7 +80,7 @@ async function walletsDeposit(amountToken, passString, addressRollup, abiRollup,
 
     const provider = new ethers.providers.JsonRpcProvider(node);
     const contractRollup = new ethers.Contract(addressRollup, abiRollup, provider);
-    const wallets = [];
+    const wallets = {};
     let i = 1;
     for (const file of files) {
         wallets[i] = await Wallet.fromEncryptedJson(JSON.parse(fs.readFileSync(`${path}/${file}`, 'utf8')), passString);
@@ -91,14 +94,14 @@ async function walletsDeposit(amountToken, passString, addressRollup, abiRollup,
             if (k === 0) {
                 const response = await contractRollup.getLeafInfo(pubKeyBabyjub, tokenId);
                 if (parseInt(response.ethAddress, 16) === 0) {
-                    await deposit(node, addressRollup, amountToken, tokenId, wallets[j],
+                    await deposit(node, addressRollup, amountToken.toString(), tokenId, wallets[j],
                         0, abiRollup);
                 } else {
-                    await depositOnTop(node, addressRollup, amountToken, tokenId, pubKeyBabyjub, wallets[j],
+                    await depositOnTop(node, addressRollup, amountToken.toString(), tokenId, pubKeyBabyjub, wallets[j],
                         abiRollup);
                 }
             } else {
-                await depositOnTop(node, addressRollup, amountToken, tokenId, pubKeyBabyjub, wallets[j],
+                await depositOnTop(node, addressRollup, amountToken.toString(), tokenId, pubKeyBabyjub, wallets[j],
                     abiRollup);
             }
         }

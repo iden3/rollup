@@ -418,7 +418,7 @@ class LoopManager{
                         self._resetInfoTx();
                         self._resetInfoBatch();
                     } else { // unreachable code
-                        self._errorTx("unreachable code");
+                        self._errorTx("unreachable code loop-manager stateProof: should be OK like the .call() sanity check");
                     }
                 })
                 .catch( async (error) => {
@@ -426,10 +426,10 @@ class LoopManager{
                         self.overwriteTx = true;
                         self._logTxOverwrite();
                     } else { 
-                        if(error.receipt) { //EVM error
+                        if(error.receipt) { // EVM error
                             await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) //catch the error
                                 .then( () => {
-                                    self._errorTx("unreachable code"); 
+                                    self._errorTx("unreachable code loop-manager stateProof: should be an error as the signed transaction, could run out of gas");
                                 })
                                 .catch( error => {
                                     self._errorTx(error.message);
@@ -513,7 +513,7 @@ class LoopManager{
                     self._resetInfoTx();
                     self._resetInfoBatch();
                 } else { //unreachable code
-                    self._errorTx("unreachable code");
+                    self._errorTx("unreachable code loop-manager monitor: should be OK like the .call() sanity check");
                 }   
             })
             .catch( async (error) => {
@@ -524,7 +524,7 @@ class LoopManager{
                     if (error.receipt) { // EVM error
                         await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) // catch the error
                             .then( () => {
-                                self._errorTx("unreachable code"); // unreachable code
+                                self._errorTx("unreachable code loop-manager monitor: should be an error as the signed transaction, could run out of gas");
                             })
                             .catch( error => {
                                 self._errorTx(error.message);
