@@ -257,7 +257,7 @@ class LoopBids {
                     self._resetInfoTx();
                     self._resetInfoBid();
                 } else { // unreachable code
-                    self._errorTx("unreachable code");
+                    self._errorTx("unreachable code loop-bids bidding: should be OK like the .call() sanity check");
                 }
             })
             .catch( async (error) => {
@@ -265,10 +265,10 @@ class LoopBids {
                     self.overwriteTx = true;
                     self._logTxOverwrite();
                 } else { 
-                    if(error.receipt) { //EVM error
+                    if(error.receipt) { // EVM error
                         await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) //catch the error
                             .then( () => {
-                                self._errorTx("unreachable code"); 
+                                self._errorTx("unreachable code loop-bids bidding: should be an error as the signed transaction, could run out of gas"); 
                             })
                             .catch( error => {
                                 self._errorTx(error.message);
@@ -326,7 +326,7 @@ class LoopBids {
                     self._resetInfoTx();
                     self._resetInfoBid();
                 } else { //unreachable code
-                    self._errorTx("unreachable code");
+                    self._errorTx("unreachable code loop-bids monitor: should be OK like the .call() sanity check");
                 }   
             })
             .catch( async (error) => {
@@ -337,7 +337,7 @@ class LoopBids {
                     if (error.receipt) { // EVM error
                         await self.web3.eth.call(this.currentTx.tx, error.receipt.blocknumber) // catch the error
                             .then( () => {
-                                self._errorTx("unreachable code"); // unreachable code
+                                self._errorTx("unreachable code loop-bids monitor: should be an error as the signed transaction, could run out of gas");
                             })
                             .catch( error => {
                                 self._errorTx(error.message);

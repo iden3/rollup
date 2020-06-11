@@ -103,7 +103,7 @@ describe("Synchronizer pool", function () {
             }
         };
         
-        tableConversion.converison = conversion;
+        tableConversion.conversion = conversion;
         tableConversion.ethPrice = null;
 
         fs.writeFileSync(pathConversionTable, JSON.stringify(tableConversion));
@@ -114,7 +114,6 @@ describe("Synchronizer pool", function () {
         await timeout(timeoutUpdate);
 
         const jsonTable = JSON.parse(fs.readFileSync(pathConversionTable));
-
         // Check pool conversion table and conversion table on file
         const poolTable = pool.conversion;
         const conversionJson = jsonTable.conversion;

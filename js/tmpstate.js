@@ -32,12 +32,10 @@ class TmpState {
 
         // Check nonce
         if (tx.nonce < stFrom.nonce) return "NO";
-        if (tx.nonce > stFrom.nonce) return "NOT_NOW";
 
         // Check there is enough funds
         const amount = utils.float2fix(utils.fix2float(tx.amount));
         const fee = utils.computeFee(tx.amount, tx.fee);
-        if (!Scalar.geq(stFrom.amount, Scalar.add(fee, amount))) return "NOT_NOW";
 
         // Check onChain flag
         if (tx.onChain) return "NO";
@@ -64,6 +62,10 @@ class TmpState {
                 return "NO";
             }
         }
+
+        // NNOT_NOW"
+        if (tx.nonce > stFrom.nonce) return "NOT_NOW";
+        if (!Scalar.geq(stFrom.amount, Scalar.add(fee, amount))) return "NOT_NOW";
 
         return "YES";
     }
@@ -132,7 +134,7 @@ class TmpState {
 
 
     _checkFeeDeposit(tx){
-        if (this.feeDeposit === null || this.ethPrice === null || this.conversion === null) 
+        if (this.feeDeposit === null || this.ethPrice === null) 
             return false;
 
         const feeTx =  utils.computeFee(tx.amount, tx.fee);

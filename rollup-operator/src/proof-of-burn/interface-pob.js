@@ -21,9 +21,7 @@ class InterfacePoB {
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.rollupPoB = new this.web3.eth.Contract(abi, this.pobAddress);
         this.gasMul = Scalar.e(gasMul);
-        // Default is described in:
-        // https://iden3.io/post/istanbul-zkrollup-ethereum-throughput-limits-analysis
-        this.gasLimit = (gasLimit === "default") ? (2 * 616240): gasLimit;
+        this.gasLimit = (gasLimit === "default") ? (0): gasLimit;
     }
 
     /**
@@ -46,7 +44,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
             data: this.rollupPoB.methods.bid(slot, url).encodeABI()
@@ -66,7 +63,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
             data: this.rollupPoB.methods.bidWithDifferentBeneficiary(slot, url, beneficiaryAddress).encodeABI()
@@ -87,7 +83,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
             data: this.rollupPoB.methods.bidRelay(slot, url, beneficiaryAddress, forgerAddress).encodeABI()
@@ -109,7 +104,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
             data: this.rollupPoB.methods.bidRelayAndWithdrawAddress(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress).encodeABI()
@@ -133,7 +127,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
             data: this.rollupPoB.methods.bidWithDifferentAddresses(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus).encodeABI()
@@ -150,7 +143,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             data: this.rollupPoB.methods.withdraw().encodeABI()
         };
@@ -173,7 +165,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
             data: this.rollupPoB.methods.commitAndForge(compressedTx, 
@@ -199,7 +190,6 @@ class InterfacePoB {
         const tx = {
             from:  this.wallet.address,
             to: this.pobAddress,
-            gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
             value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
             data: this.rollupPoB.methods.commitAndForgeDeadline(compressedTx, 
@@ -215,6 +205,12 @@ class InterfacePoB {
      * @returns {Objject} - signed transaction 
      */
     async signTransaction(tx) {
+        if (this.gasLimit === 0){
+            const gasEstimated = await this.web3.eth.estimateGas(tx);
+            tx.gasLimit = Math.floor(gasEstimated*1.3); // add a +30% for safety
+        } else {
+            tx.gasLimit = this.gasLimit;
+        }
         return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 }
