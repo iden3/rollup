@@ -28,7 +28,9 @@ Run onchain TX test by typing: `npx truffle test rollup-cli/test/actions/onchain
 ### CLI Test
 Run ganache testnet: `ganache-cli`
 
-- Run test:
-  - Run `npx truffle test rollup-cli/test/integration-test/config/setup-cli.test.js`
 This command will create all the needed configuration to trigger test
-  - Run `npx mocha rollup-cli/test/integration-test/cli.test.js`
+  - Run `npx truffle test rollup-cli/test/integration-test/config/setup-cli.test.js`
+
+- Run test:
+Go to `rollup-cli` folder:
+  - Run `npx mocha test/integration-test/cli.test.js`
