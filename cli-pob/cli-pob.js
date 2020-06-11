@@ -48,8 +48,8 @@ bid command
         Withdraw address
     --bonusaddress or --bo <address> (optional)
         Bonus address
-    --usebonus or --ub <address> (optional)
-        Bonus address
+    --usebonus or --ub <boolean> (optional)
+        Bonus address (true | false)
 
 multibid command
 ================
@@ -163,8 +163,12 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             let txSigned;
             if (beneficiaryAddress !== 'nobeneficiary' && forgerAddress !== 'noforger' && withdrawAddress !== 'nowithdrawaddress'
                 && bonusAddress !== 'nobonusaddress') {
+                let useBonusBool = false;
+                if (useBonus === 'true') {
+                    useBonusBool = true;
+                }
                 txSigned = await bidWithDifferentAddresses(wallet, actualConfig, slot, url, bidValue, beneficiaryAddress,
-                    forgerAddress, withdrawAddress, bonusAddress, useBonus, gasLimit, gasMultiplier);
+                    forgerAddress, withdrawAddress, bonusAddress, useBonusBool, gasLimit, gasMultiplier);
                 console.log('Beneficiary Address: ', beneficiaryAddress);
                 console.log('Forger Address: ', forgerAddress);
                 console.log('Withdraw Address: ', withdrawAddress);
