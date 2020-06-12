@@ -86,6 +86,7 @@ contract("Synchronizer", (accounts) => {
             compressedTxs: batch.getDataAvailableSM(), 
             feePlanCoins: Scalar.fromString(inputSm[7], 16),
             feeTotals: Scalar.fromString(inputSm[8], 16),
+            totalAccounts: Scalar.fromString(inputSm[0], 16),
         });
 
         // Test vector on-chain
@@ -728,6 +729,7 @@ contract("Synchronizer", (accounts) => {
             expect(offDataTest.compressedTxs).to.be.equal(offChainData.compressedTxs);
             expect(Scalar.eq(offDataTest.feePlanCoins, offChainData.feePlanCoins)).to.be.equal(true);
             expect(Scalar.eq(offDataTest.feeTotals, offChainData.feeTotals)).to.be.equal(true);
+            expect(Scalar.eq(offDataTest.totalAccounts, offChainData.totalAccounts)).to.be.equal(true);
         
             // Check on-chain data test
             const onChainData = batchData.onChainData;

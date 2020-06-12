@@ -26,6 +26,16 @@ class CliExternalOperator {
     }
 
     /**
+     * Get account state
+     * @param {Number} coin - coin identifier
+     * @param {String} address - Public rollup address represented as an hex string
+     * @returns {Object} - http response 
+     */
+    getStateAccountByAddress(coin, address) {
+        return axios.get(`${this.url}/accounts/${address}/${coin}`);
+    }
+
+    /**
      * Get array of accounts depending on filters provided
      * @param {Object} filters
      * @returns {Object} - http response 
@@ -39,6 +49,15 @@ class CliExternalOperator {
         urlParams = urlParams.substring(0, urlParams.length - 1);
         
         return axios.get(`${this.url}/accounts${urlParams}`);
+    }
+
+    /**
+     * Get account states
+     * @param {String} address - Public rollup address represented as an hex string
+     * @returns {Object} - http response 
+     */
+    getAccountsByAddress(address) {
+        return axios.get(`${this.url}/accounts/${address}`);
     }
 
     /**

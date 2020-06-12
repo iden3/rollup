@@ -389,6 +389,8 @@ contract("Operator", (accounts) => {
         const walletAx2 = rollupWallets[2].babyjubWallet.publicKey[0].toString(16);
         const walletAy2 = rollupWallets[2].babyjubWallet.publicKey[1].toString(16);
 
+        const coin = 0;
+
         // By Public key Babyjubjub
         let filters;
         let account;
@@ -504,6 +506,42 @@ contract("Operator", (accounts) => {
             expect(error.response.status).to.be.equal(404);
             expect(error.response.data).to.be.equal("Accounts not found");
         }
+
+        // By rollup address (babyjubjub compressed)
+        const resState = await cliExternalOp.getStateAccount(0, walletAx0, walletAy0);
+        const state = resState.data;
+
+        const rollupAddress = state.rollupAddress;
+
+        const resStateB = await cliExternalOp.getStateAccountByAddress(coin, rollupAddress);
+        const stateB = resStateB.data;
+        
+        const resStateC = await cliExternalOp.getAccountsByAddress(rollupAddress);
+        const stateC = resStateC.data[0];
+
+        expect(state.coin).to.be.equal(stateB.coin);
+        expect(stateB.coin).to.be.equal(stateC.coin);
+
+        expect(state.nonce).to.be.equal(stateB.nonce);
+        expect(stateB.nonce).to.be.equal(stateC.nonce);
+
+        expect(state.amount).to.be.equal(stateB.amount);
+        expect(stateB.amount).to.be.equal(stateC.amount);
+
+        expect(state.ax).to.be.equal(stateB.ax);
+        expect(stateB.ax).to.be.equal(stateC.ax);
+
+        expect(state.ay).to.be.equal(stateB.ay);
+        expect(stateB.ay).to.be.equal(stateC.ay);
+
+        expect(state.ethAddress).to.be.equal(stateB.ethAddress);
+        expect(stateB.ethAddress).to.be.equal(stateC.ethAddress);
+
+        expect(state.idx).to.be.equal(stateB.idx);
+        expect(stateB.idx).to.be.equal(stateC.idx);
+
+        expect(state.rollupAddress).to.be.equal(stateB.rollupAddress);
+        expect(stateB.rollupAddress).to.be.equal(stateC.rollupAddress);
     });
 
     it("Should check batch transactions", async () => {

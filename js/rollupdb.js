@@ -1,6 +1,7 @@
 const SMT = require("circomlib").SMT;
 const poseidon = require("circomlib").poseidon;
 const Scalar = require("ffjavascript").Scalar;
+const BabyJubJub = require("circomlib").babyJub;
 
 const SMTTmpDb = require("./smttmpdb");
 const BatchBuilder = require("./batchbuilder");
@@ -99,6 +100,7 @@ class RollupDB {
         if (!stateArray) return null;
         const st = utils.array2state(stateArray);
         st.idx = Number(idx);
+        st.rollupAddress = this.pointToCompress(st.ax, st.ay);
         return st;
     }
 
@@ -294,6 +296,20 @@ class RollupDB {
         if (indexFound !== null){
             states.splice(indexFound);
         }
+    }
+
+    /**
+     * Compute babyjubjub compressed address
+     * @param {String} ax - Ax coordinate encoded as hexadecimal string
+     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @returns {String} compressed bayjubjub address encoded as hexadecimal string
+     */
+    pointToCompress(axStr, ayStr){
+        const ax = Scalar.fromString(axStr, 16);
+        const ay = Scalar.fromString(ayStr, 16);
+        const compress = BabyJubJub.packPoint([ax, ay]);
+
+        return `0x${compress.toString("hex")}`;
     }
 }
 
