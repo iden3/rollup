@@ -191,10 +191,12 @@ class LoopManager{
                 break;
 
             case state.CHECK_FORGE:
-                currentBlock = await this.pobSynch.getCurrentBlock();
-                info += ` | current block: ${chalk.white.bold(`${currentBlock}`)} |  `;
-                info += "deadline block: ";
-                info += `${chalk.white.bold(`${this.infoCurrentBatch.deadlineBlock}`)}`;
+                if(this.infoCurrentBatch.deadlineBlock) {
+                    currentBlock = await this.pobSynch.getCurrentBlock();
+                    info += ` | current block: ${chalk.white.bold(`${currentBlock}`)} |  `;
+                    info += "deadline block: ";
+                    info += `${chalk.white.bold(`${this.infoCurrentBatch.deadlineBlock}`)}`;
+                }
                 break;
             }
 
@@ -366,8 +368,26 @@ class LoopManager{
     async _stateProof() {
         const res = await this.cliServerProof.getStatus();
         const statusServer = res.data.state;
-        // const currentBlock = await this.pobSynch.getCurrentBlock();
+        const currentBlock = await this.pobSynch.getCurrentBlock();
         if (statusServer == stateServer.FINISHED) {
+            let cancelProof;
+            if(this.infoCurrentBatch.checkForge) {
+                // Check that the end of slot has not been reached
+                cancelProof = await this._endSlot(currentBlock);
+            } else {
+                // Check I am still the winner
+                cancelProof = !(await this._stillWinner());
+            }
+            
+            if (cancelProof) {
+                // Cancel proof calculation
+                await this.cliServerProof.cancel();
+                this.state = state.SYNCHRONIZING;
+                this._resetInfoBatch();
+                this._resetInfoTx();
+                return;
+            }
+
             // get proof, commit data and forge block
             const proofServer = generateCall(res.data.proof);
             const commitData = this.infoCurrentBatch.batchData.getDataAvailableSM();
@@ -453,10 +473,18 @@ class LoopManager{
             this.infoCurrentBatch.retryTimes += 1;
         } else { // Server in pending sate
             this.timeouts.NEXT_STATE = 5000;
+
             const checkState = await this._checkStateRollup();  //true --> the state matches with the SC
 
-            if (!checkState)
-            {
+            let cancelProof;
+            if(this.infoCurrentBatch.checkForge) {
+                // Check that the end of slot has not been reached
+                cancelProof = await this._endSlot(currentBlock);
+            } else {
+                // Check I am still the winner
+                cancelProof = !(await this._stillWinner());
+            }
+            if (!checkState || cancelProof) {
                 // Cancel proof calculation
                 await this.cliServerProof.cancel();
                 this.state = state.SYNCHRONIZING;
@@ -548,10 +576,12 @@ class LoopManager{
         const slots = await this.pobSynch.getSlotWinners();
         const slotWinner = slots[0];
         const currentBlock = await this.pobSynch.getCurrentBlock();
+        const toBlock = await this.pobSynch.getBlockBySlot(slotWinner + 1);
         const deadlineBlock = await this.pobSynch.getBlockBySlot(slotWinner + 1) - this.slotDeadline;
         this.infoCurrentBatch.deadlineBlock = deadlineBlock;
         if (currentBlock > deadlineBlock) {
             this._setInfoBatch();
+            this.infoCurrentBatch.toBlock = toBlock;
             this.infoCurrentBatch.beneficiaryAddress = this.opManager.wallet.address;
             this.infoCurrentBatch.checkForge = true;
             this.infoCurrentBatch.waiting = true;
@@ -562,6 +592,42 @@ class LoopManager{
             this.state = state.SYNCHRONIZING;
         }
     }
+
+    /**
+     * Check if operator is still the winner
+     * @param {Number} currentBlock
+     * @returns {Bool} - true if the operator is still a winner
+     */
+    async _stillWinner(){
+        const winners = await this.pobSynch.getOperatorsWinners();
+        const opWinner = winners[0];
+        const forgerAddress = this.opManager.wallet.address;
+        if (opWinner.forger === forgerAddress) {
+            return true;
+        }
+        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
+        info += `${chalk.bgYellow.black("warning info")}`;
+        info += ` ==> ${chalk.white.bold("Reach end of slot and you are not the winner. Cancelling proof computation")}`;
+        this.logger.info(info);
+        return false;
+    }
+
+    /**
+     * Checks and log if end of slot has been reached
+     * @param {Number} currentBlock
+     * @returns {Bool} - true if end of slot has been reached, false otherwise  
+     */
+    async _endSlot(currentBlock){
+        if (currentBlock >= this.infoCurrentBatch.toBlock){
+            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
+            info += `${chalk.bgYellow.black("warning info")}`;
+            info += ` ==> ${chalk.white.bold("Reach end of slot. Cancelling proof computation")}`;
+            this.logger.info(info);
+            return true;
+        }
+        return false;
+    }
+
 
     /**
      * Initialize batch information
