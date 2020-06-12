@@ -106,7 +106,8 @@ contract("Operator Server", (accounts) => {
 
     it("Should create pool config file", async () => {
         const config = {
-            maxSlots: 10,               
+            maxSlots: 10,
+            maxDeposits: 18,               
             executableSlots: 1,      
             nonExecutableSlots: 1,      
             timeout: 1000,

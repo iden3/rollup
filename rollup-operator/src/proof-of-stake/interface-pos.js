@@ -121,7 +121,7 @@ class InterfacePoS {
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toFixed(18), "ether")),
             data: this.rollupPoS.methods.forgeCommittedBatch(proofA, proofB, proofC, input,
                 compressedOnChainTx).encodeABI()
         };
@@ -147,7 +147,7 @@ class InterfacePoS {
             to: this.posAddress,
             gasLimit: this.gasLimit,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toFixed(18), "ether")),
             data: this.rollupPoS.methods.commitAndForge(prevHash, compressedTx, 
                 proofA, proofB, proofC, input, compressedOnChainTx).encodeABI()
         };

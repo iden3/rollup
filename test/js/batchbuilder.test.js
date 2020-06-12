@@ -38,6 +38,7 @@ describe("Rollup Db - batchbuilder", async function(){
         assert.equal(s1.amount, 1000);
         assert.equal(s1.coin, 1);
         assert.equal(s1.nonce, 0);
+        tmpState[1].rollupAddress = s1.rollupAddress;  // add rollup address
         assert.deepEqual(s1, tmpState[1]);
 
         const s2 = await rollupDB.getStateByIdx(2);
@@ -47,6 +48,7 @@ describe("Rollup Db - batchbuilder", async function(){
         assert.equal(s2.amount, 2000);
         assert.equal(s2.coin, 1);
         assert.equal(s2.nonce, 0);
+        tmpState[2].rollupAddress = s2.rollupAddress;
         assert.deepEqual(s2, tmpState[2]);
     
         const bb2 = await rollupDB.buildBatch(4, 8);

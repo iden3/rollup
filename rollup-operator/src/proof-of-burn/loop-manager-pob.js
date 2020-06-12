@@ -332,10 +332,14 @@ class LoopManager{
         if (this.infoCurrentBatch.waiting) this.infoCurrentBatch.waiting = false;
 
         if(!this.infoCurrentBatch.builded) { // If batch has been already built
+            const bbTmp = await this.rollupSynch.getBatchBuilder();
+            await bbTmp.build();
+            const tmpStateOnchain = bbTmp.getTmpStateOnChain();
+            
             const bb = await this.rollupSynch.getBatchBuilder();
             bb.addBeneficiaryAddress(this.infoCurrentBatch.beneficiaryAddress);
             this.infoCurrentBatch.tmpOnChainHash = bb.getTmpOnChainHash();
-            await this.poolTx.fillBatch(bb);
+            await this.poolTx.fillBatch(bb, tmpStateOnchain);
             this.infoCurrentBatch.batchData = bb;
             this.infoCurrentBatch.builded = true;
             this.infoCurrentBatch.depositFee = this.feeDepOffChain;
@@ -396,7 +400,7 @@ class LoopManager{
             const depOffChainData = `0x${this.infoCurrentBatch.batchData.getDepOffChainData().toString("hex")}`;
 
             // + 1% in case some batch is fullfilled and the fee increases, the remaining fee is transfer back to the operator
-            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.infoCurrentBatch.depositFee;
+            const feeDepOffChain = this.infoCurrentBatch.batchData.depOffChainTxs.length * this.infoCurrentBatch.depositFee; 
             // Check if proof has the inputs
             const publicInputsBb = buildPublicInputsSm(this.infoCurrentBatch.batchData);
             if (!proofServer.publicInputs){ // get inputs from batchBuilder

@@ -45,7 +45,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toFixed(18), "ether")),
             data: this.rollupPoB.methods.bid(slot, url).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
@@ -64,7 +64,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toFixed(18), "ether")),
             data: this.rollupPoB.methods.bidWithDifferentBeneficiary(slot, url, beneficiaryAddress).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
@@ -84,7 +84,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toFixed(18), "ether")),
             data: this.rollupPoB.methods.bidRelay(slot, url, beneficiaryAddress, forgerAddress).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
@@ -105,7 +105,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toFixed(18), "ether")),
             data: this.rollupPoB.methods.bidRelayAndWithdrawAddress(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
@@ -128,7 +128,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(bidValue.toFixed(18), "ether")),
             data: this.rollupPoB.methods.bidWithDifferentAddresses(slot, url, beneficiaryAddress, forgerAddress, withdrawAddress, bonusAddress, useBonus).encodeABI()
         };
         const txSign = await this.signTransaction(tx);
@@ -166,7 +166,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toFixed(18), "ether")), // js don't express decimals with full accuracy.
             data: this.rollupPoB.methods.commitAndForge(compressedTx, 
                 proofA, proofB, proofC, input, compressedOnChainTx).encodeABI()
         };
@@ -191,7 +191,7 @@ class InterfacePoB {
             from:  this.wallet.address,
             to: this.pobAddress,
             gasPrice: await this._getGasPrice(),
-            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toString(), "ether")),
+            value: this.web3.utils.toHex(this.web3.utils.toWei(value.toFixed(18), "ether")),
             data: this.rollupPoB.methods.commitAndForgeDeadline(compressedTx, 
                 proofA, proofB, proofC, input, compressedOnChainTx).encodeABI()
         };
