@@ -105,8 +105,8 @@ describe("Tx pool", function () {
         txs[1] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["0.002%"]};
         txs[2] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(4), nonce: 0, fee: Constants.fee["0.2%"]};
         txs[3] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 1, amount: dai(2), nonce: 1, fee: Constants.fee["1%"]};
-        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]}; // can't be mined
-        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]};
+        txs[4] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(5), nonce: 0, fee: Constants.fee["2%"]}; // not mined, cause will be mined txs[5] for the way txpool process availableTxs
+        txs[5] = { toAx: account1.ax, toAy: account1.ay, toEthAddr: account1.ethAddress, coin: 1, amount: dai(3), nonce: 0, fee: Constants.fee["2%"]}; 
 
         account1.signTx(txs[0]);
         account2.signTx(txs[1]);
@@ -134,6 +134,44 @@ describe("Tx pool", function () {
 
         assert.equal(txPool.txs.length, 1);
     });
+
+    it("Should extract 2 tx offchain withdraw formthe pool", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1] = await initBlock(rollupDB);
+
+        /// Block 2
+        const txPool = await TxPool(rollupDB, conversion);
+
+        const txs = [];
+        txs[0] = { toAx: Constants.exitAx, toAy: Constants.exitAy, toEthAddr: Constants.exitEthAddr, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: Constants.exitAx, toAy: Constants.exitAy, toEthAddr: Constants.exitEthAddr, coin: 0, amount: eth(2), nonce: 1, fee: Constants.fee["0.002%"]};
+
+        account1.signTx(txs[0]);
+        account1.signTx(txs[1]);
+
+        for (let i=0; i<txs.length; i++) {
+            await txPool.addTx(txs[i]);
+        }
+
+        const bb = await rollupDB.buildBatch(4, 8);
+
+        await txPool.fillBatch(bb);
+
+        const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
+        const expectedSlots = [ 0, 1 ];
+
+        assert.deepEqual(calcSlots, expectedSlots);
+
+        await rollupDB.consolidate(bb);
+
+        await txPool.purge();
+
+        assert.equal(txPool.txs.length, 0);
+    });
+
 
     it("Should load tx from Db and extract 4 tx from pool and process them", async () => {
         // Start a new state
@@ -235,6 +273,69 @@ describe("Tx pool", function () {
         assert.equal(Scalar.eq(state1.amount, eth(97)), true);  
     });
 
+    it("Should check max deposit Off-chain transactions", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1] = await initBlock(rollupDB);
+
+        const account3 = new RollupAccount(3);
+        const account4 = new RollupAccount(4);
+        const account5 = new RollupAccount(5);
+
+        
+        const txPool = await TxPool(rollupDB, conversion, {maxDeposits: 2});
+        // Set deposit off-chain price to 0.2*Eth
+        txPool.setFeeDeposit(0.2);
+        txPool.setEthPrice(conversion[0].price);
+
+        // Transaction to a non-existent leaf with insufficient funds
+        const txs = [];
+        txs[0]= { toAx: account3.ax, toAy: account3.ay, toEthAddr: account3.ethAddress, coin: 0, amount: eth(2), nonce: 0, fee: Constants.fee["50%"]};
+        txs[1]= { toAx: account4.ax, toAy: account4.ay, toEthAddr: account4.ethAddress, coin: 0, amount: eth(2), nonce: 1, fee: Constants.fee["50%"]};
+        txs[2]= { toAx: account5.ax, toAy: account5.ay, toEthAddr: account5.ethAddress, coin: 0, amount: eth(2), nonce: 2, fee: Constants.fee["50%"]};
+
+        for (let i=0; i<txs.length; i++) {
+            account1.signTx(txs[i]);
+            const resPool = await txPool.addTx(txs[i]);
+            assert.equal(resPool, true);
+        }
+
+        const bb = await rollupDB.buildBatch(4, 8);
+        await txPool.fillBatch(bb);
+
+        assert.equal(bb.offChainTxs.length, 2);
+        assert.equal(bb.onChainTxs.length, 2);
+
+        await rollupDB.consolidate(bb);
+        
+        // Check balances
+        const state3 = await rollupDB.getStateByAccount(0, account3.ax, account3.ay);
+        assert.equal(Scalar.eq(state3.coin, 0), true);
+        assert.equal(Scalar.eq(state3.nonce, 0), true);
+        assert.equal(Scalar.eq(state3.amount, eth(2)), true);
+        assert.equal(state3.ax, account3.ax);
+        assert.equal(state3.ay, account3.ay);
+        assert.equal(state3.ethAddress, account3.ethAddress);
+
+        // Check balances
+        const state4 = await rollupDB.getStateByAccount(0, account4.ax, account4.ay);
+        assert.equal(Scalar.eq(state4.coin, 0), true);
+        assert.equal(Scalar.eq(state4.nonce, 0), true);
+        assert.equal(Scalar.eq(state4.amount, eth(2)), true);
+        assert.equal(state4.ax, account4.ax);
+        assert.equal(state4.ay, account4.ay);
+        assert.equal(state4.ethAddress, account4.ethAddress);
+ 
+        const state5 = await rollupDB.getStateByAccount(0, account5.ax, account5.ay);
+        assert.equal(state5, null);
+
+        const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
+        // finalAmount = initialDeposit - transfer - fee = 100 - 2 - 1 eth
+        assert.equal(Scalar.eq(state1.amount, eth(94)), true);  
+    });
+
     it("Should save/load deposits off-chain from Db", async () => {
         // Start a new state
         const db = new SMTMemDB();
@@ -292,6 +393,71 @@ describe("Tx pool", function () {
         const state1 = await rollupDB.getStateByAccount(0, account1.ax, account1.ay);
         // finalAmount = initialDeposit - transfer - fee = 100 - 6 - 3 eth
         assert.equal(Scalar.eq(state1.amount, eth(91)), true);
+    });
+
+    it("Should check update TmpState with on-chain transactions", async () => {
+        // Start a new state
+        const db = new SMTMemDB();
+        const rollupDB = await RollupDB(db);
+
+        const [account1, account2] = await initBlock(rollupDB);
+
+        const bbTmp = await rollupDB.buildBatch(4, 8);
+    
+        // build tmp State for the Block 1
+        const txsOnChain = [];
+        txsOnChain[0] = {  
+            loadAmount: 0, 
+            amount: eth(96),
+            coin: 0, 
+            fromAx: account1.ax, 
+            fromAy: account1.ay,
+            fromEthAddr: account1.ethAddress,
+            toAx: account2.ax,
+            toAy: account2.ay,
+            toEthAddr: account2.ethAddress,
+            onChain: true 
+        };
+    
+        for (let i=0; i<txsOnChain.length; i++) {
+            await bbTmp.addTx(txsOnChain[i]);
+        }
+        await bbTmp.build();
+
+        const tmpStateOnchain = await bbTmp.getTmpStateOnChain();
+
+        // Block 1 off-chain Transactions, should be the same as first test:
+        const txPool = await TxPool(rollupDB, conversion);
+
+        const txs = [];
+        txs[0] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(3), nonce: 0, fee: Constants.fee["0.001%"]};
+        txs[1] = { toAx: account2.ax, toAy: account2.ay, toEthAddr: account2.ethAddress, coin: 0, amount: eth(2), nonce: 1, fee: Constants.fee["0.002%"]};
+
+        account1.signTx(txs[0]);
+        account1.signTx(txs[1]);
+
+        for (let i=0; i<txs.length; i++) {
+            await txPool.addTx(txs[i]);
+        }
+        
+        const bb = await rollupDB.buildBatch(8, 8);
+
+        for (let i=0; i<txsOnChain.length; i++) { // fill batch with Onchain Tx
+            await bb.addTx(txsOnChain[i]);
+        }
+
+        await txPool.fillBatch(bb, tmpStateOnchain); // update tmpState of the pool with the Onchain Tx
+
+        const calcSlots = bb.offChainTxs.map((tx) => tx.slot);
+        const expectedSlots = [ 0 ];
+
+        assert.deepEqual(calcSlots, expectedSlots);
+
+        await rollupDB.consolidate(bb);
+
+        await txPool.purge();
+
+        assert.equal(txPool.txs.length, 1);
     });
 
     it("Should check purge functionality", async () => {

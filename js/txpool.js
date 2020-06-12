@@ -1,5 +1,4 @@
 const Scalar = require("ffjavascript").Scalar;
-const assert = require("assert");
 
 const utils = require("./utils");
 const Constants = require("./constants");
@@ -36,6 +35,7 @@ class TXPool {
 
         this.feeDeposit = cfg.feeDeposit  || null;
         this.ethPrice = cfg.ethPrice || null;
+        this.maxDeposits = cfg.maxDeposits || 18;
     }
 
     async _load() {
@@ -285,11 +285,11 @@ class TXPool {
         };
     }
 
-    async _classifyTxs() {
+    async _classifyTxs(tmpStates) {
 
         this._calculateNormalizedFees();
 
-        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion, Object.assign({}, tmpStates));
         const now = (new Date()).getTime();
         // Arrange the TX by Index and by Nonce
         const byIdx = {};
@@ -470,14 +470,14 @@ class TXPool {
     }
     */
 
-    async fillBatch(bb) {
+    async fillBatch(bb, tmpStates) {
         const futureTxs = {};
         const txsByCoin = {};
 
         let NSlots = bb.maxNTx - bb.onChainTxs.length;
 
         // Order tx
-        await this._classifyTxs(); 
+        await this._classifyTxs(tmpStates); 
 
         const availableTxs = [];
         for (let i=0; i<this.txs.length; i++) {
@@ -498,28 +498,44 @@ class TXPool {
         // Sort the TXs reverse normalized Fee (First is the most profitable)
         availableTxs.sort(fnSort);
 
-        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion, Object.assign({}, tmpStates)); 
+        let currentDeposits = 0;
         while (availableTxs.length>0) {
             const tx = availableTxs.pop();
             const res = await tmpState.canProcess(tx);
 
             if (res == "YES") {
 
+                if (tx.isDeposit) {
+                    if (currentDeposits >= this.maxDeposits) { // might be better in fil Tx
+                        console.log("MAX deposit offchain Reach");
+                        continue;
+                    } else {
+                        currentDeposits++;
+                    }
+                }
                 await tmpState.process(tx);
                 if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
                 txsByCoin[tx.coin].push(tx);
                 const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
-                
-                if (tx.toIdx){ 
+
+                let sort = false;
+                if ((ftxFrom.length>0)) {
+                    availableTxs.push(...ftxFrom);
+                    sort = true;
+                }
+                if (tx.toIdx) { 
                     const stTo = await tmpState.getState(tx.toIdx);
-                
                     const ftxTo = popFuture(tx.toIdx, stTo.nonce);
-                    if ((ftxFrom.length>0) || (ftxTo.length>0)) {
-                        availableTxs.push(...ftxFrom);
+                    if ((ftxTo.length>0)) {
                         availableTxs.push(...ftxTo);
-                        availableTxs.sort(fnSort);
+                        sort = true;
                     }
                 }
+                if (sort) {
+                    availableTxs.sort(fnSort);
+                }
+
             } else if (res == "NOT_NOW") {
                 pushFuture(tx);
             } else {
@@ -675,7 +691,7 @@ class TXPool {
         }
     }
     
-    async getForgedTx(maxSlots) {
+    async getForgedTx(maxSlots, tmpStates) {
         const futureTxs = {};
         const txsByCoin = {};
     
@@ -703,7 +719,7 @@ class TXPool {
         // Sort the TXs reverse normalized Fee (First is the most profitable)
         availableTxs.sort(fnSort);
     
-        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
+        const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion, Object.assign({}, tmpStates));
         while (availableTxs.length>0) {
             const tx = availableTxs.pop();
             const res = await tmpState.canProcess(tx);

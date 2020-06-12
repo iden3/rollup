@@ -4,9 +4,9 @@ const utils = require("./utils");
 
 class TmpState {
 
-    constructor(rollupDB, feeDeposit, ethPrice, conversion) {
+    constructor(rollupDB, feeDeposit, ethPrice, conversion, tmpStates) {
         this.rollupDB = rollupDB;
-        this.tmpStates = {};
+        this.tmpStates = tmpStates || {};
         this.feeDeposit = feeDeposit;
         this.ethPrice = ethPrice;
         this.conversion = conversion;

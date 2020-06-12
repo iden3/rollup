@@ -859,6 +859,32 @@ module.exports = class BatchBuilder {
         return h;
     }
 
+    async getTmpStateOnChain() {
+        if (!this.builded) throw new Error("Batch must first be builded");
+
+        const tmpState = {};
+        const idxChanges = {};
+
+        for (let i=0; i<this.onChainTxs.length; i++) {
+            const fromIdx = this.onChainTxs[i].fromIdx;
+            const toIdx = this.onChainTxs[i].toIdx;
+            if (idxChanges[fromIdx] == undefined && fromIdx != 0) 
+                idxChanges[fromIdx] = fromIdx;
+            if (idxChanges[toIdx] == undefined && toIdx != 0) 
+                idxChanges[toIdx] = toIdx;
+        }
+
+        for (const idx of Object.keys(idxChanges)) {
+            const resFind = await this.stateTree.find(idx);
+            const foundValueId = poseidonHash([resFind.foundValue, idx]);
+            const st = utils.array2state(await this.dbState.get(foundValueId));
+            st.idx = Number(idx);
+            tmpState[idx] = st;
+        }   
+
+        return tmpState;
+    }
+
     addTx(tx) {
         if (this.builded) throw new Error("Batch already builded");
         if (this.onChainTxs.length + this.offChainTxs.length >= this.maxNTx) {
