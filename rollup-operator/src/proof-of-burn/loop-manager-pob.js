@@ -369,9 +369,11 @@ class LoopManager{
         const res = await this.cliServerProof.getStatus();
         const statusServer = res.data.state;
         const currentBlock = await this.pobSynch.getCurrentBlock();
+
         if (statusServer == stateServer.FINISHED) {
             let cancelProof;
-            if(this.infoCurrentBatch.checkForge) {
+            
+            if (this.infoCurrentBatch.checkForge) {
                 // Check that the end of slot has not been reached
                 cancelProof = await this._endSlot(currentBlock);
             } else {
@@ -417,6 +419,14 @@ class LoopManager{
                     proofServer.proofC, proofServer.publicInputs, depOffChainData, feeDepOffChain);
             }
                  
+            if (txSign.error){
+                this._logWarning(txSign.error);
+                this._resetInfoTx();
+                this._resetInfoBatch();
+                this.timeouts.NEXT_STATE = 0;
+                this.state = state.SYNCHRONIZING;
+                return;
+            }
 
             this._setInfoTx(tx, txSign.transactionHash);
 
@@ -496,7 +506,7 @@ class LoopManager{
     }
 
     /**
-     * Monitors `commitAnsForge` transaction
+     * Monitors `commitAndForge` transaction
      */
     async _monitorTx(){
 
@@ -522,6 +532,16 @@ class LoopManager{
             return;
         }
         const txSign = await this.opManager.signTransaction(this.currentTx.tx);
+
+        if (txSign.error){
+            this._logWarning(txSign.error);
+            this._resetInfoTx();
+            this._resetInfoBatch();
+            this.timeouts.NEXT_STATE = 0;
+            this.state = state.SYNCHRONIZING;
+            return;
+        }
+
         this._updateTx(txSign.transactionHash);
         this._logResendTx();
         const self = this;
@@ -599,30 +619,28 @@ class LoopManager{
      * @returns {Bool} - true if the operator is still a winner
      */
     async _stillWinner(){
-        const winners = await this.pobSynch.getOperatorsWinners();
+        const winners = await this.pobSynch.getWinners();
         const opWinner = winners[0];
         const forgerAddress = this.opManager.wallet.address;
-        if (opWinner.forger === forgerAddress) {
+        if (opWinner === forgerAddress) {
             return true;
         }
-        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
-        info += `${chalk.bgYellow.black("warning info")}`;
-        info += ` ==> ${chalk.white.bold("Reach end of slot and you are not the winner. Cancelling proof computation")}`;
-        this.logger.info(info);
+        this._logWarning("Reach end of slot and you are not the winner. Cancelling proof computation");
         return false;
     }
 
     /**
      * Checks and log if end of slot has been reached
+     * Also checks if I will be the next winner
      * @param {Number} currentBlock
      * @returns {Bool} - true if end of slot has been reached, false otherwise  
      */
     async _endSlot(currentBlock){
-        if (currentBlock >= this.infoCurrentBatch.toBlock){
-            let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
-            info += `${chalk.bgYellow.black("warning info")}`;
-            info += ` ==> ${chalk.white.bold("Reach end of slot. Cancelling proof computation")}`;
-            this.logger.info(info);
+        const winners = await this.pobSynch.getWinners();
+        const imWinner = (winners[0] == this.opManager.address);
+
+        if (currentBlock >= this.infoCurrentBatch.toBlock && !imWinner){
+            this._logWarning("Reach end of slot. Cancelling proof computation");
             return true;
         }
         return false;
@@ -764,6 +782,17 @@ class LoopManager{
         let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])}`;
         info += " | info ==> ";
         info += `${chalk.white.bold("Overwrite previous transaction doubling the gas price")}`;
+        this.logger.info(info);
+    }
+
+    /**
+     * Sends directly to logger warning information
+     * @param {String} reason - warning text information
+     */
+    _logWarning(reason){
+        let info = `${chalk.yellowBright("OPERATOR STATE: ")}${chalk.white(strState[this.state])} | `;
+        info += `${chalk.bgYellow.black("warning info")}`;
+        info += ` ==> ${chalk.white.bold(`${reason}`)}`;
         this.logger.info(info);
     }
 }
