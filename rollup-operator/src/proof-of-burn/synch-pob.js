@@ -388,6 +388,16 @@ class SynchPoB {
     }
 
     /**
+     * Get slot number from ethereum block
+     * @param {Number} numBlock - ethereum block number
+     * @returns {Number} - slot number
+     */
+    getSlotByBlock(numBlock){
+        if (numBlock < this.genesisBlock) return 0;
+        return Math.trunc((numBlock - this.genesisBlock) / (this.blocksPerSlot));
+    }
+
+    /**
      * Get current ethereum block
      * @returns {Number} - current block
      */

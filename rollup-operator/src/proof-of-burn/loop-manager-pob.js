@@ -372,7 +372,7 @@ class LoopManager{
 
         if (statusServer == stateServer.FINISHED) {
             let cancelProof;
-            
+
             if (this.infoCurrentBatch.checkForge) {
                 // Check that the end of slot has not been reached
                 cancelProof = await this._endSlot(currentBlock);
@@ -599,7 +599,7 @@ class LoopManager{
         const toBlock = await this.pobSynch.getBlockBySlot(slotWinner + 1);
         const deadlineBlock = await this.pobSynch.getBlockBySlot(slotWinner + 1) - this.slotDeadline;
         this.infoCurrentBatch.deadlineBlock = deadlineBlock;
-        if (currentBlock > deadlineBlock) {
+        if (currentBlock >= deadlineBlock) {
             this._setInfoBatch();
             this.infoCurrentBatch.toBlock = toBlock;
             this.infoCurrentBatch.beneficiaryAddress = this.opManager.wallet.address;
@@ -636,12 +636,17 @@ class LoopManager{
      * @returns {Bool} - true if end of slot has been reached, false otherwise  
      */
     async _endSlot(currentBlock){
+        const slots = await this.pobSynch.getSlotWinners();
         const winners = await this.pobSynch.getWinners();
-        const imWinner = (winners[0] == this.opManager.address);
-
+        const currentSlot = this.pobSynch.getSlotByBlock(currentBlock);
+        const indexOfSlot = slots.indexOf(Number(currentSlot));
+        const imWinner = (winners[indexOfSlot] === this.opManager.wallet.address);
         if (currentBlock >= this.infoCurrentBatch.toBlock && !imWinner){
             this._logWarning("Reach end of slot. Cancelling proof computation");
             return true;
+        } else if (currentBlock >= this.infoCurrentBatch.toBlock && imWinner){
+            this.infoCurrentBatch.checkForge = false;
+            return false;
         }
         return false;
     }
