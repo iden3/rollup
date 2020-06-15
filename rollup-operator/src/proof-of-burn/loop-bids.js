@@ -56,7 +56,7 @@ class LoopBids {
         this.nodeUrl = nodeUrl;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.contractPoB = new this.web3.eth.Contract(rollupPoBABI, rollupPoBAddress, burnAddress, {handleRevert: true});
-        this.minBid = this.web3.utils.fromWei(this.pobSynch.getMinBid().toString(), "ether");
+        this.minBid = Number(this.web3.utils.fromWei(this.pobSynch.getMinBid().toString(), "ether"));
 
         this.state = state.SYNCHRONIZING;
         this.infoCurrentBid = {};

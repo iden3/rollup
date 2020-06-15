@@ -23,6 +23,7 @@ let etherWallet;
 let encWallet;
 let web3Wallet;
 let gasMul;
+let maxDeposits;
 let nonce2Send;
 
 // rollup
@@ -131,6 +132,8 @@ async function loadVars(){
     poolTimeout = process.env.POOL_TIMEOUT || 10800;
     pathConversionTable = process.env.PATH_CONVERSION_TABLE;
     gasMul = process.env.GAS_MULTIPLIER ? parseInt(process.env.GAS_MULTIPLIER) : 1;
+    maxDeposits = process.env.MAX_DEPOSITS ? process.env.MAX_DEPOSITS : "18";
+
 
     etherWallet = ethers.Wallet.fromMnemonic(process.env.MNEMONIC, `m/44'/60'/0'/0/${process.env.INDEX_ACCOUNT}`);
     encWallet = await etherWallet.encrypt(process.env.PASSWORD);
@@ -361,7 +364,8 @@ async function createConfig(){
         "executableSlots": maxOnChainTx,      
         "nonExecutableSlots": maxOffChainTx,      
         "timeout": poolTimeout,
-        "pathConversionTable": pathConversionTable        
+        "pathConversionTable": pathConversionTable,
+        "maxDeposits": maxDeposits        
     };
 
     fs.writeFileSync(configSynchPath, JSON.stringify(configSynch));

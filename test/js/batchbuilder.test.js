@@ -27,6 +27,8 @@ describe("Rollup Db - batchbuilder", async function(){
         await bb.build();
         bb.getInput();
 
+        const tmpState = await bb.getTmpStateOnChain();
+
         await rollupDB.consolidate(bb);
     
         const s1 = await rollupDB.getStateByIdx(1);
@@ -36,7 +38,9 @@ describe("Rollup Db - batchbuilder", async function(){
         assert.equal(s1.amount, 1000);
         assert.equal(s1.coin, 1);
         assert.equal(s1.nonce, 0);
-    
+        tmpState[1].rollupAddress = s1.rollupAddress;  // add rollup address
+        assert.deepEqual(s1, tmpState[1]);
+
         const s2 = await rollupDB.getStateByIdx(2);
         assert.equal(s2.ax, account2.ax);
         assert.equal(s2.ay, account2.ay);
@@ -44,6 +48,8 @@ describe("Rollup Db - batchbuilder", async function(){
         assert.equal(s2.amount, 2000);
         assert.equal(s2.coin, 1);
         assert.equal(s2.nonce, 0);
+        tmpState[2].rollupAddress = s2.rollupAddress;
+        assert.deepEqual(s2, tmpState[2]);
     
         const bb2 = await rollupDB.buildBatch(4, 8);
 
@@ -62,6 +68,9 @@ describe("Rollup Db - batchbuilder", async function(){
     
         await bb2.build();
         bb2.getInput();
+
+        const tmpState2 = await bb2.getTmpStateOnChain();
+        assert.deepEqual(tmpState2, {}); // no Tx onChain = no states
 
         await rollupDB.consolidate(bb2);
     
