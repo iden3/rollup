@@ -11,6 +11,7 @@ const { timeout, purgeArray, padding256 } = require("./utils");
 const Constants = require("./constants");
 const GlobalConst = require("../../js/constants");
 
+const finalIdxInput = 0;
 const offChainHashInput = 4;
 const feePlanCoinsInput = 7;
 const feeTotals = 8;
@@ -650,6 +651,7 @@ class Synchronizer {
             }
         });
 
+        const inputFinalIdx = inputRetrieved[finalIdxInput];
         const inputOffChainHash = inputRetrieved[offChainHashInput];
         const inputFeePlanCoins = inputRetrieved[feePlanCoinsInput];
         const inputFeeTotals = inputRetrieved[feeTotals];
@@ -686,6 +688,7 @@ class Synchronizer {
             feePlanCoins: inputFeePlanCoins,
             feeTotals: inputFeeTotals,
             timestamp: await this._getTxTimestamp(hashOffChainTx),
+            totalAccounts: inputFinalIdx,
         };
     }
 
