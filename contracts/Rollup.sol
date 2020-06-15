@@ -47,7 +47,7 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     address[] public tokens;
     mapping(uint => address) public tokenList;
     uint constant MAX_TOKENS = 0xFFFFFFFF;
-    uint public feeAddToken = 0.01 ether;
+    uint public feeAddToken = 0.001 ether;
 
     // Address to receive token fees
     address payable feeTokenAddress;
@@ -77,8 +77,8 @@ contract Rollup is Ownable, RollupHelpers, RollupInterface {
     uint256 public totalMinningOnChainFee;
 
     // Fees recollected for every on-chain transaction
-    uint256 public feeOnchainTx = 0.01 ether;
-    uint256 public depositFee = 0.001 ether; 
+    uint256 public feeOnchainTx = 0.001 ether;
+    uint256 public depositFee = 0.0001 ether; 
 
     // maximum on-chain transactions
     uint public MAX_ONCHAIN_TX;
