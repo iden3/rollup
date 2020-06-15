@@ -40,9 +40,9 @@ contract RollupHelpersTest is RollupHelpers{
             entry.e5);
   }
 
-  function calcTokenTotalFeeTest(bytes32 tokenIds, bytes32 fee, bytes32 nTxToken, uint nToken)
-    public pure returns (uint, uint) {
-    return calcTokenTotalFee(tokenIds, fee, nTxToken, nToken);
+  function calcTokenTotalFeeTest(bytes32 tokenIds, bytes32 feeTotal, uint nToken)
+    public pure returns (uint32, uint256) {
+    return calcTokenTotalFee(tokenIds, feeTotal, nToken);
   }
 
   function buildTreeStateTest(uint256 amount, uint16 token, uint256 Ax, uint256 Ay,
@@ -62,49 +62,111 @@ contract RollupHelpersTest is RollupHelpers{
   }
 
   function buildTxDataTest(
-    uint24 fromId,
-    uint24 toId,
     uint16 amountF,
     uint16 token,
     uint32 nonce,
-    uint16 maxFee,
+    uint8 fee,
     uint8 rqOffset,
     bool onChain,
     bool newAccount
   ) public pure returns (bytes32){
-    return buildTxData(fromId, toId, amountF, token, nonce, maxFee, rqOffset, onChain, newAccount);
+    return buildTxData(amountF, token, nonce, fee, rqOffset, onChain, newAccount);
   }
 
-  function buildOnChainDataTest(
+  function buildOnChainHashTest(
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
-    address withdrawAddress,
-    uint256 Ax,
-    uint256 Ay
-  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32, bytes32){
-    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    uint256 hashOnChainData,
+    address fromEthAddr
+  ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32){
+    Entry memory entry = buildOnChainHash(oldOnChainHash, txData, loadAmount, hashOnChainData, fromEthAddr);
     return (entry.e1,
             entry.e2,
             entry.e3,
             entry.e4,
-            entry.e5,
-            entry.e6);
+            entry.e5);
   }
 
-  function hashOnChainTest(
+  function hashOnChainHashTest(
     uint256 oldOnChainHash,
     uint256 txData,
     uint128 loadAmount,
-    address withdrawAddress,
-    uint256 Ax,
-    uint256 Ay
+    uint256 hashOnChainData,
+    address fromEthAddr
   ) public view returns (uint256){
-    Entry memory entry = buildOnChainData(oldOnChainHash, txData, loadAmount, withdrawAddress, Ax, Ay);
+    Entry memory entry = buildOnChainHash(oldOnChainHash, txData, loadAmount, hashOnChainData, fromEthAddr);
     return hashEntry(entry);
+  }
+
+  function buildOnChainDataTest(
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy
+    ) public pure returns (bytes32, bytes32, bytes32, bytes32, bytes32) {
+     Entry memory entry = buildOnChainData(fromAx, fromAy, toEthAddr, toAx, toAy);
+    return (entry.e1,
+            entry.e2,
+            entry.e3,
+            entry.e4,
+            entry.e5);
+  }
+
+  function hashOnChainDataTest(
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy
+    ) public view returns (uint256) {
+     Entry memory entry = buildOnChainData(fromAx, fromAy, toEthAddr, toAx, toAy);
+     return hashEntry(entry);
+  }
+
+  function buildAndHashOnChain(
+    address fromEthAddr,
+    uint256 fromAx,
+    uint256 fromAy,
+    address toEthAddr,
+    uint256 toAx,
+    uint256 toAy,
+    uint256 oldOnChainHash,
+    uint256 txData,
+    uint128 loadAmount
+    ) public view returns (uint256) {
+     return hashEntry(
+       buildOnChainHash(
+         oldOnChainHash, 
+         txData, 
+         loadAmount,  
+         hashEntry(buildOnChainData(fromAx, fromAy, toEthAddr, toAx, toAy)), 
+         fromEthAddr
+       )
+      );
+  }
+
+  function decodeOffchainDepositTest(bytes calldata offChainDeposit) external pure returns (
+    uint256 Ax,
+    uint256 Ay,
+    address ethAddress,
+    uint32 token
+    ) {
+    Ax = abi.decode(offChainDeposit[:32], (uint256));
+    Ay = abi.decode(offChainDeposit[32:64], (uint256));
+    ethAddress = address(abi.decode(offChainDeposit[52:84], (uint256)));
+    token = uint32(abi.decode(offChainDeposit[56:88], (uint256)));
   }
 
   function float2FixTest(uint16 float) public pure returns (uint256){
     return float2Fix(float);
+  }
+
+  function updateOnchainFeeTest(uint256 onChainTxCount, uint256 currentFee) public pure returns (uint256) {
+    return updateOnchainFee(onChainTxCount, currentFee);
+  }
+  function udateDepositFeeTest(uint32 depositCount, uint256 oldFee) public pure returns (uint256) {
+    return updateDepositFee(depositCount, oldFee);
   }
 }

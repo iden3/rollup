@@ -1,5 +1,5 @@
-/* global BigInt */
 const ethers = require('ethers');
+const { Scalar } = require('ffjavascript');
 
 /**
  * Get current average gas price from the last ethereum blocks and multiply it
@@ -9,8 +9,8 @@ const ethers = require('ethers');
 */
 async function getGasPrice(multiplier, provider) {
     const strAvgGas = await provider.getGasPrice();
-    const avgGas = BigInt(strAvgGas);
-    const res = (avgGas * BigInt(multiplier));
+    const avgGas = Scalar.e(strAvgGas);
+    const res = (avgGas * Scalar.e(multiplier));
     const retValue = await ethers.utils.bigNumberify(res.toString());
     return retValue;
 }

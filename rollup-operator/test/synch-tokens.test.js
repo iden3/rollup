@@ -1,11 +1,11 @@
 /* global artifacts */
 /* global contract */
 /* global web3 */
-/* global BigInt */
 
 const { expect } = require("chai");
-
+const Scalar = require("ffjavascript").Scalar;
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
+
 const TokenRollup = artifacts.require("TokenRollup");
 const Verifier = artifacts.require("VerifierHelper");
 const Rollup = artifacts.require("Rollup");
@@ -13,7 +13,7 @@ const MemDb = require("../../rollup-utils/mem-db");
 const { timeout } = require("../src/utils");
 const SynchTokens = require("../src/synch-tokens");
 
-contract("Synnchronizer Pool", (accounts) => {
+contract("Synnchronizer Tokens", (accounts) => {
     const {
         0: owner,
         1: tokenAddress,
@@ -78,7 +78,7 @@ contract("Synnchronizer Pool", (accounts) => {
 
     it("Should add token", async () => {
         // get current token fee
-        const feeToken = BigInt(await insRollup.feeAddToken()).toString();
+        const feeToken = Scalar.e(await insRollup.feeAddToken()).toString();
         const feeTokenSynch = synchTokens.getCurrentFee();
 
         expect(feeToken).to.be.equal(feeTokenSynch);
@@ -95,7 +95,7 @@ contract("Synnchronizer Pool", (accounts) => {
         // id first token added
         const tokenId = 0;
         // check fee tokens
-        const feeToken = BigInt(await insRollup.feeAddToken()).toString();
+        const feeToken = Scalar.e(await insRollup.feeAddToken()).toString();
         const feeTokenSynch = synchTokens.getCurrentFee();
 
         expect(feeToken).to.be.equal(feeTokenSynch);
@@ -111,7 +111,7 @@ contract("Synnchronizer Pool", (accounts) => {
         const tokenIds = {};
         let insToken;
         for (let i = 0; i < numTokens; i++){
-            const feeToken = BigInt(await insRollup.feeAddToken()).toString();
+            const feeToken = Scalar.e(await insRollup.feeAddToken()).toString();
             insToken = await TokenRollup.new(tokenAddress, tokenInitialAmount);
             const res = await insRollup.addToken(insToken.address,
                 { from: tokenAddress, value: feeToken });
@@ -122,7 +122,7 @@ contract("Synnchronizer Pool", (accounts) => {
         await timeout(2*timeoutSynch);
 
         // check fee tokens
-        const feeToken = BigInt(await insRollup.feeAddToken()).toString();
+        const feeToken = Scalar.e(await insRollup.feeAddToken()).toString();
         const feeTokenSynch = synchTokens.getCurrentFee();
 
         expect(feeToken).to.be.equal(feeTokenSynch);

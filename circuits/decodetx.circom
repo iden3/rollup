@@ -12,66 +12,51 @@ include "./decodefloat.circom";
 */
 
 template DecodeTx(nLevels) {
+    // tx off-chain
     signal input previousOnChain;
     signal input oldOnChainHash;
     signal input txData;
     signal input rqTxData;
+    signal input toAx;
+    signal input toAy;
+    signal input toEthAddr;
+
+    // tx on-chain
     signal input loadAmount;
-    signal input ethAddr;
-    signal input ax;
-    signal input ay;
+    signal input fromAx;
+    signal input fromAy;
+    signal input fromEthAddr;
 
-    signal output fromIdx;       // 64        0..63
-    signal output toIdx;         // 64       64..127
-    signal output amount;        // 16      128..143
-    signal output coin;          // 32      144..175
-    signal output nonce;         // 48      176..223
-    signal output userFee;       // 16      224..239
-    signal output rqOffset;      // 3       240..242
-    signal output onChain        // 1       243
-    signal output newAccount     // 1       244
+    // increment idx
+    signal input fromIdx;
+    signal input toIdx;
 
-    signal output dataAvailabilityBits[nLevels*2+16];
-    signal output offChainHash;  // For the signature
-    signal output newOnChainHash;   // For the chained onchain
+    signal input inIdx;
+    signal output outIdx;
+
+    // decode tx data
+    signal output amount;        // 16      64..79
+    signal output coin;          // 32      80..111
+    signal output nonce;         // 48      112..159
+    signal output fee;           // 16      160..163
+    signal output rqOffset;      // 3       164..166
+    signal output onChain        // 1       167
+    signal output newAccount     // 1       168
+
+    signal output dataAvailabilityBits[nLevels*2 + 16 + 4];
+    signal output sigOffChainHash;  // For the signature
+    signal output newOnChainHash;   // For the chained on-chain
 
     var i;
-    var IDEN3_ROLLUP_TX = 1625792389453394788515067275302403776356063435417596283072371667635754651289; // blake2b("IDEN3_ROLLUP_TX") % r
 
-    component n2bData = Num2Bits(245);
+    component n2bData = Num2Bits(181);
     n2bData.in <== txData;
-
-// from
-////////
-    component b2nFrom = Bits2Num(64);
-    for (i=0; i<64; i++) {
-        b2nFrom.in[i] <== n2bData.out[i];
-    }
-    b2nFrom.out ==> fromIdx;
-    var pFrom = 0;
-    for (i=nLevels; i<64; i++) {
-        pFrom += n2bData.out[i];
-    }
-    pFrom === 0;
-
-// to
-////////
-    component b2nTo = Bits2Num(64);
-    for (i=0; i<64; i++) {
-        b2nTo.in[i] <== n2bData.out[64 + i];
-    }
-    b2nTo.out ==> toIdx;
-    var pTo = 0;
-    for (i=nLevels; i<64; i++) {
-        pTo += n2bData.out[64+i];
-    }
-    pTo === 0;
 
 // amount
 ////////
     component dfAmount = DecodeFloatBin();
     for (i=0; i<16; i++) {
-        dfAmount.in[i] <== n2bData.out[128 + i];
+        dfAmount.in[i] <== n2bData.out[64 + i];
     }
     dfAmount.out ==> amount;
 
@@ -79,7 +64,7 @@ template DecodeTx(nLevels) {
 ////////
     component b2nCoin = Bits2Num(32);
     for (i=0; i<32; i++) {
-        b2nCoin.in[i] <== n2bData.out[144 + i];
+        b2nCoin.in[i] <== n2bData.out[80 + i];
     }
     b2nCoin.out ==> coin;
 
@@ -87,69 +72,101 @@ template DecodeTx(nLevels) {
 ////////
     component b2nNonce = Bits2Num(48);
     for (i=0; i<48; i++) {
-        b2nNonce.in[i] <== n2bData.out[176 + i];
+        b2nNonce.in[i] <== n2bData.out[112 + i];
     }
     b2nNonce.out ==> nonce;
 
-// userFee
+// fee
 ////////
-    component dfUserFee = DecodeFloatBin();
-    for (i=0; i<16; i++) {
-        dfUserFee.in[i] <== n2bData.out[224 + i];
+    component b2nFee = Bits2Num(4);
+    for (i=0; i<4; i++) {
+        b2nFee.in[i] <== n2bData.out[160 + i];
     }
-    dfUserFee.out ==> userFee;
+    b2nFee.out ==> fee;
 
 // rqOffset
 ////////
     component b2nRqOffset = Bits2Num(3);
     for (i=0; i<3; i++) {
-        b2nRqOffset.in[i] <== n2bData.out[240 + i];
+        b2nRqOffset.in[i] <== n2bData.out[164 + i];
     }
     b2nRqOffset.out ==> rqOffset;
 
 // onChain
 ////////
-    onChain <== n2bData.out[243];
+    onChain <== n2bData.out[167];
 
 // newAccount
 ////////
-    newAccount <== n2bData.out[244];
+    newAccount <== n2bData.out[168];
 
 //  Data Availability bits
 ////////
-    for (i=0; i<nLevels; i++) {
-        dataAvailabilityBits[nLevels - 1 - i] <== n2bData.out[i]*(1-onChain);
+    component n2bFromIdx = Num2Bits(64);
+    n2bFromIdx.in <== fromIdx;
+    // Check padding bits are 0
+    var paddingFromIdx = 0;
+    for (i=nLevels; i<64; i++) {
+        paddingFromIdx += n2bFromIdx.out[i];
     }
-    for (i=0; i<nLevels; i++) {
-        dataAvailabilityBits[nLevels + nLevels - 1 - i] <== n2bData.out[64 + i]*(1-onChain);
+    paddingFromIdx === 0;
+
+    component n2bToIdx = Num2Bits(64);
+    n2bToIdx.in <== toIdx;
+    // Check padding bits are 0
+    var paddingToIdx = 0;
+    for (i=nLevels; i<64; i++) {
+        paddingToIdx += n2bToIdx.out[i];
     }
+    paddingToIdx === 0;
+ 
+    // Add fromIdx
+    for (i=0; i<nLevels; i++) {
+        dataAvailabilityBits[nLevels - 1 - i] <== n2bFromIdx.out[i]*(1-onChain);
+    }
+    // Add toIdx
+    for (i=0; i<nLevels; i++) {
+        dataAvailabilityBits[nLevels*2 - 1 - i] <== n2bToIdx.out[i]*(1-onChain);
+    }
+    // Add amountF
     for (i=0; i<16; i++) {
-        dataAvailabilityBits[nLevels*2 + 16 -1 - i] <== n2bData.out[128 + i]*(1-onChain);
+        dataAvailabilityBits[nLevels*2 + 16 - 1 - i] <== n2bData.out[64 + i]*(1-onChain);
+    }
+    // Add fee
+    for (i=0; i<4; i++) {
+        dataAvailabilityBits[nLevels*2 + 16 + 4 - 1 - i] <== n2bData.out[160 + i]*(1-onChain);
     }
 
-// offChainHash
+// sigOffChainHash
 //////
-    component hash1 = Poseidon(3, 6, 8, 57);
-    hash1.inputs[0] <== IDEN3_ROLLUP_TX;
-    hash1.inputs[1] <== txData;
-    hash1.inputs[2] <== rqTxData;
+    component hashSig = Poseidon(5, 6, 8, 57);
+    hashSig.inputs[0] <== txData;
+    hashSig.inputs[1] <== rqTxData;
+    hashSig.inputs[2] <== toAx;
+    hashSig.inputs[3] <== toAy;
+    hashSig.inputs[4] <== toEthAddr;
 
-    hash1.out ==> offChainHash;
-
+    hashSig.out ==> sigOffChainHash;
 
 // onChainHash
 /////
-    component onChainHasher = Poseidon(6, 6, 8, 57);
+    component dataOnChain = Poseidon(5, 6, 8, 57);
+    dataOnChain.inputs[0] <== fromAx;
+    dataOnChain.inputs[1] <== fromAy;
+    dataOnChain.inputs[2] <== toEthAddr;
+    dataOnChain.inputs[3] <== toAx;
+    dataOnChain.inputs[4] <== toAy;
+
+    component onChainHasher = Poseidon(5, 6, 8, 57);
     onChainHasher.inputs[0] <== oldOnChainHash;
     onChainHasher.inputs[1] <== txData;
     onChainHasher.inputs[2] <== loadAmount;
-    onChainHasher.inputs[3] <== ethAddr;
-    onChainHasher.inputs[4] <== ax;
-    onChainHasher.inputs[5] <== ay;
+    onChainHasher.inputs[3] <== dataOnChain.out;
+    onChainHasher.inputs[4] <== fromEthAddr;
     // IMPORTANT NOTE FOR SECURITY AUDITORS:
     // Poseidon paper says that one of the pieces of the state must be keep fixed to keep the security.
     // The asumption that I'm doing here is that ay depends on ax of just one bit. and the eth address hase 253-140 =123 bits set to 0, so it is more than an element.
-    // We could extract the sign bit and put it in one of the free bits of ethAdd or txData, but this safes many constraints.
+    // We could extract the sign bit and put it in one of the free bits of ethAddr or txData, but this safes many constraints.
 
 // s6
 /////////////////
@@ -159,7 +176,17 @@ template DecodeTx(nLevels) {
     s6.s <== onChain;
     s6.out ==> newOnChainHash;
 
-// Check that offChain are before onChain
-    previousOnChain * (1 - onChain) === 0;
+// increment Idx if it is an on-chain tx and new account
+/////////////////
+    outIdx <== inIdx + onChain*newAccount;
 
+// check Idx if it is an on-chain tx and new account
+/////////////////
+    component idxChecker = ForceEqualIfEnabled();
+    idxChecker.in[0] <== fromIdx;
+    idxChecker.in[1] <== outIdx;
+    idxChecker.enabled <== onChain*newAccount;
+
+// Check that onChain are before offChain
+    (1 - previousOnChain) * onChain === 0;
 }

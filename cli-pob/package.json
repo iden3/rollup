@@ -1,0 +1,36 @@
+{
+  "name": "cli-pob",
+  "version": "0.0.1",
+  "description": "light client to interact with RollupPoB contract",
+  "main": "index.js",
+  "scripts": {
+    "ganache": "npx ganache-cli -b 1 --mnemonic 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous' --defaultBalanceEther 100000 > ganache-output.log &",
+    "test:all": "npm run ganache && npx truffle test test/helpers/build-configs.test.js && mocha test/bid.test.js && mocha test/multibid.test.js && mocha test/withdraw.test.js ; rm *output.log ; pkill -x 'node*'"
+  },
+  "bin": {
+    "rollup-cli-pob": "cli-pob.js"
+  },
+  "keywords": [
+    "client",
+    "rollup",
+    "rollupPoB",
+    "proof-of-burn"
+  ],
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "ethers": "^4.0.47",
+    "ffjavascript": "^0.1.3",
+    "ganache-cli": "^6.9.1",
+    "web3": "^1.2.5"
+  },
+  "devDependencies": {
+    "acorn": "^7.1.1",
+    "chai": "^4.2.0",
+    "circomlib": "^0.2.3",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.1",
+    "eslint-plugin-mocha": "^6.3.0",
+    "truffle": "^5.1.23"
+  }
+}

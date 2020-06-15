@@ -3,11 +3,11 @@
 /* global web3 */
 
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
-const Verifier = artifacts.require("../contracts/test/VerifierHelper");
-const Rollup = artifacts.require("../contracts/test/Rollup");
 const fs = require("fs");
 const path = require("path");
 
+const Verifier = artifacts.require("../contracts/test/VerifierHelper");
+const Rollup = artifacts.require("../contracts/test/Rollup");
 const configSynchPoolPath = path.join(__dirname, "./config/config-test.json");
 const pathConversionTable = path.join(__dirname,"./config/table-conversion-test.json");
 const pathCustomTokens = path.join(__dirname,"./config/custom-test.json");

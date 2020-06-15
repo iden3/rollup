@@ -1,9 +1,7 @@
-const bigInt = require("snarkjs").bigInt;
+const Scalar = require("ffjavascript").Scalar;
 
 /*
-
     This creates an in memory cached version of a tree
-
  */
 
 class SMTTmpDb {
@@ -22,13 +20,13 @@ class SMTTmpDb {
 
     _key2str(k) {
         // const keyS = bigInt(key).leInt2Buff(32).toString("hex");
-        const keyS = bigInt(k).toString();
+        const keyS = Scalar.e(k).toString();
         return keyS;
     }
 
     _normalize(n) {
         for (let i=0; i<n.length; i++) {
-            n[i] = bigInt(n[i]);
+            n[i] = Scalar.e(n[i]);
         }
     }
 

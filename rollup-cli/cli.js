@@ -3,20 +3,24 @@
 /* eslint-disable no-shadow */
 const fs = require('fs');
 const readline = require('readline');
+const chalk = require('chalk');
+
 const { Writable } = require('stream');
-const { Wallet } = require('./src/wallet');
+
+const feeTable = require('../js/constants').fee;
+const { Wallet } = require('./src/utils/wallet');
 const {
     depositTx, sendTx, depositOnTopTx, withdrawTx, forceWithdrawTx,
     showAccounts, transferTx, depositAndTransferTx, showExitsBatch, approveTx,
-    showAccountsByIdx,
-} = require('./src/cli-utils');
+    showStateAccount, withdrawOffChainTx,
+} = require('./src/utils/cli-utils');
 const { error } = require('./helpers/list-errors');
 
 const walletPathDefault = './wallet.json';
 const configPathDefault = './config.json';
 const noncePathDefault = './nonceJson.json';
-
 const { version } = require('./package');
+
 const { argv } = require('yargs') // eslint-disable-line
     .version(version)
     .usage(`
@@ -24,15 +28,13 @@ rollup-cli <command> <options>
 
 createkeys command
 =============
-    rollup-cli createkeys <option>
-        create new wallet for rollup client
+    rollup-cli createkeys <options>
+        create new rollup wallet
     -w or --walletpath <path> (optional)
         Path to store wallet
-        Default: [ethWallet.json | babyjubWallet.json | wallet.json]
+        Default: [wallet.json]
     -m or --mnemonic <mnemonic>
         Mnemonic 12 words
-    -i or --import <walletPath>
-        To import encrypt wallet
 
 printkeys command
 =============
@@ -60,14 +62,15 @@ setparam command
 offchainTx command
 =============
     rollup-cli offchaintx <options>
-    -t or --type [send | withdrawOffChain]
+    -t or --type [send | withdrawOffChain | depositOffChain]
         Defines which transaction should be done
     -a or --amount <amount>
         Amount to send
     --tk or --tokenid <token ID>
-    -r or --recipient <recipient ID>
-    -s or --sender <sender ID>
-    -e or --fee <user fee>
+    -r or --recipient <recipient babyJub compressed publick key>
+    -e or --fee <% fee>
+    --ethaddr or --ethereumaddress <ethereum address>
+        only used in deposit offchain transaction
     --no or --nonce <nonce TX> (optional)
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
@@ -76,7 +79,7 @@ offchainTx command
 onchainTx command
 =============
     rollup-cli onchaintx <options>
-    --type or -t [deposit | depositontop | withdraw | forcewithdraw | transfer | depositandtransfer]
+    --type or -t [deposit | depositontop | withdraw | forcewithdraw | transfer | depositandtransfer | approve]
         Defines which transaction should be done
     -l or --loadamount <amount>
         Amount to deposit within the rollup
@@ -84,9 +87,7 @@ onchainTx command
         Amount to move inside rollup
     --tk or --tokenid <token ID>
     -n or --numexitbatch <num exit batch>
-    -r or --recipient <recipient ID>
-    -s or --sender <sender ID>
-    --id <ID>
+    -r or --recipient <recipient babyJub Compressed publick key>
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
         Default: config.json
@@ -101,9 +102,10 @@ info command
     -t or --type [accounts | exits]
         get accounts information
         get batches where an account has been done an exit transaction 
-    -f or --filter [babyjubjub | ethereum | id]
+    -f or --filter [babyjubjub | ethereum | tokenid]
         only used on account information
-    --id <rollup id>
+    --tk or --tokenid <token ID>
+        filters by token id
     -c or --configpath <parameter file> (optional)
         Path of your configuration file
         Default: config.json
@@ -114,17 +116,16 @@ info command
     .alias('w', 'walletpath')
     .alias('c', 'configpath')
     .alias('m', 'mnemonic')
-    .alias('i', 'import')
     .alias('pm', 'param')
     .alias('v', 'value')
     .alias('t', 'type')
     .alias('r', 'recipient')
-    .alias('s', 'sender')
     .alias('e', 'fee')
     .alias('f', 'filter')
     .alias('a', 'amount')
     .alias('l', 'loadamount')
     .alias('tk', 'tokenid')
+    .alias('ethaddr', 'ethereumaddress')
     .alias('n', 'numexitbatch')
     .alias('no', 'nonce')
     .alias('gl', 'gaslimit')
@@ -133,20 +134,18 @@ info command
 
 let walletpath = (argv.walletpath) ? argv.walletpath : 'nowalletpath';
 const mnemonic = (argv.mnemonic) ? argv.mnemonic : 'nomnemonic';
-const importWallet = (argv.import) ? argv.import : 'noimport';
 
 const param = (argv.param) ? argv.param : 'noparam';
 const value = (argv.value) ? argv.value : 'novalue';
 const configPath = (argv.configpath) ? argv.configpath : configPathDefault;
 
 const type = (argv.type) ? argv.type : 'notype';
-const recipient = (argv.recipient || argv.recipient === 0) ? argv.recipient : 'norecipient';
-const sender = (argv.sender || argv.sender === 0) ? argv.sender : 'nosender';
-const id = (argv.id || argv.id === 0) ? argv.id : 'noid';
+const recipient = (argv.recipient) ? argv.recipient : 'norecipient';
 const amount = (argv.amount) ? argv.amount.toString() : -1;
 const loadamount = (argv.loadamount) ? argv.loadamount.toString() : -1;
 const tokenId = (argv.tokenid || argv.tokenid === 0) ? argv.tokenid : 'notokenid';
-const userFee = argv.fee ? argv.fee.toString() : 'nouserfee';
+const ethAddr = (argv.ethereumaddress || argv.ethereumaddress === 0) ? argv.ethereumaddress : 'noethaddr';
+const fee = argv.fee ? argv.fee.toString() : 'nofee';
 const numExitBatch = argv.numexitbatch ? argv.numexitbatch.toString() : 'nonumexitbatch';
 const filter = argv.filter ? argv.filter : 'nofilter';
 const nonce = (argv.nonce || argv.nonce === 0) ? argv.nonce.toString() : undefined;
@@ -159,7 +158,6 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
         if (argv._[0].toUpperCase() === 'CREATEKEYS') {
             let encWallet;
             let wallet;
-            // createkeys ethereum
             const passphrase = await getPassword();
             console.log('repeat your password please');
             const passphrase2 = await getPassword();
@@ -171,26 +169,19 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             }
             if (mnemonic !== 'nomnemonic') {
                 if (mnemonic.split(' ').length !== 12) {
-                    console.log('Invalid Mnemonic, enter the mnemonic between "" \n\n');
+                    console.log('Invalid Mnemonic, enter the mnemonic between "" \n');
                     throw new Error(error.INVALID_MNEMONIC);
                 } else {
-                    console.log('create rollup wallet mnemonic');
+                    console.log('creating rollup wallet from mnemonic...\n');
                     wallet = await Wallet.fromMnemonic(mnemonic);
                     encWallet = await wallet.toEncryptedJson(passphrase);
+                    printKeys(encWallet);
                 }
-            } else if (importWallet !== 'noimport') {
-                if (!fs.existsSync(importWallet) || !fs.lstatSync(importWallet).isFile()) {
-                    console.log('Path provided dont work\n\n');
-                    throw new Error(error.INVALID_PATH);
-                }
-                console.log('create rollup wallet import');
-                const readWallet = fs.readFileSync(importWallet, 'utf-8');
-                wallet = await Wallet.fromEncryptedJson(JSON.parse(readWallet), passphrase);
-                encWallet = await wallet.toEncryptedJson(passphrase);
             } else {
-                console.log('create rollup wallet random');
+                console.log('creating new rollup wallet...\n');
                 wallet = await Wallet.createRandom();
                 encWallet = await wallet.toEncryptedJson(passphrase);
+                printKeys(encWallet);
             }
             fs.writeFileSync(walletpath, JSON.stringify(encWallet, null, 1), 'utf-8');
             process.exit(0);
@@ -198,30 +189,30 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             if (fs.existsSync(configPath)) {
                 actualConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             }
-            if (param.toUpperCase() === 'WALLETETHEREUM' && value !== 'novalue') {
-                actualConfig.walletEth = value;
-            } else if (param.toUpperCase() === 'WALLETBABYJUBJUB' && value !== 'novalue') {
-                actualConfig.walletBabyjubjub = value;
-            } else if (param.toUpperCase() === 'WALLET' && value !== 'novalue') {
+            if (param.toUpperCase() === 'PATHWALLET' && value !== 'novalue') {
                 actualConfig.wallet = value;
-            } else if (param.toUpperCase() === 'ABIPATH' && value !== 'novalue') {
+            } else if (param.toUpperCase() === 'ABIROLLUPPATH' && value !== 'novalue') {
                 actualConfig.abiRollupPath = value;
             } else if (param.toUpperCase() === 'URLOPERATOR' && value !== 'novalue') {
                 actualConfig.urlOperator = value;
             } else if (param.toUpperCase() === 'NODEETH' && value !== 'novalue') {
                 actualConfig.nodeEth = value;
-            } else if (param.toUpperCase() === 'ADDRESS' && value !== 'novalue') {
+            } else if (param.toUpperCase() === 'ADDRESSROLLUP' && value !== 'novalue') {
                 actualConfig.addressRollup = value;
             } else if (param.toUpperCase() === 'CONTROLLERADDRESS' && value !== 'novalue') {
                 actualConfig.controllerAddress = value;
+            } else if (param.toUpperCase() === 'ADDRESSTOKENS' && value !== 'novalue') {
+                actualConfig.addressTokens = value;
+            } else if (param.toUpperCase() === 'ABIERC20PATH' && value !== 'novalue') {
+                actualConfig.abiTokensPath = value;
             } else if (param === 'noparam') {
-                console.log('Please provide a param\n\n');
+                console.log('Please provide a param\n');
                 throw new Error(error.NO_PARAM);
             } else if (value === 'novalue') {
                 console.log('Please provide a value\n\n');
                 throw new Error(error.NO_VALUE);
             } else {
-                console.log('Invalid param\n\n');
+                console.log('Invalid param\n');
                 throw new Error(error.INVALID_PARAM);
             }
             fs.writeFileSync(configPath, JSON.stringify(actualConfig, null, 1), 'utf-8');
@@ -235,33 +226,26 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                     }
                 }
             }
-            console.log('The following keys have been found:');
             if (walletpath === 'nowalletpath') {
                 walletpath = walletPathDefault;
             }
             if (!fs.existsSync(walletpath)) {
-                console.log('Please provide a valid path\n\n');
+                console.log('Please provide a valid path\n');
                 throw new Error(error.INVALID_PATH);
             }
             const readWallet = JSON.parse(fs.readFileSync(walletpath, 'utf-8'));
-            console.log('Ethereum key:');
-            console.log(`  Address: 0x${readWallet.ethWallet.address}`);
-            console.log('Babyjubjub Key:');
-            console.log('  Public Key: ');
-            console.log(`    Ax: ${readWallet.babyjubWallet.public.ax}`);
-            console.log(`    Ay: ${readWallet.babyjubWallet.public.ay}`);
-            console.log(`  Public Key Compressed: 0x${readWallet.babyjubWallet.publicCompressed}`);
+            printKeys(readWallet);
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'OFFCHAINTX') {
             if (type === 'notype') {
-                console.log('It is necessary to specify the type of action\n\n');
+                console.log('It is necessary to specify the type of action\n');
                 throw new Error(error.NO_TYPE);
             } else {
                 const passphrase = await getPassword();
                 if (fs.existsSync(configPath)) {
                     actualConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 } else {
-                    console.log('No params file was submitted\n\n');
+                    console.log('No params file was submitted\n');
                     throw new Error(error.NO_PARAMS_FILE);
                 }
                 checkparamsOffchain(type, actualConfig);
@@ -277,14 +261,22 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                 }
                 if (type.toUpperCase() === 'SEND') {
                     const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId,
-                        userFee, sender, nonce, actualNonce);
+                        feeTable[fee], nonce, actualNonce);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
                     }
                 } else if (type.toUpperCase() === 'WITHDRAWOFFCHAIN') {
-                    const res = await sendTx(urlOperator, 0, amount, wallet, passphrase, tokenId, userFee,
-                        sender, nonce, actualNonce);
+                    const res = await withdrawOffChainTx(urlOperator, amount, wallet, passphrase, tokenId, feeTable[fee],
+                        nonce, actualNonce);
+                    console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
+                    if (res.status.toString() === '200') {
+                        fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
+                    }
+                } else if (type.toUpperCase() === 'DEPOSITOFFCHAIN') {
+                    checkparam(ethAddr, 'noethaddr', 'Ethereum address');
+                    const res = await sendTx(urlOperator, recipient, amount, wallet, passphrase, tokenId, feeTable[fee],
+                        nonce, actualNonce, ethAddr);
                     console.log(`Status: ${res.status}, Nonce: ${res.nonce}`);
                     if (res.status.toString() === '200') {
                         fs.writeFileSync(noncePath, JSON.stringify(res.nonceObject, null, 1), 'utf-8');
@@ -300,42 +292,43 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             && type.toUpperCase() !== 'APPROVE') {
                 throw new Error(error.INVALID_KEY_TYPE);
             } else if (type === 'notype') {
-                console.log('It is necessary to specify the type of action\n\n');
+                console.log('It is necessary to specify the type of action\n');
                 throw new Error(error.NO_TYPE);
             } else {
                 const passphrase = await getPassword();
                 if (fs.existsSync(configPath)) {
                     actualConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 } else {
-                    console.log('No params file was submitted\n\n');
+                    console.log('No params file was submitted\n');
                     throw new Error(error.NO_PARAMS_FILE);
                 }
                 checkparamsOnchain(type, actualConfig);
                 const abi = JSON.parse(fs.readFileSync(actualConfig.abiRollupPath, 'utf-8'));
                 const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+
                 if (type.toUpperCase() === 'DEPOSIT') {
                     const Tx = await depositTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
                         tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITONTOP') {
                     const Tx = await depositOnTopTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount,
-                        tokenId, wallet, passphrase, abi, recipient, gasLimit, gasMultiplier);
+                        tokenId, recipient, wallet, passphrase, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'FORCEWITHDRAW') {
-                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
-                        wallet, passphrase, abi, id, gasLimit, gasMultiplier);
+                    const Tx = await forceWithdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, tokenId, amount,
+                        wallet, passphrase, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'WITHDRAW') {
-                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, wallet,
-                        passphrase, abi, actualConfig.urlOperator, id, numExitBatch, gasLimit, gasMultiplier);
+                    const Tx = await withdrawTx(actualConfig.nodeEth, actualConfig.addressRollup, tokenId, wallet,
+                        passphrase, abi, actualConfig.urlOperator, numExitBatch, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'TRANSFER') {
                     const Tx = await transferTx(actualConfig.nodeEth, actualConfig.addressRollup, amount,
-                        tokenId, wallet, passphrase, abi, sender, recipient, gasLimit, gasMultiplier);
+                        tokenId, recipient, wallet, passphrase, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'DEPOSITANDTRANSFER') {
                     const Tx = await depositAndTransferTx(actualConfig.nodeEth, actualConfig.addressRollup, loadamount, amount,
-                        tokenId, wallet, passphrase, actualConfig.controllerAddress, abi, recipient, gasLimit, gasMultiplier);
+                        tokenId, recipient, wallet, passphrase, actualConfig.controllerAddress, abi, gasLimit, gasMultiplier);
                     console.log(JSON.stringify({ 'Transaction Hash': Tx.hash }));
                 } else if (type.toUpperCase() === 'APPROVE') {
                     const abiTokens = JSON.parse(fs.readFileSync(actualConfig.abiTokensPath, 'utf-8'));
@@ -349,13 +342,13 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             process.exit(0);
         } else if (argv._[0].toUpperCase() === 'INFO') {
             if (type === 'notype') {
-                console.log('It is necessary to specify the type of information to print\n\n');
+                console.log('It is necessary to specify the type of information to print\n');
                 throw new Error(error.NO_TYPE);
             } else {
                 if (fs.existsSync(configPath)) {
                     actualConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 } else {
-                    console.log('No params file was submitted\n\n');
+                    console.log('No params file was submitted\n');
                     throw new Error(error.NO_PARAMS_FILE);
                 }
                 checkParamsInfo(type, actualConfig);
@@ -375,16 +368,21 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
                         }
                         const res = await showAccounts(actualConfig.urlOperator, filters);
                         console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
-                    } else if (filter.toUpperCase() === 'ID') {
-                        checkparam(id, 'noid', 'your id');
-                        const res = await showAccountsByIdx(actualConfig.urlOperator, id);
+                    } else if (filter.toUpperCase() === 'TOKENID') {
+                        checkparam(tokenId, 'notokenid', 'token ID');
+                        const { ax } = wallet.babyjubWallet.public;
+                        const { ay } = wallet.babyjubWallet.public;
+                        const res = await showStateAccount(actualConfig.urlOperator, tokenId, ax, ay);
                         console.log(`Accounts found: \n ${JSON.stringify(res.data, null, 1)}`);
                     } else {
                         throw new Error(error.INVALID_FILTER);
                     }
                 } else if (type.toUpperCase() === 'EXITS') {
-                    const res = await showExitsBatch(actualConfig.urlOperator, id);
-                    console.log(`Number exits batch found: \n ${res.data}`);
+                    const wallet = JSON.parse(fs.readFileSync(actualConfig.wallet, 'utf-8'));
+                    const { ax } = wallet.babyjubWallet.public;
+                    const { ay } = wallet.babyjubWallet.public;
+                    const res = await showExitsBatch(actualConfig.urlOperator, tokenId, ax, ay);
+                    console.log(`${chalk.yellow('Number exits batch found: ')}\n${res.data}`);
                 }
             }
             process.exit(0);
@@ -392,8 +390,10 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             throw new Error(error.INVALID_COMMAND);
         }
     } catch (err) {
+        console.error(`${chalk.red('Error information: ')}`);
         console.log(err.message);
-        console.log(Object.keys(error)[err.message]);
+        const cliError = Object.keys(error)[err.message];
+        if (cliError) console.log(Object.keys(error)[err.message]);
         process.exit(err.message);
     }
 })();
@@ -423,8 +423,8 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(id, 'noid', 'your id');
         checkparam(numExitBatch, 'nonumexitbatch', 'num exit batch');
+        checkparam(tokenId, 'notokenid', 'token ID');
         break;
     case 'FORCEWITHDRAW':
         checkparam(amount, -1, 'amount');
@@ -432,7 +432,7 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
-        checkparam(id, 'noid', 'your id');
+        checkparam(tokenId, 'notokenid', 'token ID');
         break;
     case 'TRANSFER':
         checkparam(amount, -1, 'amount');
@@ -441,7 +441,6 @@ function checkparamsOnchain(type, actualConfig) {
         checkparam(actualConfig.addressRollup, undefined, 'contract address (with setparam command)');
         checkparam(actualConfig.abiRollupPath, undefined, 'abi path (with setparam command)');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
-        checkparam(sender, 'nosender', 'sender');
         checkparam(recipient, 'norecipient', 'recipient');
         break;
     case 'DEPOSITANDTRANSFER':
@@ -472,18 +471,27 @@ function checkparamsOffchain(type, actualConfig) {
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
         checkparam(recipient, 'norecipient', 'recipient');
-        checkparam(userFee, 'nouserfee', 'fee');
+        checkparam(fee, 'nofee', 'fee');
+        checkFees(fee);
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(sender, 'nosender', 'sender');
         break;
     case 'WITHDRAWOFFCHAIN':
         checkparam(amount, -1, 'amount');
         checkparam(tokenId, 'notokenid', 'token ID');
-        checkparam(userFee, 'nouserfee', 'fee');
+        checkparam(fee, 'nofee', 'fee');
+        checkFees(fee);
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(sender, 'nosender', 'sender');
+        break;
+    case 'DEPOSITOFFCHAIN':
+        checkparam(amount, -1, 'amount');
+        checkparam(tokenId, 'notokenid', 'token ID');
+        checkparam(fee, 'nofee', 'fee');
+        checkFees(fee);
+        checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
+        checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
+        checkparam(ethAddr, 'noethaddr', 'Ethereum address');
         break;
     default:
         throw new Error(error.INVALID_TYPE);
@@ -493,13 +501,13 @@ function checkparamsOffchain(type, actualConfig) {
 function checkParamsInfo(type, actualConfig) {
     switch (type.toUpperCase()) {
     case 'ACCOUNTS':
-        checkparam(filter, 'nofilter', 'babyjubjub or ethereum or id');
+        checkparam(filter, 'nofilter', 'babyjubjub or ethereum or tokenid');
         checkparam(actualConfig.wallet, undefined, 'wallet path (with setparam command)');
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
         break;
     case 'EXITS':
         checkparam(actualConfig.urlOperator, undefined, 'operator (with setparam command)');
-        checkparam(id, 'noid', 'your id');
+        checkparam(tokenId, 'notokenid', 'token ID');
         break;
     default:
         throw new Error(error.INVALID_TYPE);
@@ -508,10 +516,20 @@ function checkParamsInfo(type, actualConfig) {
 
 function checkparam(param, def, name) {
     if (param === def) {
-        console.log(`It is necessary to specify ${name}\n\n`);
+        console.log(`It is necessary to specify ${name}\n`);
         throw new Error(error.NO_PARAM);
     }
 }
+
+function checkFees(fee) {
+    if (feeTable[fee] === undefined) {
+        console.log(`Fee selected ${fee} is not valid`);
+        console.log('Please, select a valid fee amoung among the next values:');
+        console.log(`${feeTable}`);
+        throw new Error(error.INVALID_FEE);
+    }
+}
+
 
 function getPassword() {
     return new Promise((resolve) => {
@@ -533,4 +551,14 @@ function getPassword() {
         });
         mutableStdout.muted = true;
     });
+}
+
+function printKeys(wallet) {
+    console.log(`${chalk.yellow('Ethereum public key:')}`);
+    console.log(`  Address: ${chalk.blue(`0x${wallet.ethWallet.address}`)}\n`);
+    console.log(`${chalk.yellow('Rollup public key:')}`);
+    console.log(`  Compressed: ${chalk.blue(`0x${wallet.babyjubWallet.publicCompressed}`)}`);
+    console.log('  Babyjubjub points: ');
+    console.log(`    Ax: ${chalk.blue(`0x${wallet.babyjubWallet.public.ax}`)}`);
+    console.log(`    Ay: ${chalk.blue(`0x${wallet.babyjubWallet.public.ay}`)}`);
 }

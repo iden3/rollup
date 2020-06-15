@@ -1,5 +1,5 @@
 /* global web3 */
-function advanceTime(time) {
+async function advanceTime(time) {
     // eslint-disable-next-line no-new
     new Promise((resolve, reject) => {
         web3.currentProvider.send({
@@ -14,7 +14,7 @@ function advanceTime(time) {
     });
 }
 
-function advanceBlock() {
+async function advanceBlock() {
     // eslint-disable-next-line no-new
     new Promise((resolve, reject) => {
         web3.currentProvider.send({

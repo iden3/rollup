@@ -1,11 +1,12 @@
 const Web3 = require("web3");
 const winston = require("winston");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const fs = require("fs");
+const chalk = require("chalk");
+
 const erc20Abi = require("./erc20-abi");
 const ApiBitfinex = require("./api-bitfinex");
-const fs = require("fs");
 const { timeout } = require("../utils");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
-const chalk = require("chalk");
 
 // Database keys
 const lastBlockKey = "last-block-pool";
@@ -174,8 +175,12 @@ class SynchPool {
                 // Update price for all tokens
                 await this._updateTokensPrice();
 
+                // Update ethereum price
+                const ethPrice = await this._getEtherPrice();
+
                 // Update pool conversion table
-                this._setConversionTable(this.tokensList);
+                this._setConversionTable(this.tokensList, ethPrice);
+                
                 // Log information
                 this._fillInfo(lastSynchBlock, currentBlock, addedTokens);
 
@@ -318,6 +323,21 @@ class SynchPool {
     }
 
     /**
+     * Get ethereum price in USD
+     * @returns {Number} Ethereum price
+     */
+    async _getEtherPrice(){
+        let ethPrice;
+        try {
+            ethPrice = await this.apiBitfinex.getTokenLastPrice("ETH", "USD");
+        } catch (e){
+            ethPrice = null;
+        }
+
+        return ethPrice;
+    }
+
+    /**
      * Retrieve last block synched from database
      * @return {Number} - last block
      */
@@ -343,11 +363,17 @@ class SynchPool {
     }
 
     /**
-     * Writes conversion file with conversion table
-     * @param {Object} table - conversion table 
+     * Writes conversion file with conversion and ethreum price
+     * @param {Object} table - conversion table
+     * @param {Number} ethPrice - ethereum price 
      */
-    _setConversionTable(table) {
-        fs.writeFileSync(this.pathConversionTable, JSON.stringify(table));
+    _setConversionTable(table, ethPrice) {
+        const tableConversion = {};
+
+        tableConversion.conversion = table;
+        tableConversion.ethPrice = ethPrice;
+
+        fs.writeFileSync(this.pathConversionTable, JSON.stringify(tableConversion));
     }
 }
 

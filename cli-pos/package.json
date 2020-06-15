@@ -6,11 +6,30 @@
   "bin": {
     "rollup-cli-pos": "cli-pos.js"
   },
+  "scripts": {
+    "ganache": "npx ganache-cli -b 1 --mnemonic 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous' --defaultBalanceEther 100000 > ganache-output.log &",
+    "test:integation": "npm run ganache && npx truffle test test/helpers/build-configs.test.js && npx mocha ./test/*register.test.js && npx truffle test test/helpers/add-blocks.js && npx mocha test/withdraw.test.js; rm './ganache-output.log' ; pkill -f 'ganache-cli'"
+  },
   "keywords": [
     "client",
     "rollup",
     "rollupPoS",
     "proof-of-stake"
   ],
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "ethers": "^4.0.47",
+    "ffjavascript": "^0.1.3",
+    "web3": "^1.2.5"
+  },
+  "devDependencies": {
+    "acorn": "^7.1.1",
+    "chai": "^4.2.0",
+    "circomlib": "^0.2.3",
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.1",
+    "eslint-plugin-mocha": "^6.3.0",
+    "truffle": "^5.1.23"
+  }
 }

@@ -62,19 +62,82 @@ async function getGeneralInfo(rollupSynch, posSynch) {
     generalInfo["posSynch"] = {};
     generalInfo["rollupSynch"] = {};
 
+    const staticDataPoS = await posSynch.getStaticData();
+    const staticDataRollup = await rollupSynch.getStaticData();
+
     generalInfo.currentBlock = await posSynch.getCurrentBlock();
 
+    // PoS
     generalInfo["posSynch"].isSynched = await posSynch.isSynched();
     generalInfo["posSynch"].synch = await posSynch.getSynchPercentage();
-    generalInfo["posSynch"].genesisBlock = await posSynch.genesisBlock;
     generalInfo["posSynch"].lastEraSynch = await posSynch.getLastSynchEra();
     generalInfo["posSynch"].currentEra = await posSynch.getCurrentEra();
     generalInfo["posSynch"].currentSlot = await posSynch.getCurrentSlot();
+    // Static Data
+    generalInfo["posSynch"].contractAddress = staticDataPoS.contractAddress;
+    generalInfo["posSynch"].blocksPerSlot = staticDataPoS.blocksPerSlot;
+    generalInfo["posSynch"].slotsPerEra = staticDataPoS.slotsPerEra;
+    generalInfo["posSynch"].slotDeadline = staticDataPoS.slotDeadline;
+    generalInfo["posSynch"].genesisBlock = staticDataPoS.genesisBlock;
+    generalInfo["posSynch"].minStake = staticDataPoS.minStake.toString();
 
+    // Core
     generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
     generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
     generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
     generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+    generalInfo["rollupSynch"].feeDeposit = (await rollupSynch.getFeeDepOffChain()).toString();
+    generalInfo["rollupSynch"].feeOnChainTx = (await rollupSynch.getFeeOnChainTx()).toString();
+
+    // StaticData
+    generalInfo["rollupSynch"].contractAddress = staticDataRollup.contractAddress;
+    generalInfo["rollupSynch"].maxTx = staticDataRollup.maxTx;
+    generalInfo["rollupSynch"].maxOnChainTx = staticDataRollup.maxOnChainTx;
+    generalInfo["rollupSynch"].nLevels = staticDataRollup.nLevels;
+
+
+    return generalInfo;
+}
+
+/**
+ * Get general information regarding operator state
+ * @returns {Object} - operator general information
+ */
+async function getGeneralInfoPob(rollupSynch, pobSynch) {
+    const generalInfo = {};
+    generalInfo["pobSynch"] = {};
+    generalInfo["rollupSynch"] = {};
+
+    const staticDataPoB = await pobSynch.getStaticData();
+    const staticDataRollup = await rollupSynch.getStaticData();
+
+    generalInfo.currentBlock = await pobSynch.getCurrentBlock();
+
+    // PoB
+    generalInfo["pobSynch"].isSynched = await pobSynch.isSynched();
+    generalInfo["pobSynch"].synch = await pobSynch.getSynchPercentage();
+    generalInfo["pobSynch"].currentSlot = await pobSynch.getCurrentSlot();
+
+    // Static Data
+    generalInfo["pobSynch"].contractAddress = staticDataPoB.contractAddress;
+    generalInfo["pobSynch"].blocksPerSlot = staticDataPoB.blocksPerSlot;
+    generalInfo["pobSynch"].slotDeadline = staticDataPoB.slotDeadline;
+    generalInfo["pobSynch"].genesisBlock = staticDataPoB.genesisBlock;
+    generalInfo["pobSynch"].minBid = staticDataPoB.minBid.toString();
+
+    // Core
+    generalInfo["rollupSynch"].isSynched = await rollupSynch.isSynched();
+    generalInfo["rollupSynch"].synch = await rollupSynch.getSynchPercentage();
+    generalInfo["rollupSynch"].lastBlockSynched = await rollupSynch.getLastSynchBlock();
+    generalInfo["rollupSynch"].lastBatchSynched = await rollupSynch.getLastBatch();
+    generalInfo["rollupSynch"].feeDeposit = (await rollupSynch.getFeeDepOffChain()).toString();
+    generalInfo["rollupSynch"].feeOnChainTx = (await rollupSynch.getFeeOnChainTx()).toString();
+
+    // StaticData
+    generalInfo["rollupSynch"].contractAddress = staticDataRollup.contractAddress;
+    generalInfo["rollupSynch"].maxTx = staticDataRollup.maxTx;
+    generalInfo["rollupSynch"].maxOnChainTx = staticDataRollup.maxOnChainTx;
+    generalInfo["rollupSynch"].nLevels = staticDataRollup.nLevels;
 
     return generalInfo;
 }
@@ -84,4 +147,5 @@ module.exports = {
     checkPassEnv,
     getPassword,
     getGeneralInfo,
+    getGeneralInfoPob
 };

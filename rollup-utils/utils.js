@@ -1,8 +1,7 @@
-/* global BigInt */
-const { bigInt, bn128 } = require("snarkjs");
-
-const F = bn128.Fr;
 const Poseidon = require("circomlib/src/poseidon");
+const Scalar = require("ffjavascript").Scalar;
+const { leBuff2int } = require("ffjavascript").utils;
+const F = require("circomlib").poseidon.F;
 
 const hash = Poseidon.createHash(6, 8, 57);
 
@@ -49,7 +48,7 @@ function padZeroes(str, length) {
 function arrayHexToBigInt(arrayHex) {
     const arrayBigInt = [];
     arrayHex.forEach((element) => {
-        arrayBigInt.push(BigInt(element));
+        arrayBigInt.push(Scalar.fromString(element, 16));
     });
     return arrayBigInt;
 }
@@ -86,20 +85,20 @@ function buildElement(arrayStr) {
  * @returns {BigInt} - final hash
  */
 function multiHash(arr) {
-    let r = bigInt(0);
+    let r = Scalar.e(0);
     for (let i = 0; i < arr.length; i += 5) {
         const fiveElems = [];
         for (let j = 0; j < 5; j++) {
             if (i + j < arr.length) {
                 fiveElems.push(arr[i + j]);
             } else {
-                fiveElems.push(bigInt(0));
+                fiveElems.push(Scalar.e(0));
             }
         }
         const ph = hash(fiveElems);
         r = F.add(r, ph);
     }
-    return F.affine(r);
+    return F.normalize(r);
 }
 
 /**
@@ -112,11 +111,11 @@ function hashBuffer(msgBuff) {
     const msgArray = [];
     const fullParts = Math.floor(msgBuff.length / n);
     for (let i = 0; i < fullParts; i++) {
-        const v = bigInt.leBuff2int(msgBuff.slice(n * i, n * (i + 1)));
+        const v = leBuff2int(msgBuff.slice(n * i, n * (i + 1)));
         msgArray.push(v);
     }
     if (msgBuff.length % n !== 0) {
-        const v = bigInt.leBuff2int(msgBuff.slice(fullParts * n));
+        const v = leBuff2int(msgBuff.slice(fullParts * n));
         msgArray.push(v);
     }
     return multiHash(msgArray);
@@ -130,6 +129,5 @@ module.exports = {
     arrayBigIntToArrayStr,
     hashBuffer,
     num2Buff,
-    multiHash,
     timeout,
 };

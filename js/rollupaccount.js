@@ -2,17 +2,17 @@ const EC = require("elliptic").ec;
 const ec = new EC("secp256k1");
 const keccak256 = require("js-sha3").keccak256;
 const crypto = require("crypto");
-const babyJub = require("circomlib").babyJub;
 const eddsa = require("circomlib").eddsa;
-const bigInt = require("snarkjs").bigInt;
-const utils = require("./utils");
+const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
+
+const utils = require("./utils");
 
 module.exports = class RollupAccount {
     constructor(privateKey) {
         if (privateKey) {
             if (typeof(privateKey) != "string") {
-                this.privateKey = bigInt(privateKey).toString(16);
+                this.privateKey = Scalar.e(privateKey).toString(16);
             } else {
                 this.privateKey = privateKey;
             }
@@ -55,20 +55,29 @@ module.exports = class RollupAccount {
     }
 
     signTx(tx) {
-        const IDEN3_ROLLUP_TX = bigInt("1625792389453394788515067275302403776356063435417596283072371667635754651289");
-        const data = utils.buildTxData(tx);
+        const txData = utils.buildTxData(tx);
         const hash = poseidon.createHash(6, 8, 57);
 
         const h = hash([
-            IDEN3_ROLLUP_TX,
-            data,
-            tx.rqTxData || 0
+            txData,
+            Scalar.e(tx.rqTxData || 0),
+            Scalar.fromString(tx.toAx, 16),
+            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.toEthAddr, 16),
         ]);
+
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
         tx.r8x = signature.R8[0];
         tx.r8y = signature.R8[1];
         tx.s = signature.S;
-        tx.ax = this.ax;
-        tx.ay = this.ay;
+        tx.fromAx = this.ax;
+        tx.fromAy = this.ay;
+        tx.fromEthAddr = this.ethAddress;
+    }
+
+    signClassTx(tx) {
+        const h = tx.getHashSignature();
+        const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
+        tx.addSignature(signature, this.ax, this.ay);
     }
 };

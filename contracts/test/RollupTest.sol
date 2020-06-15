@@ -8,70 +8,102 @@ contract RollupTest is Rollup {
     Rollup(_verifier, _poseidon, _maxTx, _maxOnChainTx, _feeTokenAddress) public {}
 
   function forgeBatch(
-        address payable beneficiaryAddress,
         uint[2] calldata proofA,
         uint[2][2] calldata proofB,
         uint[2] calldata proofC,
-        uint[8] calldata input
-    ) external override {
-        // Verify old state roots
-        require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
-            'old state root does not match current state root');
+        uint[10] calldata input,
+        bytes calldata compressedOnChainTx
+    ) external payable override {
 
-        // Verify on-chain hash
-        require(input[onChainHashInput] == miningOnChainTxsHash,
-            'on-chain hash does not match current filling on-chain hash');
+      // Verify old state roots
+      require(bytes32(input[oldStateRootInput]) == stateRoots[getStateDepth()],
+          'old state root does not match current state root');
 
-        // Verify zk-snark circuit
-        require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
-            'zk-snark proof is not valid');
+      // Initial index must be the final index of the last batch
+      require(batchToInfo[getStateDepth()].lastLeafIndex == input[initialIdxInput], 'Initial index does not match');
 
-        // Calculate fees and pay them
-        bytes32[2] memory feePlan = [bytes32(input[feePlanCoinsInput]), bytes32(input[feePlanFeesInput])];
-        bytes32 nTxPerToken = bytes32(input[nTxperTokenInput]);
+      // Deposits that will be added in this batch
+      uint64 depositOffChainLength = uint64(compressedOnChainTx.length/DEPOSIT_BYTES);
+      uint32 depositCount = batchToInfo[getStateDepth()+1].depositOnChainCount;
 
-        for (uint i = 0; i < 16; i++) {
-            (uint tokenId, uint totalTokenFee) = calcTokenTotalFee(bytes32(feePlan[0]), bytes32(feePlan[1]),
-            bytes32(nTxPerToken), i);
+      // Operator must pay for every off-chain deposit
+      require(msg.value >=  depositFee * depositOffChainLength, 'Amount deposited less than fee required');
+    
+      // Add deposits off-chain
+      for (uint32 i = 0; i < depositOffChainLength; i++) {  
+          uint32 initialByte = DEPOSIT_BYTES*i;
+          uint256 Ax = abi.decode(compressedOnChainTx[initialByte:initialByte+32], (uint256));
+          uint256 Ay = abi.decode(compressedOnChainTx[initialByte+32:initialByte+64], (uint256));
+          address ethAddress = address(abi.decode(compressedOnChainTx[initialByte+52:initialByte+84], (uint256)));
+          uint32 token = uint32(abi.decode(compressedOnChainTx[initialByte+56:initialByte+88], (uint256)));
+          depositCount++;
+          depositOffChain(token, ethAddress, [Ax, Ay], depositCount);
+      }
 
-            if(totalTokenFee != 0) {
-                require(withdrawToken(uint32(tokenId), beneficiaryAddress, totalTokenFee),
-                    'Fail ERC20 withdraw');
-            }
-        }
+      // Update and verify lastLeafIndex
+      batchToInfo[getStateDepth()+1].lastLeafIndex = batchToInfo[getStateDepth()].lastLeafIndex + depositCount;
+      require(batchToInfo[getStateDepth()+1].lastLeafIndex == input[finalIdxInput], 'Final index does not match');
 
-        // Pay onChain transactions fees
-        uint payOnChainFees = totalMinningOnChainFee;
-        beneficiaryAddress.transfer(payOnChainFees);
+      // Verify on-chain hash
+      require(input[onChainHashInput] == miningOnChainTxsHash,
+       'on-chain hash does not match current mining on-chain hash');
 
-        // Update state roots
-        stateRoots.push(bytes32(input[newStateRootInput]));
+      // Verify zk-snark circuit
+      require(verifier.verifyProof(proofA, proofB, proofC, input) == true,
+        'zk-snark proof is not valid');
 
-        // Update exit roots
-        exitRoots.push(bytes32(input[newExitRootInput]));
+      // curren batch filling Info
+      fillingInfo storage currentFilling = fillingMap[getStateDepth()];
 
-        // Clean fillingOnChainTxsHash an its fees
-        miningOnChainTxsHash = fillingOnChainTxsHash;
-        fillingOnChainTxsHash = 0;
-        totalMinningOnChainFee = totalFillingOnChainFee;
-        totalFillingOnChainFee = 0;
+      // Get beneficiary address from zk-inputs 
+      address payable beneficiaryAddress = address(input[beneficiaryAddressInput]);
 
-        // Update number of on-chain transactions
-        currentOnChainTx = 0;
+      // Clean fillingOnChainTxsHash an its fees
+      uint payOnChainFees = totalMinningOnChainFee;
 
-        // event with all compressed transactions given its batch number
-        emit ForgeBatch(getStateDepth(), block.number);
+      miningOnChainTxsHash = currentFilling.fillingOnChainTxsHash;
+      totalMinningOnChainFee = currentFilling.totalFillingOnChainFee;
+
+      // If the current state does not match currentFillingBatch means that
+      // currentFillingBatch > getStateDepth(), and that batch fees were already updated
+      if (getStateDepth() == currentFillingBatch) { 
+          feeOnchainTx = updateOnchainFee(currentFilling.currentOnChainTx, feeOnchainTx);
+          currentFillingBatch++;
+      }
+      delete fillingMap[getStateDepth()];
+
+      // Update deposit fee
+      depositFee = updateDepositFee(depositCount, depositFee);
+
+
+      // Update state roots
+      stateRoots.push(bytes32(input[newStateRootInput]));
+
+      // Update exit roots
+      exitRoots.push(bytes32(input[newExitRootInput]));
+
+      // Calculate fees and pay them
+      withdrawTokens(bytes32(input[feePlanCoinsInput]), bytes32(input[feeTotalsInput]),
+       beneficiaryAddress);
+
+
+      // Pay onChain transactions fees
+      beneficiaryAddress.transfer(payOnChainFees);
+
+      // event with all compressed transactions given its batch number
+      emit ForgeBatch(getStateDepth(), block.number);
     }
 
   function withdrawToken(uint tokenId, address receiver, uint amount) private returns(bool){
     return IERC20(tokenList[tokenId]).transfer(receiver, amount);
   }
 
-  function getMinningOnChainTxsHash() public view returns (uint256) {
-    return miningOnChainTxsHash;
+  function setCurrentFillingMap(uint256 onChainTx) public returns (uint256) {
+    fillingMap[currentFillingBatch].currentOnChainTx = onChainTx;
   }
 
-  function getFillingOnChainTxsHash() public view returns (uint256) {
-    return fillingOnChainTxsHash;
+  function setCurrentBatchToInfo(uint256 depositsNum, uint64 lastLeaf) public returns (uint256) {
+      batchToInfo[currentFillingBatch].lastLeafIndex = lastLeaf;
+      batchToInfo[currentFillingBatch].depositOnChainCount = uint32(depositsNum);
   }
 }

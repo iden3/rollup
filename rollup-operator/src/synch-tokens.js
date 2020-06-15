@@ -1,9 +1,10 @@
-/*global BigInt*/
 const Web3 = require("web3");
 const winston = require("winston");
-const { timeout } = require("../src/utils");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
 const chalk = require("chalk");
+
+const { timeout } = require("../src/utils");
 
 // Database keys
 const lastBlockKey = "last-block-tokens";
@@ -95,7 +96,7 @@ class SynchTokens {
     async _init(){
         this.tokensList = {};
         this._loadTokens();
-        this.feeAddToken = BigInt(await this.contractRollup.methods.feeAddToken()
+        this.feeAddToken = Scalar.e(await this.contractRollup.methods.feeAddToken()
             .call({from: this.ethAddress}));
     }
 
@@ -150,7 +151,7 @@ class SynchTokens {
                             this._fillInfo(info);
                         }
                         // Update last token price
-                        this.feeAddToken = BigInt(await this.contractRollup.methods.feeAddToken()
+                        this.feeAddToken = Scalar.e(await this.contractRollup.methods.feeAddToken()
                             .call({from: this.ethAddress}));
                     }
                     // Update tokens list

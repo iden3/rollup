@@ -2,20 +2,19 @@ const Web3 = require("web3");
 const abiDecoder = require("abi-decoder");
 const winston = require("winston");
 const chalk = require("chalk");
-const { stringifyBigInts, unstringifyBigInts, bigInt } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
 
-const rollupUtils = require("../../rollup-utils/rollup-utils");
-const { float2fix } = require("../../js/utils");
-const { timeout, purgeArray } = require("../src/utils");
+const { decodeTxData, extract, decodeDepositOffChain,
+    decodeDataAvailability } = require("../../js/utils");
+const { timeout, purgeArray, padding256 } = require("./utils");
 const Constants = require("./constants");
+const GlobalConst = require("../../js/constants");
 
-// offChainTx --> From | To | Amount |
-//            -->   3  | 3  |    2   | bytes 
-const bytesOffChainTx = 3*2 + 2;
-
-const offChainHashInput = 3;
-const feePlanCoinsInput = 6;
-const feePlanFeesInput = 7;
+const finalIdxInput = 0;
+const offChainHashInput = 4;
+const feePlanCoinsInput = 7;
+const feeTotals = 8;
 
 // db keys
 const batchStateKey = "batch-state";
@@ -79,8 +78,10 @@ class Synchronizer {
         this.rollupPoSContract = new this.web3.eth.Contract(rollupPoSABI, this.rollupPoSAddress);
         abiDecoder.addABI(rollupPoSABI);
         this.forgeEventsCache = new Map();
+        this.retrySameBatch = 0;
+        this.cacheBatchToUpdate = 0;
         this.mode = mode;
-        
+
         this._initTimeouts(timeouts);
         this._initLogger(logLevel);
     }
@@ -167,9 +168,13 @@ class Synchronizer {
             .call({from: this.ethAddress}));
         this.maxTx = Number(await this.rollupPoSContract.methods.MAX_TX()
             .call({from: this.ethAddress}));
+        this.maxOnChainTx = Number(await this.rollupContract.methods.MAX_ONCHAIN_TX()
+            .call({from: this.ethAddress}));
         this.nLevels = Number(await this.rollupContract.methods.NLevels()
             .call({from: this.ethAddress}));
-
+        this.feeOnChainTx = Scalar.e(await this.rollupContract.methods.feeOnchainTx()
+            .call({from: this.ethAddress}));
+      
         if (this.creationHash) {
             const creationTx = await this.web3.eth.getTransaction(this.creationHash);
             this.creationBlock = creationTx.blockNumber;
@@ -219,10 +224,10 @@ class Synchronizer {
                 }
                     
                 // Check root matches with the one saved
-                const stateRoot = bigInt(await this.rollupContract.methods.getStateRoot(stateDepth)
+                const stateRoot = Scalar.e(await this.rollupContract.methods.getStateRoot(stateDepth)
                     .call({ from: this.ethAddress }, stateSaved.blockNumber));
                     
-                const stateRootHex = `0x${bigInt(stateRoot).toString(16)}`;
+                const stateRootHex = `0x${Scalar.e(stateRoot).toString(16)}`;
 
                 if (lastBatchSaved > 0 && (stateRootHex !== stateSaved.root)) {
                     // clear database
@@ -233,10 +238,10 @@ class Synchronizer {
                 }
 
                 // Check current mining onChain hash
-                const stateMiningOnChainHash = bigInt(await this.rollupContract.methods.miningOnChainTxsHash()
+                const stateMiningOnChainHash = Scalar.e(await this.rollupContract.methods.miningOnChainTxsHash()
                     .call({ from: this.ethAddress }, stateSaved.blockNumber));
 
-                const stateMiningOnChainHashHex = `0x${bigInt(stateMiningOnChainHash).toString(16)}`;
+                const stateMiningOnChainHashHex = `0x${Scalar.e(stateMiningOnChainHash).toString(16)}`;
                 if (lastBatchSaved > 0 && (stateMiningOnChainHashHex !== stateSaved.miningOnChainHash)) {
                     // clear database
                     await this._clearRollback(lastBatchSaved);
@@ -245,6 +250,14 @@ class Synchronizer {
                     continue;
                 }
 
+                // update deposit fee
+                this.feeDepOffChain = Scalar.e(await this.rollupContract.methods.depositFee()
+                    .call({from: this.ethAddress}));
+
+                // update on-chain fee
+                this.feeOnChainTx = Scalar.e(await this.rollupContract.methods.feeOnchainTx()
+                    .call({from: this.ethAddress}));
+                  
                 if (currentBatchDepth > lastBatchSaved) {
                     const targetBlockNumber = await this._getTargetBlock(lastBatchSaved + 1, stateSaved.blockNumber, currentBlock);
                     // If no event is found, tree is not updated
@@ -262,6 +275,8 @@ class Synchronizer {
                     const updateFlag = await this._updateEvents([...logsForge,...logsOnChain], lastBatchSaved + 1, targetBlockNumber);
                     if (!updateFlag) continue;
                     lastBatchSaved = await this.getLastBatch();
+                    this.cacheBatchToUpdate = lastBatchSaved;
+                    this.retrySameBatch = 0;
                 }
 
                 totalSynch = (currentBatchDepth == 0) ? 100 : ((lastBatchSaved / currentBatchDepth) * 100);
@@ -332,6 +347,14 @@ class Synchronizer {
         // beyond "confirmationBlocks" blockchain is considered secure and immutable
         if (lastSynchBlock >= currentBlock - confirmationBlocks)
             this.forgeEventsCache.clear();
+
+        if (this.cacheBatchToUpdate == batchToSynch)
+            this.retrySameBatch += 1;
+
+        if (this.retrySameBatch > 4){
+            this.forgeEventsCache.clear();
+            this.retrySameBatch = 0;
+        }
 
         let targetBlockNumber = this.forgeEventsCache.get(batchToSynch);
         if (!targetBlockNumber){
@@ -449,6 +472,7 @@ class Synchronizer {
                 // Add events to rollup-tree
                 if (eventForge.length > 0){
                     await this._updateTree(eventForge, eventOnChain);
+                    await this._saveBatchData(batchSynch, eventForge, eventOnChain);
                     const miningOnChainHash = await this._getMiningOnChainHash(batchSynch);
                     const root = `0x${this.treeDb.getRoot().toString(16)}`;
                     const batchToSave = this.treeDb.lastBatch;
@@ -457,10 +481,12 @@ class Synchronizer {
                     await this.db.insert(lastBatchKey, this._toString(batchSynch));
                 }
             }
-            if (this.mode !== Constants.mode.archive)
-                await this._purgeEvents(nextBatchSynched + numBatchesToSynch.length - 1);
+            // if (this.mode !== Constants.mode.archive)
+            //     await this._purgeEvents(nextBatchSynched + numBatchesToSynch.length - 1);
             return true;
         } catch (error) {
+            console.log(error.stack);
+            console.log(error.message);
             this._logError(`error updating batch number: ${nextBatchSynched}`);
             this._logError("Events are not saved. Retry in the next synchronization loop");
             return false;
@@ -532,6 +558,141 @@ class Synchronizer {
     }
 
     /**
+     * Save all batch information
+     * @param {Number} batchNum 
+     */
+    async _saveBatchData(batchNum, offChain, onChain){
+        const batchData = {};
+        
+        batchData.offChainData = [];
+        batchData.onChainData = [];
+        batchData.depositOffChainData = [];
+        
+        // Save deposit off-chain data
+        for (const event of offChain) {
+            const dataOffChain = await this._getDepositOffChainBatchData(event);
+            batchData.depositOffChainData.push(dataOffChain);
+        }
+
+        // Save off-chain events
+        for (const event of offChain) {
+            const dataOffChain = await this._getOffChainBatchData(event);
+            batchData.offChainData.push(dataOffChain);
+        }
+
+        // Save on-chain events
+        for (const event of onChain) {
+            const onChainData = {
+                txData: event.txData,
+                loadAmount: event.loadAmount,
+                fromAx: padding256(event.fromAx),
+                fromAy: padding256(event.fromAy),
+                fromEthAddr: event.fromEthAddr,
+                toAx: padding256(event.toAx),
+                toAy: padding256(event.toAy),
+                toEthAddr: event.toEthAddr,
+            };
+            batchData.onChainData.push(onChainData);
+        }
+
+        // save to Db
+        await this.db.insert(this._toString(Scalar.add(Constants.DB_SYNCH_BATCH_INFO, batchNum)),
+            this._toString(batchData));
+    }
+
+    /**
+     * Get timestamp from transaction hash
+     * @param {String} hashTx - transaction hash
+     * @returns {Scalar} the unix timestamp 
+     */
+    async _getTxTimestamp(hashTx){
+        const txForge = await this.web3.eth.getTransaction(hashTx);
+        // Get block timestamp
+        const blockInfo = await this.web3.eth.getBlock(txForge.blockNumber);
+        
+        return Scalar.e(blockInfo.timestamp);
+    }
+
+    /**
+     * Get deposit off-chain compressed data
+     * @param {*} hashOffChainTx - transaction hash for batch forged
+     * @returns {String} - Compressed deposits off-chain
+     */
+    async _getDepositOffChainBatchData(hashOffChainTx){
+
+        const txForge = await this.web3.eth.getTransaction(hashOffChainTx);
+        const decodedData = abiDecoder.decodeMethod(txForge.input);
+
+        let depositOffChainCompressed = "0x";
+
+        decodedData.params.forEach(elem => {
+            if (elem.name == "compressedOnChainTx" && elem.value != null) {
+                depositOffChainCompressed = elem.value;
+            }
+        });
+        
+        return depositOffChainCompressed;
+    }
+
+    /**
+     * Get basic data from off-chain hash
+     * @param {String} hashOffChainTx - transaction hash for batch forged
+     * @returns {Object} Basic data forged btach 
+     */
+    async _getOffChainBatchData(hashOffChainTx){
+        const txForge = await this.web3.eth.getTransaction(hashOffChainTx);
+
+        // Get zkInputs of core smart contract
+        const decodedData = abiDecoder.decodeMethod(txForge.input);
+        let inputRetrieved;
+        decodedData.params.forEach(elem => {
+            if (elem.name == "input") {
+                inputRetrieved = elem.value;
+            }
+        });
+
+        const inputFinalIdx = inputRetrieved[finalIdxInput];
+        const inputOffChainHash = inputRetrieved[offChainHashInput];
+        const inputFeePlanCoins = inputRetrieved[feePlanCoinsInput];
+        const inputFeeTotals = inputRetrieved[feeTotals];
+
+        // Get data commited from forge batch mechanism
+        const fromBlock = txForge.blockNumber - this.blocksPerSlot;
+        const toBlock = txForge.blockNumber;
+        const logs = await this.rollupPoSContract.getPastEvents("dataCommitted", {
+            fromBlock: fromBlock, // previous slot
+            toBlock: toBlock, // current slot
+        });
+        
+        let txHash;
+        for (const log of logs) {
+            if (log.returnValues.hashOffChain == inputOffChainHash){
+                txHash = log.transactionHash;
+                break;
+            }
+        }
+
+        // Get compressed transaction from event transaction hash
+        const txDataCommitted = await this.web3.eth.getTransaction(txHash);
+        const decodedData2 = abiDecoder.decodeMethod(txDataCommitted.input);
+        let compressedTx;
+
+        decodedData2.params.forEach(elem => {
+            if (elem.name == "compressedTx") {
+                compressedTx = elem.value;
+            }
+        });
+
+        return {
+            compressedTxs: compressedTx ? compressedTx: "0x",
+            feePlanCoins: inputFeePlanCoins,
+            feeTotals: inputFeeTotals,
+            timestamp: await this._getTxTimestamp(hashOffChainTx),
+            totalAccounts: inputFinalIdx,
+        };
+    }
+
+    /**
      * Get miningOnChainHash
      * from current rollup database state plus onChain events that must be added
      * @param {Number} batchNumber - rollup batch number 
@@ -560,12 +721,14 @@ class Synchronizer {
             batchNumber: onChainData.batchNumber,
             txData: onChainData.txData,
             loadAmount: onChainData.loadAmount,
-            ethAddress: onChainData.ethAddress,
-            Ax: onChainData.Ax,
-            Ay: onChainData.Ay
+            fromEthAddr: onChainData.fromEthAddress,
+            fromAx: onChainData.fromAx,
+            fromAy: onChainData.fromAy,
+            toEthAddr: onChainData.toEthAddress,
+            toAx: onChainData.toAx,
+            toAy: onChainData.toAy,
         };
     }
-
 
     /**
      * Add on-chain and off-chain events to rollup database
@@ -574,40 +737,89 @@ class Synchronizer {
      */
     async _updateTree(offChain, onChain) {
         const batch = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
-        for (const event of offChain) {
-            const offChainTxs = await this._getTxOffChain(event);
-            await this._addFeePlan(batch, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-            await this._setUserFee(offChainTxs.txs);
-            for (const tx of offChainTxs.txs) {
-                batch.addTx(tx);
-                if (this.mode !== Constants.mode.light){
-                    if (bigInt(tx.toIdx) === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) {
-                        await this._addExitEntry(tx, batch.batchNumber);
-                    }
-                }
-                        
-            }
-        }
+        const tmpNewAccounts = {};
+        let tmpInitialIdx = batch.finalIdx;
 
+        // events on-chain tx
         for (const event of onChain) {
             const tx = await this._getTxOnChain(event);
             batch.addTx(tx);
-            if (this.mode !== Constants.mode.light)
-                if (tx.toIdx === bigInt(0) && bigInt(tx.amount) !== bigInt(0)) 
-                    await this._addExitEntry(tx, batch.batchNumber);
+            // if (this.mode !== Constants.mode.light)
+            if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.neq(tx.amount, 0)) 
+                await this._addExitEntry(tx, batch.batchNumber);
+            
+            // add temporary new account information
+            if (tx.newAccount) {
+                tmpInitialIdx += 1;
+                tmpNewAccounts[tmpInitialIdx] = {
+                    ax: tx.fromAx,
+                    ay: tx.fromAy,
+                    ethAddress: tx.fromEthAddr,
+                    coin: tx.coin,
+                };
+            }
         }
+
+        // data availability deposits on-chain
+        for (const event of offChain) {
+            const txs = await this._getDepositOffChain(event);
+            for (const tx of txs) {
+                batch.addTx(tx);
+                // Add temporary new account information
+                if (tx.newAccount) {
+                    tmpInitialIdx += 1;
+                    tmpNewAccounts[tmpInitialIdx] = {
+                        ax: tx.fromAx,
+                        ay: tx.fromAy,
+                        ethAddress: tx.fromEthAddr,
+                        coin: tx.coin,
+                    };
+                }         
+            }
+        }
+
+        // data availability off-chain tx 
+        for (const event of offChain) {
+            const offChainTxs = await this._getTxOffChain(event, tmpNewAccounts);
+            await this._addFeePlanCoins(batch, offChainTxs.inputFeePlanCoin);
+            for (const tx of offChainTxs.txs) {
+                batch.addTx(tx);
+                // if (this.mode !== Constants.mode.light){
+                if (tx.toAx == GlobalConst.exitAx && tx.toAy == GlobalConst.exitAy && Scalar.neq(tx.amount, 0)) {
+                    await this._addExitEntry(tx, batch.batchNumber, tmpNewAccounts);
+                }
+                // }        
+            }
+        }
+
         await batch.build();
         await this.treeDb.consolidate(batch);
         return true;
     }
 
     /**
-     * Add exit batch numnber for a rollup identifier
+     * Add exit batch number for a rollup identifier
      * @param {Object} tx - rollup transaction to get the rollup identifier
-     * @param {Number} batchNumber - rollup batch number to add 
+     * @param {Number} batchNumber - rollup batch number to add
+     * @param {Object} tmpNewAccounts - new accounts created in this same batch. They are not consolidated.
      */
-    async _addExitEntry(tx, batchNumber){
-        const key = `${exitInfoKey}${separator}${tx.fromIdx}`;
+    async _addExitEntry(tx, batchNumber, tmpNewAccounts){
+        // get fromIdx
+        let fromIdx;
+        const tmpFromIdx = await this.treeDb.getIdx(tx.coin, tx.fromAx, tx.fromAy);
+        if (tmpFromIdx){
+            fromIdx = tmpFromIdx;
+        } else {
+            for (let idx in Object.keys(tmpNewAccounts)){
+                const state = tmpNewAccounts[idx];
+                if (state.ax == tx.fromAx && state.ay == tx.fromAy && state.coin == tx.coin){
+                    fromIdx = idx;
+                    break; 
+                }
+            }
+        }
+
+        const key = `${exitInfoKey}${separator}${fromIdx}`;
         const oldExitIdArray = await this.db.getOrDefault(key, "");
     
         let newExitIdArray = [];
@@ -625,27 +837,49 @@ class Synchronizer {
      * @returns {Object} rollup transaction  
      */
     async _getTxOnChain(event) {
-        const txData = rollupUtils.decodeTxData(event.txData);
+        const txData = decodeTxData(event.txData);
         return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
-            amount: txData.amount,
-            loadAmount: bigInt(event.loadAmount),
-            coin: txData.tokenId,
-            ax: bigInt(event.Ax).toString(16),
-            ay: bigInt(event.Ay).toString(16),
-            ethAddress: event.ethAddress,
+            amount: Scalar.e(txData.amount),
+            loadAmount: Scalar.e(event.loadAmount),
+            coin: Scalar.e(txData.coin),
+            fromAx: padding256(event.fromAx),
+            fromAy: padding256(event.fromAy),
+            fromEthAddr: event.fromEthAddr,
+            toAx: padding256(event.toAx),
+            toAy: padding256(event.toAy),
+            toEthAddr: event.toEthAddr,
             onChain: true,
             newAccount: txData.newAccount,
         };
     }
 
     /**
+     * Reconstruct deposits off-chain from data availability
+     * @param {Object} event - forge event data
+     * @returns {Array} deposits off-chain   
+     */
+    async _getDepositOffChain(event){
+        const txForge = await this.web3.eth.getTransaction(event);
+        const decodedData = abiDecoder.decodeMethod(txForge.input);
+
+        let depositOffChainCompressed = "0x";
+
+        decodedData.params.forEach(elem => {
+            if (elem.name == "compressedOnChainTx" && elem.value != null) {
+                depositOffChainCompressed = elem.value;
+            }
+        });
+        
+        return decodeDepositOffChain(Buffer.from(depositOffChainCompressed.slice(2), "hex"));
+    }
+
+    /**
      * Reconstruct transactions from off-chain event
      * @param {Object} event - off-chain event data
+     * @param {Object} tmpNewAccounts - new accounts created in this same batch. They are not consolidated.
      * @returns {Object} rollup transaction and fee plan data  
      */
-    async _getTxOffChain(event) {
+    async _getTxOffChain(event, tmpNewAccounts) {
         const txForge = await this.web3.eth.getTransaction(event);
         const decodedData = abiDecoder.decodeMethod(txForge.input);
         let inputRetrieved;
@@ -654,9 +888,9 @@ class Synchronizer {
                 inputRetrieved = elem.value;
             }
         });
+
         const inputOffChainHash = inputRetrieved[offChainHashInput];
         const inputFeePlanCoin = inputRetrieved[feePlanCoinsInput];
-        const inputFeePlanFee = inputRetrieved[feePlanFeesInput];
 
         const fromBlock = txForge.blockNumber - this.blocksPerSlot;
         const toBlock = txForge.blockNumber;
@@ -674,54 +908,70 @@ class Synchronizer {
         const txDataCommitted = await this.web3.eth.getTransaction(txHash);
         const decodedData2 = abiDecoder.decodeMethod(txDataCommitted.input);
         let compressedTx;
+
         decodedData2.params.forEach(elem => {
             if (elem.name == "compressedTx") {
                 compressedTx = elem.value;
             }
         });
-        const headerBytes = Math.ceil(this.maxTx/8);
+        
         const txs = [];
-        const buffCompressedTxs = Buffer.from(compressedTx.slice(2), "hex");
-        const headerBuff = buffCompressedTxs.slice(0, headerBytes);
-        const txsBuff = buffCompressedTxs.slice(headerBytes, buffCompressedTxs.length);
-        const nTx = txsBuff.length / bytesOffChainTx;
-        for (let i = 0; i < nTx; i++) {
-            const step = (headerBuff[Math.floor(i/8)] & 0x80 >> (i%8)) ? 1 : 0;
+        const decodeTxs = decodeDataAvailability(this.nLevels, compressedTx);
+        
+        for (let i = 0; i < decodeTxs.length; i++) {
+            const decodeTx = decodeTxs[i];
+
+            // get fromIdx info
+            let fromState;
+            const tmpFromState = await this.treeDb.getStateByIdx(decodeTx.fromIdx);
+            if (tmpFromState){
+                fromState = tmpFromState;
+            } else {
+                fromState = tmpNewAccounts[decodeTx.fromIdx];
+            }
+
+            // get toIdx info
+            let toState;
+            if (Scalar.neq(decodeTx.toIdx, 0)){
+                const tmpToState = await this.treeDb.getStateByIdx(decodeTx.toIdx);
+                if (tmpToState){
+                    toState = tmpToState;
+                } else {
+                    toState = tmpNewAccounts[decodeTx.toIdx];
+                }
+            } else {
+                toState = {};
+                toState.ax = GlobalConst.exitAx;
+                toState.ay = GlobalConst.exitAy;
+                toState.ethAddress = GlobalConst.exitEthAddr;
+            }
+
             const tx = {
-                fromIdx: txsBuff.readUIntBE(8*i, 3),
-                toIdx: txsBuff.readUIntBE(8*i + 3, 3),
-                amount: float2fix(txsBuff.readUIntBE(8*i + 6, 2)),
-                step,
+                fromAx: fromState.ax,
+                fromAy: fromState.ay,
+                fromEthAddr: fromState.ethAddress,
+                toAx: toState.ax,
+                toAy: toState.ay,
+                toEthAddr: toState.ethAddress,
+                coin: fromState.coin,
+                amount: decodeTx.amount,
+                fee: decodeTx.fee,
             };
             txs.push(tx);
         }
-        return {txs, inputFeePlanCoin, inputFeePlanFee};
+        return {txs, inputFeePlanCoin};
     }
 
     /**
      * Add fee plan to batch builder
      * @param {Object} bb - batch builder
-     * @param {String} feePlanCoins - fee plan coin encoded as hex string
-     * @param {String} feePlanFee - fee plan fee encoded as hex string  
+     * @param {String} feePlanCoins - fee plan coin encoded as hex string  
      */
-    async _addFeePlan(bb, feePlanCoins, feePlanFee) {
-        const tmpCoins = bigInt(feePlanCoins);
-        const tmpFeeF = bigInt(feePlanFee);
+    async _addFeePlanCoins(bb, feePlanCoins) {
+        const tmpCoins = Scalar.e(feePlanCoins);
         for (let i = 0; i < 16; i++){
-            const coin = tmpCoins.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1)));
-            const fee = float2fix(tmpFeeF.shr(16*i).and(bigInt(1).shl(16).sub(bigInt(1))).toJSNumber());
-            await bb.addCoin(coin, fee);
-        }
-    }
-
-    /**
-     * Add coin to transactions from rollup database
-     * @param {Array} txs - list of rollup transactions  
-     */
-    async _setUserFee(txs){
-        for (const tx of txs) {
-            const stateId = await this.getStateById(tx.fromIdx);
-            tx.coin = Number(stateId.coin);
+            const coin = extract(tmpCoins, 16*i, 16);
+            await bb.addCoin(coin);
         }
     }
 
@@ -732,6 +982,17 @@ class Synchronizer {
      */
     async getStateById(id) {
         return await this.treeDb.getStateByIdx(id);
+    }
+
+    /**
+     * Get rollup account state
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @returns {Object} - rollup state
+     */
+    async getStateByAccount(coin, ax, ay) {
+        return await this.treeDb.getStateByAccount(coin, ax, ay);
     }
 
     /**
@@ -754,13 +1015,15 @@ class Synchronizer {
     }
 
     /**
-     * Get necessary data to perform a withdraw
-     * @param {Number} numBatch - rollup batch number
-     * @param {Number} id - rollup identifier
+     * Get necessary data to perform a withdrawal
+     * @param {Number} numBatch - number of batch
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
      * @returns {Object} - exit data  
      */
-    async getExitTreeInfo(numBatch, id) {
-        return await this.treeDb.getExitTreeInfo(numBatch, id);
+    async getExitTreeInfo(numBatch, coin, ax, ay) {
+        return await this.treeDb.getExitTreeInfo(numBatch, coin, ax, ay);
     }
 
     /**
@@ -800,36 +1063,39 @@ class Synchronizer {
     async getOffChainTxByBatch(numBatch) {
         const res = [];
         // add off-chain tx
-        if (this.mode === Constants.mode.archive){
-            const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
-            const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${numBatch}`);
-            let eventForge = [];
-            if (tmpForgeArray) 
-                eventForge = this._fromString(tmpForgeArray);
+        // if (this.mode === Constants.mode.archive){
+        const bb = await this.treeDb.buildBatch(this.maxTx, this.nLevels);
+        const tmpForgeArray = await this.db.getOrDefault(`${eventForgeBatchKey}${separator}${numBatch}`);
+        let eventForge = [];
+        if (tmpForgeArray) 
+            eventForge = this._fromString(tmpForgeArray);
 
-            for (const hashTx of eventForge) {
-                const offChainTxs = await this._getTxOffChain(hashTx);
-                await this._addFeePlan(bb, offChainTxs.inputFeePlanCoin, offChainTxs.inputFeePlanFee);
-                await this._setUserFee(offChainTxs.txs);
-                for (const tx of offChainTxs.txs) res.push(tx);
-            }
+        for (const hashTx of eventForge) {
+            const offChainTxs = await this._getTxOffChain(hashTx);
+            await this._addFeePlanCoins(bb, offChainTxs.inputFeePlanCoin);
+            for (const tx of offChainTxs.txs) res.push(tx);
         }
+        // }
         return res;
     }
 
     /**
-     * Get all avsilable exits batches fora rollup identifier
-     * @param {Number} idx - rollup batch number 
-     * @returns {Array} - list of batches where the rollup identifier has withdraws
+     * Get all available exits batches for a rollup account
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - x babyjubjub coordinate encoded as hexadecimal string (whitout '0x')
+     * @param {String} ay - y babyjubjub coordinate encoded as hexadecimal string (whitout '0x') 
+     * @returns {Array} - list of batches where the rollup identifier has withdrawals
      */
-    async getExitsBatchById(idx){
+    async getExitsBatchById(coin, ax, ay){
         let exitsBatches = [];
-        if (this.mode !== Constants.mode.light) {
-            const key = `${exitInfoKey}${separator}${idx}`;
-            const value = await this.db.getOrDefault(key, "");
-            if (value !== "")
-                exitsBatches = [...this._fromString(value)];
-        }
+        // if (this.mode !== Constants.mode.light) {
+        const idx = await this.treeDb.getIdx(coin, ax, ay);
+        if (!idx) return null;
+        const key = `${exitInfoKey}${separator}${idx}`;
+        const value = await this.db.getOrDefault(key, "");
+        if (value !== "")
+            exitsBatches = [...this._fromString(value)];
+        // }
         return exitsBatches;
     }
 
@@ -864,6 +1130,52 @@ class Synchronizer {
     async getMiningOnchainHash() {
         return await this.rollupContract.methods.miningOnChainTxsHash()
             .call({from: this.ethAddress});
+    }
+
+    /**
+     * Get minimum fee required to do a deposit off-chain
+     * @returns {Scalar} - Fee deposit off-chain in weis
+     */
+    async getFeeDepOffChain() {
+        if (this.feeDepOffChain) return this.feeDepOffChain;
+        return Scalar.e(await this.rollupContract.methods.depositFee()
+            .call({from: this.ethAddress}));
+    }
+
+    /**
+     * Get minimum fee required to do an on-chain transaction
+     * @returns {Scalar} - Fee on-chain transaction in weis
+     */
+    async getFeeOnChainTx() {
+        if (this.feeOnChainTx) return this.feeOnChainTx;
+        return Scalar.e(await this.rollupContract.methods.feeOnchainTx()
+            .call({from: this.ethAddress}));
+    }
+
+    /**
+     * Get batch information
+     * @param {Number} numBatch - batch number 
+     * @returns {Object} - batch info  
+     */
+    async getBatchInfo(numBatch) {
+        const key = this._toString(Scalar.add(Constants.DB_SYNCH_BATCH_INFO, numBatch));
+        const value = await this.db.getOrDefault(key, null);
+        if (value === null) return null;
+
+        return this._fromString(value);
+    }
+
+    /**
+     * Get static data 
+     * @returns {Object} - static data info  
+     */
+    async getStaticData() {
+        return {
+            contractAddress: this.rollupAddress,
+            maxTx: this.maxTx,
+            maxOnChainTx: this.maxOnChainTx,
+            nLevels: this.nLevels,
+        };
     }
 }
 

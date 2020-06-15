@@ -2,8 +2,10 @@
 /* global contract */
 /* global web3 */
 const { expect } = require("chai");
-
+const fs = require("fs");
+const path = require("path");
 const poseidonUnit = require("circomlib/src/poseidon_gencontract");
+
 const TokenRollup = artifacts.require("../contracts/test/TokenRollup");
 const TokenTest = artifacts.require("../contracts/test/TokenTest");
 const Verifier = artifacts.require("../contracts/test/VerifierHelper");
@@ -11,8 +13,6 @@ const Rollup = artifacts.require("../contracts/test/Rollup");
 const MemDb = require("../../../rollup-utils/mem-db");
 const { timeout } = require("../../src/utils");
 const SynchPool = require("../../src/synch-pool-service/synch-pool-service");
-const fs = require("fs");
-const path = require("path");
 
 const pathConversionTable = path.join(__dirname,"./config/table-conversion-test.json");
 const pathCustomTokens = path.join(__dirname,"./config/custom-test.json");
@@ -100,7 +100,10 @@ contract("Synnchronizer Pool", (accounts) => {
 
         // check conversion table
         const tableJson = JSON.parse(fs.readFileSync(pathConversionTable));
-        const infoToken = tableJson[tokenId];
+        const infoToken = tableJson.conversion[tokenId];
+        const ethPrice = tableJson.ethPrice;
+
+        expect(ethPrice).to.be.not.equal(undefined);
         expect(infoToken.tokenSymbol).to.be.equal("NOT_FOUND");
         expect(infoToken.decimals).to.be.equal(18);
         expect(infoToken.tokenAddress).to.be.equal(insTokenRollup.address);
@@ -130,7 +133,10 @@ contract("Synnchronizer Pool", (accounts) => {
 
         // check conversion table
         const tableJson = JSON.parse(fs.readFileSync(pathConversionTable));
-        const infoToken = tableJson[tokenId];
+        const infoToken = tableJson.conversion[tokenId];
+        const ethPrice = tableJson.ethPrice;
+
+        expect(ethPrice).to.be.not.equal(undefined);
         expect(infoToken.tokenSymbol).to.be.equal("TEST0");
         expect(infoToken.decimals).to.be.equal(15);
         expect(infoToken.tokenAddress).to.be.equal(insTokenTest.address);
@@ -152,7 +158,10 @@ contract("Synnchronizer Pool", (accounts) => {
 
         // check conversion table
         const tableJson = JSON.parse(fs.readFileSync(pathConversionTable));
-        const infoToken = tableJson[tokenId];
+        const infoToken = tableJson.conversion[tokenId];
+        const ethPrice = tableJson.ethPrice;
+
+        expect(ethPrice).to.be.not.equal(undefined);
         expect(infoToken.tokenSymbol).to.be.equal("ANT");
         expect(infoToken.decimals).to.be.equal(15);
         expect(infoToken.tokenAddress).to.be.equal(insTokenTest.address);

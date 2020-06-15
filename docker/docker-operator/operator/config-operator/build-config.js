@@ -6,6 +6,6 @@ const configSynch = JSON.parse(fs.readFileSync(configSynchPath, "utf-8"));
 
 configSynch.rollup.synchDb = "/leveldb-operator/tmp-0";
 configSynch.rollup.treeDb = "/leveldb-operator/tmp-1";
-configSynch.rollupPoS.synchDb = "/leveldb-operator/tmp-2";
+configSynch.rollupPoB.synchDb = "/leveldb-operator/tmp-2";
 
 fs.writeFileSync(configSynchPath, JSON.stringify(configSynch));

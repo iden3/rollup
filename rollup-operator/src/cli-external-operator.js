@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { stringifyBigInts } = require("snarkjs");
+const { stringifyBigInts } = require("ffjavascript").utils;
 
 /**
  * Client to interact with operator API
@@ -16,11 +16,23 @@ class CliExternalOperator {
 
     /**
      * Get account state
-     * @param {Number} id - rollup identifier
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - Public X coordinate reprsented as an hex string
+     * @param {String} ay - Public Y coordinate reprsented as an hex string
      * @returns {Object} - http response 
      */
-    getAccountByIdx(id) {
-        return axios.get(`${this.url}/accounts/${id}`);
+    getStateAccount(coin, ax, ay) {
+        return axios.get(`${this.url}/accounts/${ax}/${ay}/${coin}`);
+    }
+
+    /**
+     * Get account state
+     * @param {Number} coin - coin identifier
+     * @param {String} address - Public rollup address represented as an hex string
+     * @returns {Object} - http response 
+     */
+    getStateAccountByAddress(coin, address) {
+        return axios.get(`${this.url}/accounts/${address}/${coin}`);
     }
 
     /**
@@ -37,6 +49,15 @@ class CliExternalOperator {
         urlParams = urlParams.substring(0, urlParams.length - 1);
         
         return axios.get(`${this.url}/accounts${urlParams}`);
+    }
+
+    /**
+     * Get account states
+     * @param {String} address - Public rollup address represented as an hex string
+     * @returns {Object} - http response 
+     */
+    getAccountsByAddress(address) {
+        return axios.get(`${this.url}/accounts/${address}`);
     }
 
     /**
@@ -58,22 +79,26 @@ class CliExternalOperator {
     /**
      * Get exit information for a rollup account
      * Useful to make a withdraw afterwards
-     * @param {Number} id - rollup identifier
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - Public X coordinate reprsented as an hex string
+     * @param {String} ay - Public Y coordinate reprsented as an hex string
      * @param {Number} numBatch - rollup batch number
      * @returns {Object} - http response
      */
-    getExitInfo(id, numBatch) {
-        return axios.get(`${this.url}/exits/${id}/${numBatch}`);
+    getExitInfo(coin, ax, ay, numBatch) {
+        return axios.get(`${this.url}/exits/${ax}/${ay}/${coin}/${numBatch}`);
     }
 
     /**
      * Get array of batch numbers where rollup identifier
      * has performed a withdraw from rollup
-     * @param {Number} id - rollup identifier
+     * @param {Number} coin - coin identifier
+     * @param {String} ax - Public X coordinate reprsented as an hex string
+     * @param {String} ay - Public Y coordinate reprsented as an hex string
      * @returns {Object} - http response
      */
-    getExits(id) {
-        return axios.get(`${this.url}/exits/${id}`);
+    getExits(coin, ax, ay) {
+        return axios.get(`${this.url}/exits/${ax}/${ay}/${coin}`);
     }
 
     /**
@@ -93,7 +118,10 @@ class CliExternalOperator {
     }
 
     /**
-     * Get off-chain transaction in an specific batch
+     * Get transactions in an specific batch
+     * - provide hash to retrieve off-chain transactions
+     * - provide all on-chain transactions
+     * - provide timestamp whwre the batch has been synchronized
      * @param {Number} - batch depth
      * @returns {Object} - http response
      */

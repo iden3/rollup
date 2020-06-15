@@ -2,19 +2,20 @@
 /* global contract */
 /* global web3 */
 const poseidonUnit = require('circomlib/src/poseidon_gencontract');
+const path = require('path');
 
 const TokenRollup = artifacts.require('../contracts/test/TokenRollup');
 const Verifier = artifacts.require('../contracts/test/VerifierHelper');
 const RollupPoS = artifacts.require('../contracts/RollupPoS');
 const Rollup = artifacts.require('../contracts/test/Rollup');
 const fs = require('fs');
-
 const ethers = require('ethers');
 
 const mnemonic = 'jaguar exhaust token lounge clerk gun metal vacant raven roast youth jealous';
 const passString = 'foo';
-const walletPath = '../wallet-test.json';
-const configPath = '../config.json';
+
+const walletPath = path.join(__dirname, '../wallet-test.json');
+const configPath = path.join(__dirname, '../config.json');
 
 contract('Build configuration files for cli-pos', (accounts) => {
     const {
