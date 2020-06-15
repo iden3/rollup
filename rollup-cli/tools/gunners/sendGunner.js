@@ -3,20 +3,22 @@
 
 // const variables
 const fs = require('fs');
-const { stringifyBigInts } = require('snarkjs');
+const { stringifyBigInts } = require('ffjavascript').utils;
 const path = require('path');
-const { Wallet } = require('../../src/wallet');
+
+const feeTable = require('../../../js/constants').fee;
+const { Wallet } = require('../../src/utils/wallet');
 const CliExternalOperator = require('../../../rollup-operator/src/cli-external-operator');
 
+
 // Argument variables
-const pass = '123';
-const wallet = fs.readFileSync(path.join(__dirname, 'config/wallet123.json'), 'utf-8');
-const apiOperator = new CliExternalOperator('http://localhost:9000/');
-const fromIdx = 3;
-const numTx = 40;
-const toIdx = 4;
-const userFee = 1;
-const amount = 1;
+const pass = 'password';
+const jsonWalletFrom = fs.readFileSync(path.join(__dirname, 'config/wallet.json'), 'utf-8');
+const jsonWalletTo = fs.readFileSync(path.join(__dirname, './config/wallets/2wallet.json'));
+const apiOperator = new CliExternalOperator('http://localhost:9000');
+const numTx = 500;
+const fee = feeTable['50%'];
+const amount = 2;
 const coin = 0;
 
 
@@ -26,24 +28,37 @@ function timeout(ms) {
 
 
 async function send() {
-    const walletRollup = await Wallet.fromEncryptedJson(JSON.parse(wallet), pass);
-    const responseLeaf = await apiOperator.getAccountByIdx(fromIdx);
-    const nonceToSend = responseLeaf.data.nonce;
-
+    const walletFrom = await Wallet.fromEncryptedJson(JSON.parse(jsonWalletFrom), pass);
+    const walletBaby = walletFrom.babyjubWallet;
+    const fromLeaf = await apiOperator.getStateAccount(coin, walletBaby.publicKey[0].toString(16), walletBaby.publicKey[1].toString(16));
+    const nonceToSend = fromLeaf.data.nonce;
     console.log(nonceToSend);
+
+    const walletTo = await Wallet.fromEncryptedJson(JSON.parse(jsonWalletTo), pass);
+    const toAx = walletTo.babyjubWallet.publicKey[0].toString(16);
+    const toAy = walletTo.babyjubWallet.publicKey[1].toString(16);
+    const toLeaf = await apiOperator.getStateAccount(coin, toAx, toAy);
+    const toEthAddr = toLeaf.data.ethAddress;
+
+    console.log('from Wallet: ');
+    console.log(`http://localhost:9000/accounts/${walletFrom.babyjubWallet.publicKey[0].toString(16)}/${walletFrom.babyjubWallet.publicKey[1].toString(16)}/${coin}`);
+    console.log('to Wallet: ');
+    console.log(`http://localhost:9000/accounts/${walletTo.babyjubWallet.publicKey[0].toString(16)}/${walletTo.babyjubWallet.publicKey[1].toString(16)}/${coin}`);
+
     for (let i = 0; i < numTx; i++) {
         const tx = {
-            fromIdx,
-            toIdx,
+            toAx,
+            toAy,
+            toEthAddr,
             coin,
             amount,
             nonce: nonceToSend + i,
-            userFee,
+            fee,
             rqOffset: 0,
             onChain: 0,
             newAccount: 0,
         };
-        walletRollup.signRollupTx(tx); // sign included in transaction
+        await walletFrom.signRollupTx(tx); // sign included in transaction
         const parseTx = stringifyBigInts(tx);// convert bigint to Strings
 
         apiOperator.sendTx(parseTx).then((resTx) => {
@@ -56,7 +71,7 @@ async function send() {
             console.log(error.message);
         });
         console.log('send!');
-        await timeout(1000);
+        await timeout(0);
     }
 }
 

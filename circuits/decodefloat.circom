@@ -25,8 +25,10 @@ template DecodeFloatBin() {
     for (i=0; i<5; i++) e[i] <== in[i+11];
 
     pe[0] <== 9*e[0]+1;
+    var e10 = 100;
     for (i=1; i<5; i++) {
         pe[i] <== (pe[i-1] * (10**(2**i)) - pe[i-1]) * e[i] + pe[i-1];
+        e10 = e10*e10;
     }
 
     scale10 <== pe[4];
@@ -41,8 +43,10 @@ template DecodeFloatBin() {
     scale5*2 === scale10*allow5;
 
     lcm =0;
+    var e2 = 1;
     for (i=0; i<10; i++) {
-        lcm += (2**i)*m[i];
+        lcm += e2*m[i];
+        e2 = e2 + e2;
     }
 
     outAux <== lcm*scale10;

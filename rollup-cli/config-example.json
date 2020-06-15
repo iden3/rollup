@@ -1,7 +1,7 @@
 {
     "urlOperator": "https://zkrollup.iden3.net",
     "nodeEth": "https://goerli.infura.io/v3/135e56bb9eaa42c59e73481fcb0f9b4a",
-    "addressRollup": "0xE0C17C3a4f06b859124Df351Ca83864e6de46AB2",
+    "addressRollup": "0xbC0fd0Bd2e5B5CC7FE947A829067D207381E03FA",
     "abiRollupPath": "./helpers/abis/RollupAbi.json",
     "controllerAddress": 0,
     "abiTokensPath": "./helpers/abis/ERC20Abi.json",

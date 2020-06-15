@@ -13,6 +13,7 @@ const error = {
     NO_TYPE: 11,
     NO_WALLET: 12,
     INVALID_FILTER: 13,
+    INVALID_FEE: 14,
 };
 
 module.exports = { error };

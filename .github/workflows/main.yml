@@ -1,0 +1,56 @@
+# This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [ integration/deposit-off-chain ]
+  pull_request:
+    branches: [ integration/deposit-off-chain ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [10.15.3]
+
+    steps:
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - run: npm ci
+    - name: Test circuits
+      run: npm run test:circuits
+    - name: Test utils
+      run: npm run test:utils
+    - name: Test js
+      run: npm run test:js
+    - name: Test contracts
+      run: npm run test:contracts
+    - name: Test operator
+      run: cd rollup-operator; npm ci; 
+    - name: Test operator_js
+      run: cd rollup-operator; npm run test:js-pob
+    - name: Test operator_pool
+      run: cd rollup-operator; npm run test:pool
+    - name: Test operator_server
+      run: cd rollup-operator; npm run test:server-pob
+    - name: Test cli
+      run: cd rollup-cli; npm ci; 
+    - name: Test cli_utils
+      run: cd rollup-cli; npm run test:utils
+    - name: Test cli_actions
+      run: cd rollup-cli; npm run test:actions
+    - name: Test cli_integration
+      run: cd rollup-cli; npm run test:integration
+    - name: Test cli_pob
+      run: cd cli-pob; npm ci
+    - name: Test cli_pob_all
+      run: cd cli-pob; npm run test:all

@@ -5,10 +5,10 @@ pragma solidity ^0.6.1;
  */
 interface RollupInterface {
   function forgeBatch(
-    address payable beneficiaryAddress,
     uint[2] calldata proofA,
     uint[2][2] calldata proofB,
     uint[2] calldata proofC,
-    uint[8] calldata input
-  ) external;
+    uint[10] calldata input,
+    bytes calldata compressedOnChainTx
+  ) external payable;
 }

@@ -1,5 +1,6 @@
-/* global BigInt */
-const rollupUtils = require("../../rollup-utils/rollup-utils");
+const Scalar = require("ffjavascript").Scalar;
+
+const utils = require("../../js/utils");
 
 /**
  * Promise to be resolved in a certain amount of time
@@ -12,11 +13,11 @@ function timeout(ms) {
 
 /**
  * Convert to hexadecimal string padding until 256 characters
- * @param {Number | BigInt} n - input number
+ * @param {Number | Scalar} n - input number
  * @returns {String} - String encoded as hexadecimal with 256 characters
  */
 function padding256(n) {
-    let nstr = BigInt(n).toString(16);
+    let nstr = Scalar.e(n).toString(16);
     while (nstr.length < 64) nstr = "0"+nstr;
     nstr = `0x${nstr}`;
     return nstr;
@@ -29,14 +30,16 @@ function padding256(n) {
  */
 function buildPublicInputsSm(bb) {
     return [
+        padding256(bb.getFinalIdx()),
         padding256(bb.getNewStateRoot()),
         padding256(bb.getNewExitRoot()),
         padding256(bb.getOnChainHash()),
         padding256(bb.getOffChainHash()),
-        padding256(bb.getCountersOut()),
+        padding256(bb.getInitIdx()),
         padding256(bb.getOldStateRoot()),
         padding256(bb.getFeePlanCoins()),
-        padding256(bb.getFeePlanFees()),
+        padding256(bb.getFeeTotal()),
+        padding256(bb.getBeneficiaryAddress()),
     ];
 }
 
@@ -47,19 +50,23 @@ function buildPublicInputsSm(bb) {
  */
 function manageEvent(event) {
     if (event.event == "OnChainTx") {
-        const txData = rollupUtils.decodeTxData(event.args.txData);
+        const txData = utils.decodeTxData(event.args.txData);
         return {
-            fromIdx: txData.fromId,
-            toIdx: txData.toId,
+            txData: event.args.txData,
             amount: txData.amount,
-            loadAmount: BigInt(event.args.loadAmount),
-            coin: txData.tokenId,
-            ax: BigInt(event.args.Ax).toString(16),
-            ay: BigInt(event.args.Ay).toString(16),
-            ethAddress: BigInt(event.args.ethAddress).toString(),
-            onChain: true
+            loadAmount: Scalar.e(event.args.loadAmount),
+            coin: txData.coin,
+            fromAx: padding256(event.args.fromAx),
+            fromAy: padding256(event.args.fromAy),
+            fromEthAddr: event.args.fromEthAddress,
+            toAx: padding256(event.args.toAx),
+            toAy: padding256(event.args.toAy),
+            toEthAddr: event.args.toEthAddress,
+            onChain: txData.onChain
         };
     } else if (event.event == "OffChainTx") {
+        return event.tx;
+    } else if (event.event == "DepositOffChainTx") {
         return event.tx;
     }
 }
@@ -125,4 +132,5 @@ module.exports = {
     manageEvent,
     generateCall,
     purgeArray,
+    padding256,
 };

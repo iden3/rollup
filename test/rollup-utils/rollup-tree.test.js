@@ -1,21 +1,21 @@
-/* global BigInt */
 const chai = require("chai");
 const util = require("util");
 const exec = util.promisify( require("child_process").exec);
 const RollupTree = require("../../rollup-utils/rollup-tree");
+const Scalar = require("ffjavascript").Scalar;
 
 const { expect } = chai;
 
 describe("Rollup tree memory", () => {
     let balanceTree;
 
-    const id = BigInt(1);
-    const amountDeposit = BigInt(2);
-    const tokenId = BigInt(3);
-    const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-    const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-    const ethAddress = BigInt("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
-    const nonce = BigInt(4);
+    const id = Scalar.e(1);
+    const amountDeposit = Scalar.e(2);
+    const tokenId = Scalar.e(3);
+    const Ax = Scalar.e(30890499764467592830739030727222305800976141688008169211302);
+    const Ay = Scalar.e(19826930437678088398923647454327426275321075228766562806246);
+    const ethAddress = Scalar.e("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
+    const nonce = Scalar.e(4);
 
     it("Create Balance tree and insert a deposit", async () => {
         balanceTree = await RollupTree.newMemRollupTree();
@@ -26,7 +26,7 @@ describe("Rollup tree memory", () => {
     });
 
     it("Find key exist", async () => {
-        const idToFind = BigInt(1);
+        const idToFind = Scalar.e(1);
         const resFind = await balanceTree.getIdInfo(idToFind);
         const leafValue = resFind.foundObject;
 
@@ -39,7 +39,7 @@ describe("Rollup tree memory", () => {
     });
 
     it("Find key non-exist", async () => {
-        const idToFind = BigInt(2);
+        const idToFind = Scalar.e(2);
         const resFind = await balanceTree.getIdInfo(idToFind);
         // eslint-disable-next-line no-prototype-builtins
         const flagObject = resFind.hasOwnProperty("foundObject");
@@ -49,28 +49,28 @@ describe("Rollup tree memory", () => {
     });
 
     it("Update leaf", async () => {
-        const newBalance = BigInt(5);
+        const newBalance = Scalar.e(5);
         await balanceTree.updateId(id, newBalance);
 
-        const idToFind = BigInt(1);
+        const idToFind = Scalar.e(1);
         const resFind = await balanceTree.getIdInfo(idToFind);
         const leafValue = resFind.foundObject;
 
         expect(leafValue.balance.toString()).to.be.equal(newBalance.toString());
-        expect(leafValue.nonce.toString()).to.be.equal((nonce + BigInt(1)).toString());
+        expect(leafValue.nonce.toString()).to.be.equal((nonce + Scalar.e(1)).toString());
     });
 });
 
 describe("Rollup tree level db", () => {
     let balanceTree;
     const pathDb = `${__dirname}/tmp`;
-    const id = BigInt(1);
-    const amountDeposit = BigInt(2);
-    const tokenId = BigInt(3);
-    const Ax = BigInt(30890499764467592830739030727222305800976141688008169211302);
-    const Ay = BigInt(19826930437678088398923647454327426275321075228766562806246);
-    const ethAddress = BigInt("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c");
-    const nonce = BigInt(4);
+    const id = Scalar.e(1);
+    const amountDeposit = Scalar.e(2);
+    const tokenId = Scalar.e(3);
+    const Ax = Scalar.e(30890499764467592830739030727222305800976141688008169211302);
+    const Ay = Scalar.e(19826930437678088398923647454327426275321075228766562806246);
+    const ethAddress = Scalar.fromString("0xe0fbce58cfaa72812103f003adce3f284fe5fc7c", 16);
+    const nonce = Scalar.e(4);
 
     after(async () => {
         await exec(`rm -rf ${pathDb}-leafs`);
@@ -86,7 +86,7 @@ describe("Rollup tree level db", () => {
     });
 
     it("Find key exist", async () => {
-        const idToFind = BigInt(1);
+        const idToFind = Scalar.e(1);
         const resFind = await balanceTree.getIdInfo(idToFind);
         const leafValue = resFind.foundObject;
 
@@ -99,7 +99,7 @@ describe("Rollup tree level db", () => {
     });
 
     it("Find key non-exist", async () => {
-        const idToFind = BigInt(2);
+        const idToFind = Scalar.e(2);
         const resFind = await balanceTree.getIdInfo(idToFind);
         // eslint-disable-next-line no-prototype-builtins
         const flagObject = resFind.hasOwnProperty("foundObject");
@@ -109,14 +109,14 @@ describe("Rollup tree level db", () => {
     });
 
     it("Update leaf", async () => {
-        const newBalance = BigInt(5);
+        const newBalance = Scalar.e(5);
         await balanceTree.updateId(id, newBalance);
 
-        const idToFind = BigInt(1);
+        const idToFind = Scalar.e(1);
         const resFind = await balanceTree.getIdInfo(idToFind);
         const leafValue = resFind.foundObject;
 
         expect(leafValue.balance.toString()).to.be.equal(newBalance.toString());
-        expect(leafValue.nonce.toString()).to.be.equal((nonce + BigInt(1)).toString());
+        expect(leafValue.nonce.toString()).to.be.equal((nonce + Scalar.e(1)).toString());
     });
 });

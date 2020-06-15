@@ -1,7 +1,8 @@
 /* eslint-disable no-return-await */
-/* global BigInt */
 const { smt } = require("circomlib");
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
+
 const { newLevelDbEmptyTree } = require("./smt-leveldb");
 const LeafMemDb = require("./mem-db");
 const LeafLevelDb = require("./level-db");
@@ -109,7 +110,7 @@ class RollupTree {
         const leafValues = resFind.foundObject;
 
         const resDeposit = utils.hashStateTree(balance, leafValues.tokenId,
-            leafValues.Ax, leafValues.Ay, leafValues.ethAddress, leafValues.nonce + BigInt(1));
+            leafValues.Ax, leafValues.Ay, leafValues.ethAddress, leafValues.nonce + Scalar.e(1));
         await this.leafDb.insert(resDeposit.hash, this._toString(resDeposit.leafObj));
         const resUpdate = await this.smt.update(id, resDeposit.hash);
         return { hashValue: resDeposit.hash, proof: resUpdate };

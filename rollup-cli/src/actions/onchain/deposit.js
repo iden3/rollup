@@ -1,4 +1,6 @@
 const ethers = require('ethers');
+const { Scalar } = require('ffjavascript');
+
 const { getGasPrice } = require('./utils');
 
 /**
@@ -17,18 +19,23 @@ const { getGasPrice } = require('./utils');
 */
 async function deposit(nodeEth, addressSC, loadAmount, tokenId, walletRollup,
     ethAddress, abi, gasLimit = 5000000, gasMultiplier = 1) {
-    let walletEth = walletRollup.ethWallet.wallet;
     const walletBaby = walletRollup.babyjubWallet;
-    const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     const pubKeyBabyjub = [walletBaby.publicKey[0].toString(), walletBaby.publicKey[1].toString()];
+
+    let walletEth = walletRollup.ethWallet.wallet;
+    const provider = new ethers.providers.JsonRpcProvider(nodeEth);
     walletEth = walletEth.connect(provider);
-    const address = ethAddress || await walletEth.getAddress();
     const contractWithSigner = new ethers.Contract(addressSC, abi, walletEth);
-    const feeOnchainTx = await contractWithSigner.FEE_ONCHAIN_TX();
+
+    const address = ethAddress || await walletEth.getAddress();
+
+    const feeOnchainTx = await contractWithSigner.feeOnchainTx();
+    const feeDeposit = await contractWithSigner.depositFee();
+
     const overrides = {
         gasLimit,
         gasPrice: await getGasPrice(gasMultiplier, provider),
-        value: feeOnchainTx,
+        value: `0x${(Scalar.add(feeOnchainTx, feeDeposit)).toString(16)}`,
     };
     try {
         return await contractWithSigner.deposit(loadAmount, tokenId, address, pubKeyBabyjub, overrides);

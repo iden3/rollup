@@ -1,22 +1,22 @@
+const path = require('path');
 const process = require('child_process');
-const chai = require('chai');
+const { expect } = require('chai');
+
 const { error } = require('../src/list-errors');
 
-const { expect } = chai;
-
-const walletTest = 'wallet-test.json';
+const walletTest = path.join(__dirname, 'wallet-test.json');
 const pass = 'foo';
 
 describe('WITHDRAW', async function () {
     this.timeout(20000);
 
     it('Should Withdraw', (done) => {
-        const outBalance = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
+        const outBalance = process.exec(`node cli-pos.js balance -w ${walletTest} -p ${pass}`);
         outBalance.stdout.on('data', (balance) => {
-            const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 2`);
+            const out = process.exec(`node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 2`);
             out.stdout.on('data', (data) => {
                 expect(data.includes('Transaction hash: ')).to.be.equal(true);
-                const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -w ${walletTest} -p ${pass}`);
+                const outBalance2 = process.exec(`node cli-pos.js balance -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on('data', (balance2) => {
                     expect(parseInt(balance2, 10)).to.be.equal(parseInt(balance, 10) + 2);
                     done();
@@ -26,15 +26,15 @@ describe('WITHDRAW', async function () {
     });
 
     it('Should Withdraw with different config path', (done) => {
-        const outBalance = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
+        const outBalance = process.exec(`mv config.json config-test.json; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
         outBalance.stdout.on('data', (balance) => {
-            const out = process.exec(`cd ..; node cli-pos.js withdraw -f config-test.json -w ${walletTest} -p ${pass} -i 3`);
+            const out = process.exec(`node cli-pos.js withdraw -f config-test.json -w ${walletTest} -p ${pass} -i 3`);
             out.stdout.on('data', (data) => {
                 expect(data.includes('Transaction hash: ')).to.be.equal(true);
-                const outBalance2 = process.exec(`cd ..; node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
+                const outBalance2 = process.exec(`node cli-pos.js balance -f config-test.json -w ${walletTest} -p ${pass}`);
                 outBalance2.stdout.on('data', (balance2) => {
                     expect(parseInt(balance2, 10)).to.be.equal(parseInt(balance, 10) + 2);
-                    process.exec('cd ..; mv config-test.json config.json');
+                    process.exec('mv config-test.json config.json');
                     done();
                 });
             });
@@ -42,7 +42,7 @@ describe('WITHDRAW', async function () {
     });
 
     it('No double withdraw', (done) => {
-        const out = process.exec(`cd ..; node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
+        const out = process.exec(`node cli-pos.js unregister -w ${walletTest} -p ${pass} -i 2`);
         out.stdout.on('data', (data) => {
             expect(data.includes('Transaction hash: ')).to.be.equal(true);
         });
@@ -53,7 +53,7 @@ describe('WITHDRAW', async function () {
     });
 
     it('No withdraw without unregister', (done) => {
-        const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 1`);
+        const out = process.exec(`node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 1`);
         out.stdout.on('data', (data) => {
             expect(data.includes('Transaction hash: ')).to.be.equal(true);
         });
@@ -64,7 +64,7 @@ describe('WITHDRAW', async function () {
     });
 
     it('Withdraw invalid command', (done) => {
-        const out = process.exec(`cd ..; node cli-pos.js withdra -w ${walletTest} -p ${pass} -i 2`);
+        const out = process.exec(`node cli-pos.js withdra -w ${walletTest} -p ${pass} -i 2`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.INVALID_COMMAND);
             done();
@@ -72,7 +72,7 @@ describe('WITHDRAW', async function () {
     });
 
     it('Withdraw invalid path', (done) => {
-        const out = process.exec(`cd ..; node cli-pos.js withdraw -w wallet-no.json -p ${pass} -i 2`);
+        const out = process.exec(`node cli-pos.js withdraw -w wallet-no.json -p ${pass} -i 2`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.INVALID_PATH);
             done();
@@ -80,7 +80,7 @@ describe('WITHDRAW', async function () {
     });
 
     it('Withdraw invalid param', (done) => {
-        const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p ${pass}`);
+        const out = process.exec(`node cli-pos.js withdraw -w ${walletTest} -p ${pass}`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.NO_PARAM);
             done();
@@ -88,7 +88,7 @@ describe('WITHDRAW', async function () {
     });
 
     it('Withdraw invalid wallet or password', (done) => {
-        const out = process.exec(`cd ..; node cli-pos.js withdraw -w ${walletTest} -p fii -i 2`);
+        const out = process.exec(`node cli-pos.js withdraw -w ${walletTest} -p fii -i 2`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.INVALID_WALLET);
             done();
@@ -96,10 +96,10 @@ describe('WITHDRAW', async function () {
     });
 
     it('Withdraw no config file', (done) => {
-        const out = process.exec(`cd ..; mv config.json config-test.json; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 1`);
+        const out = process.exec(`mv config.json config-test.json; node cli-pos.js withdraw -w ${walletTest} -p ${pass} -i 1`);
         out.on('exit', (code) => {
             expect(code).to.be.equal(error.NO_CONFIG_FILE);
-            process.exec('cd ..; mv config-test.json config.json');
+            process.exec('mv config-test.json config.json');
             done();
         });
     });

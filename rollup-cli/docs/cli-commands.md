@@ -50,7 +50,7 @@ offchainTx command
   --amount or -a <amount>
     Amount to send or withdraw
   --fee <fee>
-    User fee
+    User fee in % of the amount send
   --paramstx <parameter file>
     Contains all necessary parameters to perform transacction
     Default: ./config.json
@@ -112,4 +112,4 @@ The following parameters can be configured in a json file in order to not manual
   - account id (receiver) 
   - amount
   - token id
-  - user fee
+  - fee

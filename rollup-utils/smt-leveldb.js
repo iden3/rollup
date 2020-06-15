@@ -1,8 +1,10 @@
 /* eslint-disable no-return-await */
 /* eslint-disable no-await-in-loop */
-/* global BigInt */
-const { stringifyBigInts, unstringifyBigInts } = require("snarkjs");
-const { SMT } = require("circomlib");
+const { stringifyBigInts, unstringifyBigInts } = require("ffjavascript").utils;
+const Scalar = require("ffjavascript").Scalar;
+const { SMT, babyJub } = require("circomlib");
+const F = babyJub.F;
+
 const LevelDb = require("./level-db");
 
 /**
@@ -11,7 +13,7 @@ const LevelDb = require("./level-db");
 class SMTLevelDb {
     /**
      * Initilize SMT levelDb class
-     * @param {String} pathDb - databse path 
+     * @param {String} pathDb - database path 
      * @param {String} prefix - prefix to store [key - value] 
      */
     constructor(pathDb, prefix) {
@@ -23,7 +25,7 @@ class SMTLevelDb {
      * @returns {BigInt} - root
      */
     async getRoot() {
-        const value = await this.db.getOrDefault("smt-root", this._toString(BigInt(0)));
+        const value = await this.db.getOrDefault("smt-root", this._toString(Scalar.e(0)));
         return this._fromString(value);
     }
 
@@ -61,7 +63,7 @@ class SMTLevelDb {
      * @returns {String}
      */
     _key2str(k) {
-        const keyS = BigInt(k).toString();
+        const keyS = Scalar.e(k).toString();
         return keyS;
     }
 
@@ -71,14 +73,14 @@ class SMTLevelDb {
      */
     _normalize(n) {
         for (let i = 0; i < n.length; i++) {
-            n[i] = BigInt(n[i]);
+            n[i] = F.e(n[i]);
         }
     }
 
     /**
      * Get value given its key
      * @param {BigInt} key 
-     * @returns {Any | undefined} - value, retirns undefined if not found
+     * @returns {Any | undefined} - value, returns undefined if not found
      */
     async get(key) {
         const keyS = this._key2str(key);

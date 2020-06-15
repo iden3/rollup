@@ -1,5 +1,5 @@
-/* global BigInt */
 const Web3 = require('web3');
+const { Scalar } = require('ffjavascript');
 
 /**
  * Get ether balance of a given wallet
@@ -23,8 +23,8 @@ async function getEtherBalance(wallet, actualConfig) {
  */
 async function _getGasPrice(multiplier, web3) {
     const strAvgGas = await web3.eth.getGasPrice();
-    const avgGas = BigInt(strAvgGas);
-    return (avgGas * BigInt(multiplier)).toString();
+    const avgGas = Scalar.e(strAvgGas);
+    return Scalar.mul(avgGas, multiplier).toString();
 }
 
 /**

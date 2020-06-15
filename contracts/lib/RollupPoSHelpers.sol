@@ -9,9 +9,9 @@ contract RollupPoSHelpers {
 
   using Memory for *;
 
-  uint constant bytesOffChainTx = 3*2 + 2;
+  uint constant bitsTx = 24 + 24 + 16 + 4;
   uint constant rField = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-  uint constant FOURTH_ROOT_FINNEY = 5623; //4th root of finney in weis
+  uint constant FOURTH_ROOT_FINNEY = 5623; // 4th root of finney in weis
 
   constructor () public {}
 
@@ -27,15 +27,22 @@ contract RollupPoSHelpers {
   /**
    * @dev hash all off-chain transactions
    * @param offChainTx off-chain transaction compressed format
+   * @param maxTx Maxtransactions that fits in one batch
    * @return hash of all off-chain transactions
    */
   function hashOffChainTx(bytes memory offChainTx, uint256 maxTx) internal pure returns (uint256) {
-    uint headerLength = (maxTx >> 3);
-    if((maxTx % 8) != 0) headerLength = headerLength + 1;
-    bytes memory hashOffTx = new bytes(maxTx*bytesOffChainTx + headerLength);
+    uint256 totalLength = maxTx*bitsTx;
+
+    if (maxTx % 2 != 0) {
+        totalLength += 4;
+    }
+
+    bytes memory hashOffTx = new bytes(totalLength/8);
     Memory.Cursor memory c = Memory.read(offChainTx);
-    uint ptr = 0;
-    while(!c.eof()) {
+    uint256 ptr = totalLength/8 - offChainTx.length;
+
+    while (!c.eof()) {
+      // add off-chain transactions at the end
       bytes1 iTx = c.readBytes1();
       hashOffTx[ptr] = iTx;
       ptr++;
@@ -44,7 +51,7 @@ contract RollupPoSHelpers {
   }
 
   /**
-   * @dev Calculate the effective stake, wich is: stake^1.25, we can also express as stake*stake^1/4
+   * @dev Calculate the effective stake, which is: stake^1.25, it can also be noted as stake*stake^1/4
    * @param stake number to get the exponentiation
    * @return stake^1.25
    */
@@ -52,7 +59,6 @@ contract RollupPoSHelpers {
     return uint64((stake*sqrt(sqrt(stake)))/(1 finney * FOURTH_ROOT_FINNEY));
   }
 
-  //Babylonian method
   /**
    * @dev perform the babylonian method to calculate in a simple and efficient way the square root
    * @param x number to calculate the square root

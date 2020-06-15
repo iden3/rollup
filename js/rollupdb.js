@@ -1,22 +1,26 @@
 const SMT = require("circomlib").SMT;
+const poseidon = require("circomlib").poseidon;
+const Scalar = require("ffjavascript").Scalar;
+const BabyJubJub = require("circomlib").babyJub;
+
 const SMTTmpDb = require("./smttmpdb");
 const BatchBuilder = require("./batchbuilder");
-const bigInt = require("snarkjs").bigInt;
 const Constants = require("./constants");
 const utils = require("./utils");
-const poseidon = require("circomlib").poseidon;
+
 const poseidonHash = poseidon.createHash(6, 8, 57);
 
 class RollupDB {
 
-    constructor(db, lastBatch, stateRoot) {
+    constructor(db, lastBatch, stateRoot, initialIdx) {
         this.db = db;
         this.lastBatch = lastBatch;
         this.stateRoot = stateRoot;
+        this.initialIdx = initialIdx;
     }
 
     async buildBatch(maxNTx, nLevels) {
-        return new BatchBuilder(this, this.lastBatch+1, this.stateRoot, maxNTx, nLevels);
+        return new BatchBuilder(this, this.lastBatch+1, this.stateRoot, this.initialIdx, maxNTx, nLevels);
     }
 
     async consolidate(bb) {
@@ -27,19 +31,21 @@ class RollupDB {
             await bb.build();
         }
         const insertsState = Object.keys(bb.dbState.inserts).reverse().map(function(key) {
-            return [bigInt(key), bb.dbState.inserts[key]];
+            return [Scalar.e(key), bb.dbState.inserts[key]];
         });
         const insertsExit = Object.keys(bb.dbExit.inserts).map(function(key) {
-            return [bigInt(key), bb.dbExit.inserts[key]];
+            return [Scalar.e(key), bb.dbExit.inserts[key]];
         });
         await this.db.multiIns([
             ...insertsState,
             ...insertsExit,
-            [ Constants.DB_Batch.add(bigInt(bb.batchNumber)), [bb.stateTree.root, bb.exitTree.root]],
+            [ Scalar.add(Constants.DB_Batch, bb.batchNumber), [bb.stateTree.root, bb.exitTree.root]],
+            [ Scalar.add(Constants.DB_InitialIdx, bb.batchNumber), bb.finalIdx],
             [ Constants.DB_Master, bb.batchNumber]
         ]);
         this.lastBatch = bb.batchNumber;
         this.stateRoot = bb.stateTree.root;
+        this.initialIdx = bb.finalIdx;
     }
 
     async rollbackToBatch(numBatch){
@@ -57,16 +63,30 @@ class RollupDB {
         await this.db.multiIns([
             [Constants.DB_Master, numBatch]
         ]);
-        const roots = await this.db.get(Constants.DB_Batch.add(bigInt(numBatch)));
+        const roots = await this.db.get(Scalar.add(Constants.DB_Batch, numBatch));
         this.lastBatch = numBatch;
         if (numBatch === 0) 
-            this.stateRoot = bigInt(0);
+            this.stateRoot = Scalar.e(0);
         else 
             this.stateRoot = roots[0];
     }
 
+    async getIdx(coin, ax, ay) {
+        if (ax == 0 && ay == 0) return 0;
+        const hashIdx = utils.hashIdx(coin, ax, ay);
+        const idx = await this.db.get(hashIdx);
+        if (!idx) return null;
+        return idx;
+    }
+
+    async getStateByAccount(coin, ax, ay) {
+        const idx = await this.getIdx(coin, ax, ay);
+        if (!idx) return null;
+        return this.getStateByIdx(idx);
+    }
+
     async getStateByIdx(idx) {
-        const key = Constants.DB_Idx.add(bigInt(idx));
+        const key = Scalar.add(Constants.DB_Idx, idx);
         const valStates = await this.db.get(key);
         if (!valStates) return null;
         // get last state
@@ -80,11 +100,14 @@ class RollupDB {
         if (!stateArray) return null;
         const st = utils.array2state(stateArray);
         st.idx = Number(idx);
+        st.rollupAddress = this.pointToCompress(st.ax, st.ay);
         return st;
     }
 
     async getStateByAxAy(ax, ay) {
-        const keyAxAy = Constants.DB_AxAy.add(bigInt("0x" + ax)).add(bigInt("0x" + ay));
+        let keyAxAy = Scalar.add(Constants.DB_AxAy, Scalar.fromString(ax, 16));
+        keyAxAy = Scalar.add(keyAxAy, Scalar.fromString(ay, 16));
+
         const valStates = await this.db.get(keyAxAy);
         if (!valStates) return null;
         // get last state
@@ -103,7 +126,7 @@ class RollupDB {
     }
 
     async getStateByEthAddr(ethAddr) {
-        const keyEth = Constants.DB_EthAddr.add(bigInt(ethAddr));
+        const keyEth = Scalar.add(Constants.DB_EthAddr, Scalar.fromString(ethAddr, 16));
         const valStates = await this.db.get(keyEth);
         if (!valStates) return null;
         // get last state
@@ -121,16 +144,20 @@ class RollupDB {
         return Promise.all(promises);
     }
 
-    async getExitTreeInfo(numBatch, idx){
+    async getExitTreeInfo(numBatch, coin, ax, ay){
         if (numBatch > this.lastBatch)
             return null;
-        const keyRoot = Constants.DB_Batch.add(bigInt(numBatch));
+
+        const idx = await this.getIdx(coin, ax, ay);
+        if (!idx) return null;
+        
+        const keyRoot = Scalar.add(Constants.DB_Batch, Scalar.e(numBatch));
         const rootValues = await this.db.get(keyRoot);
         if (!rootValues) return null;
         const rootExitTree = rootValues[1];
         const dbExit = new SMTTmpDb(this.db);
         const tmpExitTree = new SMT(dbExit, rootExitTree);
-        const resFindExit = await tmpExitTree.find(bigInt(idx));
+        const resFindExit = await tmpExitTree.find(Scalar.e(idx));
         // get leaf information
         if (resFindExit.found) {
             const foundValueId = poseidonHash([resFindExit.foundValue, idx]);
@@ -145,9 +172,9 @@ class RollupDB {
     }
 
     _findLastState(valueStates){
-        const lastBatch = bigInt(this.lastBatch);
+        const lastBatch = Scalar.e(this.lastBatch);
         for (let i = valueStates.length - 1; i >= 0; i--){
-            if (valueStates[i].lesserOrEquals(lastBatch)) 
+            if (Scalar.leq(valueStates[i], lastBatch)) 
                 return valueStates[i];
         }
         return null;
@@ -165,12 +192,12 @@ class RollupDB {
         // update idx states
         const alreadyUpdated = [];
         for (let i = this.lastBatch; i > numBatch; i--){
-            const keyNumBatchIdx = Constants.DB_NumBatch_Idx.add(bigInt(i));
+            const keyNumBatchIdx = Scalar.add(Constants.DB_NumBatch_Idx, i);
             const idxToUpdate = await this.db.get(keyNumBatchIdx);
             if (!idxToUpdate) continue;
             for (const idx of idxToUpdate) {
                 if (!alreadyUpdated.includes(idx)){
-                    const keyIdx = Constants.DB_Idx.add(bigInt(idx));
+                    const keyIdx = Scalar.add(Constants.DB_Idx, idx);
                     const states = await this.db.get(keyIdx);
                     this._purgeStates(states, numBatch);
                     await this.db.multiIns([
@@ -184,7 +211,7 @@ class RollupDB {
         // reset numBatch-idx for future states
         const keysToDel = [];
         for (let i = this.lastBatch; i > numBatch; i--){
-            const keyNumBatchIdx = Constants.DB_NumBatch_Idx.add(bigInt(i));
+            const keyNumBatchIdx = Scalar.add(Constants.DB_NumBatch_Idx, i);
             keysToDel.push(keyNumBatchIdx);
         }
         await this.db.multiDel(keysToDel);
@@ -194,20 +221,21 @@ class RollupDB {
         // update axAy states
         const alreadyUpdated = [];
         for (let i = this.lastBatch; i > numBatch; i--){
-            const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(bigInt(i));
+            const keyNumBatchAxAy = Scalar.add(Constants.DB_NumBatch_AxAy, i);
             const axAyToUpdate = await this.db.get(keyNumBatchAxAy);
             if (!axAyToUpdate) continue;
-            for (const encodedAxAy of axAyToUpdate) {
-                if (!alreadyUpdated.includes(encodedAxAy)){
-                    const ax = encodedAxAy.shr(256);
-                    const ay = encodedAxAy.and(bigInt(1).shl(256).sub(bigInt(1)));  
-                    const keyAxAy = Constants.DB_AxAy.add(ax).add(ay);
+            for (const hashAxAy of axAyToUpdate) {
+                if (!alreadyUpdated.includes(hashAxAy)){
+                    const valueHashAxAy = await this.db.get(hashAxAy);
+                    const ax = valueHashAxAy[0];
+                    const ay = valueHashAxAy[1];  
+                    const keyAxAy = Scalar.add(Scalar.add(Constants.DB_AxAy, ax), ay);
                     const states = await this.db.get(keyAxAy);
                     this._purgeStates(states, numBatch);
                     await this.db.multiIns([
                         [keyAxAy, states],
                     ]);
-                    alreadyUpdated.push(encodedAxAy);
+                    alreadyUpdated.push(hashAxAy);
                 }
             }
         }
@@ -215,7 +243,7 @@ class RollupDB {
         // reset numBatch-AxAy for future states
         const keysToDel = [];
         for (let i = this.lastBatch; i > numBatch; i--){
-            const keyNumBatchAxAy = Constants.DB_NumBatch_AxAy.add(bigInt(i));
+            const keyNumBatchAxAy = Scalar.add(Constants.DB_NumBatch_AxAy, i);
             keysToDel.push(keyNumBatchAxAy);
         }
         await this.db.multiDel(keysToDel);
@@ -225,12 +253,12 @@ class RollupDB {
         // update ethAddr states
         const alreadyUpdated = [];
         for (let i = this.lastBatch; i > numBatch; i--){
-            const keyNumBatchEthAddr = Constants.DB_NumBatch_EthAddr.add(bigInt(i));
+            const keyNumBatchEthAddr = Scalar.add(Constants.DB_NumBatch_EthAddr, i);
             const ethAddrToUpdate = await this.db.get(keyNumBatchEthAddr);
             if (!ethAddrToUpdate) continue;
             for (const ethAddr of ethAddrToUpdate) {
                 if (!alreadyUpdated.includes(ethAddr)){  
-                    const keyEthAddr = Constants.DB_EthAddr.add(ethAddr);
+                    const keyEthAddr = Scalar.add(Constants.DB_EthAddr, ethAddr);
                     const states = await this.db.get(keyEthAddr);
                     this._purgeStates(states, numBatch);
                     await this.db.multiIns([
@@ -244,23 +272,23 @@ class RollupDB {
         // reset numBatch-ethAddr for future states
         const keysToDel = [];
         for (let i = this.lastBatch; i > numBatch; i--){
-            const keyNumBatchEthAddr = Constants.DB_NumBatch_EthAddr.add(bigInt(i));
+            const keyNumBatchEthAddr = Scalar.add(Constants.DB_NumBatch_EthAddr, i);
             keysToDel.push(keyNumBatchEthAddr);
         }
         await this.db.multiDel(keysToDel);
     }
 
     async _purgeStates(states, _numBatch){
-        const numBatch = bigInt(_numBatch);
+        const numBatch = Scalar.e(_numBatch);
         if (states.length === 0) return;
-        if (states.slice(-1)[0].lesser(numBatch)) return;
-        if (states[0].greater(numBatch)) {
+        if (Scalar.lt(states.slice(-1)[0], numBatch)) return;
+        if (Scalar.gt(states[0], numBatch)) {
             states.splice(0, states.length);
             return;
         }
         let indexFound = null;
         for (let i = states.length - 1; i >= 0; i--){
-            if (states[i].lesserOrEquals(numBatch)){
+            if (Scalar.leq(states[i], numBatch)){
                 indexFound = i+1;
                 break;
             } 
@@ -269,16 +297,31 @@ class RollupDB {
             states.splice(indexFound);
         }
     }
+
+    /**
+     * Compute babyjubjub compressed address
+     * @param {String} ax - Ax coordinate encoded as hexadecimal string
+     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @returns {String} compressed bayjubjub address encoded as hexadecimal string
+     */
+    pointToCompress(axStr, ayStr){
+        const ax = Scalar.fromString(axStr, 16);
+        const ay = Scalar.fromString(ayStr, 16);
+        const compress = BabyJubJub.packPoint([ax, ay]);
+
+        return `0x${compress.toString("hex")}`;
+    }
 }
 
 module.exports = async function(db) {
     const master = await db.get(Constants.DB_Master);
     if (!master) {
-        return new RollupDB(db, 0, bigInt(0));
+        return new RollupDB(db, 0, Scalar.e(0), 0);
     }
-    const roots = await db.get(Constants.DB_Batch.add(bigInt(master)));
+    const roots = await db.get(Scalar.add(Constants.DB_Batch, Scalar.e(master)));
+    const initialIdx = await db.get(Scalar.add(Constants.DB_InitialIdx, Scalar.e(master)));
     if (!roots) {
         throw new Error("Database corrupted");
     }
-    return new RollupDB(db, master, roots[0]);
+    return new RollupDB(db, master, roots[0], initialIdx);
 };

@@ -82,3 +82,9 @@ rollup-cli/tools/gunners/config/
 synch-config.json
 pool-config.json
 wallet.json
+
+# circuits tmp
+test/circuit-example.json
+
+# docker databases
+docker/docker-operator/leveldb-*
