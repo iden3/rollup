@@ -26,7 +26,6 @@ const OperatorManager = require("../../proof-of-burn/interface-pob");
 const CliServerProof = require("../../cli-proof-server");
 const LoopManager = require("../../proof-of-burn/loop-manager-pob");
 const Constants = require("../../constants");
-const utils = require("../../../../rollup-utils/rollup-utils");
 const { checkEnvVariables, checkPassEnv, getPassword } = require("../utils");
 
 const { argv } = require("yargs")
@@ -36,7 +35,6 @@ operator <options>
 options
 =======
     operator <options>
-        start operator with passphrase
     
     --clear or -c [true | false]
         Erase persistent databases

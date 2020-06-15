@@ -56,6 +56,7 @@ class LoopManager{
      * @param {String} logLevel - logger level
      * @param {String} nodeUrl - ethereum node url
      * @param {Object} timeouts - Configure timeouts
+     * @param {Number} pollingTimeout - Time to wait to consider a transaction failed
      */
     constructor(
         rollupSynch, 
@@ -65,11 +66,13 @@ class LoopManager{
         cliServerProof,
         logLevel,
         nodeUrl,
-        timeouts
+        timeouts,
+        pollingTimeout
     ) {
         this.nodeUrl = nodeUrl;
         this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl));
         this.web3.eth.handleRevert = true;
+        this.web3.eth.transactionPollingTimeout = pollingTimeout;
         this.rollupSynch = rollupSynch;
         this.pobSynch = pobSynch;
         this.poolTx = poolTx;

@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ integration/deposit-off-chain ]
+    branches: [ master ]
   pull_request:
-    branches: [ integration/deposit-off-chain ]
+    branches: [ master ]
 
 jobs:
   build:

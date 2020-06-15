@@ -525,7 +525,7 @@ function checkFees(fee) {
     if (feeTable[fee] === undefined) {
         console.log(`Fee selected ${fee} is not valid`);
         console.log('Please, select a valid fee amoung among the next values:');
-        console.log(`${feeTable}`);
+        console.log(feeTable);
         throw new Error(error.INVALID_FEE);
     }
 }
@@ -557,7 +557,7 @@ function printKeys(wallet) {
     console.log(`${chalk.yellow('Ethereum public key:')}`);
     console.log(`  Address: ${chalk.blue(`0x${wallet.ethWallet.address}`)}\n`);
     console.log(`${chalk.yellow('Rollup public key:')}`);
-    console.log(`  Compressed: ${chalk.blue(`0x${wallet.babyjubWallet.publicCompressed}`)}`);
+    console.log(`  Rollup address: ${chalk.blue(`0x${wallet.babyjubWallet.publicCompressed}`)}`);
     console.log('  Babyjubjub points: ');
     console.log(`    Ax: ${chalk.blue(`0x${wallet.babyjubWallet.public.ax}`)}`);
     console.log(`    Ay: ${chalk.blue(`0x${wallet.babyjubWallet.public.ay}`)}`);
