@@ -200,17 +200,24 @@ class InterfacePoB {
     }
     
     /**
-     * Sign ethereum transaction
-     * @param {Object} tx - Raw ethreum transaction
-     * @returns {Objject} - signed transaction 
-     */
+ * Sign ethereum transaction
+ * @param {Object} tx - Raw ethreum transaction
+ * @returns {Objject} - signed transaction 
+ */
     async signTransaction(tx) {
+        let resGasLimit;
         if (this.gasLimit === 0){
-            const gasEstimated = await this.web3.eth.estimateGas(tx);
-            tx.gasLimit = Math.floor(gasEstimated*1.3); // add a +30% for safety
+            try {
+                const gasEstimated = await this.web3.eth.estimateGas(tx);
+                // add a +30% for safety
+                resGasLimit = Math.floor(gasEstimated*1.3);
+            } catch (error){
+                return { error: error.message };
+            }
         } else {
-            tx.gasLimit = this.gasLimit;
+            resGasLimit = this.gasLimit;
         }
+        Object.assign(tx, {gasLimit: resGasLimit});
         return await this.web3.eth.accounts.signTransaction(tx, this.wallet.privateKey);
     }
 }
