@@ -167,7 +167,7 @@ function state2array(st) {
 function array2state(a) {
     return {
         coin: Scalar.toNumber(extract(a[0], 0, 32)),
-        nonce: Scalar.toNumber(extract(a[0], 32, 48)),
+        nonce: Scalar.toNumber(extract(a[0], 32, 80)),
         amount: Scalar.e(a[1]),
         ax: Scalar.e(a[2]).toString(16),
         ay: Scalar.e(a[3]).toString(16),

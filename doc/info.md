@@ -8,9 +8,9 @@ Describe most used words and its meaning regarding Rollup environment
 
 `circuit`: the code that defines what the SNARK allows
 
-`balance tree`: the Merkle tree that stores a mapping between accounts and balances
+`account tree`: the Merkle tree that stores a mapping between accounts and balances
 
-`balance tree depth (24)`: the number of layers in the balance tree
+`account tree depth (24)`: the number of layers in the balance tree
 
 `exit tree`: The tree if the exit balances of a given batch
 
@@ -22,45 +22,44 @@ Describe most used words and its meaning regarding Rollup environment
 
 `proof`: a single SNARK proof of a state transition which proves a batch
 
-`(Ax, Ay)`: public key babyJub
+`(Ax, Ay)`: public key babyJubJub
 
-`withdraw address`: Allowed address to perform `withdraw` on-chain transaction
+`Rollup address`: compressed public key babyjubjub
+
+`ethereum address`: Allowed address to perform on-chain transaction
 
 ## On-chain transactions
 
-- `deposit`: Insert new leaf into the balance tree wit the following parameters: `Key = IdBalanceTree`, `Value = Hash(balance, token, Ax, Ay, withdrawAddress, nonce)`. This action will allow to do an off-chain transaction.
+- `deposit`: Insert new leaf into the rollup account tree
 
-- `transferOnTop`: increase balance of a given `IdBalanceTree`
+- `transferOnTop`: increase balance for a given rollup account
 
 - `withdraw`: Action required to withdraw balance. It requires two steps: 
   - 1 - Off-chain transaction
   - 2 - On-chain transaction: requires merkle tree proof to make the withdraw
 
-- `forceWithdrawFull`: Force exit to balance tree. All the amount will be refunded.
+- `forceWithdraw`: Force exit from rollup account tree. All the amount will be refunded.
 
 ## Off-chain transactions
 
-- `transaction`: Standard off-chain trasaction signed by `idBalanceTree` with `ecdsa`. Allows to send `amount` to a `destinity` balance tree id.
+- `transaction`: Standard off-chain trasaction signed by `(Ax,Ay)` with `ecdsa` signature. Allows to send `amount` to a `recipient` rollup account.
 
 - `withdraw`: Action required to withdraw balance. It requires two steps: 
-  - 1 - Off-chain transaction: Off-chain: send `amount` to withdraw to `idBalanceTree` = 0
+  - 1 - Off-chain transaction: Off-chain: send `amount` to withdraw to `(Ax,Ay)` = 0
   - 2 - On-chain transaction
 
 ## Data availability
 Data bases:
-- `Balance Tree`: Spare merkle tree where final node is as follows:
+- `Account Tree`: Spare merkle tree where final node is as follows:
   - Key = IdBalanceTree
-  - Value = H(balance, token, Ax, Ay, withdrawAddress, nonce)
-- `Balance Leafs`: Last sparse merkle tree step to retrieve Leaf given an `IdBalanceTree`
-  - Key = H(balance, token, Ax, Ay, withdrawAddress, nonce)
-  - Value = [balance, token, Ax, Ay, withdrawAddress, nonce]
+  - Value = H(balance, token, Ax, Ay, ethereumAddress, nonce)
 
 - It is assumed that we can retrieve:
-  - last state of `IdBalanceTree` through `operator`
+  - last state of a rollup account through `operator`
   - merkle tree proof to verify data received with current state (on-chain last balance tree state root)
 
-## Operator selector.
-
+# PoS
+## Operator selector
 Each block is an etherum block which is every 15 seconds. We then have an era which is 20 slots and a slot has 100 blocks. That means that an Era lasts 8.3 hours. Each slot has a single operator. 
 
 At the begining of each era there is a raffle that assigns one operator to each slot for the upcoming era. This raffle is weighted by the effective stake. The effective stake is function of the ETH staked by each operator stakes in the system.
@@ -91,8 +90,7 @@ rnd = h(seed || slot)
 
 We use this rnd to navegate with the tree structure to find the assigned operator for that slot.
 
-The tree.
-=========
+## The tree
 
 The tree is composed of intermediate nodes and leafs.  Each staker is in a leaf. Each intermediate nodes has two values:
 1.- A threshold.
