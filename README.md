@@ -36,8 +36,8 @@ For more on zkRollup checkout our docs [here](https://docs.iden3.io/#/rollup/rol
 ### Testnet details
 We've currently deployed an operator and the relevant contracts to the Goerli Testnet:
 
-1. **[Rollup.sol](https://github.com/iden3/rollup/blob/testnet-2.0/contracts/Rollup.sol)** manages the rollup itself: https://goerli.etherscan.io/address/0xbC0fd0Bd2e5B5CC7FE947A829067D207381E03FA
-2. **[RollupPoB.sol](https://github.com/iden3/rollup/blob/testnet-2.0/contracts/RollupPoB.sol)** manages the consensus mechanism; in this case PoB: https://goerli.etherscan.io/address/0x4F0b91B8117b1Ac65ceE31efAbeafbBBEFeDcC38
+1. **[Rollup.sol](https://github.com/iden3/rollup/blob/master/contracts/Rollup.sol)** manages the rollup itself: https://goerli.etherscan.io/address/0xbC0fd0Bd2e5B5CC7FE947A829067D207381E03FA
+2. **[RollupPoB.sol](https://github.com/iden3/rollup/blob/master/contracts/RollupPoB.sol)** manages the consensus mechanism; in this case PoB: https://goerli.etherscan.io/address/0x4F0b91B8117b1Ac65ceE31efAbeafbBBEFeDcC38
 
 This testnet is purely for transfers (not arbitrary smart contracts), and fully supports ERC20 tokens.
 
@@ -57,7 +57,9 @@ If you’d like to offer feedback, come across any problems, or have any questio
 
 >A **batch** is a rollup block
 
->An **operator** is a rollup block producer.
+>An **operator** is a rollup block producer
+
+> **rollup address** is the compressed format of the babyjubjub public key
 
 > **Forging** refers to the creation of a batch (off-chain) and the subsequent (on-chain) verification of the attached zkSnark.
 
@@ -74,7 +76,6 @@ The first step is to clone the rollup repository and move to the testnet branch:
 ```bash=
 git clone https://github.com/iden3/rollup.git
 cd rollup
-git checkout testnet-2.0
 ```
 
 Next, install the required dependencies inside the relevant folders:
@@ -99,7 +100,9 @@ You'll be prompted to enter a password:
 Password: 
 ```
 
-You'll need to enter this password every time you perform a rollup transaction.
+> Remeber you'll need to enter this password every time you perform a rollup transaction.
+
+You'll be prompted the keys you have just generated.
 
 ### 2.3. Get ether<a id="2_3"></a>
  When you created the wallet in the previous step, you were also assigned an ethereum address. To print your address, execute:
@@ -113,14 +116,15 @@ You should see a message with the following stucture:
 ```bash=
 Ethereum public key:
   Address:
+
 Rollup public key: 
-  Compressed:
-    Points:
+  Rollup address:
+  Babyjubjub points:
       Ax:
       Ay:
 ```
 
-Before we interact with the rollup contract, you’ll need to make sure you have some ether stored in this `Address` (this is to pay for the network transaction fees in the next step). The best way to do this is by using the goerli faucet.
+Before we interact with the rollup contract, you’ll need to make sure you have some ether stored in your `Ethereum address` (this is to pay for the network transaction fees in the next step). The best way to do this is by using the goerli faucet.
 
 Copy your ethereum address and visit the [faucet](https://goerli-faucet.slock.it/) to request test ether.
 
@@ -282,13 +286,13 @@ node cli.js offchaintx --type depositoffchain --amount <amountToSend> --tokenid 
 
 Wait until the off-chain transaction has been forged and check the rollup accounts status in https://zkrollup.iden3.net/accounts/:rollupaddress/:tokenid to check that rollup account has been created succesfully 
 
-> In order to perform this deposit off-chain transaction, the operator must pay for the creation of the rollup account. Transaction needs to cover this costs, otherwise operator will automatically reject the transaction. Current testnet implementation defines a `deposit fee = 0.0001 ether`. Taking into account that we consider `WEENUS token (18 decimals) = 1$`, that would mean that, assuming ether value is 230$, deposit fee would cost 0.023 $. Therefore, to perform a deposit off-chain, rollup user must pay fees that covers this deposit fees.
+> In order to perform this deposit off-chain transaction, the operator must pay for the creation of the rollup account. Transaction needs to cover this costs, otherwise operator will automatically reject the transaction. Current testnet implementation defines a `deposit fee = 0.0001 ether`. Taking into account that we consider `WEENUS token (18 decimals) = 1$`, that would mean that, assuming ether value is 230$, deposit fee would cost 0.023 $. Therefore, to perform a deposit off-chain, rollup user must pay fees that covers this deposit fees. As an example of a deposit off-chain could be an amount of: `1000000000000000000` with 50% fee that turns in `0.5 $` of fees.
 
 
 ### 2.12. Resources<a id="2_12"></a>
 
 - Checkout our github repository [here](https://github.com/iden3/rollup).
 
-- For more on how the rollup client works, see [here](https://github.com/iden3/rollup/blob/testnet-2.0/rollup-cli/README.md).
+- For more on how the rollup client works, see [here](https://github.com/iden3/rollup/blob/master/rollup-cli/README.md).
 
 - If you’d like to offer feedback, come across any problems, or have any questions at all, please feel free to reach out to us in our [telegram group](https://t.me/joinchat/G89XThj_TdahM0HASZEHwg).
