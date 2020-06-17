@@ -11,7 +11,7 @@ const configDefault = './config.json';
 
 const {
     bid, bidWithDifferentBeneficiary, bidRelay, bidRelayAndWithdrawAddress, bidWithDifferentAddresses,
-    multiBid, withdraw, getEtherBalance,
+    multiBid, withdraw, getEtherBalance, getWithdrawInfo,
 } = require('./src/utils');
 const { error } = require('./src/list-errors');
 
@@ -27,22 +27,22 @@ bid command
         Single bid to a specific slot
     --wallet or -w <path>
         Wallet path
-    --configpath or -c <path>
-        Path of your configuration file with wallet path
-        Default: config.json
-    --gaslimit or -gl <number>
-        Gas limit at the time to send a transaction
-    --gasmultiplier or -gm <number>
-        Gas price used = default gas price * gasmultiplier
     --amount or -a <num>
         Amount to bid
     --slot or -s <num>
         Slot to place the bid
     --url or -u <url string>
         Operator URL
+    --configpath or -c <path> (optional)
+        Path of your configuration file
+        Default: config.json
+    --gaslimit or -gl <number> (optional)
+        Gas limit at the time to send a transaction
+    --gasmultiplier or -gm <number> (optional)
+        Gas price used = default gas price * gasmultiplier
     --beneficiary or -b <address> (optional)
         Beneficiary address
-    --forger or -fr <address> (optional)
+    --forger or -f <address> (optional)
         Forger address
     --withdrawaddress or --wd <address> (optional)
         Withdraw address
@@ -57,19 +57,19 @@ multibid command
         Multibid to a specifics slots
     --wallet or -w <path>
         Wallet path
-    --configpath or -c <path>
-        Path of your configuration file with wallet path
-        Default: config.json
-    --gaslimit or --gl <number>
-        Gas limit at the time to send a transaction
-    --gasmultiplier or --gm <number>
-        Gas price used = default gas price * gasmultiplier
     --amount or -a <num>
         Amount to bids (example: 1,2,3)
     --slot or -s <num>
         Slots to place the bids (example: 19-21,23-26,27-29)
     --url or -u <url string>
         Operator URL
+    --configpath or -c <path> (optional)
+        Path of your configuration file
+        Default: config.json
+    --gaslimit or --gl <number> (optional)
+        Gas limit at the time to send a transaction
+    --gasmultiplier or --gm <number> (optional)
+        Gas price used = default gas price * gasmultiplier
 
 withdraw command
 ================
@@ -77,12 +77,12 @@ withdraw command
         Withdraw ether
     --wallet or -w <path>
         Wallet path
-    --configpath or -c <path>
-        Path of your configuration file with wallet path
+    --configpath or -c <path> (optional)
+        Path of your configuration file
         Default: config.json
-    --gaslimit or -gl <number>
+    --gaslimit or -gl <number> (optional)
         Gas limit at the time to send a transaction
-    --gasmultiplier or -gm <number>
+    --gasmultiplier or -gm <number> (optional)
         GasPrice used = default gas price * gasmultiplier
 
 balance command
@@ -277,7 +277,26 @@ const gasMultiplier = (argv.gasmultiplier) ? argv.gasmultiplier : 1;
             const res = await getEtherBalance(wallet, actualConfig);
             console.log(res);
             process.exit(0);
+        } else if (argv._[0].toUpperCase() === 'WITHDRAWINFO') {
+            checkParamsBalance(actualConfig);
+            let wallet = {};
+            if (!fs.existsSync(pathWallet) || !fs.lstatSync(pathWallet).isFile()) {
+                console.log('Path provided does not work\n\n');
+                throw new Error(error.INVALID_PATH);
+            }
+            const passphrase = await getPassword();
+            try {
+                const readWallet = await fs.readFileSync(pathWallet, 'utf8');
+                wallet = await ethers.Wallet.fromEncryptedJson(readWallet, passphrase);
+            } catch (err) {
+                console.log(err);
+                throw new Error(error.INVALID_WALLET);
+            }
+            const res = await getWithdrawInfo(wallet, actualConfig);
+            console.log(res);
+            process.exit(0);
         } else {
+            console.log(argv._[0]);
             console.log('Invalid command');
             throw new Error(error.INVALID_COMMAND);
         }

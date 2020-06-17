@@ -233,6 +233,13 @@ async function withdraw(wallet, actualConfig, gasLimit, gasMul) {
     return signedTx;
 }
 
+async function getWithdrawInfo(wallet, actualConfig) {
+    const web3 = new Web3(new Web3.providers.HttpProvider(actualConfig.nodeUrl));
+    const rollupPoB = new web3.eth.Contract(actualConfig.pobAbi, actualConfig.pobAddress);
+    const res = await rollupPoB.methods.withdrawBid(wallet.address).call();
+    return res;
+}
+
 module.exports = {
     bid,
     bidWithDifferentBeneficiary,
@@ -242,4 +249,5 @@ module.exports = {
     multiBid,
     withdraw,
     getEtherBalance,
+    getWithdrawInfo,
 };
