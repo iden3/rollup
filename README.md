@@ -126,7 +126,7 @@ Rollup public key:
 
 Before we interact with the rollup contract, you’ll need to make sure you have some ether stored in your `Ethereum address` (this is to pay for the network transaction fees in the next step). The best way to do this is by using the goerli faucet.
 
-Copy your ethereum address and visit the [faucet](https://goerli-faucet.slock.it/) to request test ether.
+Copy your Ethereum address and visit the [faucet](https://goerli-faucet.slock.it/) to request test ether.
 
 One you've done this, visit [https://goerli.etherscan.io](https://goerli.etherscan.io/) and input your address. You should see that your balance has been updated.
 
