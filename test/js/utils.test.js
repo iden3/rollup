@@ -160,16 +160,6 @@ describe("Utils", function () {
         expect(Scalar.eq(hashIdx, hashIdxRes)).to.be.equal(true);
     });
 
-    it("Is string hexadecimal", async () => { 
-        const num = 4;
-        const strNoHex = "4";
-        const strHex = "0x4";
-
-        expect(utils.isStrHex(num)).to.be.equal(false);
-        expect(utils.isStrHex(strNoHex)).to.be.equal(false);
-        expect(utils.isStrHex(strHex)).to.be.equal(true);
-    });
-
     it("Encode/decode deposit off-chain", async () => { 
         // empty deposits
         const emptydata = utils.encodeDepositOffchain([]);

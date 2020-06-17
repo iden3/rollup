@@ -26,7 +26,7 @@ Next, create a file named `config.json`  in the current directory with the follo
 {
     "urlOperator": "https://zkrollup.iden3.net",
     "nodeEth": "https://goerli.infura.io/v3/<your infura Token>",
-    "addressRollup": "0xE0C17C3a4f06b859124Df351Ca83864e6de46AB2s",
+    "addressRollup": "0xbC0fd0Bd2e5B5CC7FE947A829067D207381E03FA",
     "abiRollupPath": "./helpers/abis/RollupAbi.json",
     "controllerAddress": 0,
     "abiTokensPath": "./helpers/abis/ERC20Abi.json",
@@ -37,49 +37,73 @@ Next, create a file named `config.json`  in the current directory with the follo
 
 Make sure **you insert your own infura token in the `nodeEth` parameter** above.
 
-### Create a wallet and print keys
+### Create a wallet
 From the command line, type the following commands.
 
+
 ```bash=
-# Create Wallet
-node cli.js createkeys 
-# Print keys
-node cli.js printkeys 
+node cli.js createkeys
 ```
 
-Before we interact with the rollup contract, you'll need to make sure you have some ether stored in the ethereum address you printed in the above command. The best way to do this is by using the [goerli faucet](https://goerli-faucet.slock.it/).
+You'll be prompted to enter a password:
+
+```bash=
+Password: 
+```
+You'll need to enter this password every time you interact with your wallet.
+
+### Get ether
+```bash=
+node cli.js printkeys --configpath config-example.json
+```
+
+You should see a message with the following stucture:
+
+```bash=
+Ethereum public key:
+  Address:
+Rollup public key: 
+  Compressed:
+    Points:
+      Ax:
+      Ay:
+```
+
+Copy your ethereum address and visit the [faucet](https://goerli-faucet.slock.it/) to request test ether.
 
 ### Interact with rollup
-Some of the commands we'll use below are on-chain transactions (`onchaintx`), which means they send actual ethereum transactions.
 
-A command following an `onchaintx` can only be executed once the on-chain transaction has been processed on the ethereum chain and forged on the rollup side chain. **This may take a couple of minutes.** So please don't send all the transactions in one go.
+A command following `onchaintx` will take 2 minutes approx to be forged. 
 
-Others are off-chain transactions (`offchainTx`). These are not immediate either, since they also need to be forged: **this can take anywhere between 30 seconds and one minute**.
+A command following `offchaintx` will take 30 seg approx to be forged. 
 
-From the command line, type the following commands (**remembering to type them in one by one**):
+From the command line, type the following commands (**remember wait the corresponding time**):
 
 ```bash=
 # Approve tokens
-node cli.js onchaintx --type approve --p foo --amount <amount> 
+# This transaction don't need to be forged in rollup
+# Just in ethereum, so just wait until it's mined
+node cli.js onchaintx --type approve --amount <amount> 
 # Do a deposit
 node cli.js onchaintx --type deposit  --loadamount <amount> --tokenid 0 
 # Check your current IDs, probably have to wait about two minutes 
 # Since the deposit was sent
 node cli.js info --type accounts --filter ethereum
 # Do rollup transactions
-node cli.js offchaintx --type send --sender <sender ID> --recipient <recipient ID> --amount <amount> --fee <fee>  --tokenid 0 
+node cli.js offchaintx --type send --recipient <rollup address> --amount <amount> --fee <fee>  --tokenid 0 
 # Transfer tokens to the Exit Tree, where can be withdrawed from the 
 # Smart Contract. 
-# The transactions should be reflected in 30 seg ~ 1 min
-node cli.js offchaintx --type withdrawoffchain --sender <sender ID> --amount <amount> --fee <fee>  --tokenid 0 
+node cli.js offchaintx --type withdrawoffchain --amount <amount> --fee <fee>  --tokenid 0 
 # Check leaf exit tree information. 
-node cli.js info --type exits --id <ID leaf> 
+node cli.js info --type exits --tokenid 0 
 # Withdraw your tokens from the rollup to your ethereum address, it's
 # necessary the numExitRoot from the last command.
-node cli.js onchaintx --type withdraw --id <ID leaf> --numexitbatch <numexitbatch>  
+node cli.js onchaintx --type withdraw --tokenid 0 --numexitbatch <numexitbatch>  
 ```
-For more information on what each individual command does, follow our main tutorial [from here](https://github.com/iden3/rollup/tree/testnet/rollup-cli).
- 
+
+
+For more especific information, follow our usage [from here](#2), or continue with our tutorial [here]( https://github.com/iden3/rollup)
+
  -----
  -----
  
@@ -95,25 +119,20 @@ For more information on what each individual command does, follow our main tutor
 
 #### Options
 - mnemonic `[-m | --mnemonic] <mnemonic 12 words>`
-- import `[-i | --import] <path wallet to import>`
 - walletpath `[-w | --walletpath] <path to save wallet>`
 - configpath `[-c | --configpath] <path config file>`
-- param & value `[--pm | --param] <parameter> [-v | --value] <value to parameter>`
-- type `[-t | --type] [ deposit | depositontop | transfer | depositandtransfer | withdraw | forcewithdraw | send]`
+- type `[-t | --type] [ approve | deposit | depositontop | depositoffchain | transfer | depositandtransfer | withdraw | forcewithdraw | send | accounts | exits]`
 - amount `[-a | --amount] <amount>`
 - loadamount `[-l | --loadamount] <loadamount>`
-- token id `--tokenid <token id>`
+- token id `[--tk --tokenid] <token id>`
 - fee `[-e | --fee] <user fee>`
-- sender `[-s | --sender] <sender ID>`
 - recipient `[-r | --recipient] <recipient ID>`
 - params file `--configpath <path json to config params>`
 - num exit batch `[-n | --numexitbatch] <num>`
 - nonce `[--no | --nonce] <nonce>`
-- ethereum address for deposit `--controllerAddress <address>`
-- accounts information filter `--filter [babyjubjub | ethereum | id]`
+- accounts information filter `--filter [babyjubjub | ethereum | tokenid]`
 - gasLimit `[--gl | --gaslimit] <gas limit>`
 - gasMultiplier `[--gm | --gasmultiplier] <gas multiplier>`
-- ID `--id <ID>`
 
 ### Create Keys
 Create a random wallet in current path:
@@ -129,7 +148,11 @@ node cli.js createkeys --walletpath wallet_test.json
 ```
 
 #### or also import your wallet
-`--mnemonic <mnemonic,12 words>`
+
+```bash=
+node cli.js createkeys --mnemonic <mnemonic,12 words>
+```
+
 
 ### Set Parameters
 Create a configuration file by setting each parameter one by one with the following commands, for example:
@@ -150,10 +173,10 @@ The configuration file must contain the following fields:
 {
     "urlOperator": "https://zkrollup.iden3.net",
     "nodeEth": "https://goerli.infura.io/v3/<your infura Token>",
-    "addressRollup": "0xE0C17C3a4f06b859124Df351Ca83864e6de46AB2s",
-    "abiRollupPath": "./RollupAbi.json",
+    "addressRollup": "0xbC0fd0Bd2e5B5CC7FE947A829067D207381E03FA",
+    "abiRollupPath": "./helpers/abis/RollupAbi.json",
     "controllerAddress": 0,
-    "abiTokensPath": "./ERC20Abi.json",
+    "abiTokensPath": "./helpers/abis/ERC20Abi.json",
     "addressTokens": "0xaFF4481D10270F50f203E0763e2597776068CBc5",
     "wallet": "./wallet.json"
 }
@@ -209,7 +232,7 @@ The `gasMultiplier` and the `gasLimit` can be set with:
 You'll need the following parameters:
 
 ```bash=
-node cli.js onchaintx --type depositontop --recipient <recipient ID> --loadamount <loadamount> --tokenid <token ID>
+node cli.js onchaintx --type depositontop --recipient <rollup address> --loadamount <loadamount> --tokenid <token ID>
 ```
 
 You can specify another path using:
@@ -227,7 +250,7 @@ To withdraw you must follow the following steps:
 3. Withdraw onchain with this information. You'll need the following parameters are needed:
 
 ```bash=
-node cli.js onchaintx --type withdraw --id <leaf ID> --numexitbatch <numexitbatch>
+node cli.js onchaintx --type withdraw --tokenid <token ID> --numexitbatch <numexitbatch>
 ```
 
 To specify another path, use:
@@ -244,7 +267,7 @@ The `gasMultiplier` and the `gasLimit` can be set with:
 You'll need the following parameters:
 
 ```bash=
-node cli.js offchaintx --type send --sender <sender ID> --recipient <recipient ID> --amount <amount> --fee <user Fee> --tokenid <token ID>
+node cli.js offchaintx --type send --recipient <rollup address> --amount <amount> --fee <fee> --tokenid <token ID>
 ```
 
 To specify another path, use:
@@ -259,7 +282,7 @@ The minimum fee is 1 token.
 You'll need the following parameters:
 
 ```bash=
-node cli.js offchaintx --type withdrawOffchain --sender <sender ID> --amount <amount> --fee <user Fee> --tokenid <token ID>
+node cli.js offchaintx --type withdrawOffchain --amount <amount> --fee <fee> --tokenid <token ID>
 ```
 
 To specify another path, use:
@@ -284,39 +307,54 @@ node cli.js info --type accounts --filter ethereum
 
 #### Get accounts by rollup Id:
 ```bash=
-node cli.js info --type accounts --filter id --id <rollup ID>
+node cli.js info --type accounts --filter tokenId --tk <token ID>
 ```
 
 #### Exits by ID
 Get the batch number of the exit in order to be able to withdraw your tokens.
 
 ```bash=
-node cli.js info --type exits --id <ID>
+node cli.js info --type exits --tk <token ID>
 ```
 
 ### API operator <a id="3"></a>
 
 #### Url Operator: https://zkrollup.iden3.net
 
+#### Get State
+To get registered operators: https://zkrollup.iden3.net/state
+
 #### Get Operators
 To get registered operators: https://zkrollup.iden3.net/operators
-
-#### Get Account By Idx
-To get information from an ID: https://zkrollup.iden3.net/accounts/{id}
 
 #### Get Accounts
 To obtain accounts information:
 
 By ethereum address:
-https://zkrollup.iden3.net/accounts?ethAddr={ethereumAddress}
+https://zkrollup.iden3.net/accounts/{ethereumAddress}/{coin}
 
 By babyjubjub address
+https://zkrollup.iden3.net/accounts/{AxBabyjubjub}/{AyBabyjubjub}/{coin}
+
+By rollup address
+https://zkrollup.iden3.net/accounts/{rollupAddress}/{coin}
+
+By filters:
+https://zkrollup.iden3.net/accounts?ethAddr={ethereumAddress}
 https://zkrollup.iden3.net/accounts?ax={AxBabyjubjub}&ay={AyBabyjubjub}
+https://zkrollup.iden3.net/accounts/{rollupAddress}
 
 #### Get Exits
 To get the num exits batch by ID:
-https://zkrollup.iden3.net/exits/{id}
+https://zkrollup.iden3.net/exits/{ax}/{ay}/{coin}
 
 #### Get Exit Information
 To get information from a numexitbatch:
-https://zkrollup.iden3.net/accounts/{id}/{numBatch}
+https://zkrollup.iden3.net/exits/{ax}/{ay}/{coin}/{numBatch}
+
+#### Get Tokens
+To get registered tokens: https://zkrollup.iden3.net/tokens
+Get current fee to add a token into rollup: https://zkrollup.iden3.net/feetokens
+
+#### Get Batch
+Get transactions in an specific batch: https://zkrollup.iden3.net/batch/{batchID}

@@ -38,6 +38,9 @@ class TXPool {
         this.maxDeposits = cfg.maxDeposits || 18;
     }
 
+    /**
+     * Load the pool from the rollupDB
+     */
     async _load() {
         let slots = await this.rollupDB.db.get(Constants.DB_TxPoolSlotsMap);
         if (slots) {
@@ -65,18 +68,35 @@ class TXPool {
         await this.purge();
     }
 
+    /**
+     * Set the conversion parameter
+     * @param {Object} conversion - Object containing tokens and his value in USD
+     */
     setConversion(conversion) {
         this.conversion = conversion || {};
     }
 
+    /**
+     * Set the feeDeposit parameter
+     * @param {Number} feeDeposit - Actual fee for creating a new leaf in the rollup
+     */
     setFeeDeposit(feeDeposit) {
         this.feeDeposit = feeDeposit  || null;
     }
 
+    /**
+     * Set the ethPrice parameter
+     * @param {Number} ethPrice - Actual ethreum price in USD
+     */
     setEthPrice(ethPrice) {
         this.ethPrice = ethPrice || null;
     }
 
+    /**
+     * Encode tx Data
+     * @param {String} tx - Transaction object
+     * @returns {Scalar} Encoded TxData
+     */
     _buildTxDataPool(tx){
         // deposit Tx
         tx.toIdx = tx.toIdx ? tx.toIdx : 0;
@@ -95,6 +115,11 @@ class TXPool {
         return res;
     }
 
+    /**
+     * Encode a transaction object into an array
+     * @param {Object} tx - Transaction object
+     * @returns {Array} Resulting array
+     */
     _tx2Array(tx) {   
         return [
             this._buildTxDataPool(tx),
@@ -108,6 +133,11 @@ class TXPool {
         ];
     }
 
+    /**
+     * Parse encoded array into a transaction object 
+     * @param {Array} arr - Encoded array
+     * @returns {Object} Transaction object
+     */
     _array2Tx(arr) {
         const tx = {};
         const d0 = Scalar.e(arr[0]);
@@ -137,6 +167,11 @@ class TXPool {
         return tx;
     }
 
+    /**
+     * Get the on-chain transaction from the off-chain deposit transaction
+     * @param {Object} tx - Deposit off-chain transaction
+     * @returns {Object} Deposit transaction
+     */
     _getOnChainTx(tx){
         return {
             loadAmount: 0,
@@ -151,6 +186,11 @@ class TXPool {
         };
     }
 
+    /**
+     * Verify that transaction can be processed and add it to the pool.
+     * @param {Object} tx - Transaction object
+     * @returns {Booleans} True if the transaction can be processed, false otherwise
+     */
     async addTx(_tx) {
         const fromIdx = await this.rollupDB.getIdx(_tx.coin, _tx.fromAx, _tx.fromAy);
         if (!fromIdx) {
@@ -202,6 +242,10 @@ class TXPool {
         return true;
     }
 
+    /**
+     * Allocate a free slot in the pool 
+     * @returns {Number} Index of the slot, -1 if not slots available
+     */
     _allocateFreeSlot() {
         let i = 0;
         for (i=0; i<this.slotsMap.length; i++) {
@@ -223,16 +267,28 @@ class TXPool {
         return -1;
     }
 
+    /**
+     * Check if a slot is full
+     * @param {Number} s - Index of the slot
+     * @returns {Boolean} Returns true if the slot is full, false if it's emtpy
+     */
     _isSlotAllocated(s) {
         return !Scalar.isZero(Scalar.band(this.slotsMap[Math.floor(s/256)], Scalar.shl(1, s%256)));
     }
 
+    /**
+     * Empty a slot
+     * @param {Number} s - Index of the slot
+     */
     _freeSlot(s) {
         if (this._isSlotAllocated(s)) {
             this.slotsMap[Math.floor(s/256)] = Scalar.sub(this.slotsMap[Math.floor(s/256)], Scalar.shl(1, s%256));
         }
     }
 
+    /**
+     * Update the rollupDB slots with the pool slots
+     */
     _genUpdateSlots()  {
         let pCurrent = null, pNext = null;
 
@@ -256,6 +312,9 @@ class TXPool {
         };
     }
 
+    /**
+     * Purge removed transactions from the pool
+     */
     _genPurge()  {
         let pCurrent = null;
         // eslint-disable-next-line no-unused-vars
@@ -285,6 +344,11 @@ class TXPool {
         };
     }
 
+    /**
+     * Classify transactions, tag the transactions that can't be processed and classify the rest in available or not available
+     * Finally remove the transactions that exceed the pool limit
+     * @param {Object} tmpStates - Object with states of the leafs that are updated this batch with the on-chain transactions
+     */
     async _classifyTxs(tmpStates) {
 
         this._calculateNormalizedFees();
@@ -430,6 +494,9 @@ class TXPool {
 
     }
 
+    /**
+     * Normalize the fees of the transactions, calculating all the fees in USD to estimate the operator profit/tx
+     */
     _calculateNormalizedFees() {
         for (let i=0; i<this.txs.length; i++) {
             const tx = this.txs[i];
@@ -470,6 +537,11 @@ class TXPool {
     }
     */
 
+    /**
+     * Fill the batchbuilder with the most profitable transactions of the pool.
+     * @param {Object} bb - Batchbuilder object
+     * @param {Object} tmpStates - Object with states of the leafs that are updated this batch with the on-chain transactions
+     */
     async fillBatch(bb, tmpStates) {
         const futureTxs = {};
         const txsByCoin = {};
@@ -507,7 +579,7 @@ class TXPool {
             if (res == "YES") {
 
                 if (tx.isDeposit) {
-                    if (currentDeposits >= this.maxDeposits) { // might be better in fil Tx
+                    if (currentDeposits >= this.maxDeposits) {
                         console.log("MAX deposit offchain Reach");
                         continue;
                     } else {
@@ -517,8 +589,9 @@ class TXPool {
                 await tmpState.process(tx);
                 if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
                 txsByCoin[tx.coin].push(tx);
-                const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
 
+                // Once the transaction is processed, other "NOT NOW" Tx could be available now, due the nonce or the amount changes.
+                const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
                 let sort = false;
                 if ((ftxFrom.length>0)) {
                     availableTxs.push(...ftxFrom);
@@ -543,6 +616,7 @@ class TXPool {
             }
         }
 
+        // For every coin, make transactions groups, in order to mine together atomic transactions for example
         const incTable = {};
         for (let coin in txsByCoin) {
             incTable[coin] = [];
@@ -587,7 +661,7 @@ class TXPool {
                     accValue = 0;
                     depositCount = 0;
                 }
-                else if (i + 1 == txsByCoin[coin].length) { // put the rest of the transactions
+                else if (i + 1 == txsByCoin[coin].length) { // Put the rest of the transactions
                     incTable[coin].push({
                         nTx: nTx,
                         incTx: nTx - bestNTx + depositCount,
@@ -602,7 +676,7 @@ class TXPool {
 
         fillTx(forgedTxs, NSlots, incTable, PTable, this._getOnChainTx);
 
-        // max coin should be 24 - 32 bits, max safe integer in js is 2^53, 
+        // Max coin should be 24 - 32 bits, max safe integer in js is 2^53, 
         const usedCoins = Object.keys(PTable).map(coinStr => Number(coinStr));
 
         usedCoins.sort((a,b) => {
@@ -625,7 +699,7 @@ class TXPool {
         }
 
         for (let i=0; i<forgedTxs.length; i++) {
-            bb.addTx(Object.assign({}, forgedTxs[i])); // clone forged Tx, cause batchbuilder could modify them
+            bb.addTx(Object.assign({}, forgedTxs[i])); // Clone forged Tx, cause batchbuilder could modify them
             if (forgedTxs[i].onChain){
                 bb.addDepositOffChain(forgedTxs[i]);
             }
@@ -633,6 +707,14 @@ class TXPool {
 
         await bb.build();
 
+        /**
+         * Fill the forgedTxs with the most profitable transactions of the pool.
+         * @param {Array} forgedTxs - Array that will be filled with the most profitable transactions
+         * @param {Object} n - Number of transactions that fit in the batch
+         * @param {Object} incTable - Object that contains arrays, indexed by coins, of groups of transactions sorted by fee.
+         * @param {Object} PTable - Pointers indexed by coins, to the last group of the incTable that was added to the forgedTxs
+         * @param {Function} getOnChainTx Function that returns the on-chain transaction for the deposit off-chain
+         */
         function fillTx(forgedTxs, n, incTable, PTable, getOnChainTx) {
 
             let totalTx =0;
@@ -668,6 +750,11 @@ class TXPool {
             return totalTx;
         }
 
+        /**
+         * Remove all the transactions of the array txs wich contains certain coins
+         * @param {Array} txs - Array of transactions objects
+         * @param {Array} coins - Array of coins identifiers
+         */
         function removeTxsOfCoins(txs, coins) {
             for (let i=txs.length-1; i>=0; i--) {
                 if (coins.indexOf(txs[i].coin) >= 0) {
@@ -676,12 +763,22 @@ class TXPool {
             }
         }
 
+        /**
+         * Add the transaction to the futureTxs table
+         * @param {Object} tx - Transactions object
+         */
         function pushFuture(tx) {
             futureTxs[tx.fromIdx] = futureTxs[tx.fromIdx] || [];
             futureTxs[tx.fromIdx][tx.nonce] = futureTxs[tx.fromIdx][tx.nonce] || [];
             futureTxs[tx.fromIdx][tx.nonce].push(tx);
         }
 
+        /**
+         * Pop the next transactions with certain idx and nonce
+         * @param {Scalar} idx - Identifier of the merkle tree leaf
+         * @param {Scalar} nonce - Nonce of the leaf
+         * @returns {Object} Transaction object
+         */
         function popFuture(idx, nonce) {
             if (typeof futureTxs[idx] == "undefined") return [];
             if (typeof futureTxs[idx][nonce] == "undefined") return [];
@@ -690,7 +787,13 @@ class TXPool {
             return res;
         }
     }
-    
+
+    /**
+     * Returns the most profitable transactions of the pool.
+     * @param {Object} maxSlots - Number of transactions that will be returned
+     * @param {Object} tmpStates - Object with states of the leafs that are updated this batch with the on-chain transactions
+     * @return {Array} Array of most profitable transactions
+     */
     async getForgedTx(maxSlots, tmpStates) {
         const futureTxs = {};
         const txsByCoin = {};
@@ -729,17 +832,24 @@ class TXPool {
                 await tmpState.process(tx);
                 if (!txsByCoin[tx.coin]) txsByCoin[tx.coin] = [];
                 txsByCoin[tx.coin].push(tx);
+
+                // Once the transaction is processed, other "NOT NOW" Tx could be available now, due the nonce or the amount changes.
                 const ftxFrom = popFuture(tx.fromIdx, tx.nonce+1);
-                    
-                if (tx.toIdx){ 
+                let sort = false;
+                if ((ftxFrom.length>0)) {
+                    availableTxs.push(...ftxFrom);
+                    sort = true;
+                }
+                if (tx.toIdx) { 
                     const stTo = await tmpState.getState(tx.toIdx);
-                    
                     const ftxTo = popFuture(tx.toIdx, stTo.nonce);
-                    if ((ftxFrom.length>0) || (ftxTo.length>0)) {
-                        availableTxs.push(...ftxFrom);
+                    if ((ftxTo.length>0)) {
                         availableTxs.push(...ftxTo);
-                        availableTxs.sort(fnSort);
+                        sort = true;
                     }
+                }
+                if (sort) {
+                    availableTxs.sort(fnSort);
                 }
             } else if (res == "NOT_NOW") {
                 pushFuture(tx);
@@ -747,7 +857,8 @@ class TXPool {
                 tx.removed = true;
             }
         }
-    
+
+        // For every coin, make transactions groups, in order to mine together atomic transactions for example
         const incTable = {};
         for (let coin in txsByCoin) {
             incTable[coin] = [];
@@ -792,7 +903,7 @@ class TXPool {
                     accValue = 0;
                     depositCount = 0;
                 }
-                else if (i + 1 == txsByCoin[coin].length) { // put the rest of the transactions
+                else if (i + 1 == txsByCoin[coin].length) { // Put the rest of the transactions
                     incTable[coin].push({
                         nTx: nTx,
                         incTx: nTx - bestNTx + depositCount,
@@ -807,7 +918,7 @@ class TXPool {
     
         fillTx(forgedTxs, NSlots, incTable, PTable, this._getOnChainTx);
     
-        // max coin should be 24 - 32 bits, max safe integer in js is 2^53, 
+        // Max coin should be 24 - 32 bits, max safe integer in js is 2^53, 
         const usedCoins = Object.keys(PTable).map(coinStr => Number(coinStr));
     
         usedCoins.sort((a,b) => {
@@ -827,6 +938,14 @@ class TXPool {
     
         return forgedTxs;
     
+        /**
+         * Fill the forgedTxs with the most profitable transactions of the pool.
+         * @param {Array} forgedTxs - Array that will be filled with the most profitable transactions
+         * @param {Object} n - Number of transactions that fit in the batch
+         * @param {Object} incTable - Object that contains arrays, indexed by coins, of groups of transactions sorted by fee.
+         * @param {Object} PTable - Pointers indexed by coins, to the last group of the incTable that was added to the forgedTxs
+         * @param {Function} getOnChainTx - Function that returns the on-chain transaction for the deposit off-chain
+         */
         function fillTx(forgedTxs, n, incTable, PTable, getOnChainTx) {
     
             let totalTx =0;
@@ -861,7 +980,12 @@ class TXPool {
             }
             return totalTx;
         }
-    
+
+        /**
+         * Remove all the transactions of the array txs wich contains certain coins
+         * @param {Array} txs - Array of transactions objects
+         * @param {Array} coins - Array of coins identifiers
+         */
         function removeTxsOfCoins(txs, coins) {
             for (let i=txs.length-1; i>=0; i--) {
                 if (coins.indexOf(txs[i].coin) >= 0) {
@@ -869,13 +993,23 @@ class TXPool {
                 }
             }
         }
-    
+
+        /**
+         * Add the transaction to the futureTxs table
+         * @param {Object} tx - Transactions object
+         */
         function pushFuture(tx) {
             futureTxs[tx.fromIdx] = futureTxs[tx.fromIdx] || [];
             futureTxs[tx.fromIdx][tx.nonce] = futureTxs[tx.fromIdx][tx.nonce] || [];
             futureTxs[tx.fromIdx][tx.nonce].push(tx);
         }
     
+        /**
+         * Pop the next transactions with certain idx and nonce
+         * @param {Scalar} idx - Identifier of the merkle tree leaf
+         * @param {Scalar} nonce - Nonce of the leaf
+         * @returns {Object} Transaction object
+         */
         function popFuture(idx, nonce) {
             if (typeof futureTxs[idx] == "undefined") return [];
             if (typeof futureTxs[idx][nonce] == "undefined") return [];

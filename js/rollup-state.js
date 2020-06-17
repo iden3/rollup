@@ -17,6 +17,12 @@ class RollupState {
         this.ethAddr = Scalar.e(state.ethAddr);
     }
 
+    /**
+     * Create a new RollupState from a id and a state array
+     * @param {Object} id - Leaf identifier
+     * @param {Array} stateArray - Array containing the leaf state information.
+     * @returns {Object} RollupState object
+     */
     static newFromArray(id, stateArray){
         const state = {};
         state.coin = Scalar.toNumber(utils.extract(stateArray[0], 0, 32));
@@ -28,6 +34,10 @@ class RollupState {
         return new RollupState(id, state);
     }
 
+    /**
+     * Encode a state object into an array
+     * @returns {Array} Resulting array
+     */
     toArray(){
         const data = Scalar.add(this.coin, Scalar.shl(this.nonce, 32));
         return [
@@ -39,11 +49,20 @@ class RollupState {
         ];
     }
 
+
+    /**
+     * Return the hash of a state object
+     * @returns {Scalar} Resulting poseidon hash
+     */
     getHash(){
         const hash = poseidon.createHash(6, 8, 57);
         return hash(this.toArray());
     }
 
+    /**
+     * Return the hash of the identifier, and babyjub publick key
+     * @returns {Scalar} Resulting poseidon hash
+     */
     getUniqueId(){
         const hash = poseidon.createHash(6, 8, 57);
         return hash([this.idx, this.ax, this.ay]);

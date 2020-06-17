@@ -44,6 +44,9 @@ class RollupTx {
         this._roundValues();
     }
 
+    /**
+     * Round the amount value and set the amountF value
+     */
     _roundValues(){
         const amountF = utils.fix2float(this.amount);
         this.amount = utils.float2fix(amountF);
@@ -51,6 +54,10 @@ class RollupTx {
         this.amountF = Scalar.e(amountF);
     }
 
+    /**
+     * Encode tx Data
+     * @returns {Scalar} Encoded TxData
+     */
     getTxData() {
         const IDEN3_ROLLUP_TX = Scalar.e("4839017969649077913");
         let res = Scalar.e(0);
@@ -67,6 +74,9 @@ class RollupTx {
         return res;
     }
 
+    /**
+     * Return the hash of the transaction in order to sign it
+     */
     getHashSignature(){
         const txData = this.getTxData();
         const hash = poseidon.createHash(6, 8, 57);
@@ -81,6 +91,12 @@ class RollupTx {
         return h;
     }
 
+    /**
+     * Add a signature and the babyjub address
+     * @param {Array} signature - Array containing the signature
+     * @param {String|Scalar} fromAx - Coordinate Ax from the babyjub public key
+     * @param {String|Scalar} fromAy - Coordinate Ay from the babyjub public key
+     */
     addSignature(signature, fromAx, fromAy){
         this.r8x = signature.R8[0];
         this.r8y = signature.R8[1];
@@ -97,6 +113,10 @@ class RollupTx {
             this.fromAy = Scalar.e(fromAy || 0);
     }
 
+    /**
+     * Calculate the new OnChainHash with the old hash and the current tx
+     * @param {Scalar} oldOnChainHash - Old OnChainHash
+     */
     getOnChainHash(oldOnChainHash){
         const txData = this.getTxData();
         const hash = poseidon.createHash(6, 8, 57);

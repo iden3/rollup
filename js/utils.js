@@ -8,8 +8,8 @@ const Constants = require("./constants");
 
 /**
  * Convert to hexadecimal string padding until 256 characters
- * @param {Number | Scalar} n - input number
- * @returns {String} - String encoded as hexadecimal with 256 characters
+ * @param {Number | Scalar} n - Input number
+ * @returns {String} String encoded as hexadecimal with 256 characters
  */
 function padding256(n) {
     let nstr = Scalar.e(n).toString(16);
@@ -18,17 +18,35 @@ function padding256(n) {
     return nstr;
 }
 
+/**
+ * Mask and shift a Scalar
+ * @param {Scalar} num - Input number
+ * @param {Number} origin - Initial bit
+ * @param {Number} len - Bit lenght of the mask
+ * @returns {Scalar} Extracted Scalar
+ */
 function extract(num, origin, len) {
     const mask = Scalar.sub(Scalar.shl(1, len), 1);
     return Scalar.band(Scalar.shr(num, origin), mask);
 }
 
+/**
+ * Pad a string hex number with 0
+ * @param {String} str - String input
+ * @param {Number} length - Length of the resulting string
+ * @returns {String} Resulting string
+ */
 function padZeros(str, length) {
     if (length > str.length)
         str = "0".repeat(length - str.length) + str;
     return str;
 }
 
+/**
+ * Convert a float to a fix
+ * @param {Scalar} fl - Scalar encoded in float
+ * @returns {Scalar} Scalar encoded in fix
+ */
 function float2fix(fl) {
     const m = (fl & 0x3FF);
     const e = (fl >> 11);
@@ -43,6 +61,11 @@ function float2fix(fl) {
     return res;
 }
 
+/**
+ * Convert a fix to a float, always rounding down
+ * @param {String} _f - Scalar encoded in fix
+ * @returns {Scalar} Scalar encoded in float
+ */
 function _floorFix2Float(_f) {
     const f = Scalar.e(_f);
     if (Scalar.isZero(f)) return 0;
@@ -59,6 +82,11 @@ function _floorFix2Float(_f) {
     return res;
 }
 
+/**
+ * Convert a fix to a float 
+ * @param {String} _f - Scalar encoded in fix
+ * @returns {Scalar} Scalar encoded in float
+ */
 function fix2float(_f) {
     const f = Scalar.e(_f);
 
@@ -99,6 +127,11 @@ function fix2float(_f) {
     return res;
 }
 
+/**
+ * Convert a float to a fix, always rounding down
+ * @param {Scalar} fl - Scalar encoded in float
+ * @returns {Scalar} Scalar encoded in fix
+ */
 function floorFix2Float(_f){
     const f = Scalar.e(_f);
 
@@ -113,6 +146,11 @@ function floorFix2Float(_f){
     }
 }
 
+/**
+ * Encode tx Data
+ * @param {String} tx - Transaction object
+ * @returns {Scalar} Encoded TxData
+ */
 function buildTxData(tx) {
     const IDEN3_ROLLUP_TX = Scalar.fromString("4839017969649077913");
     let res = Scalar.e(0);
@@ -129,6 +167,11 @@ function buildTxData(tx) {
     return res;
 }
 
+/**
+ * Parse encoded tx Data
+ * @param {String} txDataEncoded - Encoded txData
+ * @returns {Object} Object txData
+ */
 function decodeTxData(txDataEncoded) {
     const txDataBi = Scalar.fromString(txDataEncoded);
     let txData = {};
@@ -144,11 +187,20 @@ function decodeTxData(txDataEncoded) {
     return txData;
 }
 
+/**
+ * Round amount value of the transaction
+ * @param {Object} tx - Transaction object
+ */
 function txRoundValues(tx) {
     tx.amountF = fix2float(tx.amount);
     tx.amount = float2fix(tx.amountF);
 }
 
+/**
+ * Encode a state object into an array
+ * @param {Object} st - Merkle tree state object
+ * @returns {Array} Resulting array
+ */
 function state2array(st) {
     let data = Scalar.e(0);
     
@@ -164,6 +216,11 @@ function state2array(st) {
     ];
 }
 
+/**
+ * Parse encoded array into a state object 
+ * @param {Array} a - Encoded array
+ * @returns {Object} Merkle tree state object
+ */
 function array2state(a) {
     return {
         coin: Scalar.toNumber(extract(a[0], 0, 32)),
@@ -175,12 +232,23 @@ function array2state(a) {
     };
 }
 
+
+/**
+ * Return the hash of a state object
+ * @param {Object} st - Merkle tree state object
+ * @returns {Scalar} Resulting poseidon hash
+ */
 function hashState(st) {
     const hash = poseidon.createHash(6, 8, 57);
 
     return hash(state2array(st));
 }
 
+/**
+ * Verify the transaction signature
+ * @param {Object} tx - Transaction object with signature included
+ * @returns {Boolean} Return true if the signature matches with the transaction
+ */
 function verifyTxSig(tx) {
     try {
         const data = buildTxData(tx);
@@ -206,11 +274,24 @@ function verifyTxSig(tx) {
     }
 }
 
+/**
+ * Calculate the poseidon hash of some rollup account 
+ * @param {Scalar} coin - Coin identifier
+ * @param {String} ax - Hex string containing the Ax point of the babyjub public key
+ * @param {String} ay - Hex string containing the Ay point of the babyjub public key
+ * @returns {Scalar} Resulting poseidon hash
+ */
 function hashIdx(coin, ax, ay) {
     const h = poseidon.createHash(6, 8, 57);
     return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
 }
 
+/**
+ * Encode deposit off-chain
+ * |Ax|Ay|EthAddress|Token| - |32 bytes|32 bytes|20 bytes|4 bytes|
+ * @param {Array} depositsOffchain - Array of object transactions 
+ * @returns {Buffer} Encoded deposit transactions 
+ */
 function encodeDepositOffchain(depositsOffchain) {
     let buffer = Buffer.alloc(0);
     for (let i=0; i<depositsOffchain.length; i++) {
@@ -229,8 +310,8 @@ function encodeDepositOffchain(depositsOffchain) {
 /**
  * Parse encoded deposit off-chain from smart contract
  * |Ax|Ay|EthAddress|Token| - |32 bytes|32 bytes|20 bytes|4 bytes|
- * @param {Buffer} depositsOffchain contains all deposits off-chain data
- * @returns {Array} deposit transactions 
+ * @param {Buffer} depositsOffchain - Encoded deposit transactions 
+ * @returns {Array} Array of object transactions
  */
 function decodeDepositOffChain(depositsOffchain) {
     const depositBytes = 88;
@@ -263,13 +344,13 @@ function decodeDepositOffChain(depositsOffchain) {
     return txs;
 }
 
-function isStrHex(input) {
-    if (typeof (input) == "string" && input.slice(0, 2) == "0x") {
-        return true;
-    }
-    return false;
-}
-
+/**
+ * Parse encoded off-chain transactions
+ * |fee|amount|toIdx|fromIdx| - |4 bits|NLevels bits|16 bits|16 bits|
+ * @param {Scalar} nLevels - Levels of the sparse merkle tree
+ * @param {String} dataSm - Encoded off-chain transactions
+ * @returns {Array} Off-chain transactions
+ */
 function decodeDataAvailability(nLevels, dataSm) {
     const txs = [];
 
@@ -324,7 +405,6 @@ module.exports.array2state = array2state;
 module.exports.txRoundValues = txRoundValues;
 module.exports.verifyTxSig = verifyTxSig;
 module.exports.hashIdx = hashIdx;
-module.exports.isStrHex = isStrHex; 
 module.exports.extract = extract;
 module.exports.encodeDepositOffchain = encodeDepositOffchain;
 module.exports.decodeDepositOffChain = decodeDepositOffChain;
