@@ -55,15 +55,15 @@ If you’d like to offer feedback, come across any problems, or have any questio
 
 ### 2.0. Initial considerations<a id="2_0"></a>
 
->A **batch** is a rollup block
+>A **batch** is a rollup "block" 
 
->An **operator** is a rollup block producer
+>An **operator** is a batch producer
 
 > **rollup address** is the compressed format of the babyjubjub public key
 
 > **Forging** refers to the creation of a batch (off-chain) and the subsequent (on-chain) verification of the attached zkSnark.
 
-Each batch takes around 45 seconds to 1 minute to be forged by an operator.
+Each batch takes around 45 seconds to 1 minute to be forged by an operator, but these batches can be forged in parallel. 
 
 On-chain transactions take 2 forged batches to be included, and off-chain transactions take between 1 and 2 batches -- making off-chain transactions slightly faster.
 
