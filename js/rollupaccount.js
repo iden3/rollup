@@ -54,6 +54,10 @@ module.exports = class RollupAccount {
         this.ay = bjPubKey[1].toString(16);
     }
 
+    /**
+     * Sign rollup transaction Object and add it to the same object
+     * @param {Object} tx - Transaction object
+     */
     signTx(tx) {
         const txData = utils.buildTxData(tx);
         const hash = poseidon.createHash(6, 8, 57);
@@ -75,6 +79,10 @@ module.exports = class RollupAccount {
         tx.fromEthAddr = this.ethAddress;
     }
 
+    /**
+     * Sign rollup transaction class and add it
+     * @param {Object} tx - Transaction object
+     */
     signClassTx(tx) {
         const h = tx.getHashSignature();
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);

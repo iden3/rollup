@@ -31,6 +31,9 @@ module.exports = class BatchBuilder {
         this.newBatchNumberDb = Scalar.e(batchNumber);
     }
     
+    /**
+     * Add an empty transaction to the batchbuilder
+     */
     _addNopTx() {
         const i = this.input.txData.length;
         this.input.txData[i] = utils.buildTxData({
@@ -95,6 +98,10 @@ module.exports = class BatchBuilder {
         }
     }
 
+    /**
+     * Process a transaction, update the DB and the inputs for the circuit
+     * @param {Object} tx - Object transaction
+     */
     async _addTx(tx) {
         const i = this.input.txData.length;
 
@@ -105,7 +112,6 @@ module.exports = class BatchBuilder {
 
         let toIdx;
         
-        // if (tx.toAx == Constants.exitAx && tx.toAy == Constants.exitAy) toIdx = 0;
         if (Scalar.eq(poseidonHash([Scalar.fromString(tx.toAx, 16), Scalar.fromString(tx.toAy, 16)]), Constants.exitAccount)) toIdx = 0;
         else {
             const hashToIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy); 
@@ -133,6 +139,7 @@ module.exports = class BatchBuilder {
         let isExit;
         let newAccount = 0;
 
+        // From leaf
         const resFind1 = await this.stateTree.find(tx.fromIdx);
         if (resFind1.found) {
             const foundValueId = poseidonHash([resFind1.foundValue, tx.fromIdx]);
@@ -151,6 +158,7 @@ module.exports = class BatchBuilder {
             newAccount = 1;
         }
 
+        // To leaf
         let resFind2;
         let resFindExit;
         if (tx.toIdx) {
@@ -588,6 +596,12 @@ module.exports = class BatchBuilder {
         }  
     }
 
+    /**
+     * Return the corresponding identifier
+     * @param {Object} tx - transaction object
+     * @param {Scalar} from - From Idx
+     * @param {Scalar} to - To IdX
+     */
     _addIdx(tx, from, to){  
         // From
         if (!from) tx.fromIdx = this.finalIdx + 1;
@@ -596,11 +610,23 @@ module.exports = class BatchBuilder {
         tx.toIdx = to;
     }
 
+    /**
+     * Return the hash of the coin and babyjub public key
+     * @param {String} coin - Coin identifier
+     * @param {String} ax - Ax coordinate encoded as hexadecimal string
+     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @returns {Scalar} Resulting poseidon hash
+     */
     _uniqueAccount(coin, ax, ay){
         const h = poseidon.createHash(6, 8, 57);
         return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
     }
 
+    /**
+     * Add fee of an especific coin to the feeTotals object
+     * @param {String} coin - Coin identifier
+     * @param {String} fee2Charge - Fee to add
+     */
     _accumulateFees(coin, fee2Charge){
         // find coin index
         const indexCoin = this.feePlanCoins.indexOf(coin);
@@ -609,6 +635,10 @@ module.exports = class BatchBuilder {
         this.feeTotals[indexCoin] = Scalar.add(this.feeTotals[indexCoin], fee2Charge);
     }
 
+    /**
+     * Encode all the fees in feeTotals into a single Scalar
+     * @return {Scalar} Resulting Scalar
+     */
     _getFeeTotal() {
         let res = Scalar.e(0);
         for (let i = 0; i < this.feeTotals.length; i++) {
@@ -617,6 +647,10 @@ module.exports = class BatchBuilder {
         return res;
     }
 
+    /**
+     * Encode all the coins in feePlanCoins into a single Scalar
+     * @return {Scalar} Resulting Scalar
+     */
     _buildFeePlanCoins() {
         let res = Scalar.e(0);
         for (let i = 0; i < this.feePlanCoins.length; i++) {
@@ -625,6 +659,9 @@ module.exports = class BatchBuilder {
         return res;
     }
 
+    /**
+     * Build the batch, add all the transactions and calculate the inputs for the circuit
+     */
     async build() {
 
         this.input = {
@@ -702,51 +739,91 @@ module.exports = class BatchBuilder {
         this.builded = true;
     }
 
+    /**
+     * Return the circuit input
+     * @return {Object} Circuit input
+     */
     getInput() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.input;
     }
 
+    /**
+     * Return the last leaf identifier before the batch is builded
+     * @return {Scalar} Identifier
+     */
     getInitIdx() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.input.initialIdx;
     }
 
+    /**
+     * Return the last leaf identifier after the batch is builded
+     * @return {Scalar} Identifier
+     */
     getFinalIdx() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.finalIdx;
     }
-
+    
+    /**
+     * Return the last state root before the batch is builded
+     * @return {Scalar} State root
+     */
     getOldStateRoot() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.input.oldStRoot;
     }
         
+    /**
+     * Return the feePlanCoins object
+     * @return {Object} FeePlanCoins object
+     */
     getFeePlanCoins() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.input.feePlanCoins;
     }
         
+    /**
+     * Return a Scalar wich contains encoded feesPlanCoins
+     * @return {Scalar} Resulting Scalar
+     */
     getFeeTotal() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this._getFeeTotal();
     }
 
+    /**
+     * Return the last state root after the batch is builded
+     * @return {Scalar} State root
+     */
     getNewStateRoot() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.stateTree.root;
     }
 
+    /**
+     * Return the last exit root after the batch is builded
+     * @return {Scalar} Exit root
+     */
     getNewExitRoot() {
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.exitTree.root;
     }
 
+    /**
+     * Return the beneficiary address
+     * @return {String} Ethereum address
+     */
     getBeneficiaryAddress(){
         if (!this.builded) throw new Error("Batch must first be builded");
         return this.input.pubEthAddress;
     }
 
+    /**
+     * Return the on-chain hash
+     * @return {Scalar} Resulting poseidon hash
+     */
     getOnChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
         const lastHash = this.input.imOnChainHash[this.maxNTx-2];
@@ -779,6 +856,10 @@ module.exports = class BatchBuilder {
         return res;
     }
     
+    /**
+     * Return the on-chain hash before the batch is builded
+     * @return {Scalar} Resulting poseidon hash
+     */
     getTmpOnChainHash(){
         let onChainHash = Scalar.e(0);
 
@@ -802,6 +883,10 @@ module.exports = class BatchBuilder {
         return onChainHash;
     }
 
+    /**
+     * Return the encoded data available
+     * @return {String} Encoded data available
+     */
     getDataAvailable() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
@@ -825,9 +910,13 @@ module.exports = class BatchBuilder {
         return  finalStr;
     }
 
+    /**
+     * Return the encoded data available ready to send to the rollup SC
+     * @return {String} Encoded data available
+     */
     getDataAvailableSM() {
         // Buffer must have an integer number of bytes
-        // padding 4 bits at the beginning if odd number of Txs off-chain 
+        // Padding 4 bits at the beginning if odd number of Txs off-chain 
         if (this.offChainTxs.length % 2 == 0) { 
             return `0x${this.getDataAvailable()}`;
         } else {
@@ -835,6 +924,10 @@ module.exports = class BatchBuilder {
         }
     }
 
+    /**
+     * Return the off chain hash
+     * @return {Scalar} Resulting poseidon hash
+     */
     getOffChainHash() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
@@ -859,6 +952,10 @@ module.exports = class BatchBuilder {
         return h;
     }
 
+    /**
+     * Return the states that have been change with the on chain transactions
+     * @return {Object} Resulting temporally state
+     */
     async getTmpStateOnChain() {
         if (!this.builded) throw new Error("Batch must first be builded");
 
@@ -885,6 +982,10 @@ module.exports = class BatchBuilder {
         return tmpState;
     }
 
+    /**
+     * Add a transaction to the batchbuilder
+     * @param {Object} tx - Transaction object
+     */
     addTx(tx) {
         if (this.builded) throw new Error("Batch already builded");
         if (this.onChainTxs.length + this.offChainTxs.length >= this.maxNTx) {
@@ -897,16 +998,28 @@ module.exports = class BatchBuilder {
         }
     }
 
+    /**
+     * Add a deposit off-chain transaction
+     * @param {Object} tx - Transaction object
+     */
     addDepositOffChain(tx) {
         if (this.builded) throw new Error("Batch already builded");
         this.depOffChainTxs.push(tx);
     }
 
+    /**
+     * Get the deposit offchain data
+     * @returns {Buffer} Encoded deposit transactions 
+     */
     getDepOffChainData(){
         if (!this.builded) throw new Error("Batch must first be builded");
         return utils.encodeDepositOffchain(this.depOffChainTxs);
     }
 
+    /**
+     * Add a coin identifier to the batchbuilder
+     * @param {Scalar} coin - Coin identifier
+     */
     addCoin(coin) {
         if (this.nCoins >= 16) {
             throw new Error("Maximum 16 coins per batch");
@@ -918,6 +1031,10 @@ module.exports = class BatchBuilder {
         this.nCoins = this.nCoins + 1;
     }
 
+    /**
+     * Add a beneficiary address to the batchbuilder
+     * @param {String} beneficiaryAddress - Ethereum address
+     */
     addBeneficiaryAddress(beneficiaryAddress) {
         this.beneficiaryAddress = Scalar.fromString(beneficiaryAddress, 16);
     }

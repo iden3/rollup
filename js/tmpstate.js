@@ -12,6 +12,11 @@ class TmpState {
         this.conversion = conversion;
     }
 
+    /**
+     * Get the state object from the Id OF the merkle tree
+     * @param {Scalar} idx - Leaf identifier
+     * @returns {Object} - State Object
+     */
     async getState(idx) {
         if (typeof(this.tmpStates[idx]) == "undefined" ) {
             this.tmpStates[idx] = await this.rollupDB.getStateByIdx(idx);
@@ -19,13 +24,11 @@ class TmpState {
         return this.tmpStates[idx];
     }
 
-    async getStateByAccount(idx) {
-        if (typeof(this.tmpStates[idx]) == "undefined" ) {
-            this.tmpStates[idx] = await this.rollupDB.getStateByIdx(idx);
-        }
-        return this.tmpStates[idx];
-    }
-    
+    /**
+     * Check if the transaction can be processed in the actual state
+     * @param {Object} tx - Transaction object
+     * @returns {String} - Return "NO", "NOT NOW" or "YES"
+     */
     async canProcess(tx) {
         const stFrom = await this.getState(tx.fromIdx);
         if (!stFrom || stFrom.ax != tx.fromAx || stFrom.ay != tx.fromAy) return "NO";
@@ -63,13 +66,18 @@ class TmpState {
             }
         }
 
-        // NNOT_NOW"
+        // NOT_NOW"
         if (tx.nonce > stFrom.nonce) return "NOT_NOW";
         if (!Scalar.geq(stFrom.amount, Scalar.add(fee, amount))) return "NOT_NOW";
 
         return "YES";
     }
 
+    /**
+     * Process the transaction in the TmpState
+     * @param {Object} tx - Transaction object
+     * @returns {Boolean} Return true if the transaction is correctly processed, false otherwise
+     */
     async process(tx) { 
         const stFrom = await this.getState(tx.fromIdx);
         if (!stFrom || stFrom.ax != tx.fromAx || stFrom.ay != tx.fromAy) return false;
@@ -123,16 +131,27 @@ class TmpState {
         return true;
     }
 
+    /**
+     * Reset all the tmpStates
+     */
     reset() {
         this.tmpStates = {};
     }
 
+    /**
+     * Add states to the object tmpStates
+     * @param {Object} state - Object containing states
+     */
     addStates(states) {
         for (let idx of Object.keys(states))
             this.tmpStates[idx] = states[idx];
     }
 
-
+    /**
+     * Check if the fee of the transaction is enough to cover the deposit off-chain fee
+     * @param {Object} tx - Transaction object
+     * @returns {Boolean} Return true if the fee is enough, false otherwise
+     */
     _checkFeeDeposit(tx){
         if (this.feeDeposit === null || this.ethPrice === null) 
             return false;
