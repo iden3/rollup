@@ -1,5 +1,8 @@
 node_modules/
-test/
+test/wallets
+test/rollupabi.json
+test/tokensabi.json
+test/walletFunder.json
 
 /src/utils/bundle-cli.js
 /src/utils/bundle-op.js

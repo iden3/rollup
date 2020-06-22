@@ -9,6 +9,7 @@ const web3 = require('web3');
 class ModalInfoId extends Component {
   static propTypes = {
     txs: PropTypes.array,
+    noImported: PropTypes.bool.isRequired,
   };
 
   static defaultProps = {
@@ -38,7 +39,7 @@ class ModalInfoId extends Component {
 
   render() {
     return (
-      <Modal trigger={<Button icon="info" circular size="mini" />} closeIcon>
+      <Modal trigger={<Button icon="info" content="More Information..." disabled={this.props.noImported} />} closeIcon>
         <Modal.Header><Icon name="info" /></Modal.Header>
         <Modal.Content>
           <Table>

@@ -4,6 +4,7 @@ const initialState = {
   errorWallet: '',
   isLoadingWallet: false,
   wallet: {},
+  desWallet: {},
   password: '',
   errorCreateWallet: '',
   isCreatingWallet: false,
@@ -20,11 +21,15 @@ const initialState = {
   balance: '0.0',
   tokens: '0',
   tokensR: '0',
+  tokensE: '0',
   tokensA: '0',
+  tokensTotal: '0',
   txs: [],
+  txsExits: [],
   chainId: -1,
   errorInfoAccount: '',
   gasMultiplier: 2,
+  currentBatch: 0,
 };
 
 function general(state = initialState, action) {
@@ -41,6 +46,7 @@ function general(state = initialState, action) {
         isLoadingWallet: false,
         wallet: action.payload.wallet,
         password: action.payload.password,
+        desWallet: action.payload.desWallet,
         errorWallet: '',
       };
     case CONSTANTS.LOAD_WALLET_ERROR:
@@ -49,6 +55,7 @@ function general(state = initialState, action) {
         isLoadingWallet: false,
         wallet: {},
         password: '',
+        desWallet: {},
         errorWallet: action.error,
       };
     case CONSTANTS.CREATE_WALLET:
@@ -85,12 +92,14 @@ function general(state = initialState, action) {
         abiTokens: action.payload.abiTokens,
         chainId: action.payload.chainId,
         isLoadingFiles: false,
-        errorFiles: '',
+        errorFiles: action.error,
       };
     case CONSTANTS.LOAD_FILES_ERROR:
       return {
         ...state,
         isLoadingFiles: false,
+        chainId: -1,
+        config: action.payload.config,
         errorFiles: action.error,
       };
     case CONSTANTS.LOAD_OPERATOR:
@@ -125,8 +134,11 @@ function general(state = initialState, action) {
         balance: action.payload.balance,
         tokens: action.payload.tokens,
         tokensR: action.payload.tokensR,
+        tokensE: action.payload.tokensE,
         tokensA: action.payload.tokensA,
+        tokensTotal: action.payload.tokensTotal,
         txs: action.payload.txs,
+        txsExits: action.payload.txsExits,
         errorInfoAccount: '',
       };
     case CONSTANTS.INFO_ACCOUNT_ERROR:
@@ -136,7 +148,9 @@ function general(state = initialState, action) {
         errorInfoAccount: action.error,
         tokens: '0',
         tokensR: '0',
+        tokensE: '0',
         tokensA: '0',
+        tokensTotal: '0',
       };
     case CONSTANTS.CHECK_APPROVED_TOKENS_ERROR:
       return {
@@ -162,7 +176,17 @@ function general(state = initialState, action) {
       return {
         ...state,
         gasMultiplier: action.payload,
-      }
+      };
+    case CONSTANTS.GET_CURRENT_BATCH:
+      return {
+        ...state,
+        currentBatch: action.payload,
+      };
+    case CONSTANTS.GET_CURRENT_BATCH_ERROR:
+      return {
+        ...state,
+        currentBatch: state.currentBatch,
+      };
     default:
       return state;
   }
