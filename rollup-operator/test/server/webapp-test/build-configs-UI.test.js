@@ -24,6 +24,7 @@ const pathCustomTokens = path.join(__dirname,"../../config/table-conversion-test
 //Mnemonic TEST: "hard crop gallery regular neglect weekend fatal stamp eight flock inch doll"
 const { Wallet } = require("../../../../rollup-cli/src/utils/wallet");
 const { createWallets } = require("./create-wallets");
+const { addBlocks } = require("../../../../test/contracts/helpers/timeTravel");
 const walletsPath = path.join(__dirname, "../../../../simple-webapp/test/wallets");
 const abiRollupPath = path.join(__dirname, "../../../../simple-webapp/test/rollupabi.json");
 const tokensPath = path.join(__dirname, "../../../../simple-webapp/test/tokensabi.json");
@@ -42,7 +43,7 @@ contract("Operator Server", (accounts) => {
 
     const maxTx = 10;
     const maxOnChainTx = 5;
-    const tokenInitialAmount = 10000;
+    const tokenInitialAmount = 500000000000000000000;
     const url = "localhost";
     const burnAddress = "0x0000000000000000000000000000000000000000";
 
@@ -68,8 +69,18 @@ contract("Operator Server", (accounts) => {
         insRollup = await Rollup.new(insVerifier.address, insPoseidonUnit._address,
             maxTx, maxOnChainTx, feeTokenAddress);
 
+        //default operator operator wallet
+        const pass = "passTest";
+        let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
+        const walletOp = new ethers.Wallet(privateKey);
+        const initBalance = 1000;
+        await web3.eth.sendTransaction({to: walletOp.address, from: owner,
+            value: web3.utils.toWei(initBalance.toString(), "ether")});
+        const walletOpEnc = await walletOp.encrypt(pass);
+        fs.writeFileSync(configWalletPath, walletOpEnc);
+
         // Deploy Staker manager
-        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, defaultOperator, url);
+        insRollupPoB = await RollupPoB.new(insRollup.address, maxTx, burnAddress, walletOp.address, url);
 
         // load forge batch mechanism
         await insRollup.loadForgeBatchMechanism(insRollupPoB.address);
@@ -98,17 +109,6 @@ contract("Operator Server", (accounts) => {
             ethAddressCaller: callerAddress,
         };
         fs.writeFileSync(configSynchPath, JSON.stringify(config));
-    });
-
-    it("Should load operator wallet with funds", async () => {
-        const pass = "passTest";
-        let privateKey = "0x0123456789012345678901234567890123456789012345678901234567890123";
-        const walletOp = new ethers.Wallet(privateKey);
-        const initBalance = 1000;
-        await web3.eth.sendTransaction({to: walletOp.address, from: owner,
-            value: web3.utils.toWei(initBalance.toString(), "ether")});
-        const walletOpEnc = await walletOp.encrypt(pass);
-        fs.writeFileSync(configWalletPath, walletOpEnc);
     });
 
     it("Should create rollup synch config file", async () => {
@@ -187,10 +187,15 @@ contract("Operator Server", (accounts) => {
         await fs.writeFileSync(abiRollupPath, JSON.stringify(Rollup.abi));
         await fs.writeFileSync(tokensPath, JSON.stringify(TokenRollup.abi));
         await fs.writeFileSync(walletFunderPath, JSON.stringify(walletFunder.ethWallet.wallet));
-        await createWallets(4, 100, passString, insRollup.address, walletFunder.ethWallet.wallet, 2,
+        await createWallets(4, "100000000000000000000", passString, insRollup.address, walletFunder.ethWallet.wallet, 2,
             insTokenRollup.address, TokenRollup.abi, "http://localhost:8545",
             walletsPath, mnemonic);
         console.log("ROLLUP address: ", insRollup.address);
         console.log("TOKENS address", insTokenRollup.address);
+    });
+
+    it("Add Blocks", async () => {
+        const blocksPerSlot = 20;
+        addBlocks(2*blocksPerSlot);
     });
 });

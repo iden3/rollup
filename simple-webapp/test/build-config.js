@@ -7,7 +7,7 @@ const abiTokens = [{"constant":true,"inputs":[],"name":"name","outputs":[{"name"
 const configPath = path.join(__dirname, "../src/utils/config.json");
 function readFiles() {
     const synchConfig = JSON.parse(fs.readFileSync(synchConfigPath, "utf-8"));
-    const testAddress = JSON.parse(fs.readFileSync(synchConfigPath, "utf-8"));
+    const testAddress = JSON.parse(fs.readFileSync(testPath, "utf-8"));
     const config = {
         operator: "127.0.0.1:9000",
         address: testAddress.rollupAddress,
