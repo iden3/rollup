@@ -271,11 +271,6 @@ export function handleSendSend(urlOperator, babyjubTo, amount, wallet, tokenId, 
             } else {
               babyjubToAxAy = hexToPoint(babyjubTo);
             }
-            console.log(babyjubToAxAy);
-            console.log(wallet);
-            console.log(tokenId);
-            console.log(fee);
-            console.log(nonceObject);
             const res = await rollup.offchain.send.send(urlOperator, babyjubToAxAy, amount, wallet, tokenId,
               fee, undefined, nonceObject, address);
             localStorage.setItem('nonceObject', JSON.stringify(res.nonceObject));
@@ -287,7 +282,6 @@ export function handleSendSend(urlOperator, babyjubTo, amount, wallet, tokenId, 
           }
         }
       } catch (error) {
-        console.log(error);
         dispatch(sendSendError(`Send Error: ${error.message}`));
         resolve(error);
       }

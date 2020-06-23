@@ -4,7 +4,7 @@ const ethers = require("ethers");
 const { Wallet } = require("../../../../rollup-cli/src/utils/wallet");
 
 async function createWallets(numWallets, amountToken, passString, addressRollup, walletEthFunder,
-    amountEther, addressTokens, abiTokens, node, path, mnemonic) {
+    amountEther, addressTokens, addressTokens2, abiTokens, node, path, mnemonic) {
     const pathNewWallets = (path) || "../../tools/resourcesBot/wallets";
     if (!fs.existsSync(pathNewWallets)) {
         fs.mkdirSync(pathNewWallets);
@@ -13,8 +13,10 @@ async function createWallets(numWallets, amountToken, passString, addressRollup,
     const provider = new ethers.providers.JsonRpcProvider(node);
     walletEthFunder = walletEthFunder.connect(provider);
     const contractTokensFunder = new ethers.Contract(addressTokens, abiTokens, walletEthFunder);
+    const contractTokensFunder2 = new ethers.Contract(addressTokens2, abiTokens, walletEthFunder);
     const addressFunder = await walletEthFunder.getAddress();
     const tokensFunder = await contractTokensFunder.balanceOf(addressFunder);
+    const tokensFunder2 = await contractTokensFunder2.balanceOf(addressFunder);
     const balanceFunder = await walletEthFunder.getBalance();
 
     if (balanceFunder < amountEther) {
@@ -23,6 +25,10 @@ async function createWallets(numWallets, amountToken, passString, addressRollup,
 
     if (tokensFunder < amountToken) {
         throw Error("Account funder don't have enough tokens");
+    }
+
+    if (tokensFunder2 < amountToken) {
+        throw Error("Account funder don't have enough tokens 2");
     }
 
     for (let i = 1; i <= numWallets; i++) {
@@ -51,10 +57,16 @@ async function createWallets(numWallets, amountToken, passString, addressRollup,
         if (parseInt(tokens._hex, 16) < amountToken) {
             await contractTokensFunder.transfer(address, amountToken);
         }
+
+        if (parseInt(tokens._hex, 16) < amountToken) {
+            await contractTokensFunder2.transfer(address, amountToken);
+        }
         // approve tokens.
         walletEth = walletEth.connect(provider);
         const contractTokensBot = new ethers.Contract(addressTokens, abiTokens, walletEth);
         await contractTokensBot.approve(addressRollup, amountToken);// config.Json address of rollupSC
+        const contractTokensBot2 = new ethers.Contract(addressTokens2, abiTokens, walletEth);
+        await contractTokensBot2.approve(addressRollup, amountToken);// config.Json address of rollupSC
     }
     return wallets;
 }

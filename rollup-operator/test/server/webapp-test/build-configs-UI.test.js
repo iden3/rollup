@@ -38,7 +38,6 @@ contract("Operator Server", (accounts) => {
         1: tokenId,
         2: callerAddress,
         3: feeTokenAddress,
-        4: defaultOperator,
     } = accounts;
 
     const maxTx = 10;
@@ -49,6 +48,7 @@ contract("Operator Server", (accounts) => {
 
     let insPoseidonUnit;
     let insTokenRollup;
+    let insTokenRollup2;
     let insRollupPoB;
     let insRollup;
     let insVerifier;
@@ -61,6 +61,8 @@ contract("Operator Server", (accounts) => {
 
         // Deploy TokenRollup
         insTokenRollup = await TokenRollup.new(tokenId, tokenInitialAmount.toString());
+        // Deploy TokenRollup2
+        insTokenRollup2 = await TokenRollup.new(tokenId, tokenInitialAmount.toString());
 
         // Deploy Verifier
         insVerifier = await Verifier.new();
@@ -87,6 +89,8 @@ contract("Operator Server", (accounts) => {
 
         // add token to Rollup
         await insRollup.addToken(insTokenRollup.address,
+            { from: tokenId, value: web3.utils.toWei("1", "ether") });
+        await insRollup.addToken(insTokenRollup2.address,
             { from: tokenId, value: web3.utils.toWei("1", "ether") });
     });
 
@@ -151,6 +155,7 @@ contract("Operator Server", (accounts) => {
         const testConfig = {
             rollupAddress: insRollup.address,
             tokenAddress: insTokenRollup.address,
+            tokenAddress2: insTokenRollup2.address,
             pobAddress: insRollupPoB.address,
         };
         fs.writeFileSync(configTestPath, JSON.stringify(testConfig));
@@ -179,6 +184,10 @@ contract("Operator Server", (accounts) => {
             price: 1,
             decimals: 18,
         };
+        tableConversion[insTokenRollup2.address] = {
+            price: 1,
+            decimals: 18,
+        };
         fs.writeFileSync(pathCustomTokens, JSON.stringify(tableConversion));
     });
 
@@ -188,9 +197,10 @@ contract("Operator Server", (accounts) => {
         await fs.writeFileSync(tokensPath, JSON.stringify(TokenRollup.abi));
         await fs.writeFileSync(walletFunderPath, JSON.stringify(walletFunder.ethWallet.wallet));
         await createWallets(4, "100000000000000000000", passString, insRollup.address, walletFunder.ethWallet.wallet, 2,
-            insTokenRollup.address, TokenRollup.abi, "http://localhost:8545",
+            insTokenRollup.address, insTokenRollup2.address, TokenRollup.abi, "http://localhost:8545",
             walletsPath, mnemonic);
         console.log("ROLLUP address: ", insRollup.address);
         console.log("TOKENS address", insTokenRollup.address);
+        console.log("TOKENS address2", insTokenRollup2.address);
     });
 });
