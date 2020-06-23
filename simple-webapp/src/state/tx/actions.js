@@ -1,4 +1,5 @@
 import * as CONSTANTS from './constants';
+import { hexToPoint, exitAy, exitAx } from '../../utils/utils';
 
 const ethers = require('ethers');
 const rollup = require('bundle-cli');
@@ -48,8 +49,20 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
           resolve({ res, currentBatch });
         }
       } catch (error) {
-        dispatch(sendDepositError(`Deposit Error: ${error.message}`));
-        resolve(error);
+        if (error.message.includes('leaf already exist')) {
+          const apiOperator = new operator.cliExternalOperator(operatorUrl);
+          const resOperator = await apiOperator.getState();
+          const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
+          const babyjubTo = [wallet.babyjubWallet.publicKey[0].toString(),
+            wallet.babyjubWallet.publicKey[1].toString()];
+          const res = await rollup.onchain.depositOnTop.depositOnTop(nodeEth, addressSC, amount, tokenId,
+            babyjubTo, wallet, abiRollup, gasLimit, gasMultiplier);
+          dispatch(sendDepositSuccess(res, currentBatch));
+          resolve({ res, currentBatch });
+        } else {
+          dispatch(sendDepositError(`Deposit Error: ${error.message}`));
+          resolve(error);
+        }
       }
     });
   };
@@ -76,8 +89,7 @@ function sendWithdrawError(error) {
   };
 }
 
-export function handleSendWithdraw(nodeEth, addressSC, wallet, abiRollup, op,
-  idFrom, numExitRoot, gasMultiplier) {
+export function handleSendWithdraw(nodeEth, addressSC, tokenId, wallet, abiRollup, op, numExitRoot, gasMultiplier) {
   return function (dispatch) {
     dispatch(sendWithdraw());
     return new Promise(async (resolve) => {
@@ -89,8 +101,8 @@ export function handleSendWithdraw(nodeEth, addressSC, wallet, abiRollup, op,
           const apiOperator = new operator.cliExternalOperator(op);
           const resOperator = await apiOperator.getState();
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-          const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, wallet, abiRollup,
-            op, idFrom, numExitRoot, gasLimit, gasMultiplier);
+          const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, tokenId, wallet, abiRollup,
+            op, numExitRoot, gasLimit, gasMultiplier);
           abiDecoder.addABI(abiRollup);
           const web3 = new Web3(nodeEth);
           const txData = await web3.eth.getTransaction(res.hash);
@@ -128,23 +140,24 @@ function sendForceExitError(error) {
   };
 }
 
-export function handleSendForceExit(nodeEth, addressSC, amount, wallet, abiRollup, urlOperator,
-  idFrom, gasMultiplier) {
+export function handleSendForceExit(nodeEth, addressSC, tokenId, amount, wallet, abiRollup, urlOperator,
+  gasMultiplier) {
   return function (dispatch) {
     dispatch(sendForceExit());
     return new Promise(async (resolve) => {
       try {
         const apiOperator = new operator.cliExternalOperator(urlOperator);
-        const resId = await apiOperator.getAccountByIdx(idFrom);
+        const publicCompressed = wallet.babyjubWallet.publicKeyCompressed.toString('hex');
+        const resAccount = await apiOperator.getStateAccountByAddress(tokenId, publicCompressed);
         let { address } = wallet.ethWallet;
         if (!wallet.ethWallet.address.startsWith('0x')) {
           address = `0x${wallet.ethWallet.address}`;
         }
-        if (resId && resId.data.ethAddress.toUpperCase() === address.toUpperCase()) {
+        if (resAccount && resAccount.data.ethAddress.toUpperCase() === address.toUpperCase()) {
           const resOperator = await apiOperator.getState();
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-          const res = await rollup.onchain.forceWithdraw.forceWithdraw(nodeEth, addressSC,
-            amount, wallet, abiRollup, idFrom, gasLimit, gasMultiplier);
+          const res = await rollup.onchain.forceWithdraw.forceWithdraw(nodeEth, addressSC, tokenId,
+            amount, wallet, abiRollup, gasLimit, gasMultiplier);
           dispatch(sendForceExitSuccess(res, currentBatch));
           resolve({ res, currentBatch });
         } else {
@@ -224,12 +237,12 @@ function sendSendError(error) {
   };
 }
 
-export function handleSendSend(urlOperator, idTo, amount, wallet, tokenId, fee, idFrom) {
+export function handleSendSend(urlOperator, babyjubTo, amount, wallet, tokenId, fee) {
   return function (dispatch) {
     dispatch(sendSend());
     return new Promise(async (resolve) => {
       try {
-        if (fee === '0') {
+        if (fee === 0) {
           dispatch(sendSendError(
             'If a fee greater than 1 token is not entered,the operator will not forge the transaction',
           ));
@@ -243,25 +256,38 @@ export function handleSendSend(urlOperator, idTo, amount, wallet, tokenId, fee, 
             nonceObject = JSON.parse(item);
           }
           const apiOperator = new operator.cliExternalOperator(urlOperator);
-          const resId = await apiOperator.getAccountByIdx(idFrom);
+          const babyjub = wallet.babyjubWallet.publicKeyCompressed.toString('hex');
+          const resAccount = await apiOperator.getStateAccountByAddress(tokenId, babyjub);
           let { address } = wallet.ethWallet;
           if (!wallet.ethWallet.address.startsWith('0x')) {
             address = `0x${wallet.ethWallet.address}`;
           }
-          if (resId && resId.data.ethAddress.toUpperCase() === address.toUpperCase()) {
+          if (resAccount && resAccount.data.ethAddress.toUpperCase() === address.toUpperCase()) {
             const resOperator = await apiOperator.getState();
             const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-            const res = await rollup.offchain.send.send(urlOperator, idTo, amount, wallet, tokenId,
-              fee, idFrom, undefined, nonceObject);
+            let babyjubToAxAy;
+            if (babyjubTo === 'exit') {
+              babyjubToAxAy = [exitAx, exitAy];
+            } else {
+              babyjubToAxAy = hexToPoint(babyjubTo);
+            }
+            console.log(babyjubToAxAy);
+            console.log(wallet);
+            console.log(tokenId);
+            console.log(fee);
+            console.log(nonceObject);
+            const res = await rollup.offchain.send.send(urlOperator, babyjubToAxAy, amount, wallet, tokenId,
+              fee, undefined, nonceObject, address);
             localStorage.setItem('nonceObject', JSON.stringify(res.nonceObject));
             dispatch(sendSendSuccess(res.nonce, currentBatch));
             resolve(res);
           } else {
-            dispatch(sendSendError('This is not your ID'));
-            resolve('This is not your ID');
+            dispatch(sendSendError('You do not have this token in rollup'));
+            resolve('You do not have this token in rollup');
           }
         }
       } catch (error) {
+        console.log(error);
         dispatch(sendSendError(`Send Error: ${error.message}`));
         resolve(error);
       }
@@ -320,7 +346,6 @@ export function handleApprove(addressTokens, abiTokens, wallet, amountToken, add
     });
   };
 }
-
 
 function getTokens() {
   return {

@@ -22,7 +22,7 @@ class ModalInfoOffchain extends Component {
       return (
         <Table.Row>
           <Table.Cell>
-              Receiver:
+            Receiver:
           </Table.Cell>
           <Table.Cell>
             {keyItem.receiver}
@@ -38,7 +38,7 @@ class ModalInfoOffchain extends Component {
       return (
         <Table.Row>
           <Table.Cell>
-              Current Batch:
+            Current Batch:
           </Table.Cell>
           <Table.Cell>
             {currentBatch}
@@ -70,7 +70,7 @@ class ModalInfoOffchain extends Component {
       return (
         <Table.Row>
           <Table.Cell>
-              Forged at Batch:
+            Forged at Batch:
           </Table.Cell>
           <Table.Cell>
             {keyItem.finalBatch}
@@ -87,7 +87,7 @@ class ModalInfoOffchain extends Component {
       return (
         <Table.Row>
           <Table.Cell>
-              Confirmation Batches:
+            Confirmation Batches:
           </Table.Cell>
           <Table.Cell>
             {currentBatch - keyItem.finalBatch}
@@ -98,10 +98,10 @@ class ModalInfoOffchain extends Component {
       return (
         <Table.Row>
           <Table.Cell>
-              Confirmation Batches:
+            Confirmation Batches:
           </Table.Cell>
           <Table.Cell>
-              5+
+            5+
           </Table.Cell>
         </Table.Row>
       );
@@ -142,7 +142,7 @@ class ModalInfoOffchain extends Component {
           <Table.Body>
             <Table.Row>
               <Table.Cell>
-              Type:
+                Type:
               </Table.Cell>
               <Table.Cell>
                 {keyItem.type}
@@ -150,7 +150,7 @@ class ModalInfoOffchain extends Component {
             </Table.Row>
             <Table.Row>
               <Table.Cell>
-              Amount:
+                Amount:
               </Table.Cell>
               <Table.Cell>
                 {keyItem.amount}
@@ -158,7 +158,7 @@ class ModalInfoOffchain extends Component {
             </Table.Row>
             <Table.Row>
               <Table.Cell>
-              Fee:
+                Fee:
               </Table.Cell>
               <Table.Cell>
                 {keyItem.fee}
@@ -166,7 +166,7 @@ class ModalInfoOffchain extends Component {
             </Table.Row>
             <Table.Row>
               <Table.Cell>
-              State:
+                State:
               </Table.Cell>
               {state}
             </Table.Row>
@@ -200,6 +200,5 @@ class ModalInfoOffchain extends Component {
     );
   }
 }
-
 
 export default ModalInfoOffchain;

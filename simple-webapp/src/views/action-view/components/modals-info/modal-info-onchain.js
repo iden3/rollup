@@ -22,10 +22,10 @@ class ModalInfoOnchain extends Component {
         return (
           <Table.Row>
             <Table.Cell>
-              ID From:
+              Token ID:
             </Table.Cell>
             <Table.Cell>
-              {keyItem.idFrom}
+              {keyItem.tokenId}
             </Table.Cell>
           </Table.Row>
         );

@@ -114,8 +114,8 @@ class ActionView extends Component {
   getInfoAccount = async () => {
     if (Object.keys(this.props.desWallet).length !== 0) {
       await this.props.handleInfoAccount(this.props.config.nodeEth, this.props.config.tokensAddress,
-        this.props.abiTokens, this.props.desWallet, this.props.config.operator, this.props.config.address,
-        this.props.config.abiRollup);
+        this.props.abiTokens, this.props.wallet, this.props.config.operator, this.props.config.address,
+        this.props.config.abiRollup, this.props.desWallet);
     }
   }
 

@@ -24,20 +24,20 @@ function stateSendError(tx) {
   };
 }
 
-export function handleStateSend(res, idFrom, urlOperator, amount, fee, babyJubReceiver, pendingOff, idTo, babyjub) {
+export function handleStateSend(res, urlOperator, amount, fee, tokenId, babyJubReceiver, pendingOff, babyjub) {
   const infoTx = {
     currentBatch: res.currentBatch,
     nonce: res.nonce,
-    id: res.nonce.toString() + idFrom,
+    id: res.nonce.toString() + tokenId,
     amount: web3.utils.fromWei(amount, 'ether'),
     receiver: babyJubReceiver,
     maxNumBatch: Number(res.currentBatch) + 2,
     finalBatch: 'Pending',
-    fee: web3.utils.fromWei(fee, 'ether'),
+    fee,
     from: babyjub,
     timestamp: Date.now(),
   };
-  if (idTo === 0) {
+  if (babyJubReceiver === 'exit') {
     infoTx.type = 'Exit';
   } else {
     infoTx.type = 'Send';
@@ -52,14 +52,14 @@ export function handleStateSend(res, idFrom, urlOperator, amount, fee, babyJubRe
         const apiOperator = new operator.cliExternalOperator(urlOperator);
         let actualNonce;
         try {
-          const resFrom = await apiOperator.getAccountByIdx(idFrom);
+          const resFrom = await apiOperator.getStateAccountByAddress(tokenId, babyjub);
           actualNonce = resFrom.data.nonce;
         } catch (err) {
           actualNonce = 0;
         }
         while (actualNonce <= nonceTx && currentBatch <= maxNumBatch) {
           // eslint-disable-next-line no-await-in-loop
-          const newState = await getNewState(apiOperator, idFrom);
+          const newState = await getNewState(apiOperator, tokenId, babyjub);
           actualNonce = newState.actualNonce;
           currentBatch = newState.currentBatch;
         }
@@ -82,20 +82,20 @@ export function handleStateSend(res, idFrom, urlOperator, amount, fee, babyJubRe
         dispatch(stateSendError(infoTx));
       }
     } else {
-      infoTx.id = `${res.nonce.toString() + idFrom}error`;
+      infoTx.id = `${res.nonce.toString() + tokenId}error`;
       infoTx.error = 'Nonce Error';
       dispatch(stateSendError(infoTx));
     }
   };
 }
 
-function getNewState(apiOperator, idFrom) {
+function getNewState(apiOperator, tokenId, address) {
   return new Promise(((resolve) => {
     setTimeout(async () => {
       let actualNonce;
       let currentBatch;
       try {
-        const resFrom = await apiOperator.getAccountByIdx(idFrom);
+        const resFrom = await apiOperator.getStateAccountByAddress(tokenId, address);
         actualNonce = resFrom.data.nonce;
       } catch (err) {
         actualNonce = 0;
@@ -261,7 +261,7 @@ function stateForceExitError(tx) {
   };
 }
 
-export function handleStateForceExit(tx, urlOperator, idFrom, amount) {
+export function handleStateForceExit(tx, urlOperator, tokenId, amount) {
   const infoTx = {
     currentBatch: tx.currentBatch,
     nonce: tx.res.nonce,
@@ -270,7 +270,7 @@ export function handleStateForceExit(tx, urlOperator, idFrom, amount) {
     type: 'ForceExit',
     from: tx.res.from,
     to: tx.res.to,
-    idFrom,
+    tokenId,
     maxNumBatch: 'Pending',
     finalBatch: 'Pending',
     timestamp: Date.now(),

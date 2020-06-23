@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop */
 /* global BigInt */
 import * as CONSTANTS from './constants';
 import { getNullifier } from '../../utils/utils';
@@ -192,7 +193,6 @@ export function handleLoadOperator(config) {
   };
 }
 
-
 function infoAccount() {
   return {
     type: CONSTANTS.INFO_ACCOUNT,
@@ -216,44 +216,42 @@ function infoAccountError(error) {
   };
 }
 
-export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operatorUrl, addressRollup, abiRollup) {
+export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operatorUrl, addressRollup,
+  abiRollup, desWallet) {
   return async function (dispatch) {
     dispatch(infoAccount());
     try {
-      let tokens = '0';
-      let tokensA = '0';
-      let tokensE = '0';
-      let tokensR = '0';
-      const txs = [];
       const txsExits = [];
       const provider = new ethers.providers.JsonRpcProvider(node);
       const walletEthAddress = wallet.ethWallet.address;
-      let walletEth = new ethers.Wallet(wallet.ethWallet.privateKey);
+      let walletEth = new ethers.Wallet(desWallet.ethWallet.privateKey);
       walletEth = walletEth.connect(provider);
       const balanceHex = await provider.getBalance(walletEthAddress);
       const balance = ethers.utils.formatEther(balanceHex);
-      const contractTokens = new ethers.Contract(addressTokens, abiTokens, provider);
       const apiOperator = new operator.cliExternalOperator(operatorUrl);
       const filters = {};
       if (walletEthAddress.startsWith('0x')) filters.ethAddr = walletEthAddress;
       else filters.ethAddr = `0x${walletEthAddress}`;
       const contractRollup = new ethers.Contract(addressRollup, abiRollup, walletEth);
-      const tokensHex = await contractTokens.balanceOf(walletEthAddress);
-      const tokensAHex = await contractTokens.allowance(walletEthAddress, addressRollup);
-      let allTxs = {};
+      let tokensList = [];
+      let allTxs = [];
+      try {
+        tokensList = await apiOperator.getTokensList();
+      } catch (err) {
+        tokensList.data = [];
+      }
       try {
         allTxs = await apiOperator.getAccounts(filters);
       } catch (err) {
         allTxs.data = [];
       }
-      const tokensRNum = getTokensRollup(allTxs, txs);
-      const tokensENum = await getTokensExit(txsExits, apiOperator, wallet, allTxs, contractRollup);
-      tokens = tokensHex.toString();
-      const tokensTotalNum = BigInt(tokensHex) + tokensENum + tokensRNum;
+      const txs = allTxs.data;
+      const [tokens, tokensA] = await getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRollup);
+      const tokensR = await getTokensRollup(allTxs);
+      const tokensE = await getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExits);
+      const tokensTotalNum = BigInt(tokens) + BigInt(tokensE) + BigInt(tokensR);
       const tokensTotal = tokensTotalNum.toString();
-      tokensA = tokensAHex.toString();
-      tokensE = tokensENum.toString();
-      tokensR = tokensRNum.toString();
+
       dispatch(infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits));
     } catch (error) {
       dispatch(infoAccountError(error));
@@ -261,59 +259,80 @@ export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operat
   };
 }
 
-function getTokensRollup(allTxs, txs) {
+async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRollup) {
+  let tokens = BigInt(0);
+  let tokensA = BigInt(0);
+  let walletEthAddress = wallet.ethWallet.address;
+  try {
+    if (!walletEthAddress.startsWith('0x')) walletEthAddress = `0x${walletEthAddress}`;
+    for (const [tokenId, address] of Object.entries(tokensList.data)) {
+      if (tokenId) {
+        const contractTokens = new ethers.Contract(address, abiTokens, walletEth);
+        const tokensHex = await contractTokens.balanceOf(walletEthAddress);
+        const tokensAHex = await contractTokens.allowance(walletEthAddress, addressRollup);
+        tokens += BigInt(tokensHex);
+        tokensA += BigInt(tokensAHex);
+      }
+    }
+    return [tokens.toString(), tokensA.toString()];
+  } catch (err) {
+    return ['0', '0'];
+  }
+}
+
+function getTokensRollup(allTxs) {
   let tokensRNum = BigInt(0);
   if (allTxs.data.length !== 0) {
-    const initTx = allTxs.data[0].idx;
-    const numTx = allTxs.data[allTxs.data.length - 1].idx;
-    for (let i = initTx; i <= numTx; i++) {
-      if (allTxs.data.find((tx) => tx.idx === i) !== undefined) {
-        txs.push(allTxs.data.find((tx) => tx.idx === i));
-        tokensRNum += BigInt(allTxs.data.find((tx) => tx.idx === i).amount);
+    for (const tx in allTxs.data) {
+      if (allTxs.data[tx].amount) {
+        tokensRNum += BigInt(allTxs.data[tx].amount);
       }
     }
   }
-  return tokensRNum;
+  return tokensRNum.toString();
 }
 
-async function getTokensExit(txsExits, apiOperator, wallet, allTxs, contractRollup) {
+async function getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExits) {
   let tokensENum = BigInt(0);
-  for (const tx in allTxs.data) {
-    if ({}.hasOwnProperty.call(allTxs.data, tx)) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const exits = await apiOperator.getExits(allTxs.data[tx].idx);
+  try {
+    for (const tx in allTxs.data) {
+      if (tx) {
+        const { coin } = allTxs.data[0];
+        const { ax } = wallet.babyjubWallet.public;
+        const { ay } = wallet.babyjubWallet.public;
+        const exits = await apiOperator.getExits(coin, ax, ay);
         const batches = exits.data;
         if (batches) {
           for (const batch in batches) {
             if ({}.hasOwnProperty.call(batches, batch)) {
-              // eslint-disable-next-line no-await-in-loop
-              const info = await apiOperator.getExitInfo(allTxs.data[tx].idx, batches[batch]);
-              if (info.data.found) {
+              try {
                 // eslint-disable-next-line no-await-in-loop
-                const boolNullifier = await getNullifier(wallet, info, contractRollup, batches[batch]);
-                if (!boolNullifier) {
-                  if (!txsExits.find((leaf) => leaf.idx === allTxs.data[tx].idx && leaf.batch === batches[batch])) {
+                const info = await apiOperator.getExitInfo(coin, ax, ay, batches[batch]);
+                if (info.data.found) {
+                  // eslint-disable-next-line no-await-in-loop
+                  const boolNullifier = await getNullifier(wallet, info, contractRollup, batches[batch]);
+                  if (!boolNullifier) {
                     const amount = ethers.utils.formatEther(info.data.state.amount);
                     txsExits.push({
-                      idx: allTxs.data[tx].idx, batch: batches[batch], amount,
+                      coin: allTxs.data[tx].coin, batch: batches[batch], amount,
                     });
                     tokensENum += BigInt(info.data.state.amount);
                   }
                 }
+              } catch (err) {
+                // eslint-disable-next-line no-continue
+                continue;
               }
             }
           }
         }
-      } catch (err) {
-        // eslint-disable-next-line no-continue
-        continue;
       }
     }
+    return tokensENum.toString();
+  } catch (err) {
+    return '0';
   }
-  return tokensENum;
 }
-
 
 function checkApprovedTokensError() {
   return {

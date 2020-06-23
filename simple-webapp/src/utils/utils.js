@@ -3,6 +3,7 @@
 const { babyJub, poseidon } = require('circomlib');
 
 const web3 = require('web3');
+const { Scalar } = require('ffjavascript');
 
 export const readFile = (file) => {
   return new Promise((resolve) => {
@@ -48,13 +49,17 @@ export const hexToPoint = (compress) => {
 };
 
 export const state2array = (amount, token, ax, ay, ethAddress, nonce) => {
-  const data = BigInt(token).add(BigInt(nonce).shl(32));
+  let data = Scalar.e(0);
+
+  data = Scalar.add(data, token);
+  data = Scalar.add(data, Scalar.shl(nonce, 32));
+
   return [
     data,
-    BigInt(amount),
-    BigInt(`0x${ax}`),
-    BigInt(`0x${ay}`),
-    BigInt(ethAddress),
+    Scalar.e(amount),
+    Scalar.fromString(ax, 16),
+    Scalar.fromString(ay, 16),
+    Scalar.fromString(ethAddress, 16),
   ];
 };
 
@@ -64,15 +69,16 @@ export const hashState = (st) => {
 };
 
 export const getNullifier = async (wallet, info, contractRollup, batch) => {
-  const ax = wallet.babyjubWallet.publicKey[0];
-  const ay = wallet.babyjubWallet.publicKey[1];
-  const exitEntry = state2array(info.data.state.amount, 0, ax.toString(16), ay.toString(16),
+  const { ax } = wallet.babyjubWallet.public;
+  const { ay } = wallet.babyjubWallet.public;
+  const exitEntry = state2array(info.data.state.amount, info.data.state.coin, ax.toString(16), ay.toString(16),
     wallet.ethWallet.address, 0);
   const valueExitTree = hashState(exitEntry);
   const exitRoot = await contractRollup.getExitRoot(batch);
   const nullifier = [];
-  nullifier[0] = BigInt(exitRoot);
-  nullifier[1] = valueExitTree;
+  nullifier[0] = valueExitTree;
+  nullifier[1] = batch;
+  nullifier[2] = BigInt(exitRoot);
   const hashNullifier = hashState(nullifier);
   const boolNullifier = await contractRollup.exitNullifier(hashNullifier.toString());
   return boolNullifier;
@@ -87,3 +93,108 @@ export const getWei = (ether) => {
   }
   return wei;
 };
+
+export const feeTable = {
+  '0%': 0,
+  '0.001%': 1,
+  '0.002%': 2,
+  '0.005%': 3,
+  '0.01%': 4,
+  '0.02%': 5,
+  '0.05%': 6,
+  '0.1%': 7,
+  '0.2%': 8,
+  '0.5%': 9,
+  '1%': 10,
+  '2%': 11,
+  '5%': 12,
+  '10%': 13,
+  '20%': 14,
+  '50%': 15,
+};
+
+export const feeTableDropdown = [
+  {
+    key: '0%',
+    text: '0%',
+    value: '0%',
+  },
+  {
+    key: '0.001%',
+    text: '0.001%',
+    value: '0.001%',
+  },
+  {
+    key: '0.002%',
+    text: '0.002%',
+    value: '0.002%',
+  },
+  {
+    key: '0.005%',
+    text: '0.005%',
+    value: '0.005%',
+  },
+  {
+    key: '0.01%',
+    text: '0.01%',
+    value: '0.01%',
+  },
+  {
+    key: '0.02%',
+    text: '0.02%',
+    value: '0.02%',
+  },
+  {
+    key: '0.05%',
+    text: '0.05%',
+    value: '0.05%',
+  },
+  {
+    key: '0.1%',
+    text: '0.1%',
+    value: '0.1%',
+  },
+  {
+    key: '0.2%',
+    text: '0.2%',
+    value: '0.2%',
+  },
+  {
+    key: '0.5%',
+    text: '0.5%',
+    value: '0.5%',
+  },
+  {
+    key: '1%',
+    text: '1%',
+    value: '1%',
+  },
+  {
+    key: '2%',
+    text: '2%',
+    value: '2%',
+  },
+  {
+    key: '5%',
+    text: '5%',
+    value: '5%',
+  },
+  {
+    key: '10%',
+    text: '10%',
+    value: '10%',
+  },
+  {
+    key: '20%',
+    text: '20%',
+    value: '20%',
+  },
+  {
+    key: '50%',
+    text: '50%',
+    value: '50%',
+  },
+];
+
+export const exitAx = '0x0000000000000000000000000000000000000000000000000000000000000000';
+export const exitAy = '0x0000000000000000000000000000000000000000000000000000000000000000';

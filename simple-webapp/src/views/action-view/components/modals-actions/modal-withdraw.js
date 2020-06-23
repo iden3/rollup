@@ -27,7 +27,7 @@ class ModalWithdraw extends Component {
     this.state = {
       exitRoots: [],
       numExitRoot: -1,
-      idFrom: -1,
+      tokenId: -1,
       initModal: true,
       modalError: false,
       nextDisabled: true,
@@ -54,15 +54,15 @@ class ModalWithdraw extends Component {
       config, abiRollup, desWallet, gasMultiplier,
     } = this.props;
 
-    const idFrom = Number(this.state.idFrom);
+    const tokenId = Number(this.state.tokenId);
     const numExitRoot = Number(this.state.numExitRoot);
     const { nodeEth } = config;
     const addressSC = config.address;
     const { operator } = config;
     this.toggleModalChange();
     this.props.toggleModalWithdraw();
-    const res = await this.props.handleSendWithdraw(nodeEth, addressSC, desWallet,
-      abiRollup, operator, idFrom, numExitRoot, gasMultiplier);
+    const res = await this.props.handleSendWithdraw(nodeEth, addressSC, tokenId, desWallet,
+      abiRollup, operator, numExitRoot, gasMultiplier);
     if (res !== undefined) {
       if (res.message !== undefined) {
         if (res.message.includes('insufficient funds')) {
@@ -71,14 +71,14 @@ class ModalWithdraw extends Component {
         }
       }
       if (res.res) {
-        this.props.handleStateWithdraw(res, idFrom);
+        this.props.handleStateWithdraw(res, tokenId);
       }
     }
   }
 
   getExitRoot = async () => {
     const { txsExits } = this.props;
-    const txsExitsById = txsExits.filter((tx) => tx.idx === this.state.idFrom);
+    const txsExitsById = txsExits.filter((tx) => tx.coin === this.state.tokenId);
     const exitRoots = [];
     txsExitsById.map(async (key, index) => {
       exitRoots.push({
@@ -94,9 +94,9 @@ class ModalWithdraw extends Component {
     for (const i in txsExits) {
       if ({}.hasOwnProperty.call(txsExits, i)) {
         const tx = txsExits[i];
-        if (!infoTxsExits.find((leaf) => leaf.value === tx.idx)) {
+        if (!infoTxsExits.find((info) => info.value === tx.coin)) {
           infoTxsExits.push({
-            key: i, value: tx.idx, text: tx.idx,
+            key: i, value: tx.coin, text: tx.coin,
           });
         }
       }
@@ -116,7 +116,7 @@ class ModalWithdraw extends Component {
     return dropdown;
   }
 
-  handleChangeIdFrom = (e, { value }) => this.setState({ idFrom: value, nextDisabled: false });
+  handleChangeIdFrom = (e, { value }) => this.setState({ tokenId: value, nextDisabled: false });
 
   exitRoot = () => {
     let dropdown;
@@ -144,7 +144,7 @@ class ModalWithdraw extends Component {
           <Modal.Content>
             <Form>
               <Form.Field>
-                <p><b>ID From</b></p>
+                <p><b>Coin</b></p>
                 {this.idsExit()}
               </Form.Field>
             </Form>
@@ -152,11 +152,11 @@ class ModalWithdraw extends Component {
           <Modal.Actions>
             <Button color="blue" onClick={this.getExitRoot} disabled={this.state.nextDisabled}>
               <Icon name="arrow right" />
-                Next
+              Next
             </Button>
             <Button color="grey" basic onClick={this.props.toggleModalWithdraw}>
               <Icon name="close" />
-                Close
+              Close
             </Button>
           </Modal.Actions>
         </Modal>
@@ -168,8 +168,8 @@ class ModalWithdraw extends Component {
         <Modal.Content>
           <Form>
             <Form.Field>
-              <p><b>ID From</b></p>
-              <p>{this.state.idFrom}</p>
+              <p><b>Coin</b></p>
+              <p>{this.state.tokenId}</p>
             </Form.Field>
             <Form.Field>
               <p><b>Batch and Amount</b></p>
@@ -183,15 +183,15 @@ class ModalWithdraw extends Component {
         <Modal.Actions>
           <Button color="blue" onClick={this.toggleModalChange}>
             <Icon name="arrow left" />
-              Previous
+            Previous
           </Button>
           <Button color="blue" onClick={this.handleClick} disabled={this.state.sendDisabled}>
             <Icon name="sign-out" />
-              Withdraw
+            Withdraw
           </Button>
           <Button color="grey" basic onClick={this.toogleCloseModal}>
             <Icon name="close" />
-              Close
+            Close
           </Button>
         </Modal.Actions>
       </Modal>

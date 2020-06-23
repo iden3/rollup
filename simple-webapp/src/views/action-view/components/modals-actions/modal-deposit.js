@@ -99,7 +99,7 @@ class ModalDeposit extends Component {
                 <Form.Field>
                   <label htmlFor="token-id">
                     Token ID
-                    <input type="text" disabled ref={this.tokenIdRef} id="token-id" defaultValue="0" />
+                    <input type="text" ref={this.tokenIdRef} id="token-id" defaultValue="0" />
                   </label>
                 </Form.Field>
                 <Form.Field>

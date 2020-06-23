@@ -13,7 +13,7 @@ class ModalInfoId extends Component {
   };
 
   static defaultProps = {
-    txs: [{ idx: 0, amount: 0 }],
+    txs: [{ coin: 0, amount: 0 }],
   };
 
   getIdTokens = () => {
@@ -22,7 +22,7 @@ class ModalInfoId extends Component {
       return txs.map((key, index) => {
         return (
           <Table.Row key={index}>
-            <Table.Cell>{key.idx}</Table.Cell>
+            <Table.Cell>{key.coin}</Table.Cell>
             <Table.Cell>{web3.utils.fromWei(key.amount, 'ether')}</Table.Cell>
           </Table.Row>
         );
@@ -45,7 +45,7 @@ class ModalInfoId extends Component {
           <Table>
             <Table.Header>
               <Table.Row>
-                <Table.HeaderCell>ID</Table.HeaderCell>
+                <Table.HeaderCell>COIN</Table.HeaderCell>
                 <Table.HeaderCell>TOKENS</Table.HeaderCell>
               </Table.Row>
             </Table.Header>

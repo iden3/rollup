@@ -48,7 +48,6 @@ class InfoOp extends Component {
     this.toggleModalInfoOffchain();
   }
 
-
   getInfoModalTx = (e) => {
     e.preventDefault();
     this.toggleModalInfoTx();
@@ -94,11 +93,11 @@ class InfoOp extends Component {
           <Card.Content>
             <Card.Header>
               {key.type}
-                :
+              :
               {' '}
               {key.amount}
               {' '}
-                Tokens
+              Tokens
             </Card.Header>
             <Card.Meta>On-chain</Card.Meta>
           </Card.Content>

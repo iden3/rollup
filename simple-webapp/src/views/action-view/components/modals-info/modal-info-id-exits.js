@@ -20,7 +20,7 @@ class ModalInfoIdExits extends Component {
       return txsExits.map((key, index) => {
         return (
           <Table.Row key={index}>
-            <Table.Cell>{key.idx}</Table.Cell>
+            <Table.Cell>{key.coin}</Table.Cell>
             <Table.Cell>{key.batch}</Table.Cell>
             <Table.Cell>{key.amount}</Table.Cell>
           </Table.Row>
@@ -45,7 +45,7 @@ class ModalInfoIdExits extends Component {
           <Table>
             <Table.Header>
               <Table.Row>
-                <Table.HeaderCell>ID</Table.HeaderCell>
+                <Table.HeaderCell>COIN</Table.HeaderCell>
                 <Table.HeaderCell>BATCH</Table.HeaderCell>
                 <Table.HeaderCell>TOKENS</Table.HeaderCell>
               </Table.Row>
