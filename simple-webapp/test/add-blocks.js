@@ -10,7 +10,7 @@ contract("Add blocks Genesis", () => {
         console.log(`Add ${blocksGenesis} blocks`);
     });
     it("Should add blocks blocksGenesis", async () => {
-        await addBlocks(3*blockPerSlots);
-        console.log(`Add ${3*blockPerSlots} blocks`);
+        await addBlocks(2*blockPerSlots);
+        console.log(`Add ${2*blockPerSlots} blocks`);
     });
 });

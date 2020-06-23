@@ -193,9 +193,4 @@ contract("Operator Server", (accounts) => {
         console.log("ROLLUP address: ", insRollup.address);
         console.log("TOKENS address", insTokenRollup.address);
     });
-
-    it("Add Blocks", async () => {
-        const blocksPerSlot = 20;
-        addBlocks(2*blocksPerSlot);
-    });
 });
