@@ -55,7 +55,7 @@ If you’d like to offer feedback, come across any problems, or have any questio
 
 ### 2.0. Initial considerations<a id="2_0"></a>
 
->A **batch** is a rollup "block" 
+>A **batch** is a rollup block
 
 >An **operator** is a batch producer
 
