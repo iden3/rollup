@@ -16,22 +16,6 @@ class ModalInfoOnchain extends Component {
       this.props.toggleModalInfoOnchain();
     }
 
-    getFromId = () => {
-      const { keyItem } = this.props;
-      if (keyItem.type === 'ForceExit' || keyItem.type === 'Withdraw') {
-        return (
-          <Table.Row>
-            <Table.Cell>
-              Token ID:
-            </Table.Cell>
-            <Table.Cell>
-              {keyItem.tokenId}
-            </Table.Cell>
-          </Table.Row>
-        );
-      }
-    }
-
     getCurrentBatch = () => {
       const { keyItem } = this.props;
       if (keyItem.type === 'ForceExit' || keyItem.type === 'Deposit') {
@@ -88,7 +72,7 @@ class ModalInfoOnchain extends Component {
           return (
             <Table.Row>
               <Table.Cell>
-              Finality Batch:
+                Finality Batch:
               </Table.Cell>
               <Table.Cell>
                 {keyItem.maxNumBatch}
@@ -135,7 +119,7 @@ class ModalInfoOnchain extends Component {
             <Table.Body>
               <Table.Row>
                 <Table.Cell>
-                Type:
+                  Type:
                 </Table.Cell>
                 <Table.Cell>
                   {keyItem.type}
@@ -163,7 +147,14 @@ class ModalInfoOnchain extends Component {
                   {keyItem.id}
                 </Table.Cell>
               </Table.Row>
-              {this.getFromId()}
+              <Table.Row>
+                <Table.Cell>
+                  Token ID:
+                </Table.Cell>
+                <Table.Cell>
+                  {keyItem.tokenId}
+                </Table.Cell>
+              </Table.Row>
               {this.getForgedBatch()}
               {this.getCurrentBatch()}
               {this.getMaxBatch()}

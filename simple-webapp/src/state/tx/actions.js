@@ -107,7 +107,9 @@ export function handleSendWithdraw(nodeEth, addressSC, tokenId, wallet, abiRollu
           const web3 = new Web3(nodeEth);
           const txData = await web3.eth.getTransaction(res.hash);
           const decodedData = abiDecoder.decodeMethod(txData.input);
-          const amount = decodedData.params[1].value;
+          const amount = decodedData.params.find((param) => {
+            return param.name === 'amount';
+          }).value;
           dispatch(sendWithdrawSuccess(res, currentBatch));
           resolve({ res, currentBatch, amount });
         }

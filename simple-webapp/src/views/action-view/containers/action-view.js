@@ -23,11 +23,14 @@ import ModalForceExit from '../components/modals-actions/modal-force-exit';
 class ActionView extends Component {
   static propTypes = {
     desWallet: PropTypes.object.isRequired,
+    wallet: PropTypes.object.isRequired,
     config: PropTypes.object.isRequired,
     abiTokens: PropTypes.array.isRequired,
     tokens: PropTypes.string,
+    tokensArray: PropTypes.array,
     tokensR: PropTypes.string,
     tokensA: PropTypes.string,
+    tokensAArray: PropTypes.array,
     tokensE: PropTypes.string,
     tokensTotal: PropTypes.string,
     balance: PropTypes.string,
@@ -50,6 +53,8 @@ class ActionView extends Component {
     balance: '0',
     txs: [],
     txsExits: [],
+    tokensArray: [],
+    tokensAArray: [],
   }
 
   constructor(props) {
@@ -113,9 +118,8 @@ class ActionView extends Component {
 
   getInfoAccount = async () => {
     if (Object.keys(this.props.desWallet).length !== 0) {
-      await this.props.handleInfoAccount(this.props.config.nodeEth, this.props.config.tokensAddress,
-        this.props.abiTokens, this.props.wallet, this.props.config.operator, this.props.config.address,
-        this.props.config.abiRollup, this.props.desWallet);
+      await this.props.handleInfoAccount(this.props.config.nodeEth, this.props.abiTokens, this.props.wallet,
+        this.props.config.operator, this.props.config.address, this.props.config.abiRollup, this.props.desWallet);
     }
   }
 
@@ -186,6 +190,8 @@ class ActionView extends Component {
           tokensR={this.props.tokensR}
           tokensE={this.props.tokensE}
           tokensA={this.props.tokensA}
+          tokensArray={this.props.tokensArray}
+          tokensAArray={this.props.tokensAArray}
           tokensTotal={this.props.tokensTotal}
           isLoadingInfoAccount={this.props.isLoadingInfoAccount}
           getInfoAccount={this.getInfoAccount}
@@ -244,8 +250,10 @@ const mapStateToProps = (state) => ({
   password: state.general.password,
   balance: state.general.balance,
   tokens: state.general.tokens,
+  tokensArray: state.general.tokensArray,
   tokensR: state.general.tokensR,
   tokensA: state.general.tokensA,
+  tokensAArray: state.general.tokensAArray,
   tokensE: state.general.tokensE,
   tokensTotal: state.general.tokensTotal,
   txs: state.general.txs,

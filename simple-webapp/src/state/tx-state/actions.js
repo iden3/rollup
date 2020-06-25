@@ -34,6 +34,7 @@ export function handleStateSend(res, urlOperator, amount, fee, tokenId, babyJubR
     maxNumBatch: Number(res.currentBatch) + 2,
     finalBatch: 'Pending',
     fee,
+    tokenId,
     from: babyjub,
     timestamp: Date.now(),
   };
@@ -132,7 +133,7 @@ function stateDepositError(tx) {
   };
 }
 
-export function handleStateDeposit(tx, urlOperator, amount) {
+export function handleStateDeposit(tx, tokenId, urlOperator, amount) {
   const infoTx = {
     currentBatch: tx.currentBatch,
     nonce: tx.res.nonce,
@@ -143,6 +144,7 @@ export function handleStateDeposit(tx, urlOperator, amount) {
     to: tx.res.to,
     maxNumBatch: 'Pending',
     finalBatch: 'Pending',
+    tokenId,
     timestamp: Date.now(),
   };
   return async function (dispatch) {
@@ -217,7 +219,7 @@ function stateWithdrawError(tx) {
   };
 }
 
-export function handleStateWithdraw(tx, idFrom) {
+export function handleStateWithdraw(tx, tokenId) {
   const infoTx = {
     currentBatch: tx.currentBatch,
     nonce: tx.res.nonce,
@@ -226,7 +228,7 @@ export function handleStateWithdraw(tx, idFrom) {
     type: 'Withdraw',
     from: tx.res.from,
     to: tx.res.to,
-    idFrom,
+    tokenId,
     timestamp: Date.now(),
   };
   return async function (dispatch) {

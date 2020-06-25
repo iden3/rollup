@@ -166,6 +166,14 @@ class ModalInfoOffchain extends Component {
             </Table.Row>
             <Table.Row>
               <Table.Cell>
+                Token ID:
+              </Table.Cell>
+              <Table.Cell>
+                {keyItem.tokenId}
+              </Table.Cell>
+            </Table.Row>
+            <Table.Row>
+              <Table.Cell>
                 State:
               </Table.Cell>
               {state}

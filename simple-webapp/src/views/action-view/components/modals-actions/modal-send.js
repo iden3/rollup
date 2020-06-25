@@ -34,7 +34,7 @@ class ModalSend extends Component {
         babyJubReceiver: '',
         amount: '',
         fee: '',
-        tokenId: '0',
+        tokenId: 0,
         sendDisabled: true,
       };
     }
@@ -53,7 +53,7 @@ class ModalSend extends Component {
         babyJubReceiver: '',
         amount: '',
         fee: '',
-        tokenId: '0',
+        tokenId: 0,
         sendDisabled: true,
       });
     }
@@ -63,9 +63,10 @@ class ModalSend extends Component {
         config, desWallet, pendingOffchain, babyjub,
       } = this.props;
       const {
-        tokenId, amount, fee, babyJubReceiver,
+        amount, fee, babyJubReceiver,
       } = this.state;
       const amountWei = getWei(amount);
+      const tokenId = Number(this.tokenIdRef.current.value);
       this.closeModal();
       const res = await this.props.handleSendSend(config.operator, babyJubReceiver, amountWei, desWallet,
         tokenId, feeTable[fee]);
@@ -77,8 +78,10 @@ class ModalSend extends Component {
     }
 
     checkForm = () => {
-      const { amount, fee, babyJubReceiver } = this.state;
-      if (parseInt(amount, 10) && fee !== '' && babyJubReceiver !== '') {
+      const {
+        amount, fee, babyJubReceiver, tokenId,
+      } = this.state;
+      if (parseInt(amount, 10) && fee !== '' && babyJubReceiver !== '' && (parseInt(tokenId, 10) || tokenId === 0)) {
         this.setState({ sendDisabled: false });
       } else {
         this.setState({ sendDisabled: true });
@@ -87,6 +90,10 @@ class ModalSend extends Component {
 
     setAmount = (event) => {
       this.setState({ amount: event.target.value }, () => { this.checkForm(); });
+    }
+
+    setTokenId = (event) => {
+      this.setState({ tokenId: event.target.value }, () => { this.checkForm(); });
     }
 
     setFee = (event, { value }) => {
@@ -152,7 +159,13 @@ class ModalSend extends Component {
               <Form.Field>
                 <label htmlFor="token-id">
                   Token ID
-                  <input type="text" ref={this.tokenIdRef} id="token-id" defaultValue="0" />
+                  <input
+                    type="text"
+                    ref={this.tokenIdRef}
+                    onChange={this.setTokenId}
+                    id="token-id"
+                    defaultValue="0"
+                    value={this.state.tokenId} />
                 </label>
               </Form.Field>
               <Form.Field>

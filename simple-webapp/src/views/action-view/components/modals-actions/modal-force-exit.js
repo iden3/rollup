@@ -31,6 +31,7 @@ class ModalForceExit extends Component {
         modalError: false,
         sendDisabled: true,
         error: '',
+        tokenId: 0,
       };
     }
 
@@ -41,24 +42,35 @@ class ModalForceExit extends Component {
         modalError: false,
         sendDisabled: true,
         error: '',
+        tokenId: 0,
       });
     }
 
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
-    checkAmount = (e) => {
-      e.preventDefault();
-      if (parseInt(e.target.value, 10)) {
-        this.setState({ sendDisabled: false, amount: e.target.value });
+    checkForm = () => {
+      const {
+        amount, tokenId,
+      } = this.state;
+      if (parseInt(amount, 10) && (parseInt(tokenId, 10) || tokenId === 0)) {
+        this.setState({ sendDisabled: false });
       } else {
         this.setState({ sendDisabled: true });
       }
     }
 
-    handleClick = async (e) => {
+    setAmount = (event) => {
+      this.setState({ amount: event.target.value }, () => { this.checkForm(); });
+    }
+
+    setTokenId = (event) => {
+      this.setState({ tokenId: event.target.value }, () => { this.checkForm(); });
+    }
+
+    handleClick = async () => {
       const { config, desWallet, gasMultiplier } = this.props;
       const amountWei = getWei(this.state.amount);
-      const tokenId = Number(e.target.value);
+      const tokenId = Number(this.tokenIdRef.current.value);
       this.closeModal();
       const res = await this.props.handleSendForceExit(config.nodeEth, config.address, tokenId, amountWei, desWallet,
         config.abiRollup, config.operator, gasMultiplier);
@@ -96,17 +108,17 @@ class ModalForceExit extends Component {
                     type="text"
                     ref={this.amountRef}
                     id="amount"
-                    onChange={this.checkAmount}
-                    value={this.state.amount} />
+                    onChange={this.setAmount} />
                 </label>
               </Form.Field>
               <Form.Field>
-                <label htmlFor="amount">
+                <label htmlFor="tokenid">
                   Token ID
                   <input
                     type="text"
                     ref={this.tokenIdRef}
-                    id="amount"
+                    id="tokenid"
+                    onChange={this.setTokenId}
                     defaultValue="0" />
                 </label>
               </Form.Field>

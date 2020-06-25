@@ -199,11 +199,12 @@ function infoAccount() {
   };
 }
 
-function infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits) {
+function infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs,
+  txsExits, tokensArray, tokensAArray) {
   return {
     type: CONSTANTS.INFO_ACCOUNT_SUCCESS,
     payload: {
-      balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits,
+      balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits, tokensArray, tokensAArray,
     },
     error: '',
   };
@@ -216,7 +217,7 @@ function infoAccountError(error) {
   };
 }
 
-export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operatorUrl, addressRollup,
+export function handleInfoAccount(node, abiTokens, wallet, operatorUrl, addressRollup,
   abiRollup, desWallet) {
   return async function (dispatch) {
     dispatch(infoAccount());
@@ -246,13 +247,14 @@ export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operat
         allTxs.data = [];
       }
       const txs = allTxs.data;
-      const [tokens, tokensA] = await getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRollup);
+      const [tokens, tokensArray, tokensA, tokensAArray] = await getTokensInfo(tokensList, abiTokens,
+        wallet, walletEth, addressRollup);
       const tokensR = await getTokensRollup(allTxs);
       const tokensE = await getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExits);
       const tokensTotalNum = BigInt(tokens) + BigInt(tokensE) + BigInt(tokensR);
       const tokensTotal = tokensTotalNum.toString();
-
-      dispatch(infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits));
+      dispatch(infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal,
+        txs, txsExits, tokensArray, tokensAArray));
     } catch (error) {
       dispatch(infoAccountError(error));
     }
@@ -260,6 +262,8 @@ export function handleInfoAccount(node, addressTokens, abiTokens, wallet, operat
 }
 
 async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRollup) {
+  const tokensArray = [];
+  const tokensAArray = [];
   let tokens = BigInt(0);
   let tokensA = BigInt(0);
   let walletEthAddress = wallet.ethWallet.address;
@@ -271,10 +275,16 @@ async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRo
         const tokensHex = await contractTokens.balanceOf(walletEthAddress);
         const tokensAHex = await contractTokens.allowance(walletEthAddress, addressRollup);
         tokens += BigInt(tokensHex);
+        tokensArray.push({
+          coin: tokenId, address, amount: BigInt(tokensHex).toString(),
+        });
+        tokensAArray.push({
+          coin: tokenId, address, amount: BigInt(tokensAHex).toString(),
+        });
         tokensA += BigInt(tokensAHex);
       }
     }
-    return [tokens.toString(), tokensA.toString()];
+    return [tokens.toString(), tokensArray, tokensA.toString(), tokensAArray];
   } catch (err) {
     return ['0', '0'];
   }
@@ -297,15 +307,14 @@ async function getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExi
   try {
     for (const tx in allTxs.data) {
       if (tx) {
-        const { coin } = allTxs.data[0];
-        const { ax } = wallet.babyjubWallet.public;
-        const { ay } = wallet.babyjubWallet.public;
-        const exits = await apiOperator.getExits(coin, ax, ay);
-        const batches = exits.data;
-        if (batches) {
-          for (const batch in batches) {
-            if ({}.hasOwnProperty.call(batches, batch)) {
-              try {
+        const { coin } = allTxs.data[tx];
+        const { ax, ay } = wallet.babyjubWallet.public;
+        try {
+          const exits = await apiOperator.getExits(coin, ax, ay);
+          const batches = exits.data;
+          if (batches) {
+            for (const batch in batches) {
+              if ({}.hasOwnProperty.call(batches, batch)) {
                 // eslint-disable-next-line no-await-in-loop
                 const info = await apiOperator.getExitInfo(coin, ax, ay, batches[batch]);
                 if (info.data.found) {
@@ -319,12 +328,12 @@ async function getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExi
                     tokensENum += BigInt(info.data.state.amount);
                   }
                 }
-              } catch (err) {
-                // eslint-disable-next-line no-continue
-                continue;
               }
             }
           }
+        } catch (err) {
+          // eslint-disable-next-line no-continue
+          continue;
         }
       }
     }

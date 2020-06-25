@@ -3,12 +3,15 @@ import PropTypes from 'prop-types';
 import {
   Table, Button, Icon,
 } from 'semantic-ui-react';
+import ModalInfoId from '../modals-info/modal-info-id';
 
 const web3 = require('web3');
 
 class InfoEthereum extends Component {
   static propTypes = {
     tokens: PropTypes.string,
+    tokensArray: PropTypes.array,
+    tokensAArray: PropTypes.array,
     tokensA: PropTypes.string,
     balance: PropTypes.string,
     noImported: PropTypes.bool.isRequired,
@@ -19,6 +22,8 @@ class InfoEthereum extends Component {
   static defaultProps = {
     tokens: '0',
     balance: '0',
+    tokensArray: [],
+    tokensAArray: [],
   }
 
   importedWallet = () => {
@@ -26,7 +31,7 @@ class InfoEthereum extends Component {
       return (
         <div>
           <Icon name="close" color="red" />
-              You must import a wallet!
+          You must import a wallet!
         </div>
       );
     }
@@ -94,16 +99,22 @@ class InfoEthereum extends Component {
             <Table.Cell colSpan="2">
               <b>TOKENS:</b>
             </Table.Cell>
-            <Table.Cell colSpan="7">
+            <Table.Cell colSpan="5">
               {this.isLoadingTokens()}
+            </Table.Cell>
+            <Table.Cell colSpan="2" floated="left">
+              <ModalInfoId txs={this.props.tokensArray} noImported={this.props.noImported} />
             </Table.Cell>
           </Table.Row>
           <Table.Row>
             <Table.Cell colSpan="2">
               <b>APPROVED TOKENS:</b>
             </Table.Cell>
-            <Table.Cell colSpan="7">
+            <Table.Cell colSpan="5">
               {this.isLoadingTokensA()}
+            </Table.Cell>
+            <Table.Cell colSpan="2" floated="left">
+              <ModalInfoId txs={this.props.tokensAArray} noImported={this.props.noImported} />
             </Table.Cell>
           </Table.Row>
         </Table.Header>

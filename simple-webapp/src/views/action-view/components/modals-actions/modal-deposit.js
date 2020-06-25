@@ -74,7 +74,7 @@ class ModalDeposit extends Component {
           }
         }
         if (res.res) {
-          this.props.handleStateDeposit(res, operator, amount);
+          this.props.handleStateDeposit(res, tokenId, operator, amount);
         }
       }
     }

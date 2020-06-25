@@ -139,6 +139,8 @@ function general(state = initialState, action) {
         tokensTotal: action.payload.tokensTotal,
         txs: action.payload.txs,
         txsExits: action.payload.txsExits,
+        tokensArray: action.payload.tokensArray,
+        tokensAArray: action.payload.tokensAArray,
         errorInfoAccount: '',
       };
     case CONSTANTS.INFO_ACCOUNT_ERROR:

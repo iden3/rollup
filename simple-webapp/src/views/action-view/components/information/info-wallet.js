@@ -18,6 +18,8 @@ class InfoWallet extends Component {
     tokensR: PropTypes.string,
     tokensE: PropTypes.string,
     tokensA: PropTypes.string,
+    tokensArray: PropTypes.array,
+    tokensAArray: PropTypes.array,
     tokensTotal: PropTypes.string,
     balance: PropTypes.string,
     txs: PropTypes.array,
@@ -33,6 +35,8 @@ class InfoWallet extends Component {
     tokensTotal: '0',
     balance: '0',
     txs: [],
+    tokensArray: [],
+    tokensAArray: [],
   }
 
   constructor(props) {
@@ -109,6 +113,8 @@ class InfoWallet extends Component {
           address={this.state.address}
           tokens={this.props.tokens}
           tokensA={this.props.tokensA}
+          tokensArray={this.props.tokensArray}
+          tokensAArray={this.props.tokensAArray}
           balance={this.props.balance}
           noImported={this.props.noImported}
           loading={this.state.loading} />

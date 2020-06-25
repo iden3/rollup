@@ -30,7 +30,7 @@ class InfoBabyjub extends Component {
       return (
         <div>
           <Icon name="close" color="red" />
-              You must import a wallet!
+          You must import a wallet!
         </div>
       );
     }
