@@ -63,7 +63,7 @@ If you’d like to offer feedback, come across any problems, or have any questio
 
 > **Forging** refers to the creation of a batch (off-chain) and the subsequent (on-chain) verification of the attached zkSnark.
 
-Each batch takes around 45 seconds to 1 minute to be forged by an operator, but these batches can be forged in parallel. 
+Each batch takes around 45 seconds to 1 minute to be forged by an operator, but batches can be forged in parallel. 
 
 On-chain transactions take 2 forged batches to be included, and off-chain transactions take between 1 and 2 batches -- making off-chain transactions slightly faster.
 
