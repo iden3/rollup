@@ -65,7 +65,7 @@ If you’d like to offer feedback, come across any problems, or have any questio
 
 Each batch takes around 45 seconds to 1 minute to be forged by an operator.
 
-On-chain, Ethereum transactions take 2 batches to be executed, and off-chain, zkrollup transactions take between 1 and 2 batches -- making off-chain transactions slightly faster to execute.
+On-chain transactions (transactions sent to the rollup contract) take 2 batches to affect the rollup account balance tree, while off-chain transactions (transactions sent to the operator) take between 1 and 2 batches. This makes off-chain transactions slightly faster to execute.
 
 To keep track of the latest rollup state see [here](https://zkrollup.iden3.net/state).
 
