@@ -57,13 +57,15 @@ If you’d like to offer feedback, come across any problems, or have any questio
 
 >A **batch** is a rollup block
 
->An **operator** is a rollup block producer
+>An **operator** is a batch producer
 
 > **rollup address** is the compressed format of the babyjubjub public key
 
 > **Forging** refers to the creation of a batch (off-chain) and the subsequent (on-chain) verification of the attached zkSnark.
 
-Each batch takes around 45 seconds to 1 minute to be forged by an operator.
+Each batch takes around 45 seconds to 1 minute to be forged by an operator. 
+
+> note: while in the current implementation batches can't be forged in parallel, we plan to make it possible to parallelise this step.
 
 On-chain transactions (transactions sent to the rollup contract) take 2 batches to affect the rollup account balance tree, while off-chain transactions (transactions sent to the operator) take between 1 and 2 batches. This makes off-chain transactions slightly faster to execute.
 
