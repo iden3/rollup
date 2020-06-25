@@ -49,20 +49,25 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
           resolve({ res, currentBatch });
         }
       } catch (error) {
-        if (error.message.includes('leaf already exist')) {
-          const apiOperator = new operator.cliExternalOperator(operatorUrl);
-          const resOperator = await apiOperator.getState();
-          const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-          const babyjubTo = [wallet.babyjubWallet.publicKey[0].toString(),
-            wallet.babyjubWallet.publicKey[1].toString()];
-          const res = await rollup.onchain.depositOnTop.depositOnTop(nodeEth, addressSC, amount, tokenId,
-            babyjubTo, wallet, abiRollup, gasLimit, gasMultiplier);
-          dispatch(sendDepositSuccess(res, currentBatch));
-          resolve({ res, currentBatch });
-        } else {
-          dispatch(sendDepositError(`Deposit Error: ${error.message}`));
-          resolve(error);
-        }
+          if (error.message.includes('leaf already exist')) {
+            try {
+              const apiOperator = new operator.cliExternalOperator(operatorUrl);
+              const resOperator = await apiOperator.getState();
+              const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
+              const babyjubTo = [wallet.babyjubWallet.publicKey[0].toString(),
+                wallet.babyjubWallet.publicKey[1].toString()];
+              const res = await rollup.onchain.depositOnTop.depositOnTop(nodeEth, addressSC, amount, tokenId,
+                babyjubTo, wallet, abiRollup, gasLimit, gasMultiplier);
+              dispatch(sendDepositSuccess(res, currentBatch));
+              resolve({ res, currentBatch });
+            } catch (error) {
+              dispatch(sendDepositError(`Deposit Error: ${error.message}`));
+              resolve(error);
+            }
+          } else {
+            dispatch(sendDepositError(`Deposit Error: ${error.message}`));
+            resolve(error);
+          }
       }
     });
   };
