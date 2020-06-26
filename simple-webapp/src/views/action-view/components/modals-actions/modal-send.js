@@ -164,7 +164,6 @@ class ModalSend extends Component {
                     ref={this.tokenIdRef}
                     onChange={this.setTokenId}
                     id="token-id"
-                    defaultValue="0"
                     value={this.state.tokenId} />
                 </label>
               </Form.Field>

@@ -35,39 +35,41 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
   return function (dispatch) {
     dispatch(sendDeposit());
     return new Promise(async (resolve) => {
-      try {
-        if (amount === '0') {
-          dispatch(sendDepositError('Deposit Error: \'The amount must be greater than 0\''));
-          resolve('Deposit Error');
-        } else {
+      if (amount === '0') {
+        dispatch(sendDepositError('Deposit Error: \'The amount must be greater than 0\''));
+        resolve('Deposit Error');
+      } else {
+        try {
+          const babyjubToCompress = wallet.babyjubWallet.publicKeyCompressed.toString('hex');
           const apiOperator = new operator.cliExternalOperator(operatorUrl);
+          await apiOperator.getStateAccountByAddress(tokenId, babyjubToCompress);
           const resOperator = await apiOperator.getState();
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-          const res = await rollup.onchain.deposit.deposit(nodeEth, addressSC, amount, tokenId, wallet,
-            ethAddress, abiRollup, gasLimit, gasMultiplier);
+          const babyjubTo = [wallet.babyjubWallet.publicKey[0].toString(),
+            wallet.babyjubWallet.publicKey[1].toString()];
+          const res = await rollup.onchain.depositOnTop.depositOnTop(nodeEth, addressSC, amount, tokenId,
+            babyjubTo, wallet, abiRollup, gasLimit, gasMultiplier);
           dispatch(sendDepositSuccess(res, currentBatch));
           resolve({ res, currentBatch });
-        }
-      } catch (error) {
-          if (error.message.includes('leaf already exist')) {
-            try {
+        } catch (error) {
+          try {
+            if (error.message.includes('404')) {
               const apiOperator = new operator.cliExternalOperator(operatorUrl);
               const resOperator = await apiOperator.getState();
               const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-              const babyjubTo = [wallet.babyjubWallet.publicKey[0].toString(),
-                wallet.babyjubWallet.publicKey[1].toString()];
-              const res = await rollup.onchain.depositOnTop.depositOnTop(nodeEth, addressSC, amount, tokenId,
-                babyjubTo, wallet, abiRollup, gasLimit, gasMultiplier);
+              const res = await rollup.onchain.deposit.deposit(nodeEth, addressSC, amount, tokenId, wallet,
+                ethAddress, abiRollup, gasLimit, gasMultiplier);
               dispatch(sendDepositSuccess(res, currentBatch));
               resolve({ res, currentBatch });
-            } catch (error) {
+            } else {
               dispatch(sendDepositError(`Deposit Error: ${error.message}`));
               resolve(error);
             }
-          } else {
-            dispatch(sendDepositError(`Deposit Error: ${error.message}`));
-            resolve(error);
+          } catch (error2) {
+            dispatch(sendDepositError(`Deposit Error: ${error2.message}`));
+            resolve(error2);
           }
+        }
       }
     });
   };
