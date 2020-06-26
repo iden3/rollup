@@ -275,15 +275,19 @@ async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRo
         const contractTokens = new ethers.Contract(address, abiTokens, walletEth);
         const tokensHex = await contractTokens.balanceOf(walletEthAddress);
         const tokensAHex = await contractTokens.allowance(walletEthAddress, addressRollup);
-        tokensUser.push({tokenId, address});
         tokens += BigInt(tokensHex);
-        tokensArray.push({
-          coin: tokenId, address, amount: BigInt(tokensHex).toString(),
-        });
-        tokensAArray.push({
-          coin: tokenId, address, amount: BigInt(tokensAHex).toString(),
-        });
+        if(BigInt(tokensHex) > 0) {
+          tokensUser.push({tokenId, address});
+          tokensArray.push({
+            coin: tokenId, address, amount: BigInt(tokensHex).toString(),
+          });
+        }
         tokensA += BigInt(tokensAHex);
+        if (BigInt(tokensAHex)) {
+          tokensAArray.push({
+            coin: tokenId, address, amount: BigInt(tokensAHex).toString(),
+          });
+        }
       }
     }
     return [tokensUser, tokens.toString(), tokensArray, tokensA.toString(), tokensAArray];
