@@ -19,6 +19,7 @@ const initialState = {
   errorOp: '',
   isLoadingInfoAccount: false,
   balance: '0.0',
+  tokensList: [],
   tokens: '0',
   tokensR: '0',
   tokensE: '0',
@@ -112,7 +113,7 @@ function general(state = initialState, action) {
       return {
         ...state,
         isLoadingOp: false,
-        apiOperator: action.payload,
+        apiOperator: action.payload.apiOperator,
         errorOp: '',
       };
     case CONSTANTS.LOAD_OPERATOR_ERROR:
@@ -132,6 +133,7 @@ function general(state = initialState, action) {
         ...state,
         isLoadingInfoAccount: false,
         balance: action.payload.balance,
+        tokensList: action.payload.tokensList,
         tokens: action.payload.tokens,
         tokensR: action.payload.tokensR,
         tokensE: action.payload.tokensE,

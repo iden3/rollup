@@ -27,6 +27,7 @@ class ActionView extends Component {
     config: PropTypes.object.isRequired,
     abiTokens: PropTypes.array.isRequired,
     tokens: PropTypes.string,
+    tokensList: PropTypes.array.isRequired,
     tokensArray: PropTypes.array,
     tokensR: PropTypes.string,
     tokensA: PropTypes.string,
@@ -203,6 +204,7 @@ class ActionView extends Component {
           desWallet={this.props.desWallet} />
         <ModalDeposit
           balance={this.props.balance}
+          tokensList={this.props.tokensList}
           tokensA={this.props.tokensA}
           modalDeposit={this.state.modalDeposit}
           toggleModalDeposit={this.toggleModalDeposit} />
@@ -211,11 +213,13 @@ class ActionView extends Component {
           modalWithdraw={this.state.modalWithdraw}
           toggleModalWithdraw={this.toggleModalWithdraw} />
         <ModalForceExit
+          tokensList={this.props.tokensList}
           desWallet={this.props.desWallet}
           babyjub={this.state.babyjub}
           modalForceExit={this.state.modalForceExit}
           toggleModalForceExit={this.toggleModalForceExit} />
         <ModalSend
+          tokensList={this.props.tokensList}
           babyjub={this.state.babyjub}
           apiOperator={this.props.apiOperator}
           modalSend={this.state.modalSend}
@@ -249,6 +253,7 @@ const mapStateToProps = (state) => ({
   config: state.general.config,
   password: state.general.password,
   balance: state.general.balance,
+  tokensList: state.general.tokensList,
   tokens: state.general.tokens,
   tokensArray: state.general.tokensArray,
   tokensR: state.general.tokensR,

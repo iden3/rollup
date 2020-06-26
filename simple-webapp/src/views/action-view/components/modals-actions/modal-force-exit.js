@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import {
-  Button, Modal, Form, Icon,
+  Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
 import ModalError from '../modals-info/modal-error';
 import ButtonGM from './gm-buttons';
@@ -19,19 +19,18 @@ class ModalForceExit extends Component {
       handleStateForceExit: PropTypes.func.isRequired,
       desWallet: PropTypes.object.isRequired,
       babyjub: PropTypes.string.isRequired,
+      tokensList: PropTypes.array.isRequired,
       gasMultiplier: PropTypes.number.isRequired,
     }
 
     constructor(props) {
       super(props);
-      this.amountRef = React.createRef();
-      this.tokenIdRef = React.createRef();
       this.state = {
         amount: '',
         modalError: false,
         sendDisabled: true,
         error: '',
-        tokenId: 0,
+        tokenId: '',
       };
     }
 
@@ -42,7 +41,7 @@ class ModalForceExit extends Component {
         modalError: false,
         sendDisabled: true,
         error: '',
-        tokenId: 0,
+        tokenId: '',
       });
     }
 
@@ -63,14 +62,15 @@ class ModalForceExit extends Component {
       this.setState({ amount: event.target.value }, () => { this.checkForm(); });
     }
 
-    setTokenId = (event) => {
-      this.setState({ tokenId: event.target.value }, () => { this.checkForm(); });
+    setToken = (event, { value }) => {
+      const tokenId = Number(value);
+      this.setState({ tokenId }, () => { this.checkForm(); });
     }
 
     handleClick = async () => {
       const { config, desWallet, gasMultiplier } = this.props;
       const amountWei = getWei(this.state.amount);
-      const tokenId = Number(this.tokenIdRef.current.value);
+      const tokenId = this.state.tokenId;
       this.closeModal();
       const res = await this.props.handleSendForceExit(config.nodeEth, config.address, tokenId, amountWei, desWallet,
         config.abiRollup, config.operator, gasMultiplier);
@@ -83,6 +83,22 @@ class ModalForceExit extends Component {
       if (res.res) {
         this.props.handleStateForceExit(res, config.operator, tokenId, amountWei);
       }
+    }
+
+    dropDownTokens = () => {
+      const tokensOptions = [];
+      for(const token in this.props.tokensList) {
+        tokensOptions.push({
+          key: this.props.tokensList[token].address,
+          value: this.props.tokensList[token].tokenId,
+          text: `${this.props.tokensList[token].tokenId}: ${this.props.tokensList[token].address}`,
+        });
+      }
+      return <Dropdown
+      placeholder="token"
+      options={tokensOptions}
+      onChange={this.setToken}
+      scrolling />
     }
 
     modal = () => {
@@ -106,7 +122,6 @@ class ModalForceExit extends Component {
                   Amount
                   <input
                     type="text"
-                    ref={this.amountRef}
                     id="amount"
                     onChange={this.setAmount} />
                 </label>
@@ -114,13 +129,8 @@ class ModalForceExit extends Component {
               <Form.Field>
                 <label htmlFor="tokenid">
                   Token ID
-                  <input
-                    type="text"
-                    ref={this.tokenIdRef}
-                    id="tokenid"
-                    onChange={this.setTokenId}
-                    defaultValue="0" />
                 </label>
+                {this.dropDownTokens()}
               </Form.Field>
               <Form.Field>
                 <ButtonGM />

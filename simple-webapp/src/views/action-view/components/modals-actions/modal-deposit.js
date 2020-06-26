@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import {
-  Button, Modal, Form, Icon,
+  Button, Modal, Form, Icon, Dropdown,
 } from 'semantic-ui-react';
 
 import ModalError from '../modals-info/modal-error';
@@ -19,6 +19,7 @@ class ModalDeposit extends Component {
       toggleModalDeposit: PropTypes.func.isRequired,
       handleSendDeposit: PropTypes.func.isRequired,
       handleStateDeposit: PropTypes.func.isRequired,
+      tokensList: PropTypes.array.isRequired,
       tokensA: PropTypes.string.isRequired,
       gasMultiplier: PropTypes.number.isRequired,
       desWallet: PropTypes.object.isRequired,
@@ -26,34 +27,45 @@ class ModalDeposit extends Component {
 
     constructor(props) {
       super(props);
-      this.amountRef = React.createRef();
-      this.tokenIdRef = React.createRef();
       this.state = {
         modalError: false,
         error: '',
+        tokenId: '',
+        amount: '',
         disableButton: true,
       };
     }
 
-    checkAmount = (e) => {
-      e.preventDefault();
-      if (parseInt(e.target.value, 10)) {
+    checkForm = () => {
+      const {
+        amount, tokenId,
+      } = this.state;
+      if (parseInt(amount, 10) && (parseInt(tokenId, 10) || tokenId === 0)) {
         this.setState({ disableButton: false });
       } else {
         this.setState({ disableButton: true });
       }
     }
 
+
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
-    toggleModalClose = () => { this.props.toggleModalDeposit(); this.setState({ disableButton: true }); }
+    toggleModalClose = () => {
+      this.props.toggleModalDeposit();
+      this.setState({
+        modalError: false,
+        error: '',
+        tokenId: '',
+        amount: '',
+        disableButton: true,
+      });
+    }
 
     handleClick = async () => {
       const {
         config, abiRollup, desWallet, tokensA, gasMultiplier,
       } = this.props;
-      const amount = getWei(this.amountRef.current.value);
-      const tokenId = Number(this.tokenIdRef.current.value);
+      const amount = getWei(this.state.amount);
       const { nodeEth, operator } = config;
       const addressSC = config.address;
       if (parseInt(amount, 10) > parseInt(tokensA, 10)) {
@@ -62,7 +74,7 @@ class ModalDeposit extends Component {
       } else {
         this.props.toggleModalDeposit();
         this.setState({ disableButton: true });
-        const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, tokenId, desWallet,
+        const res = await this.props.handleSendDeposit(nodeEth, addressSC, amount, this.state.tokenId, desWallet,
           undefined, abiRollup, gasMultiplier, operator);
         const walletEthAddress = desWallet.ethWallet.address;
         const filters = {};
@@ -74,9 +86,35 @@ class ModalDeposit extends Component {
           }
         }
         if (res.res) {
-          this.props.handleStateDeposit(res, tokenId, operator, amount);
+          this.props.handleStateDeposit(res,  this.state.tokenId, operator, amount);
         }
       }
+    }
+
+    setAmount = (event) => {
+      this.setState({ amount: event.target.value }, () => { this.checkForm(); });
+    }
+
+
+    setToken = (event, { value }) => {
+      const tokenId = Number(value);
+      this.setState({ tokenId }, () => { this.checkForm(); });
+    }
+
+    dropDownTokens = () => {
+      const tokensOptions = [];
+      for(const token in this.props.tokensList) {
+        tokensOptions.push({
+          key: this.props.tokensList[token].address,
+          value: this.props.tokensList[token].tokenId,
+          text: `${this.props.tokensList[token].tokenId}: ${this.props.tokensList[token].address}`,
+        });
+      }
+      return <Dropdown
+      placeholder="token"
+      options={tokensOptions}
+      onChange={this.setToken}
+      scrolling />
     }
 
     render() {
@@ -93,14 +131,18 @@ class ModalDeposit extends Component {
                 <Form.Field>
                   <label htmlFor="amount">
                     Amount
-                    <input type="text" ref={this.amountRef} id="amount" onChange={this.checkAmount} />
+                    <input
+                    type="text"
+                    id="amount"
+                    onChange={this.setAmount}
+                    value={this.state.amount} />
                   </label>
                 </Form.Field>
                 <Form.Field>
                   <label htmlFor="token-id">
                     Token ID
-                    <input type="text" ref={this.tokenIdRef} id="token-id" defaultValue="0" />
                   </label>
+                  {this.dropDownTokens()}
                 </Form.Field>
                 <Form.Field>
                   <ButtonGM />

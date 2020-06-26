@@ -169,7 +169,7 @@ function loadOperator() {
 function loadOperatorSuccess(apiOperator) {
   return {
     type: CONSTANTS.LOAD_OPERATOR_SUCCESS,
-    payload: apiOperator,
+    payload: { apiOperator },
     error: '',
   };
 }
@@ -182,7 +182,7 @@ function loadOperatorError(error) {
 }
 
 export function handleLoadOperator(config) {
-  return function (dispatch) {
+  return async function (dispatch) {
     dispatch(loadOperator());
     try {
       const apiOperator = new operator.cliExternalOperator(config.operator);
@@ -199,12 +199,12 @@ function infoAccount() {
   };
 }
 
-function infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs,
+function infoAccountSuccess(balance, tokensList, tokens, tokensR, tokensA, tokensE, tokensTotal, txs,
   txsExits, tokensArray, tokensAArray) {
   return {
     type: CONSTANTS.INFO_ACCOUNT_SUCCESS,
     payload: {
-      balance, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits, tokensArray, tokensAArray,
+      balance, tokensList, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits, tokensArray, tokensAArray,
     },
     error: '',
   };
@@ -234,12 +234,12 @@ export function handleInfoAccount(node, abiTokens, wallet, operatorUrl, addressR
       if (walletEthAddress.startsWith('0x')) filters.ethAddr = walletEthAddress;
       else filters.ethAddr = `0x${walletEthAddress}`;
       const contractRollup = new ethers.Contract(addressRollup, abiRollup, walletEth);
-      let tokensList = [];
+      let tokensList = {};
       let allTxs = [];
       try {
         tokensList = await apiOperator.getTokensList();
       } catch (err) {
-        tokensList.data = [];
+        tokensList.data = {};
       }
       try {
         allTxs = await apiOperator.getAccounts(filters);
@@ -247,13 +247,13 @@ export function handleInfoAccount(node, abiTokens, wallet, operatorUrl, addressR
         allTxs.data = [];
       }
       const txs = allTxs.data;
-      const [tokens, tokensArray, tokensA, tokensAArray] = await getTokensInfo(tokensList, abiTokens,
+      const [tokensUser, tokens, tokensArray, tokensA, tokensAArray] = await getTokensInfo(tokensList, abiTokens,
         wallet, walletEth, addressRollup);
       const tokensR = await getTokensRollup(allTxs);
       const tokensE = await getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExits);
       const tokensTotalNum = BigInt(tokens) + BigInt(tokensE) + BigInt(tokensR);
       const tokensTotal = tokensTotalNum.toString();
-      dispatch(infoAccountSuccess(balance, tokens, tokensR, tokensA, tokensE, tokensTotal,
+      dispatch(infoAccountSuccess(balance, tokensUser, tokens, tokensR, tokensA, tokensE, tokensTotal,
         txs, txsExits, tokensArray, tokensAArray));
     } catch (error) {
       dispatch(infoAccountError(error));
@@ -264,6 +264,7 @@ export function handleInfoAccount(node, abiTokens, wallet, operatorUrl, addressR
 async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRollup) {
   const tokensArray = [];
   const tokensAArray = [];
+  const tokensUser = [];
   let tokens = BigInt(0);
   let tokensA = BigInt(0);
   let walletEthAddress = wallet.ethWallet.address;
@@ -274,6 +275,7 @@ async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRo
         const contractTokens = new ethers.Contract(address, abiTokens, walletEth);
         const tokensHex = await contractTokens.balanceOf(walletEthAddress);
         const tokensAHex = await contractTokens.allowance(walletEthAddress, addressRollup);
+        tokensUser.push({tokenId, address});
         tokens += BigInt(tokensHex);
         tokensArray.push({
           coin: tokenId, address, amount: BigInt(tokensHex).toString(),
@@ -284,7 +286,7 @@ async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRo
         tokensA += BigInt(tokensAHex);
       }
     }
-    return [tokens.toString(), tokensArray, tokensA.toString(), tokensAArray];
+    return [tokensUser, tokens.toString(), tokensArray, tokensA.toString(), tokensAArray];
   } catch (err) {
     return ['0', '0'];
   }

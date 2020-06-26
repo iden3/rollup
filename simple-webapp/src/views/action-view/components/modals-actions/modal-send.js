@@ -22,19 +22,17 @@ class ModalSend extends Component {
       desWallet: PropTypes.object.isRequired,
       babyjub: PropTypes.string.isRequired,
       activeItem: PropTypes.string.isRequired,
+      tokensList: PropTypes.array.isRequired,
       pendingOffchain: PropTypes.array.isRequired,
     }
 
     constructor(props) {
       super(props);
-      this.idToRef = React.createRef();
-      this.idFromRef = React.createRef();
-      this.tokenIdRef = React.createRef();
       this.state = {
         babyJubReceiver: '',
         amount: '',
         fee: '',
-        tokenId: 0,
+        tokenId: '',
         sendDisabled: true,
       };
     }
@@ -53,7 +51,7 @@ class ModalSend extends Component {
         babyJubReceiver: '',
         amount: '',
         fee: '',
-        tokenId: 0,
+        tokenId: '',
         sendDisabled: true,
       });
     }
@@ -63,10 +61,9 @@ class ModalSend extends Component {
         config, desWallet, pendingOffchain, babyjub,
       } = this.props;
       const {
-        amount, fee, babyJubReceiver,
+        amount, fee, babyJubReceiver, tokenId,
       } = this.state;
       const amountWei = getWei(amount);
-      const tokenId = Number(this.tokenIdRef.current.value);
       this.closeModal();
       const res = await this.props.handleSendSend(config.operator, babyJubReceiver, amountWei, desWallet,
         tokenId, feeTable[fee]);
@@ -92,8 +89,9 @@ class ModalSend extends Component {
       this.setState({ amount: event.target.value }, () => { this.checkForm(); });
     }
 
-    setTokenId = (event) => {
-      this.setState({ tokenId: event.target.value }, () => { this.checkForm(); });
+    setToken = (event, { value }) => {
+      const tokenId = Number(value);
+      this.setState({ tokenId }, () => { this.checkForm(); });
     }
 
     setFee = (event, { value }) => {
@@ -128,6 +126,22 @@ class ModalSend extends Component {
       }
     }
 
+    dropDownTokens = () => {
+      const tokensOptions = [];
+      for(const token in this.props.tokensList) {
+        tokensOptions.push({
+          key: this.props.tokensList[token].address,
+          value: this.props.tokensList[token].tokenId,
+          text: `${this.props.tokensList[token].tokenId}: ${this.props.tokensList[token].address}`,
+        });
+      }
+      return <Dropdown
+      placeholder="token"
+      options={tokensOptions}
+      onChange={this.setToken}
+      scrolling />
+    }
+
     modal = () => {
       return (
         <Modal open={this.props.modalSend}>
@@ -150,7 +164,6 @@ class ModalSend extends Component {
                   Amount
                   <input
                     type="text"
-                    ref={this.amountRef}
                     id="amount"
                     onChange={this.setAmount}
                     value={this.state.amount} />
@@ -159,13 +172,8 @@ class ModalSend extends Component {
               <Form.Field>
                 <label htmlFor="token-id">
                   Token ID
-                  <input
-                    type="text"
-                    ref={this.tokenIdRef}
-                    onChange={this.setTokenId}
-                    id="token-id"
-                    value={this.state.tokenId} />
                 </label>
+                {this.dropDownTokens()}
               </Form.Field>
               <Form.Field>
                 <p><b>Fee</b></p>
