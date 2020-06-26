@@ -10,7 +10,7 @@ import {
   getWei, feeTable, feeTableDropdown,
 } from '../../../../utils/utils';
 
-const rollupExampleAddress = '0x336938c2baed78293c4a4b292263cfa82c68bdb07cc069aec6252891ab41b92d';
+const rollupExampleAddress = '0x5b2ae71f33a4e3455cb4d25bf076189093c4beac4d0fd5f8ea538c5b3d1ad8a0';
 
 class ModalSend extends Component {
     static propTypes = {
