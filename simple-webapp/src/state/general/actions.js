@@ -276,8 +276,8 @@ async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRo
         const tokensHex = await contractTokens.balanceOf(walletEthAddress);
         const tokensAHex = await contractTokens.allowance(walletEthAddress, addressRollup);
         tokens += BigInt(tokensHex);
-        if(BigInt(tokensHex) > 0) {
-          tokensUser.push({tokenId, address});
+        if (BigInt(tokensHex) > 0) {
+          tokensUser.push({ tokenId, address });
           tokensArray.push({
             coin: tokenId, address, amount: BigInt(tokensHex).toString(),
           });

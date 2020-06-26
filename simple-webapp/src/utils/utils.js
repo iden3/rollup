@@ -92,7 +92,12 @@ function float2fix(fl) {
   const e = (fl >> 11);
   const e5 = (fl >> 10) & 1;
 
-  const exp = Scalar.pow(10, e);
+  // const exp = Scalar.pow(10, e);
+
+  let exp = BigInt(1);
+  for (let i = 0; i < e; i++) {
+    exp *= BigInt(10);
+  }
 
   let res = Scalar.mul(m, exp);
   if (e5 && e) {
