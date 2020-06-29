@@ -278,6 +278,11 @@ export function handleSendSend(urlOperator, babyjubTo, amount, wallet, tokenId, 
             if (babyjubTo === 'exit') {
               babyjubToAxAy = [exitAx, exitAy];
             } else {
+              try {
+                await apiOperator.getStateAccountByAddress(tokenId, babyjubTo);
+              } catch (err) {
+                throw new Error('Incorrect Receiver BabyJubJub Address');
+              }
               babyjubToAxAy = hexToPoint(babyjubTo);
             }
             const res = await rollup.offchain.send.send(urlOperator, babyjubToAxAy, amount, wallet, tokenId,
