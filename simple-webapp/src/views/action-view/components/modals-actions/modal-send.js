@@ -22,7 +22,7 @@ class ModalSend extends Component {
       desWallet: PropTypes.object.isRequired,
       babyjub: PropTypes.string.isRequired,
       activeItem: PropTypes.string.isRequired,
-      tokensList: PropTypes.array.isRequired,
+      tokensRArray: PropTypes.array.isRequired,
       pendingOffchain: PropTypes.array.isRequired,
     }
 
@@ -128,18 +128,22 @@ class ModalSend extends Component {
 
     dropDownTokens = () => {
       const tokensOptions = [];
-      for(const token in this.props.tokensList) {
-        tokensOptions.push({
-          key: this.props.tokensList[token].address,
-          value: this.props.tokensList[token].tokenId,
-          text: `${this.props.tokensList[token].tokenId}: ${this.props.tokensList[token].address}`,
-        });
+      for (const token in this.props.tokensRArray) {
+        if (this.props.tokensRArray[token]) {
+          tokensOptions.push({
+            key: this.props.tokensRArray[token].address,
+            value: this.props.tokensRArray[token].tokenId,
+            text: `${this.props.tokensRArray[token].tokenId}: ${this.props.tokensRArray[token].address}`,
+          });
+        }
       }
-      return <Dropdown
-      placeholder="token"
-      options={tokensOptions}
-      onChange={this.setToken}
-      scrolling />
+      return (
+        <Dropdown
+          placeholder="token"
+          options={tokensOptions}
+          onChange={this.setToken}
+          scrolling />
+      );
     }
 
     modal = () => {

@@ -200,11 +200,22 @@ function infoAccount() {
 }
 
 function infoAccountSuccess(balance, tokensList, tokens, tokensR, tokensA, tokensE, tokensTotal, txs,
-  txsExits, tokensArray, tokensAArray) {
+  txsExits, tokensArray, tokensAArray, tokensRArray) {
   return {
     type: CONSTANTS.INFO_ACCOUNT_SUCCESS,
     payload: {
-      balance, tokensList, tokens, tokensR, tokensA, tokensE, tokensTotal, txs, txsExits, tokensArray, tokensAArray,
+      balance,
+      tokensList,
+      tokens,
+      tokensR,
+      tokensA,
+      tokensE,
+      tokensTotal,
+      txs,
+      txsExits,
+      tokensArray,
+      tokensAArray,
+      tokensRArray,
     },
     error: '',
   };
@@ -249,12 +260,12 @@ export function handleInfoAccount(node, abiTokens, wallet, operatorUrl, addressR
       const txs = allTxs.data;
       const [tokensUser, tokens, tokensArray, tokensA, tokensAArray] = await getTokensInfo(tokensList, abiTokens,
         wallet, walletEth, addressRollup);
-      const tokensR = await getTokensRollup(allTxs);
+      const [tokensR, tokensRArray] = await getTokensRollup(allTxs, tokensList);
       const tokensE = await getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExits);
       const tokensTotalNum = BigInt(tokens) + BigInt(tokensE) + BigInt(tokensR);
       const tokensTotal = tokensTotalNum.toString();
       dispatch(infoAccountSuccess(balance, tokensUser, tokens, tokensR, tokensA, tokensE, tokensTotal,
-        txs, txsExits, tokensArray, tokensAArray));
+        txs, txsExits, tokensArray, tokensAArray, tokensRArray));
     } catch (error) {
       dispatch(infoAccountError(error));
     }
@@ -296,16 +307,20 @@ async function getTokensInfo(tokensList, abiTokens, wallet, walletEth, addressRo
   }
 }
 
-function getTokensRollup(allTxs) {
+function getTokensRollup(allTxs, tokensList) {
   let tokensRNum = BigInt(0);
+  const tokensRArray = [];
   if (allTxs.data.length !== 0) {
     for (const tx in allTxs.data) {
       if (allTxs.data[tx].amount) {
         tokensRNum += BigInt(allTxs.data[tx].amount);
+        tokensRArray.push({
+          tokenId: allTxs.data[tx].coin, address: tokensList.data[allTxs.data[tx].coin],
+        });
       }
     }
   }
-  return tokensRNum.toString();
+  return [tokensRNum.toString(), tokensRArray];
 }
 
 async function getTokensExit(apiOperator, wallet, allTxs, contractRollup, txsExits) {

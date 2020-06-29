@@ -20,6 +20,9 @@ const initialState = {
   isLoadingInfoAccount: false,
   balance: '0.0',
   tokensList: [],
+  tokensArray: [],
+  tokensAArray: [],
+  tokensRArray: [],
   tokens: '0',
   tokensR: '0',
   tokensE: '0',
@@ -143,6 +146,7 @@ function general(state = initialState, action) {
         txsExits: action.payload.txsExits,
         tokensArray: action.payload.tokensArray,
         tokensAArray: action.payload.tokensAArray,
+        tokensRArray: action.payload.tokensRArray,
         errorInfoAccount: '',
       };
     case CONSTANTS.INFO_ACCOUNT_ERROR:

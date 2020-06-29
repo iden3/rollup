@@ -47,7 +47,6 @@ class ModalDeposit extends Component {
       }
     }
 
-
     toggleModalError = () => { this.setState((prev) => ({ modalError: !prev.modalError })); }
 
     toggleModalClose = () => {
@@ -86,7 +85,7 @@ class ModalDeposit extends Component {
           }
         }
         if (res.res) {
-          this.props.handleStateDeposit(res,  this.state.tokenId, operator, amount);
+          this.props.handleStateDeposit(res, this.state.tokenId, operator, amount);
         }
       }
     }
@@ -95,7 +94,6 @@ class ModalDeposit extends Component {
       this.setState({ amount: event.target.value }, () => { this.checkForm(); });
     }
 
-
     setToken = (event, { value }) => {
       const tokenId = Number(value);
       this.setState({ tokenId }, () => { this.checkForm(); });
@@ -103,18 +101,22 @@ class ModalDeposit extends Component {
 
     dropDownTokens = () => {
       const tokensOptions = [];
-      for(const token in this.props.tokensList) {
-        tokensOptions.push({
-          key: this.props.tokensList[token].address,
-          value: this.props.tokensList[token].tokenId,
-          text: `${this.props.tokensList[token].tokenId}: ${this.props.tokensList[token].address}`,
-        });
+      for (const token in this.props.tokensList) {
+        if (this.props.tokensList[token]) {
+          tokensOptions.push({
+            key: this.props.tokensList[token].address,
+            value: this.props.tokensList[token].tokenId,
+            text: `${this.props.tokensList[token].tokenId}: ${this.props.tokensList[token].address}`,
+          });
+        }
       }
-      return <Dropdown
-      placeholder="token"
-      options={tokensOptions}
-      onChange={this.setToken}
-      scrolling />
+      return (
+        <Dropdown
+          placeholder="token"
+          options={tokensOptions}
+          onChange={this.setToken}
+          scrolling />
+      );
     }
 
     render() {
@@ -132,10 +134,10 @@ class ModalDeposit extends Component {
                   <label htmlFor="amount">
                     Amount
                     <input
-                    type="text"
-                    id="amount"
-                    onChange={this.setAmount}
-                    value={this.state.amount} />
+                      type="text"
+                      id="amount"
+                      onChange={this.setAmount}
+                      value={this.state.amount} />
                   </label>
                 </Form.Field>
                 <Form.Field>

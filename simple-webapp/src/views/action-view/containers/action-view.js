@@ -219,7 +219,7 @@ class ActionView extends Component {
           modalForceExit={this.state.modalForceExit}
           toggleModalForceExit={this.toggleModalForceExit} />
         <ModalSend
-          tokensList={this.props.tokensList}
+          tokensRArray={this.props.tokensRArray}
           babyjub={this.state.babyjub}
           apiOperator={this.props.apiOperator}
           modalSend={this.state.modalSend}
@@ -259,6 +259,7 @@ const mapStateToProps = (state) => ({
   tokensR: state.general.tokensR,
   tokensA: state.general.tokensA,
   tokensAArray: state.general.tokensAArray,
+  tokensRArray: state.general.tokensRArray,
   tokensE: state.general.tokensE,
   tokensTotal: state.general.tokensTotal,
   txs: state.general.txs,
