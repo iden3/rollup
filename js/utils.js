@@ -251,15 +251,16 @@ function hashState(st) {
  */
 function verifyTxSig(tx) {
     try {
-        const data = buildTxData(tx);
+        const txData = buildTxData(tx);
         const hash = poseidon.createHash(6, 8, 57);
 
         const h = hash([
-            data,
-            Scalar.e(tx.rqTxData || 0),
-            Scalar.fromString(tx.toAx, 16),
-            Scalar.fromString(tx.toAy, 16),
+            txData,
+            Scalar.fromString(tx.fromEthAddr, 16),
             Scalar.fromString(tx.toEthAddr, 16),
+            Scalar.e(tx.rqTxData || 0),
+            Scalar.fromString(tx.rqToEthAddr || 0),
+            Scalar.fromString(tx.rqFromEthAddr || 0),
         ]);
 
         const signature = {

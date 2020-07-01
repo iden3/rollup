@@ -19,17 +19,14 @@ describe("Rollup account", () => {
         const account2 = new Account(2);
         
         const tx = {
-            toAx: account2.ax,
-            toAy: account2.ay,
             toEthAddr: account2.ethAddress,
-            coin: 0,
+            coin: 4,
             amount: 500,
-            nonce: 0,
+            nonce: 3,
             fee: Constants.fee["1%"]
         };
 
         account.signTx(tx);
-
         expect(tx.fromAx).to.be.equal(account.ax);
         expect(tx.fromAy).to.be.equal(account.ay);
         expect(tx.fromEthAddr).to.be.equal(account.ethAddress);

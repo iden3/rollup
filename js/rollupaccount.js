@@ -62,12 +62,15 @@ module.exports = class RollupAccount {
         const txData = utils.buildTxData(tx);
         const hash = poseidon.createHash(6, 8, 57);
 
+        tx.fromEthAddr = this.ethAddress;
+        
         const h = hash([
             txData,
-            Scalar.e(tx.rqTxData || 0),
-            Scalar.fromString(tx.toAx, 16),
-            Scalar.fromString(tx.toAy, 16),
+            Scalar.fromString(tx.fromEthAddr, 16),
             Scalar.fromString(tx.toEthAddr, 16),
+            Scalar.e(tx.rqTxData || 0),
+            Scalar.fromString(tx.rqToEthAddr || 0),
+            Scalar.fromString(tx.rqFromEthAddr || 0),
         ]);
 
         const signature = eddsa.signPoseidon(this.rollupPrvKey, h);
@@ -76,7 +79,6 @@ module.exports = class RollupAccount {
         tx.s = signature.S;
         tx.fromAx = this.ax;
         tx.fromAy = this.ay;
-        tx.fromEthAddr = this.ethAddress;
     }
 
     /**

@@ -1,7 +1,9 @@
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
+const babyJub = require("circomlib").babyJub;
 
 const utils = require("./utils");
+const ffutils = require("ffjavascript").utils;
 
 class RollupTx {
 
@@ -20,12 +22,6 @@ class RollupTx {
         this.rqTxData = Scalar.e(tx.rqTxData || 0);
 
         // parse toAccount
-        if (typeof tx.toAx === "string") this.toAx = Scalar.fromString(tx.toAx, 16);
-        else this.toAx = Scalar.e(tx.toAx || 0);
-
-        if (typeof tx.toAy === "string") this.toAy = Scalar.fromString(tx.toAy, 16);
-        else this.toAy = Scalar.e(tx.toAy || 0);
-
         if (typeof tx.toEthAddr === "string") this.toEthAddr = Scalar.fromString(tx.toEthAddr, 16);
         else this.toEthAddr = Scalar.e(tx.toEthAddr || 0);
 
@@ -40,6 +36,17 @@ class RollupTx {
 
         if (typeof tx.fromEthAddr === "string") this.fromEthAddr = Scalar.fromString(tx.fromEthAddr, 16);
         else this.fromEthAddr = Scalar.e(tx.fromEthAddr || 0);
+
+        // parse rqData
+        if (typeof tx.rqToEthAddr === "string") this.rqToEthAddr = Scalar.fromString(tx.rqToEthAddr, 16);
+        else this.rqToEthAddr = Scalar.e(tx.rqToEthAddr || 0);
+
+        if (typeof tx.rqFromEthAddr === "string") this.rqFromEthAddr = Scalar.fromString(tx.rqFromEthAddr, 16);
+        else this.rqFromEthAddr = Scalar.e(tx.rqFromEthAddr || 0);
+
+        // Compressed
+
+
 
         this._roundValues();
     }
@@ -83,10 +90,11 @@ class RollupTx {
 
         const h = hash([
             txData,
-            this.rqTxData,
-            this.toAx,
-            this.toAy,
+            this.fromEthAddr,
             this.toEthAddr,
+            this.rqTxData,
+            this.rqToEthAddr,
+            this.rqFromEthAddr,
         ]);
         return h;
     }
@@ -118,23 +126,27 @@ class RollupTx {
      * @param {Scalar} oldOnChainHash - Old OnChainHash
      */
     getOnChainHash(oldOnChainHash){
-        const txData = this.getTxData();
         const hash = poseidon.createHash(6, 8, 57);
 
-        const dataOnChain = hash([
-            this.fromAx,
-            this.fromAy,
-            this.toEthAddr,
-            this.toAx,
-            this.toAy,
-        ]);
+        // compute txData
+        const txData = this.getTxData();
+
+        // build element 2
+        const compressedBuff = babyJub.packPoint(this.fromAx, this.fromAy);
+        const sign = (compressedBuff[31] & 0x80) ? true : false;
+        compressedBuff[31] = compressedBuff[31] & 0x7F;
+
+        let element2 = Scalar.e(0);
+        element2 = Scalar.add(element2, this.fromEthAddr);
+        element2 = Scalar.add(element2, Scalar.shl(sign, 160));
 
         const h = hash([
+            ffutils.leBuff2int(compressedBuff),
+            element2,
+            this.toEthAddr,
             Scalar.e(oldOnChainHash || 0),
             txData,
             this.loadAmount,
-            dataOnChain,
-            this.fromEthAddr,
         ]);
         return h;
     }
