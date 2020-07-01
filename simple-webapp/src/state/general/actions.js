@@ -193,6 +193,41 @@ export function handleLoadOperator(config) {
   };
 }
 
+function loadMetamask() {
+  return {
+    type: CONSTANTS.LOAD_METAMASK,
+  };
+}
+
+function loadMetamaskSuccess(metamaskWallet) {
+  return {
+    type: CONSTANTS.LOAD_METAMASK_SUCCESS,
+    payload: { metamaskWallet },
+    error: '',
+  };
+}
+
+function loadMetamaskError(error) {
+  return {
+    type: CONSTANTS.LOAD_METAMASK_ERROR,
+    error,
+  };
+}
+
+export function handleLoadMetamask() {
+  return async function (dispatch) {
+    dispatch(loadMetamask());
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      window.ethers = ethers
+      const wallet = {}
+      dispatch(loadMetamaskSuccess(wallet));
+    } catch (error) {
+      dispatch(loadMetamaskError(error.message));
+    }
+  };
+}
+
 function infoAccount() {
   return {
     type: CONSTANTS.INFO_ACCOUNT,
@@ -229,14 +264,14 @@ function infoAccountError(error) {
 }
 
 export function handleInfoAccount(node, abiTokens, wallet, operatorUrl, addressRollup,
-  abiRollup, desWallet) {
+  abiRollup) {
   return async function (dispatch) {
     dispatch(infoAccount());
     try {
       const txsExits = [];
       const provider = new ethers.providers.JsonRpcProvider(node);
       const walletEthAddress = wallet.ethWallet.address;
-      let walletEth = new ethers.Wallet(desWallet.ethWallet.privateKey);
+      let walletEth = new ethers.Wallet(wallet.ethWallet.privateKey);
       walletEth = walletEth.connect(provider);
       const balanceHex = await provider.getBalance(walletEthAddress);
       const balance = ethers.utils.formatEther(balanceHex);

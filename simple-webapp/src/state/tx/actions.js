@@ -1,5 +1,6 @@
 import * as CONSTANTS from './constants';
 import { hexToPoint, exitAy, exitAx } from '../../utils/utils';
+import { deposit, depositOnTop, withdraw, forceWithdraw } from '../../utils/tx';
 
 const ethers = require('ethers');
 const rollup = require('bundle-cli');
@@ -47,7 +48,7 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
           const babyjubTo = [wallet.babyjubWallet.publicKey[0].toString(),
             wallet.babyjubWallet.publicKey[1].toString()];
-          const res = await rollup.onchain.depositOnTop.depositOnTop(nodeEth, addressSC, amount, tokenId,
+          const res = await depositOnTop(nodeEth, addressSC, amount, tokenId,
             babyjubTo, wallet, abiRollup, gasLimit, gasMultiplier);
           dispatch(sendDepositSuccess(res, currentBatch));
           resolve({ res, currentBatch });
@@ -57,7 +58,7 @@ export function handleSendDeposit(nodeEth, addressSC, amount, tokenId, wallet, e
               const apiOperator = new operator.cliExternalOperator(operatorUrl);
               const resOperator = await apiOperator.getState();
               const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-              const res = await rollup.onchain.deposit.deposit(nodeEth, addressSC, amount, tokenId, wallet,
+              const res = await deposit(nodeEth, addressSC, amount, tokenId, wallet,
                 ethAddress, abiRollup, gasLimit, gasMultiplier);
               dispatch(sendDepositSuccess(res, currentBatch));
               resolve({ res, currentBatch });
@@ -108,7 +109,7 @@ export function handleSendWithdraw(nodeEth, addressSC, tokenId, wallet, abiRollu
           const apiOperator = new operator.cliExternalOperator(op);
           const resOperator = await apiOperator.getState();
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-          const res = await rollup.onchain.withdraw.withdraw(nodeEth, addressSC, tokenId, wallet, abiRollup,
+          const res = await withdraw(nodeEth, addressSC, tokenId, wallet, abiRollup,
             op, numExitRoot, gasLimit, gasMultiplier);
           abiDecoder.addABI(abiRollup);
           const web3 = new Web3(nodeEth);
@@ -165,7 +166,7 @@ export function handleSendForceExit(nodeEth, addressSC, tokenId, amount, wallet,
         if (resAccount && resAccount.data.ethAddress.toUpperCase() === address.toUpperCase()) {
           const resOperator = await apiOperator.getState();
           const currentBatch = resOperator.data.rollupSynch.lastBatchSynched;
-          const res = await rollup.onchain.forceWithdraw.forceWithdraw(nodeEth, addressSC, tokenId,
+          const res = await forceWithdraw(nodeEth, addressSC, tokenId,
             amount, wallet, abiRollup, gasLimit, gasMultiplier);
           dispatch(sendForceExitSuccess(res, currentBatch));
           resolve({ res, currentBatch });

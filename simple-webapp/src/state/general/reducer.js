@@ -4,6 +4,7 @@ const initialState = {
   errorWallet: '',
   isLoadingWallet: false,
   wallet: {},
+  metamaskWallet: {},
   desWallet: {},
   password: '',
   errorCreateWallet: '',
@@ -125,6 +126,26 @@ function general(state = initialState, action) {
         isLoadingOp: false,
         errorInfoOp: action.error,
       };
+    case CONSTANTS.LOAD_METAMASK:
+      return {
+        ...state,
+        isLoadingWallet: true,
+        errorWallet: '',
+      };
+    case CONSTANTS.LOAD_METAMASK_SUCCESS:
+      return {
+        ...state,
+        isLoadingWallet: false,
+        metamaskWallet: action.payload.metamaskWallet,
+        errorWallet: '',
+      };
+    case CONSTANTS.LOAD_METAMASK_ERROR:
+      return {
+        ...state,
+        isLoadingWallet: false,
+        metamaskWallet: {},
+        errorWallet: action.error,
+        };
     case CONSTANTS.INFO_ACCOUNT:
       return {
         ...state,

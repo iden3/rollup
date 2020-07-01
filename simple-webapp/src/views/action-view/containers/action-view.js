@@ -22,8 +22,8 @@ import ModalForceExit from '../components/modals-actions/modal-force-exit';
 
 class ActionView extends Component {
   static propTypes = {
-    desWallet: PropTypes.object.isRequired,
     wallet: PropTypes.object.isRequired,
+    metamaskWallet: PropTypes.object.isRequired,
     config: PropTypes.object.isRequired,
     abiTokens: PropTypes.array.isRequired,
     tokens: PropTypes.string,
@@ -79,7 +79,7 @@ class ActionView extends Component {
   componentDidMount = async () => {
     this.getInfoAccount();
     this.infoOperator();
-    if (Object.keys(this.props.desWallet).length === 0 || this.props.errorFiles !== '') {
+    if (this.props.errorFiles !== '') {
       this.setState({ noImported: true });
     } else {
       this.setState({
@@ -102,7 +102,7 @@ class ActionView extends Component {
     config.nodeEth = currentNode;
     const nodeLoad = await this.props.handleLoadFiles(config);
     await this.getInfoAccount();
-    if (Object.keys(this.props.desWallet).length === 0 || !nodeLoad) {
+    if (!nodeLoad) {
       this.setState({ noImported: true });
     } else {
       this.setState({
@@ -118,10 +118,8 @@ class ActionView extends Component {
   }
 
   getInfoAccount = async () => {
-    if (Object.keys(this.props.desWallet).length !== 0) {
-      await this.props.handleInfoAccount(this.props.config.nodeEth, this.props.abiTokens, this.props.wallet,
-        this.props.config.operator, this.props.config.address, this.props.config.abiRollup, this.props.desWallet);
-    }
+    await this.props.handleInfoAccount(this.props.config.nodeEth, this.props.abiTokens, this.props.wallet,
+      this.props.config.operator, this.props.config.address, this.props.config.abiRollup);
   }
 
   handleItemClick = (e, { name }) => {
@@ -247,7 +245,7 @@ class ActionView extends Component {
 
 const mapStateToProps = (state) => ({
   wallet: state.general.wallet,
-  desWallet: state.general.desWallet,
+  metamaskWallet: state.general.metamaskWallet,
   apiOperator: state.general.apiOperator,
   abiTokens: state.general.abiTokens,
   config: state.general.config,
