@@ -6,9 +6,6 @@ import {
 import { connect } from 'react-redux';
 import { Redirect } from 'react-router-dom';
 
-import ModalImport from '../components/modal-import';
-import ModalCreate from '../components/modal-create';
-
 import {
   handleLoadWallet, handleLoadFiles, handleLoadOperator, resetWallet, handleCreateWallet, handleLoadMetamask
 } from '../../../state/general/actions';
@@ -181,44 +178,7 @@ class InitView extends Component {
             size="massive"
             color="blue"
             onClick={this.signInMetamask} />
-          <Divider />
-          <Button
-            content="Create New Rollup Wallet"
-            icon="plus"
-            size="massive"
-            color="blue"
-            onClick={this.toggleModalCreate} />
-          <Divider />
-          <Button
-            content="Import Rollup Wallet"
-            icon="upload"
-            size="massive"
-            color="violet"
-            onClick={this.toggleModalImport} />
         </Button.Group>
-        <ModalCreate
-          modalCreate={this.state.modalCreate}
-          toggleModalCreate={this.toggleModalCreate}
-          handleChangeWallet={this.handleChangeWallet}
-          handleClickCreate={this.handleClickCreate}
-          fileNameRef={this.fileNameRef}
-          passwordRef={this.passwordRef}
-          isLoadingWallet={this.props.isLoadingWallet}
-          isCreatingWallet={this.props.isCreatingWallet}
-          errorCreateWallet={this.props.errorCreateWallet}
-          nameWallet={this.state.nameWallet}
-          desc={this.state.desc}
-          step={this.state.step} />
-        <ModalImport
-          modalImport={this.state.modalImport}
-          toggleModalImport={this.toggleModalImport}
-          handleChangeWallet={this.handleChangeWallet}
-          handleClickImport={this.handleClickImport}
-          passwordRef={this.passwordRef}
-          isLoadingWallet={this.props.isLoadingWallet}
-          errorWallet={this.props.errorWallet}
-          desc={this.state.desc}
-          step={this.state.step} />
         {this.renderRedirect()}
       </Container>
     );
@@ -227,7 +187,7 @@ class InitView extends Component {
 
 const mapStateToProps = (state) => ({
   isLoadingWallet: state.general.isLoadingWallet,
-  isCreatingWallet: state.general.isCreatzingWallet,
+  isCreatingWallet: state.general.isCreatingWallet,
   errorCreateWallet: state.general.errorCreateWallet,
   created: state.general.created,
   errorWallet: state.general.errorWallet,

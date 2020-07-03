@@ -220,8 +220,9 @@ export function handleLoadMetamask() {
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       window.ethers = ethers
-      const wallet = {}
-      dispatch(loadMetamaskSuccess(wallet));
+      const signer = provider.getSigner()
+      console.log(await signer.getAddress())
+      dispatch(loadMetamaskSuccess(signer));
     } catch (error) {
       dispatch(loadMetamaskError(error.message));
     }
