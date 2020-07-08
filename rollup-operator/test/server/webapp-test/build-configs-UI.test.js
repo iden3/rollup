@@ -22,10 +22,10 @@ const pathCustomTokens = path.join(__dirname,"../../config/table-conversion-test
 //Mnemonic TEST: "hard crop gallery regular neglect weekend fatal stamp eight flock inch doll"
 const { Wallet } = require("../../../../rollup-cli/src/utils/wallet");
 const { createWallets } = require("./create-wallets");
-const walletsPath = path.join(__dirname, "../../../../simple-webapp/test/wallets");
-const abiRollupPath = path.join(__dirname, "../../../../simple-webapp/test/rollupabi.json");
-const tokensPath = path.join(__dirname, "../../../../simple-webapp/test/tokensabi.json");
-const walletFunderPath = path.join(__dirname, "../../../../simple-webapp/test/walletFunder.json");
+const walletsPath = path.join(__dirname, "../../../../test/wallet-ui/wallets");
+const abiRollupPath = path.join(__dirname, "../../../../test/wallet-ui/rollupabi.json");
+const tokensPath = path.join(__dirname, "../../../../test/wallet-ui/tokensabi.json");
+const walletFunderPath = path.join(__dirname, "../../../../test/wallet-ui/walletFunder.json");
 const mnemonic = "hard crop gallery regular neglect weekend fatal stamp eight flock inch doll";
 const passString = "foo";
 

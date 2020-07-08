@@ -1,0 +1,52 @@
+{
+ "ethWallet": {
+  "address": "a34d3025600122c003c82e9adc2731ee5c7942c2",
+  "id": "2213714f-f802-49ef-adbc-47134999b35b",
+  "version": 3,
+  "Crypto": {
+   "cipher": "aes-128-ctr",
+   "cipherparams": {
+    "iv": "9d285783da7bed32c525cfa7ae05bc0d"
+   },
+   "ciphertext": "6b4f22951b39b11ad96bbc27ce8f2206379c9b404db8134fccb03e364abf78c6",
+   "kdf": "scrypt",
+   "kdfparams": {
+    "salt": "54c8a88bde05c04a134912f041108fdf8a0e8ad25264dd4c43469f9595a73186",
+    "n": 131072,
+    "dklen": 32,
+    "p": 1,
+    "r": 8
+   },
+   "mac": "ab60e9a52cbb7195e97d90851911e5152ff6cfdf3863f4d9405eeeb77c4abebb"
+  },
+  "x-ethers": {
+   "client": "ethers.js",
+   "gethFilename": "UTC--2020-07-08T15-06-16.0Z--a34d3025600122c003c82e9adc2731ee5c7942c2",
+   "mnemonicCounter": "68964d4dd3d865b8a5cb62dd139223c5",
+   "mnemonicCiphertext": "9d27fbe6dec982793beb2c3d4c931e5b",
+   "path": "m/44'/60'/0'/0/3",
+   "version": "0.1"
+  }
+ },
+ "babyjubWallet": {
+  "public": {
+   "ax": "279dd0c0eae88ee9608b7997f85fded1ec5c5b1def26f4213f5800cecda818c",
+   "ay": "dcce683b0bd7d75f28fbec9e7f3b1720bc750053d4359d5b7d905bc28948a5c"
+  },
+  "publicCompressed": "5c8a9428bc05d9b7d559433d0550c70b72b1f3e7c9be8ff2757dbdb083e6cc0d",
+  "crypto": {
+   "cipher": "aes-192-cbc",
+   "cipherparams": {
+    "iv": "IiRv2G3eNR6J5DUbJLmVSQ=="
+   }
+  },
+  "ciphertext": "x6ii7MWexVT2gAW0VBQFJiBFweTSih9GjWZZfyfo5xdXKi+KJOEUEua0RpFRoJwt",
+  "kdfparams": {
+   "dklen": 24,
+   "digest": "sha256",
+   "i": 256,
+   "salt": "ZQyvkyXDIBTmzeP1qGreaw=="
+  },
+  "mac": "B+w3zakT54MpkpYomSEegbH2dhtxvp3cCTgwx3IF2E8="
+ }
+}

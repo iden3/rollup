@@ -1,8 +1,0 @@
-{
-    "operator": "http://127.0.0.1:9000",
-    "tokensAddress": "0xaFF4481D10270F50f203E0763e2597776068CBc5",
-    "address": "0x9A1D1FaD8F2Db1f608D03Da3BF482059e59c0890",
-    "nodeEth": "ropsten.infura.io/v3/39753c9df15e15ee844e2c19a928bbc1",
-    "abiRollup": "abi_object",
-    "abiTokens": "abi_object"
-}

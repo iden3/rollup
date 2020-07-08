@@ -1,5 +1,5 @@
 /* global contract */
-const { addBlocks } = require('../../test/contracts/helpers/timeTravel');
+const { addBlocks } = require('../contracts/helpers/timeTravel');
 
 const blocksGenesis = 1000;
 const blockPerSlots = 100;
