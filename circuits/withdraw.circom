@@ -11,11 +11,11 @@ template Withdraw(nLevels) {
 	signal input ethAddress;
     signal input numBatch;
 	signal input rootExit;
+    signal input tokenId;
+    signal input amount;
     signal output nullifier;
 
 	signal private input idx;
-    signal private input tokenId;
-    signal private input amount;
     signal private input ax;
     signal private input ay;
     signal private input siblings[nLevels];

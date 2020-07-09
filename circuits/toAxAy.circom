@@ -1,7 +1,7 @@
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/pointbits.circom";
 
-template Test(){
+template toAxAy(){
 
     signal input compressedPoint;
     signal input element2;

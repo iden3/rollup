@@ -28,12 +28,6 @@ class RollupTx {
         // on-chain
         this.loadAmount = Scalar.e(tx.loadAmount || 0);
         // parse fromAccount
-        if (typeof tx.fromAx === "string") this.fromAx = Scalar.fromString(tx.fromAx, 16);
-        else this.fromAx = Scalar.e(tx.fromAx || 0);
-
-        if (typeof tx.fromAy === "string") this.fromAy = Scalar.fromString(tx.fromAy, 16);
-        else this.fromAy = Scalar.e(tx.fromAy || 0);
-
         if (typeof tx.fromEthAddr === "string") this.fromEthAddr = Scalar.fromString(tx.fromEthAddr, 16);
         else this.fromEthAddr = Scalar.e(tx.fromEthAddr || 0);
 
@@ -43,10 +37,6 @@ class RollupTx {
 
         if (typeof tx.rqFromEthAddr === "string") this.rqFromEthAddr = Scalar.fromString(tx.rqFromEthAddr, 16);
         else this.rqFromEthAddr = Scalar.e(tx.rqFromEthAddr || 0);
-
-        // Compressed
-
-
 
         this._roundValues();
     }
