@@ -70,6 +70,10 @@ contract("RollupHelpers functions", (accounts) => {
 
         const resSm = await insHelpers.testHashGeneric([1, 2, 3, 4, 5]);
         expect(resJs.toString()).to.be.equal(resSm.toString());
+
+        // gas estimation
+        const gas = await insHelpers.testHashGeneric.estimateGas([1, 2, 3, 4, 5]);
+        console.log("Hash node generic gas estimation: ", gas.toString());
     });
 
     it("hash node", async () => {
@@ -78,6 +82,10 @@ contract("RollupHelpers functions", (accounts) => {
 
         const resSm = await insHelpers.testHashNode(1, 2);
         expect(resJs.toString()).to.be.equal(resSm.toString());
+
+        // gas estimation
+        const gas = await insHelpers.testHashNode.estimateGas(1, 2);
+        console.log("Hash node estimation: ", gas.toString());
     });
 
     it("hash final node", async () => {
@@ -86,6 +94,10 @@ contract("RollupHelpers functions", (accounts) => {
 
         const resSm = await insHelpers.testHashFinalNode(1, 2);
         expect(resJs.toString()).to.be.equal(resSm.toString());
+
+        // gas estimation
+        const gas = await insHelpers.testHashFinalNode.estimateGas(1, 2);
+        console.log("Hash node final node estimation: ", gas.toString());
     });
 
     it("smt verifier: existence", async () => {
@@ -343,6 +355,11 @@ contract("RollupHelpers functions", (accounts) => {
         const resHash = await insHelpers.hashTreeStateTest(amountDeposit, tokenId, Ax.toString(),
             Ay.toString(), ethAddr, nonce);
         expect(Scalar.e(resHash).toString()).to.be.equal(infoLeaf.hash.toString());
+
+        const gas = await insHelpers.hashTreeStateTest.estimateGas(amountDeposit, tokenId, Ax.toString(),
+            Ay.toString(), ethAddr, nonce);
+        
+        console.log("Gas spend in hash StateTree function: ", gas.toString());
     });
 
     it("float to fix", async () => {
@@ -448,6 +465,11 @@ contract("RollupHelpers functions", (accounts) => {
                 txData, loadAmount, hashOnchainData.toString(), fromEthAddr);
                 
             expect( Scalar.e(res).toString()).to.be.equal(onChainHash.toString());
+
+            const gas = await insHelpers.hashOnChainHashTest.estimateGas(oldOnChainHash,
+                txData.toString(), loadAmount, hashOnchainData.toString(), fromEthAddr);
+
+            console.log("Gas spend by On chain hash: ", gas.toString());
         });
 
         it("helpers and batchbuilder must have the same results", async () => { 
@@ -547,12 +569,12 @@ contract("RollupHelpers functions", (accounts) => {
             ); 
 
             // gas consumption 131171
-            console.log("gas consumed by update fees of 1000 tx", 
+            console.log(`gas consumed by update fees of ${deposits} tx: `, 
                 (await insHelpers.udateDepositFeeTest.estimateGas(deposits, currentDepositMul)).toString());
             const Fee1000Deposits = await insHelpers.udateDepositFeeTest(deposits, currentDepositMul);
     
             // ethereum loses precision, thats why we don't count the last 4 decimals
-            console.log(Fee1000Deposits.toString());
+            // console.log(Fee1000Deposits.toString());
             expect(Scalar.div(depositMulJs, 10**4)).to.be.equal(Scalar.div(Fee1000Deposits, 10**4));
 
         });

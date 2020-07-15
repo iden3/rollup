@@ -87,13 +87,12 @@ class RollupDB {
     /**
      * Get the identifier from the coin and the babyjub public key
      * @param {String} coin - Coin identifier
-     * @param {String} ax - Ax coordinate encoded as hexadecimal string
-     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @param {String} ethAddr - Ethereum address
      * @returns {Scalar} Identifier of the leaf
      */
-    async getIdx(coin, ax, ay) {
-        if (ax == 0 && ay == 0) return 0;
-        const hashIdx = utils.hashIdx(coin, ax, ay);
+    async getIdx(coin, ethAddr) {
+        if (ethAddr == 0) return 0;
+        const hashIdx = utils.hashIdx(coin, ethAddr);
         const idx = await this.db.get(hashIdx);
         if (!idx) return null;
         return idx;
@@ -102,12 +101,11 @@ class RollupDB {
     /**
      * Get the state of the leaf from the coin and the babyjub public key
      * @param {String} coin - Coin identifier
-     * @param {String} ax - Ax coordinate encoded as hexadecimal string
-     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @param {String} ethAddr - Ethereum address
      * @returns {Object} State of the leaf
      */
-    async getStateByAccount(coin, ax, ay) {
-        const idx = await this.getIdx(coin, ax, ay);
+    async getStateByAccount(coin, ethAddr) {
+        const idx = await this.getIdx(coin, ethAddr);
         if (!idx) return null;
         return this.getStateByIdx(idx);
     }
@@ -190,16 +188,15 @@ class RollupDB {
     /**
      * Get exit tree information for some account in a especific batch
      * @param {String} coin - Coin identifier
-     * @param {String} ax - Ax coordinate encoded as hexadecimal string
-     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @param {String} ethAddr - Ethereum address 
      * @param {Scalar} numBatch - Batch number
      * @returns {Object} Exit tree information
      */
-    async getExitTreeInfo(numBatch, coin, ax, ay){
+    async getExitTreeInfo(numBatch, coin, ethAddr){
         if (numBatch > this.lastBatch)
             return null;
 
-        const idx = await this.getIdx(coin, ax, ay);
+        const idx = await this.getIdx(coin, ethAddr);
         if (!idx) return null;
         
         const keyRoot = Scalar.add(Constants.DB_Batch, Scalar.e(numBatch));

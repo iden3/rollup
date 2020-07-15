@@ -122,7 +122,7 @@ class RollupTx {
         const txData = this.getTxData();
 
         // build element 2
-        const compressedBuff = babyJub.packPoint(this.fromAx, this.fromAy);
+        const compressedBuff = babyJub.packPoint([this.fromAx, this.fromAy]);
         const sign = (compressedBuff[31] & 0x80) ? true : false;
         compressedBuff[31] = compressedBuff[31] & 0x7F;
 

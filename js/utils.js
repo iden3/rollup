@@ -1,8 +1,9 @@
 const Scalar = require("ffjavascript").Scalar;
 const poseidon = require("circomlib").poseidon;
 const eddsa = require("circomlib").eddsa;
+const babyJub = require("circomlib").babyJub;
 const assert = require("assert");
-const { beInt2Buff, beBuff2int } = require("ffjavascript").utils;
+const { beInt2Buff, beBuff2int, leBuff2int } = require("ffjavascript").utils;
 
 const Constants = require("./constants");
 
@@ -278,13 +279,12 @@ function verifyTxSig(tx) {
 /**
  * Calculate the poseidon hash of some rollup account 
  * @param {Scalar} coin - Coin identifier
- * @param {String} ax - Hex string containing the Ax point of the babyjub public key
- * @param {String} ay - Hex string containing the Ay point of the babyjub public key
+ * @param {String} ethAddr - Ethereum address
  * @returns {Scalar} Resulting poseidon hash
  */
-function hashIdx(coin, ax, ay) {
+function hashIdx(coin, ethAddr) {
     const h = poseidon.createHash(6, 8, 57);
-    return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
+    return h([Scalar.e(coin), Scalar.fromString(ethAddr, 16)]);
 }
 
 /**
@@ -394,6 +394,21 @@ function computeFee(amount, feeSelector){
     return fee2Charge;
 }
 
+/**
+ * decompress babyjubjub
+ * @param {Scalar} ax
+ * @param {Scalar} ay
+ * @returns {Object} compressed and sign
+ */
+function toCompressed(ax, ay){
+    const compressedBuff = babyJub.packPoint([ax, ay]);
+    const sign = (compressedBuff[31] & 0x80) ? true : false;
+    compressedBuff[31] = compressedBuff[31] & 0x7F;
+    const compressed = leBuff2int(compressedBuff);
+
+    return {compressed, sign};
+}
+
 module.exports.padZeros = padZeros;
 module.exports.padding256 = padding256; 
 module.exports.buildTxData = buildTxData;
@@ -412,3 +427,4 @@ module.exports.decodeDepositOffChain = decodeDepositOffChain;
 module.exports.decodeDataAvailability = decodeDataAvailability;
 module.exports.computeFee = computeFee;
 module.exports.floorFix2Float = floorFix2Float; 
+module.exports.toCompressed = toCompressed;

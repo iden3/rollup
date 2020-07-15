@@ -7,8 +7,6 @@ async function depositTx(bb, account, coin, loadamount) {
         fromAx: account.ax,
         fromAy: account.ay,
         fromEthAddr: account.ethAddress,
-        toAx: Constants.exitAx,
-        toAy: Constants.exitAy,
         toEthAddr: Constants.exitEthAddr,
         onChain: true
     });

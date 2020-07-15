@@ -145,16 +145,14 @@ describe("Utils", function () {
 
     it("Hash Idx", async () => { 
         
-        const hashIdxRes = "20820825084977233222284801912251772945505687930282524287625637692429191024649";
+        const hashIdxRes = "20815548005001940909128168836170417710054756301626625566899513930087534057957";
 
         const tx = {
             coin: 1,
-            fromAx: "144e7e10fd47e0c67a733643b760e80ed399f70e78ae97620dbb719579cd645d",
-            fromAy: "1676a120dec6e3d678a947bc34003456ed46077efe7314d38a7db9b5c03a9446",
+            fromEthAddr: "0x144e7e10fd47e0c67a733643b760e80ed399f70e",
         };
 
-        const hashIdx = utils.hashIdx(tx.coin, tx.fromAx, tx.fromAy);
-        
+        const hashIdx = utils.hashIdx(tx.coin, tx.fromEthAddr);
         expect(Scalar.eq(hashIdx, hashIdxRes)).to.be.equal(true);
     });
 

@@ -65,7 +65,7 @@ class RollupState {
      */
     getUniqueId(){
         const hash = poseidon.createHash(6, 8, 57);
-        return hash([this.idx, this.ax, this.ay]);
+        return hash([this.coin, this.ethAddr]);
     }
 }
 

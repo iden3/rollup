@@ -25,8 +25,8 @@ module.exports = class BatchBuilder {
         this.stateTree = new SMT(this.dbState, root);
         this.dbExit = new SMTTmpDb(rollupDB.db);
         this.exitTree = new SMT(this.dbExit, Scalar.e(0));
-        this.feePlanCoins = Array(16).fill(0);
-        this.feeTotals = Array(16).fill(0);
+        this.feePlanCoins = Array(64).fill(0);
+        this.feeTotals = Array(64).fill(0);
         this.nCoins = 0;
         this.newBatchNumberDb = Scalar.e(batchNumber);
     }
@@ -48,8 +48,6 @@ module.exports = class BatchBuilder {
         this.input.fromIdx[i] = 0;
         this.input.toIdx[i] = 0;
         // to
-        this.input.toAx[i] = 0,
-        this.input.toAy[i] = 0,
         this.input.toEthAddr[i] = 0,
         this.input.rqTxData[i] = 0;
         this.input.s[i] = 0;
@@ -106,15 +104,15 @@ module.exports = class BatchBuilder {
         const i = this.input.txData.length;
 
         // Find and set Idx
-        const hashFromIdx = utils.hashIdx(tx.coin, tx.fromAx, tx.fromAy);
+        const hashFromIdx = utils.hashIdx(tx.coin, tx.fromEthAddr);
 
         let fromIdx = await this.dbState.get(hashFromIdx);
 
         let toIdx;
         
-        if (Scalar.eq(poseidonHash([Scalar.fromString(tx.toAx, 16), Scalar.fromString(tx.toAy, 16)]), Constants.exitAccount)) toIdx = 0;
+        if (Scalar.eq(tx.toEthAddr, Constants.exitAccount)) toIdx = 0;
         else {
-            const hashToIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy); 
+            const hashToIdx = utils.hashIdx(tx.coin, tx.toEthAddr); 
             toIdx = await this.dbState.get(hashToIdx);
         }
 
@@ -146,6 +144,8 @@ module.exports = class BatchBuilder {
             oldState1 = utils.array2state(await this.dbState.get(foundValueId));
             op1 = "UPDATE";
         } else {
+            // INSERT
+            // tx needs Ax, Ay
             oldState1 = {
                 amount: Scalar.e(0),
                 coin: tx.coin,
@@ -215,8 +215,6 @@ module.exports = class BatchBuilder {
         this.input.fromIdx[i] = tx.fromIdx;
         this.input.toIdx[i] = tx.toIdx;
         this.input.txData[i] = utils.buildTxData(Object.assign({newAccount: newAccount}, tx));
-        this.input.toAx[i] = Scalar.fromString(tx.toAx, 16),
-        this.input.toAy[i] = Scalar.fromString(tx.toAy, 16),
         this.input.toEthAddr[i] = Scalar.fromString(tx.toEthAddr, 16),
         this.input.rqTxData[i]= tx.rqTxData || 0;
         this.input.s[i]= tx.s || 0;
@@ -261,7 +259,7 @@ module.exports = class BatchBuilder {
             this.input.oldValue1[i]= res.isOld0 ? 0 : res.oldValue;
 
             // Insert hashmap uniqueHash-idx
-            const keyIdx = this._uniqueAccount(tx.coin, tx.fromAx, tx.fromAy);
+            const keyIdx = this._uniqueAccount(tx.coin, tx.fromEthAddr);
             await this.dbState.multiIns([
                 [keyIdx, tx.fromIdx],
             ]);
@@ -522,20 +520,21 @@ module.exports = class BatchBuilder {
             if (tx.onChain) {
                 const hash = poseidon.createHash(6, 8, 57);
 
-                const dataOnChain = hash([
-                    this.input.fromAx[i],
-                    this.input.fromAy[i],
-                    this.input.toEthAddr[i],
-                    this.input.toAx[i],
-                    this.input.toAy[i],
-                ]);
+                const {compressed, sign } = utils.toCompressed(
+                    this.input.fromAx[i], this.input.fromAy[i]);
+                
+                let entry1 = Scalar.e(0);
+                entry1 = Scalar.add(entry1, this.input.fromEthAddr[i]);
+                entry1 = Scalar.add(entry1, Scalar.shl(sign, 160));
+
 
                 this.input.imOnChainHash[i] = hash([
+                    compressed,
+                    entry1,
+                    this.input.toEthAddr[i],
                     lastHash,
                     this.input.txData[i],
                     this.input.loadAmount[i],
-                    dataOnChain,
-                    this.input.fromEthAddr[i],
                 ]);
                 this.input.imOnChain[i] = Scalar.e(1);
             } else {
@@ -613,13 +612,12 @@ module.exports = class BatchBuilder {
     /**
      * Return the hash of the coin and babyjub public key
      * @param {String} coin - Coin identifier
-     * @param {String} ax - Ax coordinate encoded as hexadecimal string
-     * @param {String} ay - Ay coordinate encoded as hexadecimal string
+     * @param {String} ethAddr - Ethereum Address
      * @returns {Scalar} Resulting poseidon hash
      */
-    _uniqueAccount(coin, ax, ay){
+    _uniqueAccount(coin, ethAddr){
         const h = poseidon.createHash(6, 8, 57);
-        return h([Scalar.e(coin), Scalar.fromString(ax, 16), Scalar.fromString(ay, 16)]);
+        return h([Scalar.e(coin), Scalar.fromString(ethAddr, 16)]);
     }
 
     /**
@@ -640,9 +638,16 @@ module.exports = class BatchBuilder {
      * @return {Scalar} Resulting Scalar
      */
     _getFeeTotal() {
-        let res = Scalar.e(0);
+        let res = [];
+        let tmp = Scalar.e(0);
+        let counter = 0;
         for (let i = 0; i < this.feeTotals.length; i++) {
-            res = Scalar.add(res, Scalar.shl(Scalar.e(utils.floorFix2Float(this.feeTotals[i])), 16*i));
+            tmp = Scalar.add(tmp, Scalar.shl(Scalar.e(utils.floorFix2Float(this.feeTotals[i])), 16*i));
+            if ((i+1) % 16 == 0){
+                res[counter] = tmp;
+                tmp = Scalar.e(0);
+                counter += 1;
+            }
         }
         return res;
     }
@@ -652,9 +657,16 @@ module.exports = class BatchBuilder {
      * @return {Scalar} Resulting Scalar
      */
     _buildFeePlanCoins() {
-        let res = Scalar.e(0);
+        const res = [];
+        let counter = 0;
+        let tmp = Scalar.e(0);
         for (let i = 0; i < this.feePlanCoins.length; i++) {
-            res = Scalar.add(res, Scalar.shl(Scalar.e(this.feePlanCoins[i]), 16*i));
+            tmp = Scalar.add(tmp, Scalar.shl(Scalar.e(this.feePlanCoins[i]), 16*i));
+            if ((i+1) % 16 == 0){
+                res[counter] = tmp;
+                tmp = Scalar.e(0);
+                counter += 1;
+            }
         }
         return res;
     }
@@ -833,21 +845,21 @@ module.exports = class BatchBuilder {
         const { onChain } = utils.decodeTxData(this.input.txData[this.maxNTx-1]);
         if (onChain) {
             const hash = poseidon.createHash(6, 8, 57);
+
+            const {entry0, sign } = utils.toCompressed(
+                this.input.fromAx[this.maxNTx-1], this.input.fromAy[this.maxNTx-1]);
             
-            const dataOnChain = hash([
-                this.input.fromAx[this.maxNTx-1],
-                this.input.fromAy[this.maxNTx-1],
-                this.input.toEthAddr[this.maxNTx-1],
-                this.input.toAx[this.maxNTx-1],
-                this.input.toAy[this.maxNTx-1],
-            ]);
+            let entry1 = Scalar.e(0);
+            entry1 = Scalar.add(entry1, this.fromEthAddr);
+            entry1 = Scalar.add(entry1, Scalar.shl(sign, 160));
 
             res = hash([
+                entry0,
+                entry1,
+                this.input.toEthAddr[this.maxNTx-1],
                 lastHash,
                 this.input.txData[this.maxNTx-1],
                 this.input.loadAmount[this.maxNTx-1],
-                dataOnChain,
-                this.input.fromEthAddr[this.maxNTx-1],
             ]);
 
         } else {
@@ -1021,10 +1033,10 @@ module.exports = class BatchBuilder {
      * @param {Scalar} coin - Coin identifier
      */
     addCoin(coin) {
-        if (this.nCoins >= 16) {
-            throw new Error("Maximum 16 coins per batch");
+        if (this.nCoins >= 64) {
+            throw new Error("Maximum 64 coins per batch");
         }
-        if ((this.nCoins == 15)&&(coin >= 1<<13)) {
+        if (((this.nCoins + 1) % 16 == 0) && (coin >= 1<<13)) {
             throw new Error("Coin 16 must be less than 2^13");
         }
         this.feePlanCoins[this.nCoins] = coin;
