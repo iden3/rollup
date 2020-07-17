@@ -1,24 +1,22 @@
-/*
- withdraw funds from rollup
-*/
-
 include "../node_modules/circomlib/circuits/comparators.circom";
 include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/smt/smtverifier.circom";
 include "./statepacker.circom"
 
 template Withdraw(nLevels) {
-	signal input ethAddress;
+
+    signal input rootExit;
+	signal input ethAddr;
     signal input numBatch;
-	signal input rootExit;
     signal input tokenId;
     signal input amount;
+    
     signal output nullifier;
 
 	signal private input idx;
     signal private input ax;
     signal private input ay;
-    signal private input siblings[nLevels];
+    signal private input siblingsState[nLevels + 1];
 
     // compute account state hash
     component accountState = StatePacker();
@@ -27,21 +25,21 @@ template Withdraw(nLevels) {
     accountState.amount <== amount;
     accountState.nonce <== 0;
     accountState.coin <== tokenId;
-    accountState.ethAddr <== ethAddress;
+    accountState.ethAddr <== ethAddr;
 
     // verify account state is on exit tree root
-	component smt = smtVerifier(nLevels);
-	smt.enabled <== 1;
-	smt.fnc <== 0;
-	smt.root <== rootExit;
-	for (var i = 0; i < nLevels; i++) {
-		smt.siblings[i] <== siblings[i];
+	component smtVerify = SMTVerifier(nLevels + 1);
+	smtVerify.enabled <== 1;
+	smtVerify.fnc <== 0;
+	smtVerify.root <== rootExit;
+	for (var i = 0; i < nLevels + 1; i++) {
+		smtVerify.siblings[i] <== siblingsState[i];
 	}
-	smt.oldKey <== 0;
-	smt.oldValue <== 0;
-	smt.isOld0 <== 0;
-	smt.key <== accountState.out;
-	smt.value <== 0;
+	smtVerify.oldKey <== 0;
+	smtVerify.oldValue <== 0;
+	smtVerify.isOld0 <== 0;
+	smtVerify.key <== idx;
+	smtVerify.value <== accountState.out;
 
     // compute nullifier 
     component hash = Poseidon(3, 6, 8, 57);

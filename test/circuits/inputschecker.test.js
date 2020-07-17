@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const path = require("path");
 const tester = require("circom").tester;
 const crypto = require("crypto");
-const { Scalar, ffUtils } = require("ffjavascript");
+const Scalar = require("ffjavascript").Scalar;
 const utils = require("../../js/utils");
 
 describe("Test inputs checker", function () {

@@ -246,6 +246,21 @@ function hashState(st) {
 }
 
 /**
+ * Return the exit tree nullifier
+ * @param {Object} st - Merkle tree state object
+ * @param {Number} numBatch - Batch number 
+ * @param {Scalar} exit - Merkle tree root of the exit tree
+ * @returns {Scalar} Resulting poseidon hash
+ */
+function computeNullifier(st, numBatch, exitRoot ) {
+    const hash = poseidon.createHash(6, 8, 57);
+    
+    const stateHash = hashState(st);
+
+    return hash([stateHash, Scalar.e(numBatch), exitRoot]);
+}
+
+/**
  * Verify the transaction signature
  * @param {Object} tx - Transaction object with signature included
  * @returns {Boolean} Return true if the signature matches with the transaction
@@ -428,3 +443,4 @@ module.exports.decodeDataAvailability = decodeDataAvailability;
 module.exports.computeFee = computeFee;
 module.exports.floorFix2Float = floorFix2Float; 
 module.exports.toCompressed = toCompressed;
+module.exports.computeNullifier = computeNullifier;
