@@ -10,8 +10,8 @@ include "feeplandecoder.circom";
 template Rollup(nTx, nLevels) {
 
     // Incremental idx
-    signal input initialIdx;
-    signal output finalIdx;
+    signal input initialIdx; //TODO: name changing:  oldLastIdx
+    signal output finalIdx; //TODO: name changing: newLastIdx
 
     // Roots
     signal input oldStRoot;

@@ -30,6 +30,6 @@ template InputsChecker(nInputs){
     for (i = 0; i < 256; i++) {
         b2nInputHash.in[i] <== inputHash.out[255 - i];
     }
-
-    // b2nInputHash.out === hash;
+    
+    b2nInputHash.out === hash;
 }

@@ -40,12 +40,12 @@ describe("Test inputs checker", function () {
         // circuit = await testerAux(pathTmp, path.join(__dirname, "circuits", "inputschecker_test.circom"));
     });
 
-    it("Should chack input hash", async () => {
+    it("Should check input hash", async () => {
         const inputs = [];
 
         inputs.push(Scalar.e(1));
         inputs.push(Scalar.shl(1, 253));
-        inputs.push(Scalar.e("21888242871839275222246405745257275088548364400416034343698204186575808495617"));
+        inputs.push(Scalar.sub(Scalar.shl(1, 253), 1));
         inputs.push(Scalar.shl(2349873587435698, 32));
         inputs.push(Scalar.e(0));
 
