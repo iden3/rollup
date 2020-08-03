@@ -193,6 +193,7 @@ class TXPool {
      */
     async addTx(_tx) {
         const fromIdx = await this.rollupDB.getIdx(_tx.coin, _tx.fromAx, _tx.fromAy);
+        console.log('from', fromIdx)
         if (!fromIdx) {
             console.log("Invalid Account Sender");
             return false;
@@ -200,6 +201,7 @@ class TXPool {
 
         let tx;
         const toIdx = await this.rollupDB.getIdx(_tx.coin, _tx.toAx, _tx.toAy);
+        console.log('to', toIdx)
         if (toIdx === null) {
             tx = Object.assign({ fromIdx: fromIdx, isDeposit: true}, _tx);
         }
@@ -209,11 +211,13 @@ class TXPool {
 
         // Round amounts
         utils.txRoundValues(tx);
+        console.log(4, 'fine')
 
         tx.timestamp = (new Date()).getTime();
         const tmpState = new TmpState(this.rollupDB, this.feeDeposit, this.ethPrice, this.conversion);
 
         const canProcessRes = await tmpState.canProcess(tx);
+        console.log(5, canProcessRes)
         if (canProcessRes == "NO") {
             console.log("Invalid TX");
             return false;
@@ -225,6 +229,7 @@ class TXPool {
         }
 
         tx.slot = this._allocateFreeSlot();
+        console.log(6, tx.slot)
         if (tx.slot == -1) {
             await this.purge();
             tx.slot = this._allocateFreeSlot();
@@ -233,12 +238,15 @@ class TXPool {
                 return false;  // If all slots are full, just ignore the TX.
             }
         }
+        console.log(7, 'cool')
         this.txs.push(tx);
 
         await this.rollupDB.db.multiIns([
             [Scalar.add(Constants.DB_TxPollTx, tx.slot), this._tx2Array(tx)]
         ]);
+        console.log(8, 'yay')
         await this._updateSlots();
+        console.log(9, 'done')
         return true;
     }
 

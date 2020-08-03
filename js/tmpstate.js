@@ -30,10 +30,13 @@ class TmpState {
      * @returns {String} - Return "NO", "NOT NOW" or "YES"
      */
     async canProcess(tx) {
+        console.log('tmpstate0', tx)
         const stFrom = await this.getState(tx.fromIdx);
+        console.log('tmpstate1', stFrom)
         if (!stFrom || stFrom.ax != tx.fromAx || stFrom.ay != tx.fromAy) return "NO";
 
         // Check nonce
+        console.log('tmpstate2', tx.nonce, stFrom.nonce)
         if (tx.nonce < stFrom.nonce) return "NO";
 
         // Check there is enough funds
@@ -41,17 +44,21 @@ class TmpState {
         const fee = utils.computeFee(tx.amount, tx.fee);
 
         // Check onChain flag
+        console.log('tmpstate3', tx.onChain)
         if (tx.onChain) return "NO";
 
         if (!tx.isDeposit) {
             let stTo;
             if (tx.toIdx) {
                 stTo = await this.getState(tx.toIdx);
+                console.log('tmpstate4', stTo)
                 if (!stTo) return "NO";
                 // Check coins match
+                console.log('tmpstate5', stFrom.coin)
                 if (stTo.coin != stFrom.coin || stFrom.coin != tx.coin) return "NO";
             }
         } else {
+            console.log('tmpstate6', tx.toIdx)
             if (tx.toIdx) {
                 return "NO";
             }
@@ -61,14 +68,19 @@ class TmpState {
             }
             // check leaf don't exist yet
             const hashIdx = utils.hashIdx(tx.coin, tx.toAx, tx.toAy);
+            console.log('tmpstate7', this.tmpStates[hashIdx])
             if (typeof(this.tmpStates[hashIdx]) != "undefined") {
                 return "NO";
             }
         }
 
         // NOT_NOW"
+        console.log('tmpstate8', 'yay')
         if (tx.nonce > stFrom.nonce) return "NOT_NOW";
+        console.log('tmpstate9', 'yay')
         if (!Scalar.geq(stFrom.amount, Scalar.add(fee, amount))) return "NOT_NOW";
+        
+        console.log('tmpstate10', 'yay')
 
         return "YES";
     }
@@ -165,6 +177,7 @@ class TmpState {
 
             const normalizeFeeTx = Number(Scalar.div(num, den)) / 2**64;
 
+            console.log(normalizeFeeTx, this.feeDeposit * this.ethPrice, this.feeDeposit, this.ethPrice)
             if (normalizeFeeTx > (this.feeDeposit * this.ethPrice)){
                 return true; 
             }

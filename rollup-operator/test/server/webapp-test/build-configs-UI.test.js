@@ -58,8 +58,10 @@ contract("Operator Server", (accounts) => {
 
         // Deploy TokenRollup
         insTokenRollup = await TokenRollup.new(tokenId, tokenInitialAmount.toString());
+        console.log(insTokenRollup.address)
         // Deploy TokenRollup2
         insTokenRollup2 = await TokenRollup.new(tokenId, tokenInitialAmount.toString());
+        console.log(insTokenRollup2.address)
 
         // Deploy Verifier
         insVerifier = await Verifier.new();
@@ -208,5 +210,6 @@ contract("Operator Server", (accounts) => {
         console.log("ROLLUP address: ", insRollup.address);
         console.log("TOKENS address", insTokenRollup.address);
         console.log("TOKENS address2", insTokenRollup2.address);
+        console.log('Funded mnemonic:', mnemonic)
     });
 });

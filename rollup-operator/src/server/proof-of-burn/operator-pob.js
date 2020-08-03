@@ -438,13 +438,17 @@ function loadServer(flagForge, expose, flagLAN, operatorMode){
 
             appExternal.post("/pool", async (req, res) => {
                 const tx = unstringifyBigInts(req.body);
+                console.log(2, req.body)
+                console.log(3, tx)
                 try {
                     const isAdded = await pool.addTx(tx);
+                    console.log('end', isAdded)
                     if (isAdded === false)
                         res.status(400).send("Error adding transaction to pool");   
                     else
                         res.sendStatus(200);
                 } catch (error) {
+                    console.log('erroooooooooor', error)
                     logger.error(`Message error: ${error.message}`);
                     logger.debug(`Message error: ${error.stack}`);
                     res.status(400).send("Error receiving off-chain transaction");
