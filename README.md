@@ -1,4 +1,11 @@
-# zkRollup 2.0 <img style="float: right;" src="https://i.imgur.com/dGCTo2B.png" width="100">
+# zkRollup PoC <img style="float: right;" src="https://i.imgur.com/dGCTo2B.png" width="100">
+
+## Disclosure
+zkRollup PoC is no longer operative.
+
+Work done in this zkRollup PoC is being followed on Hermez project. 
+
+You can find further details about Hermez network project in [hermez.io](https://hermez.io/) and [@hermez_network](https://twitter.com/hermez_network). Please feel free to join us in our [telegram group](https://t.me/joinchat/G89XThj_TdahM0HASZEHwg).
 
 ## Table of Contents
 
