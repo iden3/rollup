@@ -19,7 +19,7 @@ You can find further details about Hermez network project in [hermez.io](https:/
   2.5. [Deposit on-chain](#2_5)<br>
   2.6. [Get your rollup id](#2_6)<br>
   2.7. [Send a rollup transaction to an operator](#2_7)<br>
-  2.8. [Initiliaze withdrawal off-chain](#2_8)<br>
+  2.8. [Initialize withdrawal off-chain](#2_8)<br>
   2.9. [Find exit transaction](#2_9)<br>
   2.10. [Complete withdrawal on-chain](#2_10)<br>
   2.11. [Bonus: create rollup account with an off-chain transaction](#2_11)<br>
@@ -229,9 +229,9 @@ Congratulations on executing your first off-chain transaction! 🚀
 
 > Remember that off-chain transactions need to be forged by an operator, which can take anywhere between 30 seconds and 1 min. So please wait a minute before moving onto the next step.
 
-### 2.8. Initiliaze withdrawal offchain<a id="2_8"></a>
+### 2.8. Initialize withdrawal offchain<a id="2_8"></a>
 
-To avoid paying an on-chain withdrawal fee, you need to initialise your withdrawal off-chain.
+To avoid paying an on-chain withdrawal fee, you need to initialize your withdrawal off-chain.
 
 > Note that although we are initializing the withdrawal off-chain in this tutorial, a user always has the option to bypass the operators and withdraw directly on-chain, albeit at an extra cost.
 
