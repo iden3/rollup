@@ -59,7 +59,7 @@
     "circom": "^0.5.10",
     "circomlib": "^0.2.3",
     "dotenv": "^8.2.0",
-    "elliptic": "^6.5.1",
+    "elliptic": "^6.5.4",
     "ethereumjs-util": "^6.1.0",
     "ethers": "^4.0.38",
     "ffjavascript": "^0.1.3",
