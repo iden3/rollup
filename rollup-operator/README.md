@@ -3,7 +3,7 @@
 ## Table of contents
 
 1. [Schematic](#1)
-2. [Description](#2)
+2. [Description](#2)<br>
   2.1 [Synchronizer](#2.1)<br>
   2.2 [Operator manager](#2.2)<br>
 3. [Configuration](#3)<br>
