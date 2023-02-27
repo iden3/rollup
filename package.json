@@ -44,13 +44,13 @@
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-mocha": "^6.2.0",
     "ganache-cli": "^6.9.1",
-    "mocha": "^6.2.0",
-    "solidity-coverage": "^0.7.2"
+    "mocha": "^10.2.0",
+    "solidity-coverage": "^0.8.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^3.0.0-beta.0",
+    "@openzeppelin/contracts": "^4.8.1",
     "abi-decoder": "^2.2.0",
-    "axios": "^0.19.0",
+    "axios": "^1.3.4",
     "big-integer": "^1.6.48",
     "bip39": "^3.0.2",
     "blake-hash": "^1.1.0",
@@ -68,11 +68,11 @@
     "js-sha3": "^0.8.0",
     "level": "^5.0.1",
     "morgan": "^1.9.1",
-    "snarkjs": "^0.1.31",
+    "snarkjs": "^0.6.4",
     "solc": "^0.6.1",
     "tmp-promise": "^3.0.2",
     "truffle": "^5.1.16",
-    "truffle-hdwallet-provider": "^1.0.17",
+    "truffle-hdwallet-provider": "^1.0.6",
     "v8-compile-cache": "^2.1.0",
     "web3": "^1.2.5"
   }
